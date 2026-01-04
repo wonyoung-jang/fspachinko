@@ -11,12 +11,12 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
+from typing import TYPE_CHECKING
 
 import send2trash
 import soundfile
 from mutagen.mp3 import MP3
 from PySide6.QtCore import QDir, QPoint, QSettings, QSize, Qt, QThreadPool, QTimer
-from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -47,6 +47,9 @@ from ..gui.workers import RunMandalaWorker, WorkerSignals
 from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
 from .qt_helpers import make_group_button, make_group_label, make_spinbox
 
+if TYPE_CHECKING:
+    from PySide6.QtGui import QCloseEvent
+
 
 class MainWindow(QWidget):
     """Main application window for Mandala."""
@@ -54,9 +57,6 @@ class MainWindow(QWidget):
     def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.randomIcon = QIcon("icons/dices.svg")
-        self.browseIcon = QIcon("icons/browse.svg")
-        self.openIcon = QIcon("icons/open.svg")
         self.noWrap = '<p style="white-space:pre">'
         self.wasEnabled = {}
         self.listOfPaths = defaultdict(bool)
@@ -107,8 +107,6 @@ class MainWindow(QWidget):
         self.numFilesLo = make_spinbox(1, 1000000000, enabled=False)
         self.numFilesHi = make_spinbox(2, 1000000000, enabled=False)
 
-        self.countCheck = QRadioButton("Set Number")
-
         count_l = QHBoxLayout()
         count_l.addWidget(self.fileCountLabel)
         count_l.addWidget(self.numFilesCount)
@@ -155,7 +153,6 @@ class MainWindow(QWidget):
         self.rootCombo.addItem(self.root)
 
         self.browseRootButton = QPushButton(" Browse")
-        self.browseRootButton.setIcon(self.browseIcon)
 
         self.deleteRoot = QPushButton("Delete")
 
@@ -186,7 +183,6 @@ class MainWindow(QWidget):
         self.destCombo.addItem(self.dest)
 
         self.browseDestButton = QPushButton(" Browse")
-        self.browseDestButton.setIcon(self.browseIcon)
 
         self.deleteDest = QPushButton("Delete")
 
@@ -545,9 +541,6 @@ class MainWindow(QWidget):
     def setup_run_section(self) -> None:  # self.runSection
         """Set up the run section UI components."""
         # PROGRESS BAR
-        self.runLabel = QLabel("Run")
-        self.stallLabel = QLabel("Timer")
-
         self.progressBar = QProgressBar()
         self.progressBar.setValue(0)
         self.progressBar.setFormat("%v")
@@ -580,8 +573,6 @@ class MainWindow(QWidget):
         self.stallTimeCounter = QLabel()
         self.stallTimeCounter.setText(f"{self.stallLimit}0 s")
         self.stallTimeCounter.setVisible(False)
-
-        self.logLabel = QLabel("Log")
 
         self.logBlock = QTextBrowser()
         self.logBlock.setMinimumHeight(175)
@@ -861,7 +852,6 @@ class MainWindow(QWidget):
             self.trashInvalidFiles = self.isTrashInvalid.isChecked()
 
         self.startAbsolute = self.root.resolve()
-        self.rename2 = " "
         self.isAppendLog = False
         self.count = 0
         self.bytesInCurrentFolder = 0
@@ -1082,27 +1072,25 @@ class MainWindow(QWidget):
 
     def is_extension(self, source: Path) -> bool:
         """Check if a file has the specified extensions."""
-        is_extension = False
         if not self.extensions:
-            is_extension = True
-        else:
-            for extension in self.extensions:
-                if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                    is_extension = True
-                    break
-        return is_extension
+            return True
+
+        for extension in self.extensions:
+            if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
+                return True
+
+        return False
 
     def is_keyword(self, source: Path) -> bool:
         """Check if a file contains the specified keywords."""
-        is_keyword = False
         if not self.keywords:
-            is_keyword = True
-        else:
-            for keyword in self.keywords:
-                if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                    is_keyword = True
-                    break
-        return is_keyword
+            return True
+
+        for keyword in self.keywords:
+            if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
+                return True
+
+        return False
 
     def is_within_duration(self, source: Path) -> bool:
         """Check if a file is within the specified duration range."""
@@ -1143,13 +1131,11 @@ class MainWindow(QWidget):
             elif self.renameFiles:
                 if not (dest / f"{self.renameName} {file_num + 1}{source.suffix}").exists():
                     shutil.copy(source_absolute, dest / f"{self.renameName} {file_num + 1}{source.suffix}")
-                    self.rename2 = f"{self.renameName} {file_num + 1}"
                 else:
                     x = 1
                     while (dest / f"{self.renameName} {file_num + x}{source.suffix}").exists():
                         x += 1
                     shutil.copy(source_absolute, dest / f"{self.renameName} {file_num + x}{source.suffix}")
-                    self.rename2 = f"{self.renameName} {file_num + x}"
             else:
                 x = 2
                 while (dest / f"{source_name}").exists():
@@ -1455,7 +1441,7 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
 
     ### SETTINGS METHODS ###
 
-    def close_event(self, event: QCloseEvent) -> None:
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Close event to save settings."""
         self.save_global_settings()
 

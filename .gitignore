@@ -118,3 +118,4 @@ venv.bak/
 
 # Other
 .pre-commit-config.yaml
+..playground/
