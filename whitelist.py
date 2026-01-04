@@ -1,0 +1,1 @@
+"""Whitelist for vulture."""
