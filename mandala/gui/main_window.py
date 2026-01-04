@@ -612,13 +612,13 @@ class MainWindow(QWidget):
 
     def setup_sidebar_section(self) -> None:  # self.sideBar
         """Set up the sidebar UI components."""
-        self.showInvalid = QCheckBox("Log Invalid")
+        self.show_invalid = QCheckBox("Log Invalid")
 
-        self.showHelp = QCheckBox("Show Help")
-        self.showHelp.setChecked(True)
+        self.show_help = QCheckBox("Show Help")
+        self.show_help.setChecked(True)
 
-        self.showHelp.stateChanged.connect(self.set_filecount_tooltip)
-        self.showHelp.stateChanged.connect(self.set_randomize_file_tooltip)
+        self.show_help.stateChanged.connect(self.set_filecount_tooltip)
+        self.show_help.stateChanged.connect(self.set_randomize_file_tooltip)
 
         self.openRoot = QPushButton("Root")
         self.openRoot.clicked.connect(lambda: os.startfile(self.root))
@@ -645,8 +645,8 @@ class MainWindow(QWidget):
         self.sideBar.addWidget(self.defaultButton)
         self.sideBar.addWidget(self.resetButton)
         self.sideBar.addStretch()
-        self.sideBar.addWidget(self.showHelp)
-        self.sideBar.addWidget(self.showInvalid)
+        self.sideBar.addWidget(self.show_help)
+        self.sideBar.addWidget(self.show_invalid)
 
     # SETUP UI
 
@@ -682,7 +682,7 @@ class MainWindow(QWidget):
         is_random_files = self.randomFileG.isChecked()
         num_files_lo = self.numFilesLo.value()
         num_files_hi = self.numFilesHi.value()
-        is_show_help = self.showHelp.isChecked()
+        is_show_help = self.show_help.isChecked()
 
         if is_show_help and not is_random_files:
             self.fileCountG.setToolTip(
@@ -707,7 +707,7 @@ class MainWindow(QWidget):
         is_random_files = self.randomFileG.isChecked()
         num_files_lo = self.numFilesLo.value()
         num_files_hi = self.numFilesHi.value()
-        is_show_help = self.showHelp.isChecked()
+        is_show_help = self.show_help.isChecked()
 
         if is_show_help and not is_random_files:
             self.randomFileG.setToolTip(
@@ -775,14 +775,26 @@ class MainWindow(QWidget):
 
     ### RUN METHODS ###
 
-    def assign_global_vars(self) -> None:
-        """Assign global variables based on the current UI settings."""
-        # Global collections
+    def init_global_vars(self) -> None:
+        """Initialize global variables."""
         self.touchedFiles = defaultdict(bool)
         self.touchedFolders = defaultdict(bool)
         self.touchedByWeight = defaultdict(bool)
         self.weighted = defaultdict(int)
+        self.keywords = []
+        self.notKeywords = []
+        self.extensions = []
+        self.notExtensions = []
+        self.topWeightValue = 0
+        self.bottomWeightValue = 0
+        self.numFolders = 1
+        self.indexFiles = False
+        self.renameFiles = False
+        self.renameName = ""
 
+    def assign_global_vars(self) -> None:
+        """Assign global variables based on the current UI settings."""
+        self.init_global_vars()
         # File Count Variables
         self.isRandFiles = self.randomFileG.isChecked()
         self.numberOfFiles = self.numFilesCount.value()
@@ -794,24 +806,16 @@ class MainWindow(QWidget):
         # Keyword Variables
         if self.incKeysG.isChecked():
             self.keywords = convert_string_to_list(self.incKeysEdit.text())
-        else:
-            self.keywords = []
 
         if self.excKeysG.isChecked():
             self.notKeywords = convert_string_to_list(self.excKeysEdit.text())
-        else:
-            self.notKeywords = []
 
         # Extension Variables
         if self.incExtsG.isChecked():
             self.extensions = convert_string_to_list(self.incExtsEdit.text())
-        else:
-            self.extensions = []
 
         if self.excExtsG.isChecked():
             self.notExtensions = convert_string_to_list(self.excExtsEdit.text())
-        else:
-            self.notExtensions = []
 
         # File Size Variables
         self.isRemoveSizeLimit = not self.sizeButton.isChecked()
@@ -831,9 +835,6 @@ class MainWindow(QWidget):
         if self.weightButton.isChecked():
             self.topWeightValue = self.topWeightSpinBox.value()
             self.bottomWeightValue = self.bottomWeightSpinBox.value()
-        else:
-            self.topWeightValue = 0
-            self.bottomWeightValue = 0
 
         # Folder Variables
         self.makeFoldersUnique = self.makeFoldersUniqueCheck.isChecked()
@@ -843,28 +844,21 @@ class MainWindow(QWidget):
         # Folder Count
         if self.isCreateFolders:
             self.numFolders = self.numFoldersCount.value()
-        else:
-            self.numFolders = 1
 
         # Filename Variables
         if self.fileNameButton.isChecked():
             self.indexFiles = self.indexFilesRadio.isChecked()
             self.renameFiles = self.renameFilesRadio.isChecked()
             self.renameName = self.renameNameEntry.text()
-        else:
-            self.indexFiles = False
-            self.renameFiles = False
-            self.renameName = ""
 
         # Trash Variables
+        self.trashEmptyFolders = False
+        self.trashSourceFiles = False
+        self.trashInvalidFiles = False
         if self.trashButton.isChecked():
             self.trashEmptyFolders = self.isTrashEmpty.isChecked()
             self.trashSourceFiles = self.isTrashSource.isChecked()
             self.trashInvalidFiles = self.isTrashInvalid.isChecked()
-        else:
-            self.trashEmptyFolders = False
-            self.trashSourceFiles = False
-            self.trashInvalidFiles = False
 
         self.startAbsolute = self.root.resolve()
         self.rename2 = " "
@@ -878,185 +872,217 @@ class MainWindow(QWidget):
         """Run the main file copying process."""
         self.assign_global_vars()
 
-        for _folder in range(self.numFolders):
+        for _ in range(self.numFolders):
             if self.stopTracker:
                 self.stop_mandala()
                 return
 
-            # If you don't want unique folders, clear the touched dictionaries and restart
-            if self.makeFoldersUnique:
-                self.touchedFolders[self.startAbsolute] = False
-                for key in self.touchedByWeight:
-                    self.touchedFolders[key] = False
-                    self.touchedFiles[key] = False
-            else:
-                self.touchedFiles = defaultdict(bool)
-                self.touchedFolders = defaultdict(bool)
-
-            self.dest = Path(self.destCombo.currentText())
-
-            top_weight_mark = ""
-            self.weighted = defaultdict(int)
-            self.touchedByWeight = defaultdict(bool)
-
-            self.bytesInCurrentFolder = 0
-            self.count = 0
-            self.dest = self.create_folders(self.dest)
-
-            dummy_file = Path(self.log.name + ".tmp")
-            self.dummyLog = dummy_file.open("a", encoding="utf-8")
-
-            self.startFolderTime = perf_counter()
-            self.startStallTime = perf_counter()
-            main_path = self.reset_path_to_start()
-
-            # File Count
-            if self.isRandFiles:
-                self.numberOfFiles = random.randint(self.numFilesLo.value(), self.numFilesHi.value())
-            self.progressBar.setRange(0, self.numberOfFiles)
-
-            for curr_file in range(self.numberOfFiles):
-                if self.stopTracker:
-                    self.stop_mandala()
-                    return
-                if self.touchedFolders[self.startAbsolute] and self.is_timed_out(self.startStallTime):
-                    break
-
-                while not self.touchedFolders[self.startAbsolute] and not self.is_timed_out(self.startStallTime):
-                    if self.stopTracker:
-                        self.stop_mandala()
-                        return
-                    main_path_absolute = main_path.resolve()
-                    # Try to get main path
-                    try:
-                        if not self.listOfPaths[main_path_absolute]:
-                            self.listOfPaths[main_path_absolute] = list(main_path.iterdir())
-                    except PermissionError:
-                        self.touchedFolders[main_path_absolute] = True
-                        main_path = self.reset_path_to_start()
-                        continue
-
-                    # If folder is empty
-                    if len(self.listOfPaths[main_path_absolute]) == 0:
-                        self.touchedFolders[main_path_absolute] = True
-                        if self.trashEmptyFolders:
-                            send2trash.send2trash(str(main_path_absolute))
-                        main_path = self.reset_path_to_start()
-                    # If the folder is not empty
-                    else:
-                        # Chooses random path and stores absolute path
-                        random_path = Path(random.choice(self.listOfPaths[main_path_absolute]))
-                        random_path_absolute = random_path.resolve()
-                        # If touched, try again:
-                        if self.touchedFiles[random_path_absolute] or self.touchedFolders[random_path_absolute]:
-                            self.touch_folder_if_all_files_touched(
-                                self.listOfPaths[main_path_absolute], main_path_absolute
-                            )
-                            main_path = self.reset_path_to_start()
-                        # If random path is folder
-                        elif random_path.is_dir():
-                            try:
-                                os.chdir(random_path)
-                                main_path = Path.cwd()
-                                if self.topWeightValue > 0 and Path(random_path_absolute).parent == self.root:
-                                    top_weight_mark = random_path_absolute
-
-                            except PermissionError:
-                                self.touchedFolders[random_path_absolute] = True
-                                main_path = self.reset_path_to_start()
-
-                        # If random path is file:
-                        elif random_path.is_file():
-                            # Touch the file and get size
-                            self.touchedFiles[random_path_absolute] = True
-                            random_path_size = Path(random_path).stat().st_size
-                            random_path_relative = os.path.relpath(random_path, self.root)
-                            # If file is valid
-                            if self.is_valid_file(random_path, random_path_size) and self.copy_files_to_target(
-                                curr_file, random_path, self.dest, random_path_size
-                            ):
-                                if not self.isAppendLog:
-                                    self.log.write(f"{curr_file + 1}: {random_path_relative}\n")
-                                    self.signals.log_signal.emit(f"{curr_file + 1}: {random_path_relative}")
-                                else:
-                                    self.dummyLog.write(f"{curr_file + 1}: {random_path_relative}\n")
-                                    self.signals.log_signal.emit(f"{curr_file + 1}: {random_path_relative}")
-
-                                self.bytesInCurrentFolder += random_path_size
-                                self.count += 1
-                                self.signals.count_signal.emit()
-                                self.startStallTime = perf_counter()
-                                self.signals.time_signal.emit()
-
-                                if self.trashSourceFiles:
-                                    send2trash.send2trash(str(random_path_absolute))
-
-                                if self.topWeightValue > 0:
-                                    self.weighted[top_weight_mark] += 1
-                                    if self.weighted[top_weight_mark] == self.topWeightValue:
-                                        self.touchedFolders[top_weight_mark] = True
-                                        self.touchedByWeight[top_weight_mark] = True
-
-                                if self.bottomWeightValue > 0:
-                                    self.weighted[main_path_absolute] += 1
-                                    if self.weighted[main_path_absolute] == self.bottomWeightValue:
-                                        self.touchedFolders[main_path_absolute] = True
-                                        self.touchedByWeight[main_path_absolute] = True
-
-                                # topWeightMark = ' '
-                                main_path = self.reset_path_to_start()
-                                break
-                            # If file is invalid
-                            if self.showInvalid.isChecked() and self.count < 100:
-                                self.signals.log_signal.emit(f"**: {random_path_relative}")
-                            elif self.showInvalid.isChecked() and self.count >= 100:
-                                self.signals.log_signal.emit(f"***: {random_path_relative}")
-                            elif self.showInvalid.isChecked() and self.count >= 1000:
-                                self.signals.log_signal.emit(f"****: {random_path_relative}")
-
-                            if self.trashInvalidFiles:
-                                send2trash.send2trash(str(random_path_absolute))
-
-                            main_path = self.reset_path_to_start()
-
-            #########################  END OF FOLDER  #########################
-            # Create and write log at the end of folder
-            self.dummyLog.close()
-            self.log.close()
-            self.signals.log_signal.emit(self.write_status_log())
-            # Terminates the program if no files were collected
-            if self.count == 0 and self.isCreateFolders:
-                shutil.rmtree(self.dest)
-                break
-            if self.count == 0 and not self.isCreateFolders and not self.isAppendLog:
-                Path(self.log.name).unlink()
+            self.process_folder()
 
         self.stop_mandala()
 
+    def process_folder(self) -> None:
+        """Process a single folder for file copying."""
+        # If you don't want unique folders, clear the touched dictionaries and restart
+        self.touchedFiles = defaultdict(bool)
+        self.touchedFolders = defaultdict(bool)
+        if self.makeFoldersUnique:
+            self.touchedFolders[self.startAbsolute] = False
+            for key in self.touchedByWeight:
+                self.touchedFiles[key] = False
+                self.touchedFolders[key] = False
+
+        self.dest = Path(self.destCombo.currentText())
+
+        top_weight_mark = Path()
+        self.weighted = defaultdict(int)
+        self.touchedByWeight = defaultdict(bool)
+
+        self.bytesInCurrentFolder = 0
+        self.count = 0
+        self.dest = self.create_folders(self.dest)
+
+        dummy_file = Path(self.log.name + ".tmp")
+        self.dummyLog = dummy_file.open("a", encoding="utf-8")
+
+        self.startFolderTime = perf_counter()
+        self.startStallTime = perf_counter()
+        main_path = self.reset_path_to_start()
+
+        # File Count
+        if self.isRandFiles:
+            self.numberOfFiles = random.randint(self.numFilesLo.value(), self.numFilesHi.value())
+
+        self.progressBar.setRange(0, self.numberOfFiles)
+
+        for curr_file in range(self.numberOfFiles):
+            if self.stopTracker:
+                self.stop_mandala()
+                return
+
+            if self.touchedFolders[self.startAbsolute] and self.is_timed_out(self.startStallTime):
+                break
+
+            main_path = self.process_file(main_path, top_weight_mark, curr_file)
+
+        #########################  END OF FOLDER  #########################
+        self.end_folder_actions()
+
+    def process_file(self, main_path: Path, top_weight_mark: Path, curr_file: int) -> Path:
+        """Process a single file for copying."""
+        while not self.touchedFolders[self.startAbsolute] and not self.is_timed_out(self.startStallTime):
+            if self.stopTracker:
+                self.stop_mandala()
+                return main_path
+
+            main_path_absolute = main_path.resolve()
+            # Try to get main path
+            try:
+                if not self.listOfPaths[main_path_absolute]:
+                    self.listOfPaths[main_path_absolute] = list(main_path.iterdir())
+            except PermissionError:
+                self.touchedFolders[main_path_absolute] = True
+                main_path = self.reset_path_to_start()
+                continue
+
+            # If folder is empty
+            if len(self.listOfPaths[main_path_absolute]) == 0:
+                self.touchedFolders[main_path_absolute] = True
+                if self.trashEmptyFolders:
+                    send2trash.send2trash(str(main_path_absolute))
+                main_path = self.reset_path_to_start()
+            # If the folder is not empty
+            else:
+                # Chooses random path and stores absolute path
+                random_path = Path(random.choice(self.listOfPaths[main_path_absolute]))
+                random_path_absolute = random_path.resolve()
+                # If touched, try again:
+                if self.touchedFiles[random_path_absolute] or self.touchedFolders[random_path_absolute]:
+                    self.touch_folder_if_all_files_touched(self.listOfPaths[main_path_absolute], main_path_absolute)
+                    main_path = self.reset_path_to_start()
+                elif random_path.is_dir():
+                    main_path, top_weight_mark = self.handle_random_path_is_dir(
+                        random_path, random_path_absolute, main_path, top_weight_mark
+                    )
+                elif random_path.is_file():
+                    # Touch the file and get size
+                    self.touchedFiles[random_path_absolute] = True
+                    random_path_size = Path(random_path).stat().st_size
+                    random_path_relative = Path(os.path.relpath(random_path, self.root))
+                    # If file is valid
+                    if self.is_valid_file(random_path, random_path_size) and self.copy_files_to_target(
+                        curr_file, random_path, Path(self.dest), random_path_size
+                    ):
+                        self.handle_log(random_path_relative, curr_file)
+                        self.bytesInCurrentFolder += random_path_size
+                        self.count += 1
+                        self.signals.count_signal.emit()
+                        self.startStallTime = perf_counter()
+                        self.signals.time_signal.emit()
+                        if self.trashSourceFiles:
+                            send2trash.send2trash(str(random_path_absolute))
+
+                        self.handle_weights(top_weight_mark, main_path_absolute)
+                        main_path = self.reset_path_to_start()
+                        break
+
+                    # If file is invalid
+                    self.handle_invalid_file(random_path_relative, random_path_absolute)
+                    main_path = self.reset_path_to_start()
+        return main_path
+
+    def handle_log(self, random_path: Path, curr_file: int) -> None:
+        """Handle logging of valid files."""
+        if not self.isAppendLog:
+            self.log.write(f"{curr_file + 1}: {random_path}\n")
+            self.signals.log_signal.emit(f"{curr_file + 1}: {random_path}")
+        else:
+            self.dummyLog.write(f"{curr_file + 1}: {random_path}\n")
+            self.signals.log_signal.emit(f"{curr_file + 1}: {random_path}")
+
+    def handle_invalid_file(self, random_path: Path, random_path_absolute: Path) -> None:
+        """Handle invalid files by logging and trashing if necessary."""
+        if self.show_invalid.isChecked() and self.count < 100:
+            self.signals.log_signal.emit(f"**: {random_path}")
+        elif self.show_invalid.isChecked() and self.count >= 100:
+            self.signals.log_signal.emit(f"***: {random_path}")
+        elif self.show_invalid.isChecked() and self.count >= 1000:
+            self.signals.log_signal.emit(f"****: {random_path}")
+
+        if self.trashInvalidFiles:
+            send2trash.send2trash(str(random_path_absolute))
+
+    def handle_weights(self, top_weight_mark: Path, main_path_absolute: Path) -> None:
+        """Handle weight assignments for folders."""
+        if self.topWeightValue > 0:
+            self.weighted[top_weight_mark] += 1
+            if self.weighted[top_weight_mark] == self.topWeightValue:
+                self.touchedFolders[top_weight_mark] = True
+                self.touchedByWeight[top_weight_mark] = True
+
+        if self.bottomWeightValue > 0:
+            self.weighted[main_path_absolute] += 1
+            if self.weighted[main_path_absolute] == self.bottomWeightValue:
+                self.touchedFolders[main_path_absolute] = True
+                self.touchedByWeight[main_path_absolute] = True
+
+    def handle_random_path_is_dir(
+        self, random_path: Path, random_path_absolute: Path, main_path: Path, top_weight_mark: Path
+    ) -> tuple[Path, Path]:
+        """Handle the case when the random path is a directory."""
+        try:
+            os.chdir(random_path)
+            main_path = Path.cwd()
+            if self.topWeightValue > 0 and Path(random_path_absolute).parent == self.root:
+                top_weight_mark = random_path_absolute
+        except PermissionError:
+            self.touchedFolders[random_path_absolute] = True
+            main_path = self.reset_path_to_start()
+        return main_path, top_weight_mark
+
+    def end_folder_actions(self) -> None:
+        """Create and write log at the end of folder."""
+        self.dummyLog.close()
+        self.log.close()
+        self.signals.log_signal.emit(self.write_status_log())
+        # Terminates the program if no files were collected
+        if self.count == 0:
+            if self.isCreateFolders:
+                shutil.rmtree(self.dest)
+            elif not (self.isCreateFolders or self.isAppendLog):
+                Path(self.log.name).unlink()
+
     def is_valid_file(self, source: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
-        # If anything remains False the file is invalid
-        is_extension = False
-        is_keyword = False
-        is_within_size_range = False
-        is_within_duration = False
-
         # If no limit, all valid, else checks valid size range. Returns immediately if neither
-        if self.isRemoveSizeLimit or self.minSize <= size <= self.maxSize:
-            is_within_size_range = True
-        else:
+        if not (self.isRemoveSizeLimit or self.minSize <= size <= self.maxSize):
             return False
 
         # If a blacklist extension or keyword is found, immediately return invalid
         for not_extension in self.notExtensions:
             if re.compile(rf"\.{not_extension}$", re.IGNORECASE).search(source.suffix) is not None:
                 return False
+
         for not_keyword in self.notKeywords:
             if re.compile(rf"(.*){not_keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
                 return False
 
+        is_within_size_range = True
+
         # If no extension or keyword, all valid.
         # If whitelist item found, immediately breaks
+        is_extension = self.is_extension(source)
+        is_keyword = self.is_keyword(source)
+
+        # If a duration can be get it will be checked, otherwise skips
+        is_within_duration = self.is_within_duration(source)
+
+        # Checks that everything is True
+        return is_extension and is_keyword and is_within_size_range and is_within_duration
+
+    def is_extension(self, source: Path) -> bool:
+        """Check if a file has the specified extensions."""
+        is_extension = False
         if not self.extensions:
             is_extension = True
         else:
@@ -1064,15 +1090,23 @@ class MainWindow(QWidget):
                 if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
                     is_extension = True
                     break
+        return is_extension
+
+    def is_keyword(self, source: Path) -> bool:
+        """Check if a file contains the specified keywords."""
+        is_keyword = False
         if not self.keywords:
             is_keyword = True
         else:
-            for not_keyword in self.keywords:
-                if re.compile(rf"(.*){not_keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
+            for keyword in self.keywords:
+                if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
                     is_keyword = True
                     break
+        return is_keyword
 
-        # If a duration can be get it will be checked, otherwise skips
+    def is_within_duration(self, source: Path) -> bool:
+        """Check if a file is within the specified duration range."""
+        is_within_duration = False
         if self.isRemoveLengthLimit:
             is_within_duration = True
         else:
@@ -1097,9 +1131,7 @@ class MainWindow(QWidget):
                     is_within_duration = True
             except ValueError:
                 is_within_duration = True
-
-        # Checks that everything is True
-        return bool(is_extension and is_keyword and is_within_size_range and is_within_duration)
+        return is_within_duration
 
     def copy_files_to_target(self, file_num: int, source: Path, dest: Path, source_size: int) -> bool | None:
         """Copy files to the target destination with appropriate naming."""
@@ -1433,7 +1465,7 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
         self.settings.setValue("pos", self.pos())
 
         for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QCheckBox) and (name in ["showInvalid", "showHelp"]):
+            if isinstance(obj, QCheckBox) and (name in ["show_invalid", "show_help"]):
                 value = obj.isChecked()
                 self.settings.setValue(name, value)
 
@@ -1453,7 +1485,7 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
             self.move(pos)
 
         for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QCheckBox) and (name in ["showInvalid", "showHelp"]):
+            if isinstance(obj, QCheckBox) and (name in ["show_invalid", "show_help"]):
                 value = self.settings.value(name)
                 if value is not None:
                     obj.setChecked(strtobool(value))
@@ -1500,7 +1532,7 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
                 value = obj.text()
                 settings.setValue(name, value)  # save ui values, so they can be restored next time
 
-            if isinstance(obj, QCheckBox) and name not in ["showInvalid", "showHelp"]:
+            if isinstance(obj, QCheckBox) and name not in ["show_invalid", "show_help"]:
                 state = obj.isChecked()
                 settings.setValue(name, state)
 
@@ -1523,6 +1555,8 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
     def restore_gui(self, settings: QSettings) -> None:
         """Restore GUI settings from registry."""
         for name, obj in inspect.getmembers(self):
+            value = settings.value(name)  # get stored value from registry
+
             if isinstance(obj, QComboBox):
                 obj.clear()
                 all_items = settings.value(name)
@@ -1535,45 +1569,19 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
                 obj.setCurrentIndex(obj.findText(value))
 
             if isinstance(obj, QLineEdit):
-                value = settings.value(name)  # get stored value from registry
                 obj.setText(value)  # restore lineEditFile
 
-            if isinstance(obj, QCheckBox) and name not in ["showInvalid", "showHelp"]:
-                value = settings.value(name)  # get stored value from registry
-                if value is not None:
-                    try:
-                        obj.setChecked(value)
-                    except TypeError:
-                        obj.setChecked(strtobool(value))
+            if isinstance(obj, QSpinBox) and value is not None:
+                obj.setValue(int(value))
 
-            if isinstance(obj, QRadioButton):
-                value = settings.value(name)  # get stored value from registry
-                if value is not None:
-                    try:
-                        obj.setChecked(value)
-                    except TypeError:
-                        obj.setChecked(strtobool(value))
+            if isinstance(obj, QDoubleSpinBox) and value is not None:
+                obj.setValue(float(value))
 
-            if isinstance(obj, QSpinBox):
-                value = settings.value(name)
-                if value is not None:
-                    try:
-                        obj.setValue(value)
-                    except TypeError:
-                        obj.setValue(int(value))
-
-            if isinstance(obj, QDoubleSpinBox):
-                value = settings.value(name)
-                if value is not None:
-                    try:
-                        obj.setValue(value)
-                    except TypeError:
-                        obj.setValue(float(value))
-
-            if isinstance(obj, QPushButton):
-                value = settings.value(name)  # get stored value from registry
-                if value is not None:
-                    try:
-                        obj.setChecked(value)
-                    except TypeError:
-                        obj.setChecked(strtobool(value))
+            if (
+                (isinstance(obj, QCheckBox) and name not in ("show_invalid", "show_help"))
+                or (isinstance(obj, (QRadioButton, QPushButton)))
+            ) and value is not None:
+                try:
+                    obj.setChecked(value)
+                except TypeError:
+                    obj.setChecked(strtobool(value))

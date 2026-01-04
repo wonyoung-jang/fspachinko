@@ -115,3 +115,6 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+# Other
+.pre-commit-config.yaml
