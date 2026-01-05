@@ -16,12 +16,13 @@ from typing import TYPE_CHECKING
 import send2trash
 import soundfile
 from mutagen.mp3 import MP3
-from PySide6.QtCore import QDir, QPoint, QSettings, QSize, Qt, QThreadPool, QTimer
+from PySide6.QtCore import QDir, QPoint, QSettings, QSize, Qt, QThreadPool, QTimer, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -41,11 +42,12 @@ from ..config.constants import (
     BYTES_IN_GIGABYTE,
     BYTES_IN_KILOBYTE,
     BYTES_IN_MEGABYTE,
+    NOWRAP,
     SECONDS_IN_MINUTE,
 )
 from ..gui.workers import RunMandalaWorker, WorkerSignals
 from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
-from .qt_helpers import make_group_button, make_group_label, make_spinbox
+from .qt_helpers import create_spinbox
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -57,13 +59,12 @@ class MainWindow(QWidget):
     def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.noWrap = '<p style="white-space:pre">'
         self.wasEnabled = {}
         self.listOfPaths = defaultdict(bool)
 
         self.threadpool = QThreadPool()
-        self.mandala = RunMandalaWorker(self)
-        self.mandala.setAutoDelete(False)
+        self.worker = RunMandalaWorker(self)
+        self.worker.setAutoDelete(False)
 
         self.setup_ui()
         self.setup_signals()
@@ -85,223 +86,134 @@ class MainWindow(QWidget):
         self.signals.log_signal.connect(lambda s: self.logBlock.append(s))
         self.signals.finished_signal.connect(lambda: self.timer.stop())
 
-    def disable_group(self, button: QGroupBox | QPushButton, group: QWidget) -> None:
-        """Enable or disable all children of a group based on the button state."""
-        r = button.isChecked()
-        for child in group.children():
-            if isinstance(child, QWidget) and (child != button):
-                child.setEnabled(r)
+    # SETUP SECTION
 
-    # SETUP TAB
-
-    def setup_file_count_ui(self) -> None:  # self.fileCountG
+    def setup_file_count_ui(self) -> None:
         """Set up the file count UI components."""
-        self.fileCountLabel = QLabel("Count")
-        self.fileLoLabel = QLabel("Min")
-        self.fileLoLabel.setDisabled(True)
+        self.num_file_count = create_spinbox(1, 1000000000, enabled=True)
 
-        self.fileHiLabel = QLabel("Max")
-        self.fileHiLabel.setDisabled(True)
+        self.set_file_count_groupbox = QGroupBox(title="Set Number", flat=True, checkable=True)
+        self.set_file_count_groupbox.toggled.connect(self.change_file_label_count)
+        count_layout = QHBoxLayout(self.set_file_count_groupbox)
+        count_layout.addWidget(QLabel("Count"))
+        count_layout.addWidget(self.num_file_count)
 
-        self.numFilesCount = make_spinbox(1, 1000000000, enabled=True)
-        self.numFilesLo = make_spinbox(1, 1000000000, enabled=False)
-        self.numFilesHi = make_spinbox(2, 1000000000, enabled=False)
+        self.min_num_files = create_spinbox(1, 1000000000, enabled=False)
+        self.min_num_files.editingFinished.connect(self.switch_file_count)
 
-        count_l = QHBoxLayout()
-        count_l.addWidget(self.fileCountLabel)
-        count_l.addWidget(self.numFilesCount)
-        self.countFileG = QGroupBox("Set Number")
-        self.countFileG.setLayout(count_l)
-        self.countFileG.setCheckable(True)
+        self.max_num_files = create_spinbox(2, 1000000000, enabled=False)
+        self.max_num_files.editingFinished.connect(self.switch_file_count)
 
-        min_row = QHBoxLayout()
-        min_row.addWidget(self.fileLoLabel)
-        min_row.addWidget(self.numFilesLo)
-        max_row = QHBoxLayout()
-        max_row.addWidget(self.fileHiLabel)
-        max_row.addWidget(self.numFilesHi)
+        self.random_file_count_groupbox = QGroupBox(title="Randomize", flat=True, checkable=True, checked=False)
+        self.random_file_count_groupbox.toggled.connect(self.switch_file_count)
+        self.random_file_count_groupbox.toggled.connect(self.change_file_label_rand)
+        random_layout = QGridLayout(self.random_file_count_groupbox)
+        random_layout.addWidget(QLabel("Min"), 0, 0)
+        random_layout.addWidget(self.min_num_files, 0, 1)
+        random_layout.addWidget(QLabel("Max"), 1, 0)
+        random_layout.addWidget(self.max_num_files, 1, 1)
 
-        random_l = QVBoxLayout()
-        random_l.addLayout(min_row)
-        random_l.addLayout(max_row)
-        self.randomFileG = QGroupBox("Randomize")
-        self.randomFileG.setLayout(random_l)
-        self.randomFileG.setCheckable(True)
-        self.randomFileG.setChecked(False)
+        self.file_count_groupbox = QGroupBox(title="File count", flat=True)
+        layout = QHBoxLayout(self.file_count_groupbox)
+        layout.addWidget(self.set_file_count_groupbox)
+        layout.addWidget(self.random_file_count_groupbox)
 
-        file_count_l = QHBoxLayout()
-        file_count_l.addWidget(self.countFileG)
-        file_count_l.addWidget(self.randomFileG)
-
-        self.fileCountG = QGroupBox("File count")
-        self.fileCountG.setLayout(file_count_l)
-
-        self.numFilesLo.editingFinished.connect(self.switch_file_count)
-        self.numFilesHi.editingFinished.connect(self.switch_file_count)
-        self.randomFileG.toggled.connect(self.switch_file_count)
-        self.randomFileG.toggled.connect(self.change_file_label_rand)
-        self.countFileG.toggled.connect(self.change_file_label_count)
-
-    def setup_root_ui(self) -> None:  # self.rootG
+    def setup_root_ui(self) -> None:
         """Set up the root UI components."""
-        self.rootLabel = make_group_label("Root")
-
         self.root = QDir.rootPath()
-        self.rootDirectory = self.root
 
-        self.rootCombo = QComboBox()
-        self.rootCombo.addItem(self.root)
+        self.root_directory = self.root
 
-        self.browseRootButton = QPushButton(" Browse")
+        self.root_combobox = QComboBox()
+        self.root_combobox.addItem(self.root)
+        self.root_combobox.currentTextChanged.connect(self.change_root)
 
-        self.deleteRoot = QPushButton("Delete")
+        browse_root_button = QPushButton("Browse")
+        browse_root_button.clicked.connect(self.browse_root)
 
-        self.deleteRoot.clicked.connect(self.delete_root_item)
-        self.rootCombo.currentTextChanged.connect(self.change_root)
-        self.browseRootButton.clicked.connect(self.browse_root)
+        delete_root_button = QPushButton("Delete")
+        delete_root_button.clicked.connect(self.delete_root_item)
 
-        root_controls = QHBoxLayout()
-        root_controls.addWidget(self.rootCombo)
-        root_controls.addWidget(self.browseRootButton)
-        root_controls.addWidget(self.deleteRoot)
+        self.root_groupbox = QGroupBox(title="Root", flat=True)
+        layout = QHBoxLayout(self.root_groupbox)
+        layout.addWidget(self.root_combobox)
+        layout.addWidget(browse_root_button)
+        layout.addWidget(delete_root_button)
 
-        root_l = QVBoxLayout()
-        root_l.addWidget(self.rootLabel)
-        root_l.addLayout(root_controls)
-
-        self.rootG = QGroupBox()
-        self.rootG.setLayout(root_l)
-
-    def setup_dest_ui(self) -> None:  # self.destG
+    def setup_dest_ui(self) -> None:
         """Set up the destination UI components."""
-        self.destLabel = make_group_label("Destination")
-
         self.dest = QDir.homePath()
-        self.destDirectory = self.dest
 
-        self.destCombo = QComboBox()
-        self.destCombo.addItem(self.dest)
+        self.dest_directory = self.dest
 
-        self.browseDestButton = QPushButton(" Browse")
+        self.dest_combobox = QComboBox()
+        self.dest_combobox.addItem(self.dest)
+        self.dest_combobox.currentTextChanged.connect(self.change_destination)
 
-        self.deleteDest = QPushButton("Delete")
+        browse_dest_button = QPushButton("Browse")
+        browse_dest_button.clicked.connect(self.browse_destination)
 
-        self.deleteDest.clicked.connect(self.delete_dest_item)
-        self.destCombo.currentTextChanged.connect(self.change_destination)
-        self.browseDestButton.clicked.connect(self.browse_destination)
+        delete_dest_button = QPushButton("Delete")
+        delete_dest_button.clicked.connect(self.delete_dest_item)
 
-        dest_label_l = QHBoxLayout()
-        dest_label_l.addWidget(self.destLabel)
-        dest_label_l.addStretch()
+        self.dest_groupbox = QGroupBox(title="Destination", flat=True)
+        layout = QHBoxLayout(self.dest_groupbox)
+        layout.addWidget(self.dest_combobox)
+        layout.addWidget(browse_dest_button)
+        layout.addWidget(delete_dest_button)
 
-        dest_controls = QHBoxLayout()
-        dest_controls.addWidget(self.destCombo)
-        dest_controls.addWidget(self.browseDestButton)
-        dest_controls.addWidget(self.deleteDest)
-
-        dest_l = QVBoxLayout()
-        dest_l.addLayout(dest_label_l)
-        dest_l.addLayout(dest_controls)
-
-        self.destG = QGroupBox()
-        self.destG.setLayout(dest_l)
-
-    def setup_create_folders_ui(self) -> None:  # self.foldersG
+    def setup_create_folders_ui(self) -> None:
         """Set up the create folders UI components."""
-        self.folderButton = make_group_button("Folders")
+        self.num_folders_count_spinbox = create_spinbox(1, 100000, enabled=True)
 
-        self.folderCountLabel = QLabel("Count")
-        folders_name_label = QLabel("Name")
+        self.name_of_folders_entry_lineedit = QLineEdit("Folder Name")
 
-        self.numFoldersCount = QSpinBox()
-        self.numFoldersCount.setRange(1, 100000)
+        self.is_make_folders_unique_checkbox = QCheckBox("Make Unique")
+        self.is_make_folders_unique_checkbox.setChecked(True)
 
-        self.nameOfFoldersEntry = QLineEdit("Folder Name")
+        self.folders_groupbox = QGroupBox(title="Create Folders", flat=True, checkable=True)
+        layout = QGridLayout(self.folders_groupbox)
+        layout.addWidget(QLabel("Count"), 0, 0)
+        layout.addWidget(self.num_folders_count_spinbox, 0, 1)
+        layout.addWidget(QLabel("Name"), 1, 0)
+        layout.addWidget(self.name_of_folders_entry_lineedit, 1, 1)
+        layout.addWidget(self.is_make_folders_unique_checkbox, 2, 0, 1, 2)
 
-        self.makeFoldersUniqueCheck = QCheckBox("Make Unique")
-        self.makeFoldersUniqueCheck.setChecked(True)
-
-        label_row = QHBoxLayout()
-        label_row.addWidget(self.folderButton)
-        label_row.addStretch()
-
-        row1 = QHBoxLayout()
-        row1.addWidget(self.folderCountLabel)
-        row1.addWidget(self.numFoldersCount)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(folders_name_label)
-        row2.addWidget(self.nameOfFoldersEntry)
-
-        folders_l = QVBoxLayout()
-        folders_l.addLayout(label_row)
-        folders_l.addLayout(row1)
-        folders_l.addLayout(row2)
-        folders_l.addWidget(self.makeFoldersUniqueCheck)
-
-        self.foldersG = QGroupBox()
-        self.foldersG.setLayout(folders_l)
-
-        self.folderButton.toggled.connect(lambda: self.disable_group(self.folderButton, self.foldersG))
-
-    def setup_filename_ui(self) -> None:  # self.fileNameG
+    def setup_filename_ui(self) -> None:
         """Set up the filename UI components."""
-        self.fileNameButton = make_group_button("Filenames")
+        keep_filename = QRadioButton("Keep")
+        keep_filename.setChecked(True)
 
-        self.keepFilesRadio = QRadioButton("Keep")
-        self.keepFilesRadio.setChecked(True)
-        self.indexFilesRadio = QRadioButton("Index")
-        self.renameFilesRadio = QRadioButton("Rename")
-        self.renameNameEntry = QLineEdit("New Name")
-        self.renameNameEntry.setEnabled(False)
+        self.index_filename_radio = QRadioButton("Index")
 
-        self.renameFilesRadio.toggled.connect(
-            lambda: self.renameNameEntry.setEnabled(self.renameFilesRadio.isChecked())
+        self.rename_filename_radio = QRadioButton("Rename")
+        self.rename_filename_radio.toggled.connect(
+            lambda: self.rename_filename_entry.setEnabled(self.rename_filename_radio.isChecked())
         )
 
-        label_row = QHBoxLayout()
-        label_row.addWidget(self.fileNameButton)
-        label_row.addStretch()
+        self.rename_filename_entry = QLineEdit("New Name")
+        self.rename_filename_entry.setEnabled(False)
 
-        rename_row = QHBoxLayout()
-        rename_row.addWidget(self.renameFilesRadio)
-        rename_row.addWidget(self.renameNameEntry)
+        self.filename_groupbox = QGroupBox(title="Filenames", flat=True, checkable=True)
+        layout = QGridLayout(self.filename_groupbox)
+        layout.addWidget(keep_filename, 0, 0, 1, 2)
+        layout.addWidget(self.index_filename_radio, 1, 0, 1, 2)
+        layout.addWidget(self.rename_filename_radio, 2, 0)
+        layout.addWidget(self.rename_filename_entry, 2, 1)
 
-        filename_l = QVBoxLayout()
-        filename_l.addLayout(label_row)
-        filename_l.addWidget(self.keepFilesRadio)
-        filename_l.addWidget(self.indexFilesRadio)
-        filename_l.addLayout(rename_row)
-
-        self.fileNameG = QGroupBox()
-        self.fileNameG.setLayout(filename_l)
-
-        self.fileNameButton.toggled.connect(lambda: self.disable_group(self.fileNameButton, self.fileNameG))
-
-    def setup_trash_ui(self) -> None:  # self.trashG
+    def setup_trash_ui(self) -> None:
         """Set up the trash UI components."""
-        self.trashButton = make_group_button("Trash")
+        self.is_trash_empty = QCheckBox("Empty Folders")
+        self.is_trash_source = QCheckBox("Valid Files")
+        self.is_trash_invalid = QCheckBox("Invalid Files")
 
-        self.isTrashEmpty = QCheckBox("Empty Folders")
-        self.isTrashSource = QCheckBox("Valid Files")
-        self.isTrashInvalid = QCheckBox("Invalid Files")
+        self.trash_groupbox = QGroupBox(title="Trash", flat=True, checkable=True)
+        layout = QVBoxLayout(self.trash_groupbox)
+        layout.addWidget(self.is_trash_empty)
+        layout.addWidget(self.is_trash_source)
+        layout.addWidget(self.is_trash_invalid)
 
-        label_row = QHBoxLayout()
-        label_row.addWidget(self.trashButton)
-        label_row.addStretch()
-
-        trash_l = QVBoxLayout()
-        trash_l.addLayout(label_row)
-        trash_l.addWidget(self.isTrashEmpty)
-        trash_l.addWidget(self.isTrashSource)
-        trash_l.addWidget(self.isTrashInvalid)
-
-        self.trashG = QGroupBox()
-        self.trashG.setLayout(trash_l)
-
-        self.trashButton.toggled.connect(lambda: self.disable_group(self.trashButton, self.trashG))
-
-    def setup_setup_tab(self) -> None:  # self.setupTab
+    def setup_setup_section(self) -> None:
         """Set up the setup tab UI components."""
         self.setup_file_count_ui()
         self.setup_root_ui()
@@ -310,242 +222,152 @@ class MainWindow(QWidget):
         self.setup_filename_ui()
         self.setup_trash_ui()
 
-        output_row = QHBoxLayout()
-        output_row.addWidget(self.foldersG)
-        output_row.addWidget(self.fileNameG)
-        output_row.addWidget(self.trashG)
+        self.setup_section = QWidget()
+        layout = QGridLayout(self.setup_section)
+        layout.addWidget(self.file_count_groupbox, 0, 0, 1, 6)
+        layout.addWidget(self.root_groupbox, 1, 0, 1, 3)
+        layout.addWidget(self.dest_groupbox, 1, 3, 1, 3)
+        layout.addWidget(self.folders_groupbox, 2, 0, 1, 2)
+        layout.addWidget(self.filename_groupbox, 2, 2, 1, 2)
+        layout.addWidget(self.trash_groupbox, 2, 4, 1, 2)
 
-        setup_l = QVBoxLayout()
-        setup_l.addWidget(self.fileCountG)
-        setup_l.addWidget(self.rootG)
-        setup_l.addWidget(self.destG)
-        setup_l.addLayout(output_row)
+    # FILTER SECTION
 
-        self.setupTab = QWidget()
-        self.setupTab.setLayout(setup_l)
-
-    # CUSTOMIZE TAB
-
-    def setup_keywords_ui(self) -> None:  # self.keywordsG
+    def setup_keywords_ui(self) -> None:
         """Set up the keywords UI components."""
-        self.incKeysEdit = QLineEdit()
-        self.excKeysEdit = QLineEdit()
+        self.included_keys_lineedit = QLineEdit()
+        self.included_keys_groupbox = QGroupBox(title="Include", checkable=True, flat=True)
+        inc_keys_l = QHBoxLayout(self.included_keys_groupbox)
+        inc_keys_l.addWidget(self.included_keys_lineedit)
 
-        self.toSwitchKeys = QPushButton("Switch")
+        self.excluded_keys_lineedit = QLineEdit()
+        self.excluded_keys_groupbox = QGroupBox(title="Exclude", checkable=True, flat=True)
+        exc_keys_l = QHBoxLayout(self.excluded_keys_groupbox)
+        exc_keys_l.addWidget(self.excluded_keys_lineedit)
 
-        inc_keys_l = QHBoxLayout()
-        inc_keys_l.addWidget(self.incKeysEdit)
-        self.incKeysG = QGroupBox("Include")
-        self.incKeysG.setLayout(inc_keys_l)
-        self.incKeysG.setCheckable(True)
+        switch_keywords_button = QPushButton("Switch")
+        switch_keywords_button.clicked.connect(self.switch_keywords)
 
-        exc_keys_l = QHBoxLayout()
-        exc_keys_l.addWidget(self.excKeysEdit)
-        self.excKeysG = QGroupBox("Exclude")
-        self.excKeysG.setLayout(exc_keys_l)
-        self.excKeysG.setCheckable(True)
+        self.keywords_groupbox = QGroupBox(title="Keywords", flat=True)
+        layout = QGridLayout(self.keywords_groupbox)
+        layout.addWidget(self.included_keys_groupbox, 0, 0)
+        layout.addWidget(self.excluded_keys_groupbox, 1, 0)
+        layout.addWidget(switch_keywords_button, 0, 1, 2, 1)
 
-        keywords_l = QHBoxLayout()
-        keywords_l.addWidget(self.incKeysG)
-        keywords_l.addWidget(self.toSwitchKeys)
-        keywords_l.addWidget(self.excKeysG)
-
-        self.keywordsG = QGroupBox("Keywords")
-        self.keywordsG.setLayout(keywords_l)
-
-        self.toSwitchKeys.clicked.connect(self.switch_keys)
-        self.incKeysG.toggled.connect(lambda: self.disable_group(self.incKeysG, self.keywordsG))
-        self.excKeysG.toggled.connect(lambda: self.disable_group(self.excKeysG, self.keywordsG))
-
-    def setup_extensions_ui(self) -> None:  # self.extensionsG
+    def setup_extensions_ui(self) -> None:
         """Set up the extensions UI components."""
-        self.incExtsEdit = QLineEdit()
-        self.excExtsEdit = QLineEdit()
+        self.included_extensions_lineedit = QLineEdit()
+        self.included_extensions_groupbox = QGroupBox(title="Include", checkable=True, flat=True)
+        inc_exts_l = QHBoxLayout(self.included_extensions_groupbox)
+        inc_exts_l.addWidget(self.included_extensions_lineedit)
 
-        self.toSwitchExts = QPushButton("Switch")
+        self.excluded_extensions_lineedit = QLineEdit()
+        self.excluded_extensions_groupbox = QGroupBox(title="Exclude", checkable=True, flat=True)
+        exc_exts_l = QHBoxLayout(self.excluded_extensions_groupbox)
+        exc_exts_l.addWidget(self.excluded_extensions_lineedit)
 
-        inc_exts_l = QHBoxLayout()
-        inc_exts_l.addWidget(self.incExtsEdit)
-        self.incExtsG = QGroupBox("Include")
-        self.incExtsG.setLayout(inc_exts_l)
-        self.incExtsG.setCheckable(True)
+        switch_extensions_button = QPushButton("Switch")
+        switch_extensions_button.clicked.connect(self.switch_extensions)
 
-        exc_exts_l = QHBoxLayout()
-        exc_exts_l.addWidget(self.excExtsEdit)
-        self.excExtsG = QGroupBox("Exclude")
-        self.excExtsG.setLayout(exc_exts_l)
-        self.excExtsG.setCheckable(True)
+        self.extensions_groupbox = QGroupBox(title="Extensions", flat=True)
+        layout = QGridLayout(self.extensions_groupbox)
+        layout.addWidget(self.included_extensions_groupbox, 0, 0)
+        layout.addWidget(self.excluded_extensions_groupbox, 1, 0)
+        layout.addWidget(switch_extensions_button, 0, 1, 2, 1)
 
-        extensions_l = QHBoxLayout()
-        extensions_l.addWidget(self.incExtsG)
-        extensions_l.addWidget(self.toSwitchExts)
-        extensions_l.addWidget(self.excExtsG)
-
-        self.extensionsG = QGroupBox("Extensions")
-        self.extensionsG.setLayout(extensions_l)
-
-        self.toSwitchExts.clicked.connect(self.switch_extensions)
-        self.incExtsG.toggled.connect(lambda: self.disable_group(self.incExtsG, self.extensionsG))
-        self.excExtsG.toggled.connect(lambda: self.disable_group(self.excExtsG, self.extensionsG))
-
-    def setup_size_ui(self) -> None:  # self.sizeG
+    def setup_size_ui(self) -> None:
         """Set up the size UI components."""
-        self.sizeButton = make_group_button("File Size")
-
-        size_lo_label = QLabel("Min")
-        size_hi_label = QLabel("Max")
-
         self.sizeLo = QDoubleSpinBox()
         self.sizeLo.setRange(0, 100000)
+        self.sizeLo.editingFinished.connect(self.switch_size)
 
         self.sizeHi = QDoubleSpinBox()
         self.sizeHi.setRange(1, 100000)
         self.sizeHi.setValue(50)
+        self.sizeHi.editingFinished.connect(self.switch_size)
 
         self.sizeType = QComboBox()
-        self.sizeType.addItems(["B", "KB", "MB", "GB"])
+        self.sizeType.addItems(("B", "KB", "MB", "GB"))
         self.sizeType.setCurrentIndex(2)
 
-        label_row = QHBoxLayout()
-        label_row.addWidget(self.sizeButton)
-        label_row.addStretch()
+        self.size_groupbox = QGroupBox(title="Size", flat=True, checkable=True)
+        layout = QGridLayout(self.size_groupbox)
+        layout.addWidget(QLabel("Min:"), 0, 0)
+        layout.addWidget(self.sizeLo, 0, 1)
+        layout.addWidget(QLabel("Max:"), 1, 0)
+        layout.addWidget(self.sizeHi, 1, 1)
+        layout.addWidget(self.sizeType, 0, 2, 2, 1)
 
-        row1 = QHBoxLayout()
-        row1.addWidget(size_lo_label)
-        row1.addWidget(self.sizeLo)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(size_hi_label)
-        row2.addWidget(self.sizeHi)
-        row2.addWidget(self.sizeType)
-
-        file_size_l = QVBoxLayout()
-        file_size_l.addLayout(label_row)
-        file_size_l.addLayout(row1)
-        file_size_l.addLayout(row2)
-
-        self.sizeG = QGroupBox()
-        self.sizeG.setLayout(file_size_l)
-
-        self.sizeLo.editingFinished.connect(self.switch_size)
-        self.sizeHi.editingFinished.connect(self.switch_size)
-        self.sizeButton.toggled.connect(lambda: self.disable_group(self.sizeButton, self.sizeG))
-
-    def setup_duration_ui(self) -> None:  # self.durationG
+    def setup_duration_ui(self) -> None:
         """Set up the duration UI components."""
-        self.lengthButton = make_group_button("File Length")
+        self.duration_low_dblspin = QDoubleSpinBox()
+        self.duration_low_dblspin.setRange(0, 100000)
+        self.duration_low_dblspin.setAccelerated(True)
+        self.duration_low_dblspin.setGroupSeparatorShown(True)
+        self.duration_low_dblspin.setFrame(True)
+        self.duration_low_dblspin.editingFinished.connect(self.switch_duration)
 
-        length_lo_label = QLabel("Min")
-        length_hi_label = QLabel("Max")
+        self.duration_high_dblspin = QDoubleSpinBox()
+        self.duration_high_dblspin.setRange(1, 100000)
+        self.duration_high_dblspin.setAccelerated(True)
+        self.duration_high_dblspin.setGroupSeparatorShown(True)
+        self.duration_high_dblspin.setValue(100)
+        self.duration_high_dblspin.editingFinished.connect(self.switch_duration)
 
-        self.durationLo = QDoubleSpinBox()
-        self.durationLo.setRange(0, 100000)
-        self.durationLo.setAccelerated(True)
-        self.durationLo.setGroupSeparatorShown(True)
-        self.durationLo.setFrame(True)
+        self.duration_combobox = QComboBox()
+        self.duration_combobox.addItems(("s", "m"))
+        self.duration_combobox.setCurrentIndex(0)
 
-        self.durationHi = QDoubleSpinBox()
-        self.durationHi.setRange(1, 100000)
-        self.durationHi.setAccelerated(True)
-        self.durationHi.setGroupSeparatorShown(True)
-        self.durationHi.setValue(100)
+        self.duration_groupbox = QGroupBox(title="Duration", flat=True, checkable=True)
+        layout = QGridLayout(self.duration_groupbox)
+        layout.addWidget(QLabel("Min:"), 0, 0)
+        layout.addWidget(self.duration_low_dblspin, 0, 1)
+        layout.addWidget(QLabel("Max:"), 1, 0)
+        layout.addWidget(self.duration_high_dblspin, 1, 1)
+        layout.addWidget(self.duration_combobox, 0, 2, 2, 1)
 
-        self.durationType = QComboBox()
-        self.durationType.addItems(["s", "m"])
-        self.durationType.setCurrentIndex(0)
-
-        label_row = QHBoxLayout()
-        label_row.addWidget(self.lengthButton)
-        label_row.addStretch()
-
-        row1 = QHBoxLayout()
-        row1.addWidget(length_lo_label)
-        row1.addWidget(self.durationLo)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(length_hi_label)
-        row2.addWidget(self.durationHi)
-        row2.addWidget(self.durationType)
-
-        duration_l = QVBoxLayout()
-        duration_l.addLayout(label_row)
-        duration_l.addLayout(row1)
-        duration_l.addLayout(row2)
-
-        self.durationG = QGroupBox()
-        self.durationG.setLayout(duration_l)
-
-        self.durationLo.editingFinished.connect(self.switch_duration)
-        self.durationHi.editingFinished.connect(self.switch_duration)
-        self.lengthButton.toggled.connect(lambda: self.disable_group(self.lengthButton, self.durationG))
-
-    def setup_weight_ui(self) -> None:  # self.weightG
+    def setup_weight_ui(self) -> None:
         """Set up the weight UI components."""
-        self.weightButton = make_group_button("Weight")
+        self.weight_top_spinbox = create_spinbox(0, 100000, enabled=True)
+        self.weight_top_spinbox.setSpecialValueText("None")
 
-        top_weight_label = QLabel("Top")
-        self.topWeightSpinBox = QSpinBox()
-        self.topWeightSpinBox.setRange(0, 100000)
-        self.topWeightSpinBox.setSpecialValueText("None")
+        self.weight_bottom_spinbox = create_spinbox(0, 100000, enabled=True)
+        self.weight_bottom_spinbox.setSpecialValueText("None")
 
-        bottom_weight_label = QLabel("Bottom")
-        self.bottomWeightSpinBox = QSpinBox()
-        self.bottomWeightSpinBox.setRange(0, 100000)
-        self.bottomWeightSpinBox.setSpecialValueText("None")
+        self.weight_groupbox = QGroupBox(title="Weight", flat=True, checkable=True)
+        layout = QGridLayout(self.weight_groupbox)
+        layout.addWidget(QLabel("Top"), 0, 0)
+        layout.addWidget(self.weight_top_spinbox, 0, 1)
+        layout.addWidget(QLabel("Bottom"), 1, 0)
+        layout.addWidget(self.weight_bottom_spinbox, 1, 1)
 
-        label_row = QHBoxLayout()
-        label_row.addWidget(self.weightButton)
-        label_row.addStretch()
-
-        row1 = QHBoxLayout()
-        row1.addWidget(top_weight_label)
-        row1.addWidget(self.topWeightSpinBox)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(bottom_weight_label)
-        row2.addWidget(self.bottomWeightSpinBox)
-
-        weight_l = QVBoxLayout()
-        weight_l.addLayout(label_row)
-        weight_l.addLayout(row1)
-        weight_l.addLayout(row2)
-
-        self.weightG = QGroupBox()
-        self.weightG.setLayout(weight_l)
-
-        self.weightButton.toggled.connect(lambda: self.disable_group(self.weightButton, self.weightG))
-
-    def setup_customize_tab(self) -> None:  # self.custTab
+    def setup_filter_section(self) -> None:
         """Set up the customize tab UI components."""
-        self.setup_keywords_ui()
-        self.setup_extensions_ui()
         self.setup_size_ui()
         self.setup_weight_ui()
         self.setup_duration_ui()
+        self.setup_keywords_ui()
+        self.setup_extensions_ui()
 
-        row_l = QHBoxLayout()
-        row_l.addWidget(self.sizeG)
-        row_l.addWidget(self.durationG)
-        row_l.addWidget(self.weightG)
-
-        cust_l = QVBoxLayout()
-        cust_l.addWidget(self.keywordsG)
-        cust_l.addWidget(self.extensionsG)
-        cust_l.addLayout(row_l)
-
-        self.custTab = QWidget()
-        self.custTab.setLayout(cust_l)
+        self.filter_section = QWidget()
+        layout = QGridLayout(self.filter_section)
+        layout.addWidget(self.keywords_groupbox, 0, 0, 1, 3)
+        layout.addWidget(self.extensions_groupbox, 1, 0, 1, 3)
+        layout.addWidget(self.size_groupbox, 2, 0)
+        layout.addWidget(self.duration_groupbox, 2, 1)
+        layout.addWidget(self.weight_groupbox, 2, 2)
 
     # RUN SECTION
 
-    def setup_run_section(self) -> None:  # self.runSection
+    def setup_run_section(self) -> None:
         """Set up the run section UI components."""
         # PROGRESS BAR
-        self.progressBar = QProgressBar()
-        self.progressBar.setValue(0)
-        self.progressBar.setFormat("%v")
-        self.progressBar.setTextVisible(True)
-        self.progressBar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.progressBar = QProgressBar(
+            value=0,
+            format="%v",
+            textVisible=True,
+            alignment=Qt.AlignmentFlag.AlignCenter,
+        )
 
         # RUN BUTTON
         self.runButton = QPushButton("Start")
@@ -566,12 +388,10 @@ class MainWindow(QWidget):
         self.stallTimeSpinBox.valueChanged.connect(self.change_stall_time_spinbox)
         self.stallLimit = self.stallTimeSpinBox.value()
 
-        self.stallTimeProgressBar = QProgressBar()
+        self.stallTimeProgressBar = QProgressBar(textVisible=False)
         self.stallTimeProgressBar.setMaximumHeight(8)
-        self.stallTimeProgressBar.setTextVisible(False)
 
-        self.stallTimeCounter = QLabel()
-        self.stallTimeCounter.setText(f"{self.stallLimit}0 s")
+        self.stallTimeCounter = QLabel(f"{self.stallLimit}0 s")
         self.stallTimeCounter.setVisible(False)
 
         self.logBlock = QTextBrowser()
@@ -584,138 +404,127 @@ class MainWindow(QWidget):
         self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self.update_timer)
 
-        stall_row = QHBoxLayout()
-        stall_row.addWidget(self.stallTimeProgressBar)
-        stall_row.addWidget(self.stallTimeSpinBox)
-        stall_row.addWidget(self.stallTimeCounter)
-
-        run_row = QHBoxLayout()
-        run_row.addWidget(self.progressBar)
-        run_row.addWidget(self.runButton)
-        run_row.addWidget(self.stopButton)
-
-        self.runSection = QVBoxLayout()
-        self.runSection.addWidget(self.logBlock)
-        self.runSection.addLayout(stall_row)
-        self.runSection.addLayout(run_row)
+        self.run_section = QWidget()
+        layout = QGridLayout(self.run_section)
+        layout.addWidget(self.logBlock, 0, 0, 1, 3)
+        layout.addWidget(self.stallTimeProgressBar, 1, 0)
+        layout.addWidget(self.stallTimeSpinBox, 1, 1)
+        layout.addWidget(self.stallTimeCounter, 1, 2)
+        layout.addWidget(self.progressBar, 2, 0)
+        layout.addWidget(self.runButton, 2, 1)
+        layout.addWidget(self.stopButton, 2, 2)
 
     # SIDEBAR SECTION
 
-    def setup_sidebar_section(self) -> None:  # self.sideBar
+    def setup_sidebar_section(self) -> None:
         """Set up the sidebar UI components."""
         self.show_invalid = QCheckBox("Log Invalid")
+        self.show_invalid.setChecked(True)
 
         self.show_help = QCheckBox("Show Help")
+        self.show_help.stateChanged.connect(self.set_filecount_tooltip)
+        self.show_help.stateChanged.connect(self.set_randomize_filecount_tooltip)
         self.show_help.setChecked(True)
 
-        self.show_help.stateChanged.connect(self.set_filecount_tooltip)
-        self.show_help.stateChanged.connect(self.set_randomize_file_tooltip)
+        open_root_button = QPushButton("Root")
+        open_root_button.clicked.connect(lambda: os.startfile(self.root))
 
-        self.openRoot = QPushButton("Root")
-        self.openRoot.clicked.connect(lambda: os.startfile(self.root))
+        open_dest_button = QPushButton("Destination")
+        open_dest_button.clicked.connect(lambda: os.startfile(self.dest))
 
-        self.openDest = QPushButton("Destination")
-        self.openDest.clicked.connect(lambda: os.startfile(self.dest))
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(self.save_config)
 
-        self.openButton = QPushButton("Load")
-        self.saveButton = QPushButton("Save")
-        self.saveButton.clicked.connect(self.save_config)
-        self.openButton.clicked.connect(self.load_config)
+        load_button = QPushButton("Load")
+        load_button.clicked.connect(self.load_config)
 
-        self.defaultButton = QPushButton("Set Default")
-        self.defaultButton.clicked.connect(lambda: self.save_gui(self.settings))
-        self.resetButton = QPushButton("Reset to Default")
-        self.resetButton.clicked.connect(lambda: self.restore_gui(self.settings))
+        default_button = QPushButton("Set Default")
+        default_button.clicked.connect(lambda: self.save_gui(self.settings))
 
-        self.sideBar = QVBoxLayout()
-        self.sideBar.addSpacing(20)
-        self.sideBar.addWidget(self.openButton)
-        self.sideBar.addWidget(self.saveButton)
-        self.sideBar.addWidget(self.openRoot)
-        self.sideBar.addWidget(self.openDest)
-        self.sideBar.addWidget(self.defaultButton)
-        self.sideBar.addWidget(self.resetButton)
-        self.sideBar.addStretch()
-        self.sideBar.addWidget(self.show_help)
-        self.sideBar.addWidget(self.show_invalid)
+        reset_button = QPushButton("Reset to Default")
+        reset_button.clicked.connect(lambda: self.restore_gui(self.settings))
+
+        self.sidebar_section = QWidget()
+        layout = QVBoxLayout(self.sidebar_section)
+        layout.addWidget(load_button)
+        layout.addWidget(save_button)
+        layout.addWidget(open_root_button)
+        layout.addWidget(open_dest_button)
+        layout.addWidget(default_button)
+        layout.addWidget(reset_button)
+        layout.addStretch()
+        layout.addWidget(self.show_help)
+        layout.addWidget(self.show_invalid)
 
     # SETUP UI
 
     def setup_ui(self) -> None:
         """Set up the main UI components."""
+        self.setup_setup_section()
+        self.setup_filter_section()
         self.setup_sidebar_section()
-        self.setup_setup_tab()
-        self.setup_customize_tab()
         self.setup_run_section()
 
-        self.mainTabs = QTabWidget()
-        self.mainTabs.setTabPosition(QTabWidget.TabPosition.North)
-        self.mainTabs.setMovable(True)
-        self.mainTabs.addTab(self.setupTab, "Setup")
-        self.mainTabs.addTab(self.custTab, "Filter")
+        self.setWindowTitle("Mandala: Copy random files")
 
-        master_row = QHBoxLayout()
-        master_row.addWidget(self.mainTabs)
-        master_row.addLayout(self.sideBar)
+        layout = QGridLayout(self)
+        layout.addWidget(self.setup_section, 0, 0)
+        layout.addWidget(self.filter_section, 1, 0)
+        layout.addWidget(self.sidebar_section, 0, 1, 2, 1)
+        layout.addWidget(self.run_section, 2, 0, 1, 2)
 
-        master_layout = QVBoxLayout()
-        master_layout.addLayout(master_row)
-        master_layout.addLayout(self.runSection)
+    # TOOLTIPS
 
-        self.setLayout(master_layout)
-        self.setWindowTitle("Default - Copy Random Files")
-        self.show()
-
-    # TOOL TIPS
-
+    @Slot()
     def set_filecount_tooltip(self) -> None:
         """Set the tooltip for the file count group box."""
-        is_random_files = self.randomFileG.isChecked()
-        num_files_lo = self.numFilesLo.value()
-        num_files_hi = self.numFilesHi.value()
+        is_random_files = self.random_file_count_groupbox.isChecked()
+        num_files_lo = self.min_num_files.value()
+        num_files_hi = self.max_num_files.value()
         is_show_help = self.show_help.isChecked()
 
         if is_show_help and not is_random_files:
-            self.fileCountG.setToolTip(
-                f"{self.noWrap}<font size=4><b>{num_files_lo}</b> file(s) will be copied from"
+            self.file_count_groupbox.setToolTip(
+                f"{NOWRAP}<font size=4><b>{num_files_lo}</b> file(s) will be copied from "
                 f"<b>{self.root}</b> to <b>{self.dest}</b>"
             )
         elif is_show_help and is_random_files and (num_files_lo <= num_files_hi):
-            self.fileCountG.setToolTip(
-                f"{self.noWrap}<font size=4><b>{num_files_lo}</b> to"
+            self.file_count_groupbox.setToolTip(
+                f"{NOWRAP}<font size=4><b>{num_files_lo}</b> to "
                 f"<b>{num_files_hi}</b> files will be copied from <b>{self.root}</b> to <b>{self.dest}</b>"
             )
         elif is_show_help and is_random_files and (num_files_hi < num_files_lo):
-            self.fileCountG.setToolTip(
-                f"{self.noWrap}<font size=4><b>{num_files_hi}</b> to"
+            self.file_count_groupbox.setToolTip(
+                f"{NOWRAP}<font size=4><b>{num_files_hi}</b> to "
                 f"<b>{num_files_lo}</b> files will be copied from <b>{self.root}</b> to <b>{self.dest}</b>"
             )
         else:
-            self.fileCountG.setToolTip("")
+            self.file_count_groupbox.setToolTip("")
 
-    def set_randomize_file_tooltip(self) -> None:
+    @Slot()
+    def set_randomize_filecount_tooltip(self) -> None:
         """Set the tooltip for the randomize file group box."""
-        is_random_files = self.randomFileG.isChecked()
-        num_files_lo = self.numFilesLo.value()
-        num_files_hi = self.numFilesHi.value()
+        is_random_files = self.random_file_count_groupbox.isChecked()
+        num_files_lo = self.min_num_files.value()
+        num_files_hi = self.max_num_files.value()
         is_show_help = self.show_help.isChecked()
 
         if is_show_help and not is_random_files:
-            self.randomFileG.setToolTip(
-                f"{self.noWrap}<font size=5><i>Randomize</i></font>\n<font size=4>"
-                f"    Uses a randomly selected number between the "
+            self.random_file_count_groupbox.setToolTip(
+                f"{NOWRAP}<font size=5><i>Randomize</i></font>"
+                f"\n<font size=4>    Uses a randomly selected number between the "
                 f"left ({num_files_lo}) and right ({num_files_hi}) boxes as the file count\n"
                 f"<b>    Uses the number in the left ({num_files_lo}) box as the file count </b>"
             )
         elif is_show_help and is_random_files:
-            self.randomFileG.setToolTip(
-                f"{self.noWrap}<font size=5><i>Randomize</i></font><font size=4>\n"
-                f"<b>    Uses a randomly selected number between the "
+            self.random_file_count_groupbox.setToolTip(
+                f"{NOWRAP}<font size=5><i>Randomize</i></font><font size=4>\n"
+                f"\n    <b>Uses a randomly selected number between the "
                 f"left ({num_files_lo}) and right ({num_files_hi}) boxes as the file count</b>\n"
                 f"    Uses the number in the left ({num_files_lo}) box as the file count"
             )
         else:
-            self.randomFileG.setToolTip("")
+            self.random_file_count_groupbox.setToolTip("")
 
     ### ROOT AND DESTINATION METHODS ###
 
@@ -724,45 +533,50 @@ class MainWindow(QWidget):
         os.chdir(self.root)
         return Path.cwd()
 
+    @Slot()
     def change_root(self) -> None:
         """Change the root path based on the combo box selection."""
-        self.root = Path(self.rootCombo.currentText())
+        self.root = Path(self.root_combobox.currentText())
 
+    @Slot()
     def change_destination(self) -> None:
         """Change the destination path based on the combo box selection."""
-        self.dest = Path(self.destCombo.currentText())
+        self.dest = Path(self.dest_combobox.currentText())
 
+    @Slot()
     def browse_root(self) -> None:
         """Browse for a new root directory."""
-        self.rootDirectory = QFileDialog.getExistingDirectory(self, "Select Root Folder", str(self.root))
+        self.root_directory = QFileDialog.getExistingDirectory(self, "Select Root Folder", str(self.root))
 
-        if self.rootDirectory:
-            if self.rootCombo.findText(self.rootDirectory) == -1:
-                self.rootCombo.addItem(self.rootDirectory)
-            self.rootCombo.setCurrentIndex(self.rootCombo.findText(self.rootDirectory))
-            self.root = Path(self.rootDirectory)
+        if self.root_directory:
+            if self.root_combobox.findText(self.root_directory) == -1:
+                self.root_combobox.addItem(self.root_directory)
+            self.root_combobox.setCurrentIndex(self.root_combobox.findText(self.root_directory))
+            self.root = Path(self.root_directory)
 
+    @Slot()
     def browse_destination(self) -> None:
         """Browse for a new destination directory."""
-        self.destDirectory = QFileDialog.getExistingDirectory(self, "Select Destination Folder", str(self.dest))
+        self.dest_directory = QFileDialog.getExistingDirectory(self, "Select Destination Folder", str(self.dest))
+        if self.dest_directory:
+            if self.dest_combobox.findText(self.dest_directory) == -1:
+                self.dest_combobox.addItem(self.dest_directory)
+            self.dest_combobox.setCurrentIndex(self.dest_combobox.findText(self.dest_directory))
+            self.dest = Path(self.dest_directory)
 
-        if self.destDirectory:
-            if self.destCombo.findText(self.destDirectory) == -1:
-                self.destCombo.addItem(self.destDirectory)
-            self.destCombo.setCurrentIndex(self.destCombo.findText(self.destDirectory))
-            self.dest = Path(self.destDirectory)
-
+    @Slot()
     def delete_root_item(self) -> None:
         """Delete the current root item from the combo box."""
-        if self.rootCombo.count() == 1:
+        if self.root_combobox.count() == 1:
             return
-        self.rootCombo.removeItem(self.rootCombo.currentIndex())
+        self.root_combobox.removeItem(self.root_combobox.currentIndex())
 
+    @Slot()
     def delete_dest_item(self) -> None:
         """Delete the current destination item from the combo box."""
-        if self.destCombo.count() == 1:
+        if self.dest_combobox.count() == 1:
             return
-        self.destCombo.removeItem(self.destCombo.currentIndex())
+        self.dest_combobox.removeItem(self.dest_combobox.currentIndex())
 
     ### RUN METHODS ###
 
@@ -787,69 +601,68 @@ class MainWindow(QWidget):
         """Assign global variables based on the current UI settings."""
         self.init_global_vars()
         # File Count Variables
-        self.isRandFiles = self.randomFileG.isChecked()
-        self.numberOfFiles = self.numFilesCount.value()
+        self.numberOfFiles = self.num_file_count.value()
 
         # Root and Destination
-        self.root = Path(self.rootCombo.currentText())
-        self.dest = Path(self.destCombo.currentText())
+        self.root = Path(self.root_combobox.currentText())
+        self.dest = Path(self.dest_combobox.currentText())
 
         # Keyword Variables
-        if self.incKeysG.isChecked():
-            self.keywords = convert_string_to_list(self.incKeysEdit.text())
+        if self.included_keys_groupbox.isChecked():
+            self.keywords = convert_string_to_list(self.included_keys_lineedit.text())
 
-        if self.excKeysG.isChecked():
-            self.notKeywords = convert_string_to_list(self.excKeysEdit.text())
+        if self.excluded_keys_groupbox.isChecked():
+            self.notKeywords = convert_string_to_list(self.excluded_keys_lineedit.text())
 
         # Extension Variables
-        if self.incExtsG.isChecked():
-            self.extensions = convert_string_to_list(self.incExtsEdit.text())
+        if self.included_extensions_groupbox.isChecked():
+            self.extensions = convert_string_to_list(self.included_extensions_lineedit.text())
 
-        if self.excExtsG.isChecked():
-            self.notExtensions = convert_string_to_list(self.excExtsEdit.text())
+        if self.excluded_extensions_groupbox.isChecked():
+            self.notExtensions = convert_string_to_list(self.excluded_extensions_lineedit.text())
 
         # File Size Variables
-        self.isRemoveSizeLimit = not self.sizeButton.isChecked()
+        self.isRemoveSizeLimit = not self.size_groupbox.isChecked()
         if not self.isRemoveSizeLimit:
             self.minSize = self.sizeLo.value()
             self.maxSize = self.sizeHi.value()
             self.convert_to_bytes()
 
         # File Length Variables
-        self.isRemoveLengthLimit = not self.lengthButton.isChecked()
+        self.isRemoveLengthLimit = not self.duration_groupbox.isChecked()
         if not self.isRemoveLengthLimit:
-            self.maxDuration = self.durationHi.value()
-            self.minDuration = self.durationLo.value()
+            self.maxDuration = self.duration_high_dblspin.value()
+            self.minDuration = self.duration_low_dblspin.value()
             self.convert_minutes_to_seconds()
 
         # Weight Variables
-        if self.weightButton.isChecked():
-            self.topWeightValue = self.topWeightSpinBox.value()
-            self.bottomWeightValue = self.bottomWeightSpinBox.value()
+        if self.weight_groupbox.isChecked():
+            self.topWeightValue = self.weight_top_spinbox.value()
+            self.bottomWeightValue = self.weight_bottom_spinbox.value()
 
         # Folder Variables
-        self.makeFoldersUnique = self.makeFoldersUniqueCheck.isChecked()
-        self.nameOfFolders = self.nameOfFoldersEntry.text()
-        self.isCreateFolders = self.folderButton.isChecked()
+        self.makeFoldersUnique = self.is_make_folders_unique_checkbox.isChecked()
+        self.nameOfFolders = self.name_of_folders_entry_lineedit.text()
+        self.isCreateFolders = self.folders_groupbox.isChecked()
 
         # Folder Count
         if self.isCreateFolders:
-            self.numFolders = self.numFoldersCount.value()
+            self.numFolders = self.num_folders_count_spinbox.value()
 
         # Filename Variables
-        if self.fileNameButton.isChecked():
-            self.indexFiles = self.indexFilesRadio.isChecked()
-            self.renameFiles = self.renameFilesRadio.isChecked()
-            self.renameName = self.renameNameEntry.text()
+        if self.filename_groupbox.isChecked():
+            self.indexFiles = self.index_filename_radio.isChecked()
+            self.renameFiles = self.rename_filename_radio.isChecked()
+            self.renameName = self.rename_filename_entry.text()
 
         # Trash Variables
         self.trashEmptyFolders = False
         self.trashSourceFiles = False
         self.trashInvalidFiles = False
-        if self.trashButton.isChecked():
-            self.trashEmptyFolders = self.isTrashEmpty.isChecked()
-            self.trashSourceFiles = self.isTrashSource.isChecked()
-            self.trashInvalidFiles = self.isTrashInvalid.isChecked()
+        if self.trash_groupbox.isChecked():
+            self.trashEmptyFolders = self.is_trash_empty.isChecked()
+            self.trashSourceFiles = self.is_trash_source.isChecked()
+            self.trashInvalidFiles = self.is_trash_invalid.isChecked()
 
         self.startAbsolute = self.root.resolve()
         self.isAppendLog = False
@@ -882,7 +695,7 @@ class MainWindow(QWidget):
                 self.touchedFiles[key] = False
                 self.touchedFolders[key] = False
 
-        self.dest = Path(self.destCombo.currentText())
+        self.dest = Path(self.dest_combobox.currentText())
 
         top_weight_mark = Path()
         self.weighted = defaultdict(int)
@@ -900,8 +713,8 @@ class MainWindow(QWidget):
         main_path = self.reset_path_to_start()
 
         # File Count
-        if self.isRandFiles:
-            self.numberOfFiles = random.randint(self.numFilesLo.value(), self.numFilesHi.value())
+        if self.random_file_count_groupbox.isChecked():
+            self.numberOfFiles = random.randint(self.min_num_files.value(), self.max_num_files.value())
 
         self.progressBar.setRange(0, self.numberOfFiles)
 
@@ -1184,6 +997,7 @@ class MainWindow(QWidget):
 
     ### PROGRESS, TIMER METHODS ###
 
+    @Slot()
     def change_stall_time_spinbox(self) -> None:
         """Change the stall time limit based on the spin box value."""
         self.stallLimit = self.stallTimeSpinBox.value()
@@ -1194,11 +1008,13 @@ class MainWindow(QWidget):
         end_stall_time = perf_counter()
         return end_stall_time - start_stall_time > self.stallLimit
 
+    @Slot()
     def update_timer(self) -> None:
         """Update the stall time progress bar and counter."""
         self.stallTimeProgressBar.setValue(self.stallTimeProgressBar.value() - 1)
         self.stallTimeCounter.setText(f"{self.stallTimeProgressBar.value() / 100} s")
 
+    @Slot()
     def run_mandala_push(self) -> None:
         """Start the mandala process and disable UI elements."""
         for name, obj in inspect.getmembers(self):
@@ -1222,8 +1038,9 @@ class MainWindow(QWidget):
         self.stallTimeSpinBox.setVisible(False)
         self.stopTracker = False
 
-        self.threadpool.globalInstance().start(self.mandala)
+        self.threadpool.globalInstance().start(self.worker)
 
+    @Slot()
     def stop_mandala_push(self) -> None:
         """Stop the mandala process."""
         self.stopTracker = True
@@ -1241,7 +1058,7 @@ class MainWindow(QWidget):
         self.stallTimeCounter.setVisible(False)
         self.stallTimeSpinBox.setVisible(True)
         self.stallTimeCounter.setText(f"{self.stallLimit}0 s")
-        self.dest = Path(self.destCombo.currentText())
+        self.dest = Path(self.dest_combobox.currentText())
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QWidget) and name not in ["stopButton", "logBlock"]:
                 obj.setEnabled(self.wasEnabled[name])
@@ -1343,45 +1160,49 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
 
     ### FILE COUNT METHODS ###
 
+    @Slot()
     def switch_file_count(self) -> None:
         """Switch the file count low and high values."""
-        if not self.randomFileG.isChecked():
+        if not self.random_file_count_groupbox.isChecked():
             return
 
-        lo = self.numFilesLo.value()
-        hi = self.numFilesHi.value()
+        lo = self.min_num_files.value()
+        hi = self.max_num_files.value()
         if lo > hi:
-            self.numFilesLo.setValue(hi)
-            self.numFilesHi.setValue(lo)
+            self.min_num_files.setValue(hi)
+            self.max_num_files.setValue(lo)
 
+    @Slot()
     def change_file_label_rand(self) -> None:
         """Change file count group box based on random or count selection."""
-        r = self.randomFileG.isChecked()
-        self.countFileG.setChecked(not r)
+        r = self.random_file_count_groupbox.isChecked()
+        self.set_file_count_groupbox.setChecked(not r)
 
-        for child in self.randomFileG.children():
+        for child in self.random_file_count_groupbox.children():
             if isinstance(child, QWidget):
                 child.setEnabled(r)
 
-        for child in self.countFileG.children():
+        for child in self.set_file_count_groupbox.children():
             if isinstance(child, QWidget):
                 child.setEnabled(not r)
 
+    @Slot()
     def change_file_label_count(self) -> None:
         """Change file count group box based on random or count selection."""
-        r = self.countFileG.isChecked()
-        self.randomFileG.setChecked(not r)
+        r = self.set_file_count_groupbox.isChecked()
+        self.random_file_count_groupbox.setChecked(not r)
 
-        for child in self.countFileG.children():
+        for child in self.set_file_count_groupbox.children():
             if isinstance(child, QWidget):
                 child.setEnabled(r)
 
-        for child in self.randomFileG.children():
+        for child in self.random_file_count_groupbox.children():
             if isinstance(child, QWidget):
                 child.setEnabled(not r)
 
     ### FILE SIZE METHODS ###
 
+    @Slot()
     def switch_size(self) -> None:
         """Switch the size low and high values."""
         lo = self.sizeLo.value()
@@ -1409,35 +1230,38 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
 
     ### FILE DURATION METHODS ###
 
+    @Slot()
     def switch_duration(self) -> None:
         """Switch the duration low and high values."""
-        lo = self.durationLo.value()
-        hi = self.durationHi.value()
+        lo = self.duration_low_dblspin.value()
+        hi = self.duration_high_dblspin.value()
         if lo > hi:
-            self.durationLo.setValue(hi)
-            self.durationHi.setValue(lo)
+            self.duration_low_dblspin.setValue(hi)
+            self.duration_high_dblspin.setValue(lo)
 
     def convert_minutes_to_seconds(self) -> None:
         """Convert duration from minutes to seconds if needed."""
-        if self.durationType.currentText() == "m":
-            self.minDuration = self.durationLo.value() * SECONDS_IN_MINUTE
-            self.maxDuration = self.durationHi.value() * SECONDS_IN_MINUTE
+        if self.duration_combobox.currentText() == "m":
+            self.minDuration = self.duration_low_dblspin.value() * SECONDS_IN_MINUTE
+            self.maxDuration = self.duration_high_dblspin.value() * SECONDS_IN_MINUTE
 
     ### KEYWORDS AND EXTENSION METHODS ###
 
-    def switch_keys(self) -> None:
+    @Slot()
+    def switch_keywords(self) -> None:
         """Switch the include and exclude keywords."""
-        include = self.incKeysEdit.text()
-        exclude = self.excKeysEdit.text()
-        self.incKeysEdit.setText(exclude)
-        self.excKeysEdit.setText(include)
+        include = self.included_keys_lineedit.text()
+        exclude = self.excluded_keys_lineedit.text()
+        self.included_keys_lineedit.setText(exclude)
+        self.excluded_keys_lineedit.setText(include)
 
+    @Slot()
     def switch_extensions(self) -> None:
         """Switch the include and exclude extensions."""
-        include = self.incExtsEdit.text()
-        exclude = self.excExtsEdit.text()
-        self.incExtsEdit.setText(exclude)
-        self.excExtsEdit.setText(include)
+        include = self.included_extensions_lineedit.text()
+        exclude = self.excluded_extensions_lineedit.text()
+        self.included_extensions_lineedit.setText(exclude)
+        self.excluded_extensions_lineedit.setText(include)
 
     ### SETTINGS METHODS ###
 
@@ -1481,6 +1305,7 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
                 if value is not None:
                     obj.setCurrentIndex(int(value))
 
+    @Slot()
     def save_config(self) -> None:
         """Save GUI settings to registry."""
         save_file, _ = QFileDialog.getSaveFileName(
@@ -1491,8 +1316,9 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
                 settings = QSettings(save_file, QSettings.Format.IniFormat)
                 self.save_gui(settings)
             name = list(settings.fileName().split("/"))[-1][:-4]
-            self.setWindowTitle(f"{name} - Copy Random Files")
+            self.setWindowTitle(f"{name} - Mandala: Copy random files")
 
+    @Slot()
     def load_config(self) -> None:
         """Load GUI settings from registry."""
         open_file, _ = QFileDialog.getOpenFileName(self, "Load Configuration", "", ("Configuration (*.ini)"))
@@ -1501,8 +1327,9 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
                 settings = QSettings(open_file, QSettings.Format.IniFormat)
                 self.restore_gui(settings)
             name = list(settings.fileName().split("/"))[-1][:-4]
-            self.setWindowTitle(f"{name} - Copy Random Files")
+            self.setWindowTitle(f"{name} - Mandala: Copy random files")
 
+    @Slot()
     def save_gui(self, settings: QSettings) -> None:
         """Save GUI settings to registry."""
         for name, obj in inspect.getmembers(self):
@@ -1538,6 +1365,7 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
                 value = obj.isChecked()
                 settings.setValue(name, value)
 
+    @Slot()
     def restore_gui(self, settings: QSettings) -> None:
         """Restore GUI settings from registry."""
         for name, obj in inspect.getmembers(self):
