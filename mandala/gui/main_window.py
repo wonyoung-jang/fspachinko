@@ -277,14 +277,14 @@ class MainWindow(QWidget):
 
     def setup_size_ui(self) -> None:
         """Set up the size UI components."""
-        self.sizeLo = QDoubleSpinBox()
-        self.sizeLo.setRange(0, 100000)
-        self.sizeLo.editingFinished.connect(self.switch_size)
+        self.size_min_dblspin = QDoubleSpinBox()
+        self.size_min_dblspin.setRange(0, 100000)
+        self.size_min_dblspin.editingFinished.connect(self.switch_size)
 
-        self.sizeHi = QDoubleSpinBox()
-        self.sizeHi.setRange(1, 100000)
-        self.sizeHi.setValue(50)
-        self.sizeHi.editingFinished.connect(self.switch_size)
+        self.size_max_dblspin = QDoubleSpinBox()
+        self.size_max_dblspin.setRange(1, 100000)
+        self.size_max_dblspin.setValue(50)
+        self.size_max_dblspin.editingFinished.connect(self.switch_size)
 
         self.sizeType = QComboBox()
         self.sizeType.addItems(("B", "KB", "MB", "GB"))
@@ -293,9 +293,9 @@ class MainWindow(QWidget):
         self.size_groupbox = QGroupBox(title="Size", flat=True, checkable=True)
         layout = QGridLayout(self.size_groupbox)
         layout.addWidget(QLabel("Min:"), 0, 0)
-        layout.addWidget(self.sizeLo, 0, 1)
+        layout.addWidget(self.size_min_dblspin, 0, 1)
         layout.addWidget(QLabel("Max:"), 1, 0)
-        layout.addWidget(self.sizeHi, 1, 1)
+        layout.addWidget(self.size_max_dblspin, 1, 1)
         layout.addWidget(self.sizeType, 0, 2, 2, 1)
 
     def setup_duration_ui(self) -> None:
@@ -315,7 +315,7 @@ class MainWindow(QWidget):
         self.duration_high_dblspin.editingFinished.connect(self.switch_duration)
 
         self.duration_combobox = QComboBox()
-        self.duration_combobox.addItems(("s", "m"))
+        self.duration_combobox.addItems(["s", "m"])
         self.duration_combobox.setCurrentIndex(0)
 
         self.duration_groupbox = QGroupBox(title="Duration", flat=True, checkable=True)
@@ -624,8 +624,8 @@ class MainWindow(QWidget):
         # File Size Variables
         self.isRemoveSizeLimit = not self.size_groupbox.isChecked()
         if not self.isRemoveSizeLimit:
-            self.minSize = self.sizeLo.value()
-            self.maxSize = self.sizeHi.value()
+            self.minSize = self.size_min_dblspin.value()
+            self.maxSize = self.size_max_dblspin.value()
             self.convert_to_bytes()
 
         # File Length Variables
@@ -907,31 +907,26 @@ class MainWindow(QWidget):
 
     def is_within_duration(self, source: Path) -> bool:
         """Check if a file is within the specified duration range."""
-        is_within_duration = False
         if self.isRemoveLengthLimit:
-            is_within_duration = True
-        else:
-            try:
-                sound = soundfile.SoundFile(source)
-                duration = len(sound) / sound.samplerate
-                if self.minDuration <= duration <= self.maxDuration:
+            return True
+
+        is_within_duration = False
+
+        try:
+            sound = soundfile.SoundFile(source)
+            duration = len(sound) / sound.samplerate
+            return self.minDuration <= duration <= self.maxDuration
+        except RuntimeError:
+            if source.suffix == ".mp3":
+                try:
+                    duration = MP3(source).info.length
+                    return self.minDuration <= duration <= self.maxDuration
+                except ValueError:
                     is_within_duration = True
-                else:
-                    return False
-            except RuntimeError:
-                if source.suffix == ".mp3":
-                    try:
-                        duration = MP3(source).info.length
-                        if self.minDuration <= duration <= self.maxDuration:
-                            is_within_duration = True
-                        else:
-                            return False
-                    except ValueError:
-                        is_within_duration = True
-                else:
-                    is_within_duration = True
-            except ValueError:
+            else:
                 is_within_duration = True
+        except ValueError:
+            is_within_duration = True
         return is_within_duration
 
     def copy_files_to_target(self, file_num: int, source: Path, dest: Path, source_size: int) -> bool | None:
@@ -1205,28 +1200,28 @@ Total runtime:\t{round(end_folder_time - self.startFolderTime, 2)}s
     @Slot()
     def switch_size(self) -> None:
         """Switch the size low and high values."""
-        lo = self.sizeLo.value()
-        hi = self.sizeHi.value()
+        lo = self.size_min_dblspin.value()
+        hi = self.size_max_dblspin.value()
         if lo > hi:
-            self.sizeLo.setValue(hi)
-            self.sizeHi.setValue(lo)
+            self.size_min_dblspin.setValue(hi)
+            self.size_max_dblspin.setValue(lo)
 
     def convert_to_bytes(self) -> None:
         """Convert size from KB, MB, or GB to bytes."""
         current_text = self.sizeType.currentText()
 
         if current_text == "B":
-            self.minSize = round(self.sizeLo.value(), 2)
-            self.maxSize = round(self.sizeHi.value(), 2)
+            self.minSize = round(self.size_min_dblspin.value(), 2)
+            self.maxSize = round(self.size_max_dblspin.value(), 2)
         elif current_text == "KB":
-            self.minSize = round(self.sizeLo.value() * BYTES_IN_KILOBYTE, 2)
-            self.maxSize = round(self.sizeHi.value() * BYTES_IN_KILOBYTE, 2)
+            self.minSize = round(self.size_min_dblspin.value() * BYTES_IN_KILOBYTE, 2)
+            self.maxSize = round(self.size_max_dblspin.value() * BYTES_IN_KILOBYTE, 2)
         elif current_text == "MB":
-            self.minSize = round(self.sizeLo.value() * BYTES_IN_MEGABYTE, 2)
-            self.maxSize = round(self.sizeHi.value() * BYTES_IN_MEGABYTE, 2)
+            self.minSize = round(self.size_min_dblspin.value() * BYTES_IN_MEGABYTE, 2)
+            self.maxSize = round(self.size_max_dblspin.value() * BYTES_IN_MEGABYTE, 2)
         elif current_text == "GB":
-            self.minSize = round(self.sizeLo.value() * BYTES_IN_GIGABYTE, 2)
-            self.maxSize = round(self.sizeHi.value() * BYTES_IN_GIGABYTE, 2)
+            self.minSize = round(self.size_min_dblspin.value() * BYTES_IN_GIGABYTE, 2)
+            self.maxSize = round(self.size_max_dblspin.value() * BYTES_IN_GIGABYTE, 2)
 
     ### FILE DURATION METHODS ###
 
