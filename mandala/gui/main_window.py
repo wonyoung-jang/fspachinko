@@ -115,6 +115,25 @@ class MandalaState:
     start_stall_time: float = 0.0
     is_append_log: bool = False
 
+    def reset_for_folder(self, root_absolute: Path, *, unique_folders: bool) -> None:
+        """Reset state variables for a new folder."""
+        self.count = 0
+        self.bytes_in_current_folder = 0
+        self.start_folder_time = perf_counter()
+        self.start_stall_time = perf_counter()
+        self.weighted_counts.clear()
+        self.touched_by_weight.clear()
+
+        if unique_folders:
+            self.touched_folders[root_absolute] = False
+            for key in self.touched_by_weight:
+                self.touched_files[key] = False
+                self.touched_folders[key] = False
+        else:
+            self.touched_files.clear()
+            self.touched_folders.clear()
+            self.path_cache.clear()
+
 
 @dataclass(slots=True)
 class MandalaMainGui(QWidget):
@@ -554,14 +573,10 @@ class MandalaMainGui(QWidget):
             trash_invalid_files=self.is_trash_invalid.isChecked() if self.trash_groupbox.isChecked() else False,
         )
 
-    def assign_global_vars(self) -> None:
-        """Assign global variables based on the current UI settings."""
-        self.root = Path(self.root_combobox.currentText())
-        self.dest = Path(self.dest_combobox.currentText())
-
     def run_mandala(self) -> None:
         """Run the main file copying process."""
-        self.assign_global_vars()
+        self.root = Path(self.root_combobox.currentText())
+        self.dest = Path(self.dest_combobox.currentText())
 
         for _ in range(self.config.num_folders):
             if self.stop_tracker:
@@ -580,19 +595,9 @@ class MandalaMainGui(QWidget):
 
     def process_folder(self) -> None:
         """Process a single folder for file copying."""
-        # If you don't want unique folders, clear the touched dictionaries and restart
-        self.state.touched_files = defaultdict(bool)
-        self.state.touched_folders = defaultdict(bool)
-        if self.config.unique_folders:
-            self.state.touched_folders[self.config.root_absolute] = False
-            for key in self.state.touched_by_weight:
-                self.state.touched_files[key] = False
-                self.state.touched_folders[key] = False
+        root_absolute = self.config.root_absolute
 
-        self.state.weighted_counts = defaultdict(int)
-        self.state.touched_by_weight = defaultdict(bool)
-        self.state.bytes_in_current_folder = 0
-        self.state.count = 0
+        self.state.reset_for_folder(root_absolute, unique_folders=self.config.unique_folders)
 
         top_weight_mark = Path()
         self.dest = self.create_folders(self.dest)
@@ -600,8 +605,6 @@ class MandalaMainGui(QWidget):
         temp_log_file = Path(self.log_file.name + ".tmp")
         self.temp_log_file = temp_log_file.open("a", encoding="utf-8")
 
-        self.state.start_folder_time = perf_counter()
-        self.state.start_stall_time = perf_counter()
         main_path = self.reset_path_to_start()
 
         # File Count
@@ -613,7 +616,7 @@ class MandalaMainGui(QWidget):
                 self.stop_mandala()
                 return
 
-            if self.state.touched_folders[self.config.root_absolute] and self.is_timed_out():
+            if self.state.touched_folders[root_absolute] and self.is_timed_out():
                 break
 
             main_path = self.process_file(main_path, top_weight_mark, curr_file)
@@ -712,18 +715,21 @@ class MandalaMainGui(QWidget):
         """Handle weight assignments for folders."""
         weight_top = self.config.weight_top
         weight_bottom = self.config.weight_bottom
+        weighted_counts = self.state.weighted_counts
+        touched_folders = self.state.touched_folders
+        touched_by_weight = self.state.touched_by_weight
 
         if weight_top > 0:
-            self.state.weighted_counts[top_mark] += 1
-            if self.state.weighted_counts[top_mark] == weight_top:
-                self.state.touched_folders[top_mark] = True
-                self.state.touched_by_weight[top_mark] = True
+            weighted_counts[top_mark] += 1
+            if weighted_counts[top_mark] == weight_top:
+                touched_folders[top_mark] = True
+                touched_by_weight[top_mark] = True
 
         if weight_bottom > 0:
-            self.state.weighted_counts[bottom_mark] += 1
-            if self.state.weighted_counts[bottom_mark] == weight_bottom:
-                self.state.touched_folders[bottom_mark] = True
-                self.state.touched_by_weight[bottom_mark] = True
+            weighted_counts[bottom_mark] += 1
+            if weighted_counts[bottom_mark] == weight_bottom:
+                touched_folders[bottom_mark] = True
+                touched_by_weight[bottom_mark] = True
 
     def handle_random_path_is_dir(
         self, random_path: Path, random_path_absolute: Path, main_path: Path, top_weight_mark: Path
