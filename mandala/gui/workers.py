@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QObject, QRunnable, Signal
 
 if TYPE_CHECKING:
-    from mandala.gui.main_window import MainWindow
+    from mandala.gui.main_window import MandalaMainGui
 
 
 class WorkerSignals(QObject):
@@ -24,7 +24,7 @@ class WorkerSignals(QObject):
 class RunMandalaWorker(QRunnable):
     """Worker thread for running Mandala."""
 
-    window: MainWindow
+    window: MandalaMainGui
 
     def __post_init__(self) -> None:
         """Initialize the worker thread."""

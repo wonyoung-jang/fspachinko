@@ -5,7 +5,7 @@ from __future__ import annotations
 from ..config.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGABYTE
 
 
-def strtobool(val: str) -> int:
+def strtobool(val: str) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
 
     Replaces distutils.util.strtobool function (deprecated in Python 3.10).
@@ -18,10 +18,10 @@ def strtobool(val: str) -> int:
     val_lower = str(val).lower()
 
     if val_lower in ("y", "yes", "t", "true", "on", "1"):
-        return 1
+        return True
 
     if val_lower in ("n", "no", "f", "false", "off", "0"):
-        return 0
+        return False
 
     msg = f"invalid truth value {val!r}"
     raise ValueError(msg)
