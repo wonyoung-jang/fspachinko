@@ -1,11 +1,15 @@
 """Workers for mandala GUI."""
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QRunnable, Signal
+
+# noinspection PyUnresolvedReferences
+from __feature__ import snake_case, true_property  # type: ignore[reportMissingImports] # noqa: F401
+
 
 if TYPE_CHECKING:
     from mandala.gui.main_window import MandalaMainGui

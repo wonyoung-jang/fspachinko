@@ -45,6 +45,7 @@ from ..config.constants import (
     NOWRAP,
     SECONDS_IN_MINUTE,
 )
+from ..gui.components import DblRangeFilterWidget, DualListWidget, RangeFilterWidget
 from ..gui.workers import RunMandalaWorker, WorkerSignals
 from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
 from .qt_helpers import create_spinbox
@@ -99,6 +100,28 @@ class MandalaConfig:
     trash_source_files: bool = False
     trash_invalid_files: bool = False
 
+    def is_extension(self, source: Path) -> bool:
+        """Check if a file has the specified extensions."""
+        if not self.extensions:
+            return True
+
+        for extension in self.extensions:
+            if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
+                return True
+
+        return False
+
+    def is_keyword(self, source: Path) -> bool:
+        """Check if a file contains the specified keywords."""
+        if not self.keywords:
+            return True
+
+        for keyword in self.keywords:
+            if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
+                return True
+
+        return False
+
 
 @dataclass(slots=True)
 class MandalaState:
@@ -148,13 +171,13 @@ class MandalaMainGui(QWidget):
         self.worker = RunMandalaWorker(self)
         self.worker.setAutoDelete(False)
 
-        self.config: MandalaConfig = None
         self.state = MandalaState()
 
         self.log_file: TextIO = None
         self.temp_log_file: TextIO = None
 
         self.setup_gui()
+        self.config = self.get_configuration()
         self.setup_gui_signals()
 
         self.settings = QSettings()
@@ -283,107 +306,21 @@ class MandalaMainGui(QWidget):
 
     # FILTER SECTION
 
-    def init_duration_filters(self) -> None:
-        """Initialize the duration filter UI components."""
-        self.dur_min_dblspin = QDoubleSpinBox(minimum=0, maximum=100_000)
-        self.dur_min_dblspin.setAccelerated(True)
-        self.dur_min_dblspin.setGroupSeparatorShown(True)
-        self.dur_min_dblspin.editingFinished.connect(self.switch_duration)
-
-        self.dur_max_dblspin = QDoubleSpinBox(minimum=1, maximum=100_000, value=100)
-        self.dur_max_dblspin.setAccelerated(True)
-        self.dur_max_dblspin.setGroupSeparatorShown(True)
-        self.dur_max_dblspin.editingFinished.connect(self.switch_duration)
-
-        self.duration_combobox = QComboBox(currentIndex=0)
-        self.duration_combobox.addItems(("s", "m"))
-
-        self.duration_groupbox = QGroupBox(title="Duration", flat=True, checkable=True)
-        duration_layout = QGridLayout(self.duration_groupbox)
-        duration_layout.addWidget(QLabel("Min"), 0, 0)
-        duration_layout.addWidget(self.dur_min_dblspin, 0, 1)
-        duration_layout.addWidget(QLabel("Max"), 1, 0)
-        duration_layout.addWidget(self.dur_max_dblspin, 1, 1)
-        duration_layout.addWidget(self.duration_combobox, 0, 2, 2, 1)
-
-    def init_keywords_filters(self) -> None:
-        """Initialize the keywords filter UI components."""
-        self.included_keys_lineedit = QLineEdit()
-        self.included_keys_groupbox = QGroupBox(title="Include", checkable=True, flat=True)
-        inc_keys_l = QHBoxLayout(self.included_keys_groupbox)
-        inc_keys_l.addWidget(self.included_keys_lineedit)
-        self.excluded_keys_lineedit = QLineEdit()
-        self.excluded_keys_groupbox = QGroupBox(title="Exclude", checkable=True, flat=True)
-        exc_keys_l = QHBoxLayout(self.excluded_keys_groupbox)
-        exc_keys_l.addWidget(self.excluded_keys_lineedit)
-        switch_keywords_btn = QPushButton("Switch")
-        switch_keywords_btn.clicked.connect(self.switch_keywords)
-        self.keywords_groupbox = QGroupBox(title="Keywords", flat=True)
-        keywords_layout = QGridLayout(self.keywords_groupbox)
-        keywords_layout.addWidget(self.included_keys_groupbox, 0, 0)
-        keywords_layout.addWidget(self.excluded_keys_groupbox, 1, 0)
-        keywords_layout.addWidget(switch_keywords_btn, 0, 1, 2, 1)
-
-    def init_extensions_filter(self) -> None:
-        """Initialize the extensions filter UI components."""
-        self.included_extensions_lineedit = QLineEdit()
-        self.included_extensions_groupbox = QGroupBox(title="Include", checkable=True, flat=True)
-        inc_exts_l = QHBoxLayout(self.included_extensions_groupbox)
-        inc_exts_l.addWidget(self.included_extensions_lineedit)
-        self.excluded_extensions_lineedit = QLineEdit()
-        self.excluded_extensions_groupbox = QGroupBox(title="Exclude", checkable=True, flat=True)
-        exc_exts_l = QHBoxLayout(self.excluded_extensions_groupbox)
-        exc_exts_l.addWidget(self.excluded_extensions_lineedit)
-        switch_extensions_btn = QPushButton("Switch")
-        switch_extensions_btn.clicked.connect(self.switch_extensions)
-        self.extensions_groupbox = QGroupBox(title="Extensions", flat=True)
-        extensions_layout = QGridLayout(self.extensions_groupbox)
-        extensions_layout.addWidget(self.included_extensions_groupbox, 0, 0)
-        extensions_layout.addWidget(self.excluded_extensions_groupbox, 1, 0)
-        extensions_layout.addWidget(switch_extensions_btn, 0, 1, 2, 1)
-
     def setup_filter_section(self) -> None:
         """Set up the customize tab UI components."""
-        self.size_min_dblspin = QDoubleSpinBox()
-        self.size_min_dblspin.setRange(0, 100000)
-        self.size_min_dblspin.editingFinished.connect(self.switch_size)
-        self.size_max_dblspin = QDoubleSpinBox()
-        self.size_max_dblspin.setRange(1, 100000)
-        self.size_max_dblspin.setValue(50)
-        self.size_max_dblspin.editingFinished.connect(self.switch_size)
-        self.filesize_combobox = QComboBox()
-        self.filesize_combobox.addItems(("B", "KB", "MB", "GB"))
-        self.filesize_combobox.setCurrentIndex(2)
-        self.size_groupbox = QGroupBox(title="Size", flat=True, checkable=True)
-        filesize_layout = QGridLayout(self.size_groupbox)
-        filesize_layout.addWidget(QLabel("Min"), 0, 0)
-        filesize_layout.addWidget(self.size_min_dblspin, 0, 1)
-        filesize_layout.addWidget(QLabel("Max"), 1, 0)
-        filesize_layout.addWidget(self.size_max_dblspin, 1, 1)
-        filesize_layout.addWidget(self.filesize_combobox, 0, 2, 2, 1)
-
-        self.weight_top_spinbox = create_spinbox(0, 100000, enabled=True)
-        self.weight_top_spinbox.setSpecialValueText("None")
-        self.weight_bottom_spinbox = create_spinbox(0, 100000, enabled=True)
-        self.weight_bottom_spinbox.setSpecialValueText("None")
-        self.weight_groupbox = QGroupBox(title="Weight", flat=True, checkable=True)
-        weight_layout = QGridLayout(self.weight_groupbox)
-        weight_layout.addWidget(QLabel("Top"), 0, 0)
-        weight_layout.addWidget(self.weight_top_spinbox, 0, 1)
-        weight_layout.addWidget(QLabel("Bottom"), 1, 0)
-        weight_layout.addWidget(self.weight_bottom_spinbox, 1, 1)
-
-        self.init_duration_filters()
-        self.init_keywords_filters()
-        self.init_extensions_filter()
+        self.filter_keywords = DualListWidget(title="Keywords", parent=self)
+        self.filter_extensions = DualListWidget(title="Extensions", parent=self)
+        self.filter_filesize = DblRangeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"), parent=self)
+        self.filter_duration = DblRangeFilterWidget(title="Duration", suffix_options=("s", "m"), parent=self)
+        self.filter_weight = RangeFilterWidget(title="Weight", parent=self)
 
         self.filter_section = QWidget()
         layout = QGridLayout(self.filter_section)
-        layout.addWidget(self.keywords_groupbox, 0, 0, 1, 3)
-        layout.addWidget(self.extensions_groupbox, 1, 0, 1, 3)
-        layout.addWidget(self.size_groupbox, 2, 0)
-        layout.addWidget(self.duration_groupbox, 2, 1)
-        layout.addWidget(self.weight_groupbox, 2, 2)
+        layout.addWidget(self.filter_keywords, 0, 0, 1, 3)
+        layout.addWidget(self.filter_extensions, 1, 0, 1, 3)
+        layout.addWidget(self.filter_filesize, 2, 0)
+        layout.addWidget(self.filter_duration, 2, 1)
+        layout.addWidget(self.filter_weight, 2, 2)
 
     # SIDEBAR SECTION
 
@@ -398,10 +335,10 @@ class MandalaMainGui(QWidget):
         self.show_help.setChecked(True)
 
         open_root_btn = QPushButton("Root")
-        open_root_btn.clicked.connect(lambda: os.startfile(self.root))
+        open_root_btn.clicked.connect(lambda: os.startfile(self.config.root))
 
         open_dest_btn = QPushButton("Destination")
-        open_dest_btn.clicked.connect(lambda: os.startfile(self.dest))
+        open_dest_btn.clicked.connect(lambda: os.startfile(self.config.dest))
 
         save_btn = QPushButton("Save")
         save_btn.clicked.connect(self.save_config)
@@ -507,9 +444,9 @@ class MandalaMainGui(QWidget):
     def get_configuration(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
         # File Size Variables
-        size_unit = self.filesize_combobox.currentText()
-        min_size = self.size_min_dblspin.value()
-        max_size = self.size_max_dblspin.value()
+        size_unit = self.filter_filesize.combo.currentText()
+        min_size = self.filter_filesize.min_spin.value()
+        max_size = self.filter_filesize.max_spin.value()
         if size_unit == "KB":
             min_size *= BYTES_IN_KILOBYTE
             max_size *= BYTES_IN_KILOBYTE
@@ -521,9 +458,9 @@ class MandalaMainGui(QWidget):
             max_size *= BYTES_IN_GIGABYTE
 
         # File Duration Variables
-        min_duration = self.dur_min_dblspin.value()
-        max_duration = self.dur_max_dblspin.value()
-        if self.duration_combobox.currentText() == "m":
+        min_duration = self.filter_duration.min_spin.value()
+        max_duration = self.filter_duration.max_spin.value()
+        if self.filter_duration.combo.currentText() == "m":
             min_duration *= SECONDS_IN_MINUTE
             max_duration *= SECONDS_IN_MINUTE
 
@@ -534,33 +471,33 @@ class MandalaMainGui(QWidget):
             dest=Path(self.dest_combobox.currentText()),
             num_files=self.num_file_count.value(),
             keywords=(
-                convert_string_to_list(self.included_keys_lineedit.text())
-                if self.included_keys_groupbox.isChecked()
+                convert_string_to_list(self.filter_keywords.include_edit.text())
+                if self.filter_keywords.include_groupbox.isChecked()
                 else []
             ),
             not_keywords=(
-                convert_string_to_list(self.excluded_keys_lineedit.text())
-                if self.excluded_keys_groupbox.isChecked()
+                convert_string_to_list(self.filter_keywords.exclude_edit.text())
+                if self.filter_keywords.exclude_groupbox.isChecked()
                 else []
             ),
             extensions=(
-                convert_string_to_list(self.included_extensions_lineedit.text())
-                if self.included_extensions_groupbox.isChecked()
+                convert_string_to_list(self.filter_extensions.include_edit.text())
+                if self.filter_extensions.include_groupbox.isChecked()
                 else []
             ),
             not_extensions=(
-                convert_string_to_list(self.excluded_extensions_lineedit.text())
-                if self.excluded_extensions_groupbox.isChecked()
+                convert_string_to_list(self.filter_extensions.exclude_edit.text())
+                if self.filter_extensions.exclude_groupbox.isChecked()
                 else []
             ),
-            limit_size=self.size_groupbox.isChecked(),
+            limit_size=self.filter_filesize.isChecked(),
             min_size=round(min_size, 2),
             max_size=round(max_size, 2),
-            limit_duration=self.duration_groupbox.isChecked(),
+            limit_duration=self.filter_duration.isChecked(),
             min_duration=min_duration,
             max_duration=max_duration,
-            weight_top=self.weight_top_spinbox.value(),
-            weight_bottom=self.weight_bottom_spinbox.value(),
+            weight_top=self.filter_weight.min_spin.value(),
+            weight_bottom=self.filter_weight.max_spin.value(),
             create_folders=self.folders_groupbox.isChecked(),
             folder_name=self.name_of_folders_entry_lineedit.text(),
             unique_folders=self.is_make_folders_unique_checkbox.isChecked(),
@@ -580,8 +517,7 @@ class MandalaMainGui(QWidget):
 
         for _ in range(self.config.num_folders):
             if self.stop_tracker:
-                self.stop_mandala()
-                return
+                break
 
             self.process_folder()
 
@@ -600,7 +536,7 @@ class MandalaMainGui(QWidget):
         self.state.reset_for_folder(root_absolute, unique_folders=self.config.unique_folders)
 
         top_weight_mark = Path()
-        self.dest = self.create_folders(self.dest)
+        curr_dest = self.create_folders(self.config.dest)
 
         temp_log_file = Path(self.log_file.name + ".tmp")
         self.temp_log_file = temp_log_file.open("a", encoding="utf-8")
@@ -613,22 +549,20 @@ class MandalaMainGui(QWidget):
 
         for curr_file in range(num_files):
             if self.stop_tracker:
-                self.stop_mandala()
-                return
+                break
 
             if self.state.touched_folders[root_absolute] and self.is_timed_out():
                 break
 
-            main_path = self.process_file(main_path, top_weight_mark, curr_file)
+            main_path = self.process_file(main_path, top_weight_mark, curr_file, curr_dest)
 
         #########################  END OF FOLDER  #########################
-        self.end_folder_actions()
+        self.end_folder_actions(curr_dest)
 
-    def process_file(self, main_path: Path, top_mark: Path, curr_file: int) -> Path:
+    def process_file(self, main_path: Path, top_mark: Path, curr_file: int, curr_dest: Path) -> Path:
         """Process a single file for copying."""
         while not self.state.touched_folders[self.config.root_absolute] and not self.is_timed_out():
             if self.stop_tracker:
-                self.stop_mandala()
                 return main_path
 
             main_path_absolute = main_path.resolve()
@@ -669,7 +603,7 @@ class MandalaMainGui(QWidget):
                     random_path_relative = Path(os.path.relpath(random_path, self.root))
                     # If file is valid
                     if self.is_valid_file(random_path, random_path_size) and self.copy_files_to_target(
-                        curr_file, random_path, Path(self.dest), random_path_size
+                        curr_file, random_path, curr_dest, random_path_size
                     ):
                         self.handle_log(random_path_relative, curr_file)
                         self.state.bytes_in_current_folder += random_path_size
@@ -745,17 +679,17 @@ class MandalaMainGui(QWidget):
             main_path = self.reset_path_to_start()
         return main_path, top_weight_mark
 
-    def end_folder_actions(self) -> None:
+    def end_folder_actions(self, curr_dest: Path) -> None:
         """Create and write log at the end of folder."""
         self.temp_log_file.close()
         self.log_file.close()
-        self.signals.log_signal.emit(self.write_status_log())
+        self.signals.log_signal.emit(self.write_status_log(curr_dest))
 
         # Terminates the program if no files were collected
         if self.state.count == 0:
             create_folders = self.config.create_folders
             if create_folders:
-                shutil.rmtree(self.dest)
+                shutil.rmtree(curr_dest)
             elif not (create_folders or self.state.is_append_log):
                 Path(self.log_file.name).unlink()
 
@@ -910,7 +844,6 @@ class MandalaMainGui(QWidget):
 
         self.temp_log_file.close()
         self.log_file.close()
-        self.signals.log_signal.emit(self.write_status_log())
 
         self.run_btn.setVisible(True)
         self.stop_btn.setVisible(False)
@@ -925,7 +858,7 @@ class MandalaMainGui(QWidget):
 
     ### LOG METHODS ###
 
-    def write_status_log(self) -> str:
+    def write_status_log(self, curr_dest: Path) -> str:
         """Write the status log at the end of each folder."""
         runtime = round(perf_counter() - self.state.start_folder_time, 2)
         timed_out = self.is_timed_out()
@@ -961,7 +894,7 @@ class MandalaMainGui(QWidget):
             f"Date:             {datetime.now(tz=UTC).strftime('%B %d, %Y')}\n"
             f"Time:             {datetime.now(tz=UTC).strftime('%I:%M:%S%p')}\n"
             f"Start:            {self.root}\n"
-            f"Destination:      {self.dest}\n"
+            f"Destination:      {curr_dest}\n"
             f"Extensions:       {ext_str}\n"
             f"Keywords:         {kw_str}\n"
             f"Total size:       {convert_byte_to_size(self.state.bytes_in_current_folder)}\n"
@@ -1036,13 +969,14 @@ class MandalaMainGui(QWidget):
         num_files_lo = self.min_num_files.value()
         if not self.random_file_count_groupbox.isChecked():
             self.file_count_groupbox.setToolTip(
-                f"{NOWRAP}{num_files_lo} file(s) will be copied from {self.root} to {self.dest}"
+                f"{NOWRAP}{num_files_lo} file(s) will be copied from {self.config.root} to {self.config.dest}"
             )
             return
 
         num_files_hi = self.max_num_files.value()
         self.file_count_groupbox.setToolTip(
-            f"{NOWRAP}{num_files_lo} to {num_files_hi} files will be copied from {self.root} to {self.dest}"
+            f"{NOWRAP}{num_files_lo} to {num_files_hi} "
+            f"files will be copied from {self.config.root} to {self.config.dest}"
         )
 
     @Slot()
@@ -1056,7 +990,8 @@ class MandalaMainGui(QWidget):
             num_files_lo = self.min_num_files.value()
             num_files_hi = self.max_num_files.value()
             self.random_file_count_groupbox.setToolTip(
-                f"{NOWRAP}{num_files_lo} to {num_files_hi} files will be copied from {self.root} to {self.dest}"
+                f"{NOWRAP}{num_files_lo} to {num_files_hi} "
+                f"files will be copied from {self.config.root} to {self.config.dest}"
             )
 
     ### ROOT AND DESTINATION SLOTS ###
@@ -1074,7 +1009,7 @@ class MandalaMainGui(QWidget):
     @Slot()
     def browse_root(self) -> None:
         """Browse for a new root directory."""
-        d = QFileDialog.getExistingDirectory(self, "Select Root Folder", str(self.root))
+        d = QFileDialog.getExistingDirectory(self, "Select Root Folder")
         if d:
             if self.root_combobox.findText(d) == -1:
                 self.root_combobox.addItem(d)
@@ -1083,7 +1018,7 @@ class MandalaMainGui(QWidget):
     @Slot()
     def browse_dest(self) -> None:
         """Browse for a new destination directory."""
-        d = QFileDialog.getExistingDirectory(self, "Select Destination Folder", str(self.dest))
+        d = QFileDialog.getExistingDirectory(self, "Select Destination Folder")
         if d:
             if self.dest_combobox.findText(d) == -1:
                 self.dest_combobox.addItem(d)
@@ -1186,42 +1121,6 @@ class MandalaMainGui(QWidget):
         for child in groupbox.children():
             if isinstance(child, QWidget):
                 child.setEnabled(enabled)
-
-    ### FILE SIZE SLOTS ###
-
-    @Slot()
-    def switch_size(self) -> None:
-        """Switch the size low and high values."""
-        lo, hi = self.size_min_dblspin.value(), self.size_max_dblspin.value()
-        if lo > hi:
-            self.size_min_dblspin.setValue(hi)
-            self.size_max_dblspin.setValue(lo)
-
-    ### FILE DURATION SLOTS ###
-
-    @Slot()
-    def switch_duration(self) -> None:
-        """Switch the duration low and high values."""
-        lo, hi = self.dur_min_dblspin.value(), self.dur_max_dblspin.value()
-        if lo > hi:
-            self.dur_min_dblspin.setValue(hi)
-            self.dur_max_dblspin.setValue(lo)
-
-    ### KEYWORDS AND EXTENSION SLOTS ###
-
-    @Slot()
-    def switch_keywords(self) -> None:
-        """Switch the include and exclude keywords."""
-        inc, exc = self.included_keys_lineedit.text(), self.excluded_keys_lineedit.text()
-        self.included_keys_lineedit.setText(exc)
-        self.excluded_keys_lineedit.setText(inc)
-
-    @Slot()
-    def switch_extensions(self) -> None:
-        """Switch the include and exclude extensions."""
-        inc, exc = self.included_extensions_lineedit.text(), self.excluded_extensions_lineedit.text()
-        self.included_extensions_lineedit.setText(exc)
-        self.excluded_extensions_lineedit.setText(inc)
 
     ### SETTINGS SLOTS ###
 
