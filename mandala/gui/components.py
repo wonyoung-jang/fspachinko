@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -25,14 +27,41 @@ if TYPE_CHECKING:
 class PathSelectorWidget(QGroupBox):
     """Handles logic for selecting a path."""
 
-    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, items: Sequence[str], parent: QWidget | None = None) -> None:
         """Initialize the path selector widget."""
-        super().__init__(title, parent, checkable=True, flat=True)
+        super().__init__(title, parent, flat=True)
 
         self.combo = QComboBox()
+        self.combo.addItems(items)
+
+        browse_btn = QPushButton("Browse")
+        browse_btn.clicked.connect(self.browse)
+        delete_btn = QPushButton("Delete")
+        delete_btn.clicked.connect(self.delete_curr_item)
 
         layout = QHBoxLayout(self)
-        layout.addWidget(self.combo)
+        layout.addWidget(self.combo, stretch=1)
+        layout.addWidget(browse_btn)
+        layout.addWidget(delete_btn)
+
+    @Slot()
+    def browse(self) -> None:
+        """Return the browse button."""
+        d = QFileDialog.getExistingDirectory(self, f"Select {self.title()}")
+        if d:
+            if self.combo.findText(d) == -1:
+                self.combo.addItem(d)
+            self.combo.setCurrentText(d)
+
+    @Slot()
+    def delete_curr_item(self) -> None:
+        """Delete the currently selected item."""
+        if self.combo.count() > 1:
+            self.combo.removeItem(self.combo.currentIndex())
+
+    def current_path(self) -> str:
+        """Return the currently selected path."""
+        return self.combo.currentText()
 
 
 class RangeFilterWidget(QGroupBox):
@@ -76,6 +105,7 @@ class DblRangeFilterWidget(QGroupBox):
         layout.addWidget(self.max_spin, 1, 1)
         layout.addWidget(self.combo, 0, 2, 2, 1)
 
+    @Slot()
     def validate_range(self) -> None:
         """Auto-corrects if Min > Max."""
         if self.min_spin.value() > self.max_spin.value():
@@ -120,6 +150,7 @@ class DualListWidget(QGroupBox):
         layout.addWidget(self.exclude_groupbox, 1, 0)
         layout.addWidget(switch_btn, 0, 1, 2, 1)
 
+    @Slot()
     def switch_text(self) -> None:
         """Switch the text between include and exclude."""
         inc, exc = self.include_edit.text(), self.exclude_edit.text()

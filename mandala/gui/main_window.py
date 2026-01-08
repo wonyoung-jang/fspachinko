@@ -44,7 +44,7 @@ from ..config.constants import (
     BYTES_IN_MEGABYTE,
     SECONDS_IN_MINUTE,
 )
-from ..gui.components import DblRangeFilterWidget, DualListWidget, RangeFilterWidget
+from ..gui.components import DblRangeFilterWidget, DualListWidget, PathSelectorWidget, RangeFilterWidget
 from ..gui.workers import RunMandalaWorker, WorkerSignals
 from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
 from .qt_helpers import create_spinbox
@@ -222,36 +222,12 @@ class MandalaMainGui(QWidget):
         file_count_layout.addWidget(self.set_file_count_groupbox)
         file_count_layout.addWidget(self.random_file_count_groupbox)
 
-    def init_root_and_dest_section(self) -> None:
-        """Initialize the root and destination UI components."""
-        self.root_combobox = QComboBox()
-        self.root_combobox.addItem(QDir.rootPath())
-        browse_root_btn = QPushButton("Browse")
-        browse_root_btn.clicked.connect(self.browse_root)
-        delete_root_btn = QPushButton("Delete")
-        delete_root_btn.clicked.connect(self.delete_root_item)
-        self.root_groupbox = QGroupBox(title="Root", flat=True)
-        root_layout = QHBoxLayout(self.root_groupbox)
-        root_layout.addWidget(self.root_combobox)
-        root_layout.addWidget(browse_root_btn)
-        root_layout.addWidget(delete_root_btn)
-
-        self.dest_combobox = QComboBox()
-        self.dest_combobox.addItem(QDir.homePath())
-        browse_dest_btn = QPushButton("Browse")
-        browse_dest_btn.clicked.connect(self.browse_dest)
-        delete_dest_btn = QPushButton("Delete")
-        delete_dest_btn.clicked.connect(self.delete_dest_item)
-        self.dest_groupbox = QGroupBox(title="Destination", flat=True)
-        destination_layout = QHBoxLayout(self.dest_groupbox)
-        destination_layout.addWidget(self.dest_combobox)
-        destination_layout.addWidget(browse_dest_btn)
-        destination_layout.addWidget(delete_dest_btn)
-
     def setup_setup_section(self) -> None:
         """Set up the setup tab UI components."""
         self.init_file_count_section()
-        self.init_root_and_dest_section()
+
+        self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()], parent=self)
+        self.ui_dest = PathSelectorWidget(title="Destination", items=[QDir.homePath()], parent=self)
 
         self.num_folders_count_spinbox = create_spinbox(1, 100000, enabled=True)
         self.name_of_folders_entry_lineedit = QLineEdit("Folder Name")
@@ -292,12 +268,12 @@ class MandalaMainGui(QWidget):
 
         self.setup_section = QWidget()
         layout = QGridLayout(self.setup_section)
-        layout.addWidget(self.file_count_groupbox, 0, 0, 1, 6)
-        layout.addWidget(self.root_groupbox, 1, 0, 1, 3)
-        layout.addWidget(self.dest_groupbox, 1, 3, 1, 3)
-        layout.addWidget(self.folders_groupbox, 2, 0, 1, 2)
-        layout.addWidget(self.filename_groupbox, 2, 2, 1, 2)
-        layout.addWidget(self.trash_groupbox, 2, 4, 1, 2)
+        layout.addWidget(self.ui_root, 0, 0, 1, 6)
+        layout.addWidget(self.ui_dest, 1, 0, 1, 6)
+        layout.addWidget(self.file_count_groupbox, 2, 0, 1, 6)
+        layout.addWidget(self.folders_groupbox, 3, 0, 1, 2)
+        layout.addWidget(self.filename_groupbox, 3, 2, 1, 2)
+        layout.addWidget(self.trash_groupbox, 3, 4, 1, 2)
 
     # FILTER SECTION
 
@@ -453,11 +429,11 @@ class MandalaMainGui(QWidget):
             min_duration *= SECONDS_IN_MINUTE
             max_duration *= SECONDS_IN_MINUTE
 
-        root_path = Path(self.root_combobox.currentText())
+        root_path = Path(self.ui_root.current_path())
         return MandalaConfig(
             root=root_path,
             root_absolute=root_path.resolve(),
-            dest=Path(self.dest_combobox.currentText()),
+            dest=Path(self.ui_dest.current_path()),
             num_files=self.num_file_count.value(),
             keywords=(
                 convert_string_to_list(self.filter_keywords.include_edit.text())
@@ -936,38 +912,6 @@ class MandalaMainGui(QWidget):
     #############################
     ########### SLOTS ###########
     #############################
-
-    ### ROOT AND DESTINATION SLOTS ###
-
-    @Slot()
-    def browse_root(self) -> None:
-        """Browse for a new root directory."""
-        d = QFileDialog.getExistingDirectory(self, "Select Root Folder")
-        if d:
-            if self.root_combobox.findText(d) == -1:
-                self.root_combobox.addItem(d)
-            self.root_combobox.setCurrentIndex(self.root_combobox.findText(d))
-
-    @Slot()
-    def browse_dest(self) -> None:
-        """Browse for a new destination directory."""
-        d = QFileDialog.getExistingDirectory(self, "Select Destination Folder")
-        if d:
-            if self.dest_combobox.findText(d) == -1:
-                self.dest_combobox.addItem(d)
-            self.dest_combobox.setCurrentIndex(self.dest_combobox.findText(d))
-
-    @Slot()
-    def delete_root_item(self) -> None:
-        """Delete the current root item from the combo box."""
-        if self.root_combobox.count() > 1:
-            self.root_combobox.removeItem(self.root_combobox.currentIndex())
-
-    @Slot()
-    def delete_dest_item(self) -> None:
-        """Delete the current destination item from the combo box."""
-        if self.dest_combobox.count() > 1:
-            self.dest_combobox.removeItem(self.dest_combobox.currentIndex())
 
     ### PROGRESS & TIMER SLOTS ###
 
