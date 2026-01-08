@@ -224,10 +224,8 @@ class MandalaMainGui(QWidget):
 
     def init_root_and_dest_section(self) -> None:
         """Initialize the root and destination UI components."""
-        self.root = QDir.rootPath()
         self.root_combobox = QComboBox()
-        self.root_combobox.addItem(self.root)
-        self.root_combobox.currentTextChanged.connect(self.change_root)
+        self.root_combobox.addItem(QDir.rootPath())
         browse_root_btn = QPushButton("Browse")
         browse_root_btn.clicked.connect(self.browse_root)
         delete_root_btn = QPushButton("Delete")
@@ -238,10 +236,8 @@ class MandalaMainGui(QWidget):
         root_layout.addWidget(browse_root_btn)
         root_layout.addWidget(delete_root_btn)
 
-        self.dest = Path(QDir.homePath())
         self.dest_combobox = QComboBox()
-        self.dest_combobox.addItem(str(self.dest))
-        self.dest_combobox.currentTextChanged.connect(self.change_dest)
+        self.dest_combobox.addItem(QDir.homePath())
         browse_dest_btn = QPushButton("Browse")
         browse_dest_btn.clicked.connect(self.browse_dest)
         delete_dest_btn = QPushButton("Delete")
@@ -429,7 +425,7 @@ class MandalaMainGui(QWidget):
 
     def reset_path_to_start(self) -> Path:
         """Reset the current working directory to the start root path."""
-        os.chdir(self.root)
+        os.chdir(self.config.root)
         return Path.cwd()
 
     ### RUN METHODS ###
@@ -505,9 +501,6 @@ class MandalaMainGui(QWidget):
 
     def run_mandala(self) -> None:
         """Run the main file copying process."""
-        self.root = Path(self.root_combobox.currentText())
-        self.dest = Path(self.dest_combobox.currentText())
-
         for _ in range(self.config.num_folders):
             if self.stop_tracker:
                 break
@@ -593,7 +586,7 @@ class MandalaMainGui(QWidget):
                     # Touch the file and get size
                     self.state.touched_files[random_path_absolute] = True
                     random_path_size = Path(random_path).stat().st_size
-                    random_path_relative = Path(os.path.relpath(random_path, self.root))
+                    random_path_relative = Path(os.path.relpath(random_path, self.config.root))
                     # If file is valid
                     if self.is_valid_file(random_path, random_path_size) and self.copy_files_to_target(
                         curr_file, random_path, curr_dest, random_path_size
@@ -665,7 +658,7 @@ class MandalaMainGui(QWidget):
         try:
             os.chdir(random_path)
             main_path = Path.cwd()
-            if self.config.weight_top > 0 and Path(random_path_absolute).parent == self.root:
+            if self.config.weight_top > 0 and Path(random_path_absolute).parent == self.config.root:
                 top_weight_mark = random_path_absolute
         except PermissionError:
             self.state.touched_folders[random_path_absolute] = True
@@ -843,7 +836,6 @@ class MandalaMainGui(QWidget):
         self.stall_time_counter_label.setVisible(False)
         self.stall_time_dblspin.setVisible(True)
         self.stall_time_counter_label.setText(f"{self.stall_time_limit}0 s")
-        self.dest = Path(self.dest_combobox.currentText())
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
@@ -886,7 +878,7 @@ class MandalaMainGui(QWidget):
             "------------------------------------------------------------------------\n"
             f"Date:             {datetime.now(tz=UTC).strftime('%B %d, %Y')}\n"
             f"Time:             {datetime.now(tz=UTC).strftime('%I:%M:%S%p')}\n"
-            f"Start:            {self.root}\n"
+            f"Start:            {self.config.root}\n"
             f"Destination:      {curr_dest}\n"
             f"Extensions:       {ext_str}\n"
             f"Keywords:         {kw_str}\n"
@@ -946,16 +938,6 @@ class MandalaMainGui(QWidget):
     #############################
 
     ### ROOT AND DESTINATION SLOTS ###
-
-    @Slot()
-    def change_root(self) -> None:
-        """Change the root path based on the combo box selection."""
-        self.root = Path(self.root_combobox.currentText())
-
-    @Slot()
-    def change_dest(self) -> None:
-        """Change the destination path based on the combo box selection."""
-        self.dest = Path(self.dest_combobox.currentText())
 
     @Slot()
     def browse_root(self) -> None:
