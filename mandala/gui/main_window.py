@@ -181,8 +181,8 @@ class MandalaMainGui(QWidget):
 
         self.state = MandalaState()
 
-        self.log_file: TextIO = None
-        self.temp_log_file: TextIO = None
+        self.log: TextIO = None
+        self.log_temp: TextIO = None
 
         self.setup_gui()
         self.config = self.get_configuration()
@@ -195,9 +195,9 @@ class MandalaMainGui(QWidget):
     def setup_gui_signals(self) -> None:
         """Set up signals for the worker thread."""
         self.signals = WorkerSignals()
-        self.signals.count_signal.connect(lambda: self.main_progbar.setValue(self.state.count))
+        self.signals.count_signal.connect(lambda: self.progbar_main.setValue(self.state.count))
         self.signals.time_signal.connect(self.reset_stall_timer_display)
-        self.signals.log_signal.connect(lambda s: self.log_block.append(s))
+        self.signals.log_signal.connect(lambda s: self.textbrowser_log.append(s))
         self.signals.finished_signal.connect(lambda: self.timer.stop())
 
     ######################################
@@ -208,84 +208,80 @@ class MandalaMainGui(QWidget):
 
     def setup_sidebar_section(self) -> None:
         """Set up the sidebar UI components."""
-        self.log_invalid_checkbox = QCheckBox("Log Invalid")
-        self.log_invalid_checkbox.setChecked(True)
+        self.checkbox_log_invalid = QCheckBox("Log Invalid")
+        self.checkbox_log_invalid.setChecked(True)
 
-        open_root_btn = QPushButton("Root")
-        open_root_btn.clicked.connect(lambda: os.startfile(self.config.root))
+        btn_open_root = QPushButton("Root")
+        btn_open_root.clicked.connect(lambda: os.startfile(self.config.root))
 
-        open_dest_btn = QPushButton("Destination")
-        open_dest_btn.clicked.connect(lambda: os.startfile(self.config.dest))
+        btn_open_dest = QPushButton("Destination")
+        btn_open_dest.clicked.connect(lambda: os.startfile(self.config.dest))
 
-        save_btn = QPushButton("Save")
-        save_btn.clicked.connect(self.save_config)
+        btn_save_config = QPushButton("Save")
+        btn_save_config.clicked.connect(self.save_config)
 
-        load_btn = QPushButton("Load")
-        load_btn.clicked.connect(self.load_config)
+        btn_load_config = QPushButton("Load")
+        btn_load_config.clicked.connect(self.load_config)
 
-        default_btn = QPushButton("Set Default")
-        default_btn.clicked.connect(lambda: self.save_gui(self.settings))
+        btn_set_default = QPushButton("Set Default")
+        btn_set_default.clicked.connect(lambda: self.save_gui(self.settings))
 
-        reset_btn = QPushButton("Reset to Default")
-        reset_btn.clicked.connect(lambda: self.restore_gui(self.settings))
+        btn_reset_to_default = QPushButton("Reset to Default")
+        btn_reset_to_default.clicked.connect(lambda: self.restore_gui(self.settings))
 
-        self.sidebar_section = QWidget()
-        layout = QVBoxLayout(self.sidebar_section)
-        layout.addWidget(load_btn)
-        layout.addWidget(save_btn)
-        layout.addWidget(open_root_btn)
-        layout.addWidget(open_dest_btn)
-        layout.addWidget(default_btn)
-        layout.addWidget(reset_btn)
+        self.ui_section_sidebar = QWidget()
+        layout = QVBoxLayout(self.ui_section_sidebar)
+        layout.addWidget(btn_load_config)
+        layout.addWidget(btn_save_config)
+        layout.addWidget(btn_open_root)
+        layout.addWidget(btn_open_dest)
+        layout.addWidget(btn_set_default)
+        layout.addWidget(btn_reset_to_default)
         layout.addStretch()
-        layout.addWidget(self.log_invalid_checkbox)
+        layout.addWidget(self.checkbox_log_invalid)
 
     # RUN SECTION
 
     def setup_run_section(self) -> None:
         """Set up the run section UI components."""
         # PROGRESS BAR
-        self.main_progbar = QProgressBar(value=0, format="%v", textVisible=True, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.progbar_main = QProgressBar(value=0, format="%v", textVisible=True, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # RUN BUTTON
-        self.run_btn = QPushButton("Start")
-        self.run_btn.clicked.connect(self.run_mandala_push)
+        self.btn_run = QPushButton("Start")
+        self.btn_run.clicked.connect(self.run_mandala_push)
 
         # STOP BUTTON
-        self.stop_btn = QPushButton("Stop")
-        self.stop_btn.setVisible(False)
-        self.stop_btn.clicked.connect(self.stop_mandala_push)
-
-        self.stop_tracker = False
+        self.btn_stop = QPushButton("Stop")
+        self.btn_stop.setVisible(False)
+        self.btn_stop.clicked.connect(self.stop_mandala_on_push)
 
         # STALL TIMER BAR DISPLAY
-        self.stall_time_dblspin = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
-        self.stall_time_dblspin.valueChanged.connect(self.change_stall_time_spinbox)
+        self.dblspin_stall_time = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
+        self.dblspin_stall_time.valueChanged.connect(self.change_stall_time_spinbox)
 
-        self.stall_time_limit = self.stall_time_dblspin.value()
+        self.stall_time_limit = self.dblspin_stall_time.value()
 
-        self.stall_time_progbar = QProgressBar(textVisible=False)
-        self.stall_time_progbar.setMaximumHeight(8)
+        self.progbar_stall_time = QProgressBar(textVisible=False)
 
-        self.stall_time_counter_label = QLabel(f"{self.stall_time_limit}0 s")
-        self.stall_time_counter_label.setVisible(False)
+        self.label_stall_time = QLabel(f"{self.stall_time_limit}0 s")
 
-        self.log_block = QTextBrowser()
-        self.log_block.setMinimumHeight(150)
-        self.log_block.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.textbrowser_log = QTextBrowser()
+        self.textbrowser_log.setMinimumHeight(150)
+        self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self.update_timer)
 
-        self.run_section = QWidget()
-        layout = QGridLayout(self.run_section)
-        layout.addWidget(self.log_block, 0, 0, 1, 3)
-        layout.addWidget(self.stall_time_progbar, 1, 0)
-        layout.addWidget(self.stall_time_dblspin, 1, 1)
-        layout.addWidget(self.stall_time_counter_label, 1, 2)
-        layout.addWidget(self.main_progbar, 2, 0)
-        layout.addWidget(self.run_btn, 2, 1)
-        layout.addWidget(self.stop_btn, 2, 2)
+        self.ui_section_run = QWidget()
+        layout = QGridLayout(self.ui_section_run)
+        layout.addWidget(self.textbrowser_log, 0, 0, 1, 3)
+        layout.addWidget(self.progbar_stall_time, 1, 0)
+        layout.addWidget(self.dblspin_stall_time, 1, 1)
+        layout.addWidget(self.label_stall_time, 1, 2)
+        layout.addWidget(self.progbar_main, 2, 0)
+        layout.addWidget(self.btn_run, 2, 1, 1, 2)
+        layout.addWidget(self.btn_stop, 2, 2, 1, 2)
 
     # SETUP UI
 
@@ -307,8 +303,8 @@ class MandalaMainGui(QWidget):
         self.ui_weight = RangeFilterWidget(title="Weight", parent=self)
 
         # Layout setup components
-        self.setup_section = QWidget()
-        layout = QGridLayout(self.setup_section)
+        self.ui_section_setup = QWidget()
+        layout = QGridLayout(self.ui_section_setup)
         layout.addWidget(self.ui_root, 0, 0, 1, 6)
         layout.addWidget(self.ui_dest, 1, 0, 1, 6)
         layout.addWidget(self.ui_file_count, 2, 0, 1, 6)
@@ -317,8 +313,8 @@ class MandalaMainGui(QWidget):
         layout.addWidget(self.ui_trash, 3, 4, 1, 2)
 
         # Layout filter components
-        self.filter_section = QWidget()
-        layout = QGridLayout(self.filter_section)
+        self.ui_section_filter = QWidget()
+        layout = QGridLayout(self.ui_section_filter)
         layout.addWidget(self.ui_keywords, 0, 0, 1, 3)
         layout.addWidget(self.ui_extensions, 1, 0, 1, 3)
         layout.addWidget(self.ui_filesize, 2, 0)
@@ -331,10 +327,10 @@ class MandalaMainGui(QWidget):
         self.setWindowTitle("Mandala: Copy random files")
 
         layout = QGridLayout(self)
-        layout.addWidget(self.setup_section, 0, 0)
-        layout.addWidget(self.filter_section, 1, 0)
-        layout.addWidget(self.sidebar_section, 0, 1, 2, 1)
-        layout.addWidget(self.run_section, 2, 0, 1, 2)
+        layout.addWidget(self.ui_section_setup, 0, 0)
+        layout.addWidget(self.ui_section_filter, 1, 0)
+        layout.addWidget(self.ui_section_sidebar, 0, 1, 2, 1)
+        layout.addWidget(self.ui_section_run, 2, 0, 1, 2)
 
     ###########################################
     ################# METHODS #################
@@ -420,13 +416,13 @@ class MandalaMainGui(QWidget):
             trash_invalid_files=self.ui_trash.checkbox_invalid_files.isChecked()
             if self.ui_trash.isChecked()
             else False,
-            log_invalid=self.log_invalid_checkbox.isChecked(),
+            log_invalid=self.checkbox_log_invalid.isChecked(),
         )
 
     def run_mandala(self) -> None:
         """Run the main file copying process."""
         for _ in range(self.config.num_folders):
-            if self.stop_tracker:
+            if self.is_stop_pushed:
                 break
 
             self.process_folder()
@@ -448,17 +444,17 @@ class MandalaMainGui(QWidget):
         top_weight_mark = Path()
         curr_dest = self.create_folders(self.config.dest)
 
-        temp_log_file = Path(self.log_file.name + ".tmp")
-        self.temp_log_file = temp_log_file.open("a", encoding="utf-8")
+        temp_log_file = Path(self.log.name + ".tmp")
+        self.log_temp = temp_log_file.open("a", encoding="utf-8")
 
         main_path = self.reset_path_to_start()
 
         # File Count
         num_files = self.get_file_count_for_run()
-        self.main_progbar.setRange(0, num_files)
+        self.progbar_main.setRange(0, num_files)
 
         for curr_file in range(num_files):
-            if self.stop_tracker:
+            if self.is_stop_pushed:
                 break
 
             if self.state.touched_folders[root_absolute] and self.is_timed_out():
@@ -472,7 +468,7 @@ class MandalaMainGui(QWidget):
     def process_file(self, main_path: Path, top_mark: Path, curr_file: int, curr_dest: Path) -> Path:
         """Process a single file for copying."""
         while not self.state.touched_folders[self.config.root_absolute] and not self.is_timed_out():
-            if self.stop_tracker:
+            if self.is_stop_pushed:
                 return main_path
 
             main_path_absolute = main_path.resolve()
@@ -537,9 +533,9 @@ class MandalaMainGui(QWidget):
         """Handle logging of valid files."""
         msg = f"{curr_file + 1}: {random_path}"
         if self.state.is_append_log:
-            self.temp_log_file.write(f"{msg}\n")
+            self.log_temp.write(f"{msg}\n")
         else:
-            self.log_file.write(f"{msg}\n")
+            self.log.write(f"{msg}\n")
         self.signals.log_signal.emit(msg)
 
     def handle_invalid_file(self, random_path: Path, random_path_absolute: Path) -> None:
@@ -591,8 +587,8 @@ class MandalaMainGui(QWidget):
 
     def end_folder_actions(self, curr_dest: Path) -> None:
         """Create and write log at the end of folder."""
-        self.temp_log_file.close()
-        self.log_file.close()
+        self.log_temp.close()
+        self.log.close()
         self.signals.log_signal.emit(self.write_status_log(curr_dest))
 
         # Terminates the program if no files were collected
@@ -601,7 +597,7 @@ class MandalaMainGui(QWidget):
             if create_folders:
                 shutil.rmtree(curr_dest)
             elif not (create_folders or self.state.is_append_log):
-                Path(self.log_file.name).unlink()
+                Path(self.log.name).unlink()
 
     def is_valid_file(self, source: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -714,19 +710,19 @@ class MandalaMainGui(QWidget):
 
         if not self.config.create_folders:
             self.state.is_append_log = log_path.exists()
-            self.log_file = log_path.open("a", encoding="utf-8")
+            self.log = log_path.open("a", encoding="utf-8")
         else:
             folder_name = self.config.folder_name
             try:
                 Path(f"{final_dest}/{folder_name}").mkdir()
                 final_dest = final_dest / f"{folder_name}"
-                self.log_file = (final_dest / f"!{folder_name}_log.txt").open("a", encoding="utf-8")
+                self.log = (final_dest / f"!{folder_name}_log.txt").open("a", encoding="utf-8")
             except FileExistsError:
                 for x in range(len(list(final_dest.iterdir()))):
                     try:
                         Path(f"{final_dest}/{folder_name} {x + 2}").mkdir()
                         final_dest = final_dest / f"{folder_name} {x + 2}"
-                        self.log_file = (final_dest / f"!{folder_name} {x + 2}_log.txt").open("a", encoding="utf-8")
+                        self.log = (final_dest / f"!{folder_name} {x + 2}_log.txt").open("a", encoding="utf-8")
                         break
                     except FileExistsError:
                         continue
@@ -752,14 +748,12 @@ class MandalaMainGui(QWidget):
         """Stop mandala process and reset UI elements."""
         self.signals.finished_signal.emit()
 
-        self.temp_log_file.close()
-        self.log_file.close()
+        self.log_temp.close()
+        self.log.close()
 
-        self.run_btn.setVisible(True)
-        self.stop_btn.setVisible(False)
-        self.stall_time_counter_label.setVisible(False)
-        self.stall_time_dblspin.setVisible(True)
-        self.stall_time_counter_label.setText(f"{self.stall_time_limit}0 s")
+        self.btn_run.setVisible(True)
+        self.btn_stop.setVisible(False)
+        self.label_stall_time.setText(f"{self.stall_time_limit}0 s")
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
@@ -779,7 +773,7 @@ class MandalaMainGui(QWidget):
 
         if count == num_files:
             status = f"SUCCESS: {count}/{num_files} files copied"
-        elif self.stop_tracker:
+        elif self.is_stop_pushed:
             status = f"STOPPED: {count}/{num_files} files copied"
         elif count == 0 and create_folders and (timed_out or all_searched):
             reason = "timed out" if timed_out else "all files searched"
@@ -815,8 +809,8 @@ class MandalaMainGui(QWidget):
 
     def prepend_status_to_log(self, status: str) -> None:
         """Prepend the status to the log file."""
-        log_path = Path(self.log_file.name)
-        temp_log_path = Path(self.temp_log_file.name)
+        log_path = Path(self.log.name)
+        temp_log_path = Path(self.log_temp.name)
 
         if self.state.is_append_log:
             with temp_log_path.open(encoding="utf-8") as content, log_path.open("a", encoding="utf-8") as out:
@@ -828,7 +822,7 @@ class MandalaMainGui(QWidget):
                 out.write(status + "\n")
                 shutil.copyfileobj(existing, out)
             log_path.unlink()
-            temp_log_path.rename(self.log_file.name)
+            temp_log_path.rename(self.log.name)
 
     ### SETTINGS METHODS ###
 
@@ -841,7 +835,7 @@ class MandalaMainGui(QWidget):
         """Save GUI settings to registry."""
         self.settings.setValue("size", self.size())
         self.settings.setValue("pos", self.pos())
-        self.settings.setValue("show_invalid", self.log_invalid_checkbox.isChecked())
+        self.settings.setValue("show_invalid", self.checkbox_log_invalid.isChecked())
 
     def restore_global_settings(self) -> None:
         """Restore GUI settings from registry."""
@@ -855,7 +849,7 @@ class MandalaMainGui(QWidget):
 
         val = self.settings.value("show_invalid")
         if val is not None:
-            self.log_invalid_checkbox.setChecked(strtobool(val))
+            self.checkbox_log_invalid.setChecked(strtobool(val))
 
     #############################
     ########### SLOTS ###########
@@ -866,20 +860,20 @@ class MandalaMainGui(QWidget):
     @Slot()
     def reset_stall_timer_display(self) -> None:
         """Reset the stall time progress bar and counter display."""
-        self.stall_time_progbar.setValue(self.stall_time_progbar.maximum())
-        self.stall_time_counter_label.setText(f"{self.stall_time_progbar.value() / 100} s")
+        self.progbar_stall_time.setValue(self.progbar_stall_time.maximum())
+        self.label_stall_time.setText(f"{self.progbar_stall_time.value() / 100} s")
 
     @Slot()
     def change_stall_time_spinbox(self) -> None:
         """Change the stall time limit based on the spin box value."""
-        self.stall_time_limit = self.stall_time_dblspin.value()
-        self.stall_time_counter_label.setText(f"{self.stall_time_limit}0 s")
+        self.stall_time_limit = self.dblspin_stall_time.value()
+        self.label_stall_time.setText(f"{self.stall_time_limit}0 s")
 
     @Slot()
     def update_timer(self) -> None:
         """Update the stall time progress bar and counter."""
-        self.stall_time_progbar.setValue(self.stall_time_progbar.value() - 1)
-        self.stall_time_counter_label.setText(f"{self.stall_time_progbar.value() / 100} s")
+        self.progbar_stall_time.setValue(self.progbar_stall_time.value() - 1)
+        self.label_stall_time.setText(f"{self.progbar_stall_time.value() / 100} s")
 
     @Slot()
     def run_mandala_push(self) -> None:
@@ -887,7 +881,7 @@ class MandalaMainGui(QWidget):
         try:
             self.config = self.get_configuration()
         except ValueError:
-            self.log_block.append("Error: Invalid configuration")
+            self.textbrowser_log.append("Error: Invalid configuration")
             return
 
         for name, obj in inspect.getmembers(self):
@@ -895,24 +889,22 @@ class MandalaMainGui(QWidget):
                 self.was_enabled_map[name] = obj.isEnabled()
                 obj.setEnabled(False)
 
-        self.main_progbar.reset()
-        self.stall_time_progbar.setRange(0, int(self.stall_time_limit * 100))
-        self.stall_time_progbar.setValue(self.stall_time_progbar.maximum())
-        self.stall_time_counter_label.setText(f"{self.stall_time_limit}0 s")
+        self.progbar_main.reset()
+        self.progbar_stall_time.setRange(0, int(self.stall_time_limit * 100))
+        self.progbar_stall_time.setValue(self.progbar_stall_time.maximum())
+        self.label_stall_time.setText(f"{self.stall_time_limit}0 s")
 
         self.timer.start(10)
-        self.run_btn.setVisible(False)
-        self.stop_btn.setVisible(True)
-        self.stall_time_counter_label.setVisible(True)
-        self.stall_time_dblspin.setVisible(False)
-        self.stop_tracker = False
+        self.btn_run.setVisible(False)
+        self.btn_stop.setVisible(True)
+        self.is_stop_pushed = False
 
         self.threadpool.globalInstance().start(self.worker)
 
     @Slot()
-    def stop_mandala_push(self) -> None:
+    def stop_mandala_on_push(self) -> None:
         """Stop the mandala process."""
-        self.stop_tracker = True
+        self.is_stop_pushed = True
 
     ### SETTINGS SLOTS ###
 
