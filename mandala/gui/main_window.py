@@ -5,7 +5,6 @@ from __future__ import annotations
 import inspect
 import os
 import random
-import re
 import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,8 +13,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, TextIO
 
 import send2trash
-import soundfile
-from mutagen.mp3 import MP3
 from PySide6.QtCore import QDir, QPoint, QSettings, QSize, Qt, QThreadPool, QTimer, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -35,6 +32,7 @@ from ..config.constants import (
     BYTES_IN_MEGABYTE,
     SECONDS_IN_MINUTE,
 )
+from ..core.config_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
 from ..core.mandala_state import MandalaState
 from ..gui.components import (
@@ -278,7 +276,6 @@ class MandalaMainGui(QWidget):
 
             main_path = self.process_file(main_path, top_weight_mark, curr_file, curr_dest)
 
-        #########################  END OF FOLDER  #########################
         self.end_folder_actions(curr_dest)
 
     def process_file(self, main_path: Path, top_mark: Path, curr_file: int, curr_dest: Path) -> Path:
@@ -324,7 +321,7 @@ class MandalaMainGui(QWidget):
                     random_path_size = Path(random_path).stat().st_size
                     random_path_relative = Path(os.path.relpath(random_path, self.config.root))
                     # If file is valid
-                    if self.is_valid_file(random_path, random_path_size) and self.copy_files_to_target(
+                    if self.file_validator.is_valid(random_path, random_path_size) and self.copy_files_to_target(
                         curr_file, random_path, curr_dest, random_path_size
                     ):
                         self.handle_log(random_path_relative, curr_file)
@@ -414,81 +411,6 @@ class MandalaMainGui(QWidget):
                 shutil.rmtree(curr_dest)
             elif not (create_folders or self.state.is_append_log):
                 Path(self.log.name).unlink()
-
-    def is_valid_file(self, source: Path, size: int) -> bool:
-        """Check if a file is valid based on the current filters."""
-        # If no limit, all valid, else checks valid size range. Returns immediately if neither
-        if not self.config.limit_size or self.config.min_size > size > self.config.max_size:
-            return False
-
-        # If a blacklist extension or keyword is found, immediately return invalid
-        for not_extension in self.config.not_extensions:
-            if re.compile(rf"\.{not_extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return False
-
-        for not_keyword in self.config.not_keywords:
-            if re.compile(rf"(.*){not_keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return False
-
-        # If no extension or keyword, all valid.
-        # If whitelist item found, immediately breaks
-        is_extension = self.is_extension(source)
-        is_keyword = self.is_keyword(source)
-
-        # If a duration can be get it will be checked, otherwise skips
-        is_within_duration = self.is_within_duration(source)
-
-        # Checks that everything is True
-        return is_extension and is_keyword and is_within_duration
-
-    def is_extension(self, source: Path) -> bool:
-        """Check if a file has the specified extensions."""
-        if not self.config.extensions:
-            return True
-
-        for extension in self.config.extensions:
-            if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return True
-
-        return False
-
-    def is_keyword(self, source: Path) -> bool:
-        """Check if a file contains the specified keywords."""
-        if not self.config.keywords:
-            return True
-
-        for keyword in self.config.keywords:
-            if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return True
-
-        return False
-
-    def is_within_duration(self, source: Path) -> bool:
-        """Check if a file is within the specified duration range."""
-        if not self.config.limit_duration:
-            return True
-
-        mp3_suffix = ".mp3"
-        duration = 0.0
-        min_duration = self.config.min_duration
-        max_duration = self.config.max_duration
-
-        try:
-            sound = soundfile.SoundFile(source)
-            duration = len(sound) / sound.samplerate
-        except RuntimeError:
-            try:
-                if source.suffix == mp3_suffix:
-                    duration = MP3(source).info.length
-                    return min_duration <= duration <= max_duration
-            except ValueError:
-                return True
-            else:
-                return True
-        except ValueError:
-            return True
-
-        return min_duration <= duration <= max_duration
 
     def copy_files_to_target(self, file_num: int, source: Path, dest: Path, source_size: int) -> bool | None:
         """Copy files to the target destination with appropriate naming."""
@@ -666,6 +588,8 @@ class MandalaMainGui(QWidget):
         except ValueError:
             self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
             return
+
+        self.file_validator = FileValidator(self.config)
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):

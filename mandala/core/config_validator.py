@@ -1,79 +1,56 @@
-"""Mandala configuration dataclass."""
+"""Config validation functions for Mandala."""
+
+from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import soundfile
 from mutagen.mp3 import MP3
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from mandala.core.mandala_config import MandalaConfig
+
 
 @dataclass(slots=True)
-class MandalaConfig:
-    """Dataclass for Mandala configuration."""
+class FileValidator:
+    """Class for validating files based on configuration."""
 
-    root: Path = field(default_factory=Path)
-    root_absolute: Path = field(default_factory=Path)
-    dest: Path = field(default_factory=Path)
+    cfg: MandalaConfig
 
-    num_files: int = 0
+    def is_valid(self, source: Path, size: int) -> bool:
+        """Check if a file is valid based on the current filters."""
+        if not self.is_valid_size(size):
+            return False
 
-    # Filter Keywords and Extensions
-    keywords: list[str] = field(default_factory=list)
-    not_keywords: list[str] = field(default_factory=list)
-    extensions: list[str] = field(default_factory=list)
-    not_extensions: list[str] = field(default_factory=list)
+        if self.is_not_extension_or_keyword(source):
+            return False
 
-    # Filter Size
-    limit_size: bool = False
-    min_size: float = 0.0
-    max_size: float = 0.0
+        if not self.is_extension(source):
+            return False
 
-    # Filter Duration
-    limit_duration: bool = False
-    min_duration: float = 0.0
-    max_duration: float = 0.0
+        if not self.is_keyword(source):
+            return False
 
-    # Filter Weight
-    weight_top: int = 0
-    weight_bottom: int = 0
-
-    # Folder Creation
-    create_folders: bool = False
-    folder_name: str = ""
-    unique_folders: bool = True
-    num_folders: int = 1
-
-    # Renaming
-    index_files: bool = False
-    rename_files: bool = False
-    rename_name: str = ""
-
-    # Trash
-    trash_empty_folders: bool = False
-    trash_source_files: bool = False
-    trash_invalid_files: bool = False
-
-    # Invalid
-    log_invalid: bool = True
-
-    # Stall time
-    stall_time_limit: float = 0.0
+        return self.is_within_duration(source)
 
     def is_valid_size(self, size: int) -> bool:
         """Check if a file is within the specified size range."""
-        if not self.limit_size:
+        if not self.cfg.limit_size:
             return True
 
-        return self.min_size <= size <= self.max_size
+        return self.cfg.min_size <= size <= self.cfg.max_size
 
     def is_not_extension_or_keyword(self, source: Path) -> bool:
         """Check if a file has the specified not extensions or not keywords."""
-        for not_extension in self.not_extensions:
+        for not_extension in self.cfg.not_extensions:
             if re.compile(rf"\.{not_extension}$", re.IGNORECASE).search(source.suffix) is not None:
                 return True
 
-        for not_keyword in self.not_keywords:
+        for not_keyword in self.cfg.not_keywords:
             if re.compile(rf"(.*){not_keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
                 return True
 
@@ -81,10 +58,10 @@ class MandalaConfig:
 
     def is_extension(self, source: Path) -> bool:
         """Check if a file has the specified extensions."""
-        if not self.extensions:
+        if not self.cfg.extensions:
             return True
 
-        for extension in self.extensions:
+        for extension in self.cfg.extensions:
             if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
                 return True
 
@@ -92,10 +69,10 @@ class MandalaConfig:
 
     def is_keyword(self, source: Path) -> bool:
         """Check if a file contains the specified keywords."""
-        if not self.keywords:
+        if not self.cfg.keywords:
             return True
 
-        for keyword in self.keywords:
+        for keyword in self.cfg.keywords:
             if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
                 return True
 
@@ -103,12 +80,12 @@ class MandalaConfig:
 
     def is_within_duration(self, source: Path) -> bool:
         """Check if a file is within the specified duration range."""
-        if not self.limit_duration:
+        if not self.cfg.limit_duration:
             return True
 
         duration = 0.0
-        min_duration = self.min_duration
-        max_duration = self.max_duration
+        min_duration = self.cfg.min_duration
+        max_duration = self.cfg.max_duration
 
         try:
             sound = soundfile.SoundFile(source)
