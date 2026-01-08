@@ -44,7 +44,13 @@ from ..config.constants import (
     BYTES_IN_MEGABYTE,
     SECONDS_IN_MINUTE,
 )
-from ..gui.components import DblRangeFilterWidget, DualListWidget, PathSelectorWidget, RangeFilterWidget
+from ..gui.components import (
+    DblRangeFilterWidget,
+    DualListWidget,
+    PathSelectorWidget,
+    RangeFilterWidget,
+    TrashSettingsWidget,
+)
 from ..gui.workers import RunMandalaWorker, WorkerSignals
 from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
 from .qt_helpers import create_spinbox
@@ -98,6 +104,9 @@ class MandalaConfig:
     trash_empty_folders: bool = False
     trash_source_files: bool = False
     trash_invalid_files: bool = False
+
+    # Invalid
+    log_invalid: bool = True
 
     def is_extension(self, source: Path) -> bool:
         """Check if a file has the specified extensions."""
@@ -257,14 +266,7 @@ class MandalaMainGui(QWidget):
         filename_layout.addWidget(self.rename_filename_radio, 2, 0)
         filename_layout.addWidget(self.rename_filename_entry, 2, 1)
 
-        self.is_trash_empty = QCheckBox("Empty Folders")
-        self.is_trash_source = QCheckBox("Valid Files")
-        self.is_trash_invalid = QCheckBox("Invalid Files")
-        self.trash_groupbox = QGroupBox(title="Trash", flat=True, checkable=True)
-        trash_layout = QVBoxLayout(self.trash_groupbox)
-        trash_layout.addWidget(self.is_trash_empty)
-        trash_layout.addWidget(self.is_trash_source)
-        trash_layout.addWidget(self.is_trash_invalid)
+        self.ui_trash = TrashSettingsWidget(title="Trash", parent=self)
 
         self.setup_section = QWidget()
         layout = QGridLayout(self.setup_section)
@@ -273,7 +275,7 @@ class MandalaMainGui(QWidget):
         layout.addWidget(self.file_count_groupbox, 2, 0, 1, 6)
         layout.addWidget(self.folders_groupbox, 3, 0, 1, 2)
         layout.addWidget(self.filename_groupbox, 3, 2, 1, 2)
-        layout.addWidget(self.trash_groupbox, 3, 4, 1, 2)
+        layout.addWidget(self.ui_trash, 3, 4, 1, 2)
 
     # FILTER SECTION
 
@@ -470,9 +472,14 @@ class MandalaMainGui(QWidget):
             index_files=self.index_filename_radio.isChecked() if self.filename_groupbox.isChecked() else False,
             rename_files=self.rename_filename_radio.isChecked() if self.filename_groupbox.isChecked() else False,
             rename_name=self.rename_filename_entry.text() if self.filename_groupbox.isChecked() else "",
-            trash_empty_folders=self.is_trash_empty.isChecked() if self.trash_groupbox.isChecked() else False,
-            trash_source_files=self.is_trash_source.isChecked() if self.trash_groupbox.isChecked() else False,
-            trash_invalid_files=self.is_trash_invalid.isChecked() if self.trash_groupbox.isChecked() else False,
+            trash_empty_folders=self.ui_trash.checkbox_empty_folders.isChecked()
+            if self.ui_trash.isChecked()
+            else False,
+            trash_source_files=self.ui_trash.checkbox_valid_files.isChecked() if self.ui_trash.isChecked() else False,
+            trash_invalid_files=self.ui_trash.checkbox_invalid_files.isChecked()
+            if self.ui_trash.isChecked()
+            else False,
+            log_invalid=self.log_invalid_checkbox.isChecked(),
         )
 
     def run_mandala(self) -> None:
@@ -597,7 +604,7 @@ class MandalaMainGui(QWidget):
     def handle_invalid_file(self, random_path: Path, random_path_absolute: Path) -> None:
         """Handle invalid files by logging and trashing if necessary."""
         count = self.state.count
-        if self.log_invalid_checkbox.isChecked():
+        if self.config.log_invalid:
             prefix = "**"
             if count >= 100:
                 prefix = "***"

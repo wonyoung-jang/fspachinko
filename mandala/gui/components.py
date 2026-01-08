@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -22,6 +24,22 @@ from mandala.gui.main_window import QSpinBox
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+class TrashSettingsWidget(QGroupBox):
+    """Handles logic for trash settings."""
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        """Initialize the trash settings widget."""
+        super().__init__(title, parent, checkable=True, flat=True)
+
+        self.checkbox_empty_folders = QCheckBox("Empty Folders")
+        self.checkbox_valid_files = QCheckBox("Valid Files")
+        self.checkbox_invalid_files = QCheckBox("Invalid Files")
+        trash_layout = QVBoxLayout(self)
+        trash_layout.addWidget(self.checkbox_empty_folders)
+        trash_layout.addWidget(self.checkbox_valid_files)
+        trash_layout.addWidget(self.checkbox_invalid_files)
 
 
 class PathSelectorWidget(QGroupBox):
