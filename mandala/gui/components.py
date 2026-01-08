@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -15,8 +15,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QProgressBar,
     QPushButton,
     QRadioButton,
+    QTextBrowser,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -102,14 +105,14 @@ class FolderCreatorWidget(QGroupBox):
 
         self.spinbox_folder_count = QSpinBox(minimum=1, maximum=100_000)
         self.lineedit_folder_name = QLineEdit("mandala_output")
-        self.checkbox_unique_folders = QCheckBox("Make Unique")
-        self.checkbox_unique_folders.setChecked(True)
+        self.chk_unique_folders = QCheckBox("Make Unique")
+        self.chk_unique_folders.setChecked(True)
         layout = QGridLayout(self)
         layout.addWidget(QLabel("Count"), 0, 0)
         layout.addWidget(self.spinbox_folder_count, 0, 1)
         layout.addWidget(QLabel("Name"), 1, 0)
         layout.addWidget(self.lineedit_folder_name, 1, 1)
-        layout.addWidget(self.checkbox_unique_folders, 2, 0, 1, 2)
+        layout.addWidget(self.chk_unique_folders, 2, 0, 1, 2)
 
 
 class FilenameSettingsWidget(QGroupBox):
@@ -140,13 +143,13 @@ class TrashSettingsWidget(QGroupBox):
         """Initialize the trash settings widget."""
         super().__init__(title, parent, checkable=True, flat=True)
 
-        self.checkbox_empty_folders = QCheckBox("Empty Folders")
-        self.checkbox_valid_files = QCheckBox("Valid Files")
-        self.checkbox_invalid_files = QCheckBox("Invalid Files")
+        self.chk_empty_folders = QCheckBox("Empty Folders")
+        self.chk_valid_files = QCheckBox("Valid Files")
+        self.chk_invalid_files = QCheckBox("Invalid Files")
         layout = QVBoxLayout(self)
-        layout.addWidget(self.checkbox_empty_folders)
-        layout.addWidget(self.checkbox_valid_files)
-        layout.addWidget(self.checkbox_invalid_files)
+        layout.addWidget(self.chk_empty_folders)
+        layout.addWidget(self.chk_valid_files)
+        layout.addWidget(self.chk_invalid_files)
 
 
 class PathSelectorWidget(QGroupBox):
@@ -288,3 +291,117 @@ class DualListWidget(QGroupBox):
             "include": self.include_edit.text(),
             "exclude": self.exclude_edit.text(),
         }
+
+
+class SidebarWidget(QWidget):
+    """Side panel with actions and global settings."""
+
+    save_requested = Signal()
+    load_requested = Signal()
+    default_requested = Signal()
+    reset_requested = Signal()
+    root_open_requested = Signal()
+    dest_open_requested = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize the sidebar widget."""
+        super().__init__(parent)
+
+        self.btn_load = QPushButton("Load Config")
+        self.btn_save = QPushButton("Save Config")
+        self.btn_root = QPushButton("Open Root")
+        self.btn_dest = QPushButton("Open Destination")
+        self.btn_default = QPushButton("Set Default Config")
+        self.btn_reset = QPushButton("Reset to Default Config")
+
+        self.chk_invalid = QCheckBox("Log Invalid")
+        self.chk_invalid.setChecked(True)
+
+        # Signals
+        self.btn_save.clicked.connect(self.save_requested)
+        self.btn_load.clicked.connect(self.load_requested)
+        self.btn_default.clicked.connect(self.default_requested)
+        self.btn_reset.clicked.connect(self.reset_requested)
+        self.btn_root.clicked.connect(self.root_open_requested)
+        self.btn_dest.clicked.connect(self.dest_open_requested)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.btn_root)
+        layout.addWidget(self.btn_dest)
+        layout.addSpacing(64)
+        layout.addWidget(self.btn_load)
+        layout.addWidget(self.btn_save)
+        layout.addWidget(self.btn_default)
+        layout.addWidget(self.btn_reset)
+        layout.addStretch()
+        layout.addWidget(self.chk_invalid)
+
+
+class ExecutionWidget(QWidget):
+    """Run/Stop controls, Logs, and Stall Timer."""
+
+    start_requested = Signal()
+    stop_requested = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize the execution widget."""
+        super().__init__(parent)
+
+        self.textbrowser_log = QTextBrowser()
+        self.textbrowser_log.setMinimumHeight(175)
+        self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+
+        self.progbar_stall = QProgressBar(textVisible=False)
+
+        self.dblspin_stall = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
+        self.dblspin_stall.valueChanged.connect(self.update_stall_display)
+
+        self.label_stall = QLabel("10.0 s")
+
+        self.progbar_main = QProgressBar(value=0, format="%v", textVisible=True, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.btn_start = QPushButton("Start")
+        self.btn_stop = QPushButton("Stop")
+        self.btn_stop.setEnabled(False)
+
+        self.btn_start.clicked.connect(self.on_start)
+        self.btn_stop.clicked.connect(self.on_stop)
+
+        layout = QGridLayout(self)
+        layout.addWidget(self.textbrowser_log, 0, 0, 1, 3)
+        layout.addWidget(self.progbar_stall, 1, 0)
+        layout.addWidget(self.dblspin_stall, 1, 1)
+        layout.addWidget(self.label_stall, 1, 2)
+        layout.addWidget(self.progbar_main, 2, 0)
+        layout.addWidget(self.btn_start, 2, 1)
+        layout.addWidget(self.btn_stop, 2, 2)
+
+    @Slot()
+    def update_stall_display(self) -> None:
+        """Update the stall time label based on spin box value."""
+        self.label_stall.setText(f"{self.dblspin_stall.value()} s")
+
+    def on_start(self) -> None:
+        """Handle start button click."""
+        self.set_running_state(running=True)
+        self.start_requested.emit()
+
+    def on_stop(self) -> None:
+        """Handle stop button click."""
+        self.stop_requested.emit()
+
+    def set_running_state(self, *, running: bool) -> None:
+        """Update the GUI based on running state."""
+        self.btn_start.setEnabled(not running)
+        self.btn_stop.setEnabled(running)
+        self.label_stall.setEnabled(running)
+        self.dblspin_stall.setEnabled(not running)
+
+        if running:
+            self.progbar_main.reset()
+            self.progbar_stall.setValue(100)
+            self.textbrowser_log.clear()
+
+    def log(self, text: str) -> None:
+        """Append text to the log viewer."""
+        self.textbrowser_log.append(text)

@@ -7,8 +7,7 @@ import os
 import random
 import re
 import shutil
-from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
@@ -24,15 +23,9 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QGridLayout,
-    QLabel,
     QLineEdit,
-    QProgressBar,
-    QPushButton,
     QRadioButton,
     QSpinBox,
-    QTextBrowser,
-    QTextEdit,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -42,14 +35,18 @@ from ..config.constants import (
     BYTES_IN_MEGABYTE,
     SECONDS_IN_MINUTE,
 )
+from ..core.mandala_config import MandalaConfig
+from ..core.mandala_state import MandalaState
 from ..gui.components import (
     DblRangeFilterWidget,
     DualListWidget,
+    ExecutionWidget,
     FileCountWidget,
     FilenameSettingsWidget,
     FolderCreatorWidget,
     PathSelectorWidget,
     RangeFilterWidget,
+    SidebarWidget,
     TrashSettingsWidget,
 )
 from ..gui.workers import RunMandalaWorker, WorkerSignals
@@ -57,113 +54,6 @@ from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strt
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
-
-
-@dataclass(slots=True)
-class MandalaConfig:
-    """Dataclass for Mandala configuration."""
-
-    root: Path = field(default_factory=Path)
-    root_absolute: Path = field(default_factory=Path)
-    dest: Path = field(default_factory=Path)
-
-    num_files: int = 0
-
-    # Filter Keywords and Extensions
-    keywords: list[str] = field(default_factory=list)
-    not_keywords: list[str] = field(default_factory=list)
-    extensions: list[str] = field(default_factory=list)
-    not_extensions: list[str] = field(default_factory=list)
-
-    # Filter Size
-    limit_size: bool = False
-    min_size: float = 0.0
-    max_size: float = 0.0
-
-    # Filter Duration
-    limit_duration: bool = False
-    min_duration: float = 0.0
-    max_duration: float = 0.0
-
-    # Filter Weight
-    weight_top: int = 0
-    weight_bottom: int = 0
-
-    # Folder Creation
-    create_folders: bool = False
-    folder_name: str = ""
-    unique_folders: bool = True
-    num_folders: int = 1
-
-    # Renaming
-    index_files: bool = False
-    rename_files: bool = False
-    rename_name: str = ""
-
-    # Trash
-    trash_empty_folders: bool = False
-    trash_source_files: bool = False
-    trash_invalid_files: bool = False
-
-    # Invalid
-    log_invalid: bool = True
-
-    def is_extension(self, source: Path) -> bool:
-        """Check if a file has the specified extensions."""
-        if not self.extensions:
-            return True
-
-        for extension in self.extensions:
-            if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return True
-
-        return False
-
-    def is_keyword(self, source: Path) -> bool:
-        """Check if a file contains the specified keywords."""
-        if not self.keywords:
-            return True
-
-        for keyword in self.keywords:
-            if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return True
-
-        return False
-
-
-@dataclass(slots=True)
-class MandalaState:
-    """Dataclass for Mandala state."""
-
-    touched_files: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
-    touched_folders: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
-    path_cache: dict[Path, list[Path]] = field(default_factory=lambda: defaultdict(list))
-    weighted_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
-    touched_by_weight: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
-    count: int = 0
-    bytes_in_current_folder: int = 0
-    start_folder_time: float = 0.0
-    start_stall_time: float = 0.0
-    is_append_log: bool = False
-
-    def reset_for_folder(self, root_absolute: Path, *, unique_folders: bool) -> None:
-        """Reset state variables for a new folder."""
-        self.count = 0
-        self.bytes_in_current_folder = 0
-        self.start_folder_time = perf_counter()
-        self.start_stall_time = perf_counter()
-        self.weighted_counts.clear()
-        self.touched_by_weight.clear()
-
-        if unique_folders:
-            self.touched_folders[root_absolute] = False
-            for key in self.touched_by_weight:
-                self.touched_files[key] = False
-                self.touched_folders[key] = False
-        else:
-            self.touched_files.clear()
-            self.touched_folders.clear()
-            self.path_cache.clear()
 
 
 @dataclass(slots=True)
@@ -184,108 +74,31 @@ class MandalaMainGui(QWidget):
         self.log: TextIO = None
         self.log_temp: TextIO = None
 
-        self.setup_gui()
-        self.config = self.get_configuration()
+        self.setup_components()
+        self.setup_layout()
         self.setup_gui_signals()
+
+        self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
+        self.timer.timeout.connect(self.update_timer)
 
         self.settings = QSettings()
         self.restore_global_settings()
         self.restore_gui(self.settings)
 
+        self.is_stop_pushed = False
+        self.config = self.get_configuration()
+
+        self.setWindowTitle("Mandala: Copy random files")
+
     def setup_gui_signals(self) -> None:
         """Set up signals for the worker thread."""
         self.signals = WorkerSignals()
-        self.signals.count_signal.connect(lambda: self.progbar_main.setValue(self.state.count))
+        self.signals.count_signal.connect(lambda: self.ui_sect_exec.progbar_main.setValue(self.state.count))
         self.signals.time_signal.connect(self.reset_stall_timer_display)
-        self.signals.log_signal.connect(lambda s: self.textbrowser_log.append(s))
+        self.signals.log_signal.connect(lambda s: self.ui_sect_exec.textbrowser_log.append(s))
         self.signals.finished_signal.connect(lambda: self.timer.stop())
 
-    ######################################
-    ################# UI #################
-    ######################################
-
-    # SIDEBAR SECTION
-
-    def setup_sidebar_section(self) -> None:
-        """Set up the sidebar UI components."""
-        self.checkbox_log_invalid = QCheckBox("Log Invalid")
-        self.checkbox_log_invalid.setChecked(True)
-
-        btn_open_root = QPushButton("Root")
-        btn_open_root.clicked.connect(lambda: os.startfile(self.config.root))
-
-        btn_open_dest = QPushButton("Destination")
-        btn_open_dest.clicked.connect(lambda: os.startfile(self.config.dest))
-
-        btn_save_config = QPushButton("Save")
-        btn_save_config.clicked.connect(self.save_config)
-
-        btn_load_config = QPushButton("Load")
-        btn_load_config.clicked.connect(self.load_config)
-
-        btn_set_default = QPushButton("Set Default")
-        btn_set_default.clicked.connect(lambda: self.save_gui(self.settings))
-
-        btn_reset_to_default = QPushButton("Reset to Default")
-        btn_reset_to_default.clicked.connect(lambda: self.restore_gui(self.settings))
-
-        self.ui_section_sidebar = QWidget()
-        layout = QVBoxLayout(self.ui_section_sidebar)
-        layout.addWidget(btn_load_config)
-        layout.addWidget(btn_save_config)
-        layout.addWidget(btn_open_root)
-        layout.addWidget(btn_open_dest)
-        layout.addWidget(btn_set_default)
-        layout.addWidget(btn_reset_to_default)
-        layout.addStretch()
-        layout.addWidget(self.checkbox_log_invalid)
-
-    # RUN SECTION
-
-    def setup_run_section(self) -> None:
-        """Set up the run section UI components."""
-        # PROGRESS BAR
-        self.progbar_main = QProgressBar(value=0, format="%v", textVisible=True, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # RUN BUTTON
-        self.btn_run = QPushButton("Start")
-        self.btn_run.clicked.connect(self.run_mandala_push)
-
-        # STOP BUTTON
-        self.btn_stop = QPushButton("Stop")
-        self.btn_stop.setVisible(False)
-        self.btn_stop.clicked.connect(self.stop_mandala_on_push)
-
-        # STALL TIMER BAR DISPLAY
-        self.dblspin_stall_time = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
-        self.dblspin_stall_time.valueChanged.connect(self.change_stall_time_spinbox)
-
-        self.stall_time_limit = self.dblspin_stall_time.value()
-
-        self.progbar_stall_time = QProgressBar(textVisible=False)
-
-        self.label_stall_time = QLabel(f"{self.stall_time_limit}0 s")
-
-        self.textbrowser_log = QTextBrowser()
-        self.textbrowser_log.setMinimumHeight(150)
-        self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-
-        self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
-        self.timer.timeout.connect(self.update_timer)
-
-        self.ui_section_run = QWidget()
-        layout = QGridLayout(self.ui_section_run)
-        layout.addWidget(self.textbrowser_log, 0, 0, 1, 3)
-        layout.addWidget(self.progbar_stall_time, 1, 0)
-        layout.addWidget(self.dblspin_stall_time, 1, 1)
-        layout.addWidget(self.label_stall_time, 1, 2)
-        layout.addWidget(self.progbar_main, 2, 0)
-        layout.addWidget(self.btn_run, 2, 1, 1, 2)
-        layout.addWidget(self.btn_stop, 2, 2, 1, 2)
-
-    # SETUP UI
-
-    def setup_gui(self) -> None:
+    def setup_components(self) -> None:
         """Set up the main UI components."""
         # Init setup components
         self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()], parent=self)
@@ -302,46 +115,52 @@ class MandalaMainGui(QWidget):
         self.ui_duration = DblRangeFilterWidget(title="Duration", suffix_options=("s", "m"), parent=self)
         self.ui_weight = RangeFilterWidget(title="Weight", parent=self)
 
+        # Init sidebar and run components
+        self.ui_sect_sidebar = SidebarWidget(parent=self)
+        self.ui_sect_exec = ExecutionWidget(parent=self)
+
+        # Connections
+        self.ui_sect_exec.start_requested.connect(self.start_mandala_on_push)
+        self.ui_sect_exec.stop_requested.connect(self.stop_mandala_on_push)
+
+        self.ui_sect_sidebar.root_open_requested.connect(lambda: os.startfile(self.ui_root.current_path()))
+        self.ui_sect_sidebar.dest_open_requested.connect(lambda: os.startfile(self.ui_dest.current_path()))
+        self.ui_sect_sidebar.save_requested.connect(self.save_config)
+        self.ui_sect_sidebar.load_requested.connect(self.load_config)
+        self.ui_sect_sidebar.default_requested.connect(lambda: self.save_gui(self.settings))
+        self.ui_sect_sidebar.reset_requested.connect(lambda: self.restore_gui(self.settings))
+
+    def setup_layout(self) -> None:
+        """Set up the main UI layouts."""
         # Layout setup components
-        self.ui_section_setup = QWidget()
-        layout = QGridLayout(self.ui_section_setup)
-        layout.addWidget(self.ui_root, 0, 0, 1, 6)
-        layout.addWidget(self.ui_dest, 1, 0, 1, 6)
-        layout.addWidget(self.ui_file_count, 2, 0, 1, 6)
-        layout.addWidget(self.ui_folders, 3, 0, 1, 2)
-        layout.addWidget(self.ui_filenames, 3, 2, 1, 2)
-        layout.addWidget(self.ui_trash, 3, 4, 1, 2)
+        ui_sect_setup = QWidget()
+        l_setup = QGridLayout(ui_sect_setup)
+        l_setup.addWidget(self.ui_root, 0, 0, 1, 6)
+        l_setup.addWidget(self.ui_dest, 1, 0, 1, 6)
+        l_setup.addWidget(self.ui_file_count, 2, 0, 1, 6)
+        l_setup.addWidget(self.ui_folders, 3, 0, 1, 2)
+        l_setup.addWidget(self.ui_filenames, 3, 2, 1, 2)
+        l_setup.addWidget(self.ui_trash, 3, 4, 1, 2)
 
         # Layout filter components
-        self.ui_section_filter = QWidget()
-        layout = QGridLayout(self.ui_section_filter)
-        layout.addWidget(self.ui_keywords, 0, 0, 1, 3)
-        layout.addWidget(self.ui_extensions, 1, 0, 1, 3)
-        layout.addWidget(self.ui_filesize, 2, 0)
-        layout.addWidget(self.ui_duration, 2, 1)
-        layout.addWidget(self.ui_weight, 2, 2)
+        ui_sect_filter = QWidget()
+        l_filter = QGridLayout(ui_sect_filter)
+        l_filter.addWidget(self.ui_keywords, 0, 0, 1, 3)
+        l_filter.addWidget(self.ui_extensions, 1, 0, 1, 3)
+        l_filter.addWidget(self.ui_filesize, 2, 0)
+        l_filter.addWidget(self.ui_duration, 2, 1)
+        l_filter.addWidget(self.ui_weight, 2, 2)
 
-        self.setup_sidebar_section()
-        self.setup_run_section()
-
-        self.setWindowTitle("Mandala: Copy random files")
-
+        # Main layout
         layout = QGridLayout(self)
-        layout.addWidget(self.ui_section_setup, 0, 0)
-        layout.addWidget(self.ui_section_filter, 1, 0)
-        layout.addWidget(self.ui_section_sidebar, 0, 1, 2, 1)
-        layout.addWidget(self.ui_section_run, 2, 0, 1, 2)
+        layout.addWidget(ui_sect_setup, 0, 0)
+        layout.addWidget(ui_sect_filter, 1, 0)
+        layout.addWidget(self.ui_sect_sidebar, 0, 1, 2, 1)
+        layout.addWidget(self.ui_sect_exec, 2, 0, 1, 2)
 
     ###########################################
     ################# METHODS #################
     ###########################################
-
-    ### ROOT AND DESTINATION METHODS ###
-
-    def reset_path_to_start(self) -> Path:
-        """Reset the current working directory to the start root path."""
-        os.chdir(self.config.root)
-        return Path.cwd()
 
     ### RUN METHODS ###
 
@@ -404,19 +223,16 @@ class MandalaMainGui(QWidget):
             weight_bottom=self.ui_weight.max_spin.value(),
             create_folders=self.ui_folders.isChecked(),
             folder_name=self.ui_folders.lineedit_folder_name.text(),
-            unique_folders=self.ui_folders.checkbox_unique_folders.isChecked(),
+            unique_folders=self.ui_folders.chk_unique_folders.isChecked(),
             num_folders=self.ui_folders.spinbox_folder_count.value() if self.ui_folders.isChecked() else 1,
             index_files=self.ui_filenames.radio_index.isChecked() if self.ui_filenames.isChecked() else False,
             rename_files=self.ui_filenames.radio_rename.isChecked() if self.ui_filenames.isChecked() else False,
             rename_name=self.ui_filenames.lineedit_rename.text() if self.ui_filenames.isChecked() else "",
-            trash_empty_folders=self.ui_trash.checkbox_empty_folders.isChecked()
-            if self.ui_trash.isChecked()
-            else False,
-            trash_source_files=self.ui_trash.checkbox_valid_files.isChecked() if self.ui_trash.isChecked() else False,
-            trash_invalid_files=self.ui_trash.checkbox_invalid_files.isChecked()
-            if self.ui_trash.isChecked()
-            else False,
-            log_invalid=self.checkbox_log_invalid.isChecked(),
+            trash_empty_folders=self.ui_trash.chk_empty_folders.isChecked() if self.ui_trash.isChecked() else False,
+            trash_source_files=self.ui_trash.chk_valid_files.isChecked() if self.ui_trash.isChecked() else False,
+            trash_invalid_files=self.ui_trash.chk_invalid_files.isChecked() if self.ui_trash.isChecked() else False,
+            log_invalid=self.ui_sect_sidebar.chk_invalid.isChecked(),
+            stall_time_limit=self.ui_sect_exec.dblspin_stall.value(),
         )
 
     def run_mandala(self) -> None:
@@ -447,11 +263,11 @@ class MandalaMainGui(QWidget):
         temp_log_file = Path(self.log.name + ".tmp")
         self.log_temp = temp_log_file.open("a", encoding="utf-8")
 
-        main_path = self.reset_path_to_start()
+        main_path = self.config.root
 
         # File Count
         num_files = self.get_file_count_for_run()
-        self.progbar_main.setRange(0, num_files)
+        self.ui_sect_exec.progbar_main.setRange(0, num_files)
 
         for curr_file in range(num_files):
             if self.is_stop_pushed:
@@ -478,7 +294,7 @@ class MandalaMainGui(QWidget):
                     self.state.path_cache[main_path_absolute] = list(main_path.iterdir())
             except PermissionError:
                 self.state.touched_folders[main_path_absolute] = True
-                main_path = self.reset_path_to_start()
+                main_path = self.config.root
                 continue
 
             # If folder is empty
@@ -486,7 +302,7 @@ class MandalaMainGui(QWidget):
                 self.state.touched_folders[main_path_absolute] = True
                 if self.config.trash_empty_folders:
                     send2trash.send2trash(str(main_path_absolute))
-                main_path = self.reset_path_to_start()
+                main_path = self.config.root
             # If the folder is not empty
             else:
                 # Chooses random path and stores absolute path
@@ -497,7 +313,7 @@ class MandalaMainGui(QWidget):
                     self.touch_folder_if_all_files_touched(
                         self.state.path_cache[main_path_absolute], main_path_absolute
                     )
-                    main_path = self.reset_path_to_start()
+                    main_path = self.config.root
                 elif random_path.is_dir():
                     main_path, top_mark = self.handle_random_path_is_dir(
                         random_path, random_path_absolute, main_path, top_mark
@@ -521,12 +337,12 @@ class MandalaMainGui(QWidget):
                             send2trash.send2trash(str(random_path_absolute))
 
                         self.handle_weights(top_mark, main_path_absolute)
-                        main_path = self.reset_path_to_start()
+                        main_path = self.config.root
                         break
 
                     # If file is invalid
                     self.handle_invalid_file(random_path_relative, random_path_absolute)
-                    main_path = self.reset_path_to_start()
+                    main_path = self.config.root
         return main_path
 
     def handle_log(self, random_path: Path, curr_file: int) -> None:
@@ -582,7 +398,7 @@ class MandalaMainGui(QWidget):
                 top_weight_mark = random_path_absolute
         except PermissionError:
             self.state.touched_folders[random_path_absolute] = True
-            main_path = self.reset_path_to_start()
+            main_path = self.config.root
         return main_path, top_weight_mark
 
     def end_folder_actions(self, curr_dest: Path) -> None:
@@ -742,7 +558,7 @@ class MandalaMainGui(QWidget):
 
     def is_timed_out(self) -> bool:
         """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_stall_time) > self.stall_time_limit
+        return (perf_counter() - self.state.start_stall_time) > self.config.stall_time_limit
 
     def stop_mandala(self) -> None:
         """Stop mandala process and reset UI elements."""
@@ -751,9 +567,9 @@ class MandalaMainGui(QWidget):
         self.log_temp.close()
         self.log.close()
 
-        self.btn_run.setVisible(True)
-        self.btn_stop.setVisible(False)
-        self.label_stall_time.setText(f"{self.stall_time_limit}0 s")
+        self.ui_sect_exec.btn_start.setEnabled(True)
+        self.ui_sect_exec.btn_stop.setEnabled(False)
+        self.ui_sect_exec.label_stall.setText(f"{self.config.stall_time_limit}0 s")
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
@@ -824,7 +640,55 @@ class MandalaMainGui(QWidget):
             log_path.unlink()
             temp_log_path.rename(self.log.name)
 
-    ### SETTINGS METHODS ###
+    #############################
+    ########### SLOTS ###########
+    #############################
+
+    ### PROGRESS & TIMER SLOTS ###
+
+    @Slot()
+    def reset_stall_timer_display(self) -> None:
+        """Reset the stall time progress bar and counter display."""
+        self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
+        self.ui_sect_exec.label_stall.setText(f"{self.ui_sect_exec.progbar_stall.value() / 100} s")
+
+    @Slot()
+    def update_timer(self) -> None:
+        """Update the stall time progress bar and counter."""
+        self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.value() - 1)
+        self.ui_sect_exec.label_stall.setText(f"{self.ui_sect_exec.progbar_stall.value() / 100} s")
+
+    @Slot()
+    def start_mandala_on_push(self) -> None:
+        """Start the mandala process and disable UI elements."""
+        try:
+            self.config = self.get_configuration()
+        except ValueError:
+            self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
+            return
+
+        for name, obj in inspect.getmembers(self):
+            if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
+                self.was_enabled_map[name] = obj.isEnabled()
+                obj.setEnabled(False)
+
+        self.ui_sect_exec.progbar_main.reset()
+        self.ui_sect_exec.progbar_stall.setRange(0, int(self.config.stall_time_limit * 100))
+        self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
+        self.ui_sect_exec.label_stall.setText(f"{self.config.stall_time_limit}0 s")
+
+        self.timer.start(10)
+        self.ui_sect_exec.btn_start.setEnabled(False)
+        self.ui_sect_exec.btn_stop.setEnabled(True)
+
+        self.threadpool.globalInstance().start(self.worker)
+
+    @Slot()
+    def stop_mandala_on_push(self) -> None:
+        """Stop the mandala process."""
+        self.is_stop_pushed = True
+
+    ### SETTINGS SLOTS AND METHODS ###
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Close event to save settings."""
@@ -835,13 +699,13 @@ class MandalaMainGui(QWidget):
         """Save GUI settings to registry."""
         self.settings.setValue("size", self.size())
         self.settings.setValue("pos", self.pos())
-        self.settings.setValue("show_invalid", self.checkbox_log_invalid.isChecked())
+        self.settings.setValue("show_invalid", self.ui_sect_sidebar.chk_invalid.isChecked())
 
     def restore_global_settings(self) -> None:
         """Restore GUI settings from registry."""
         size = self.settings.value("size", QSize(500, 500))
         if isinstance(size, QSize):
-            self.resize(size)
+            self.resize(QSize(size))
 
         pos = self.settings.value("pos", QPoint(60, 60))
         if isinstance(pos, QPoint):
@@ -849,80 +713,23 @@ class MandalaMainGui(QWidget):
 
         val = self.settings.value("show_invalid")
         if val is not None:
-            self.checkbox_log_invalid.setChecked(strtobool(val))
-
-    #############################
-    ########### SLOTS ###########
-    #############################
-
-    ### PROGRESS & TIMER SLOTS ###
-
-    @Slot()
-    def reset_stall_timer_display(self) -> None:
-        """Reset the stall time progress bar and counter display."""
-        self.progbar_stall_time.setValue(self.progbar_stall_time.maximum())
-        self.label_stall_time.setText(f"{self.progbar_stall_time.value() / 100} s")
-
-    @Slot()
-    def change_stall_time_spinbox(self) -> None:
-        """Change the stall time limit based on the spin box value."""
-        self.stall_time_limit = self.dblspin_stall_time.value()
-        self.label_stall_time.setText(f"{self.stall_time_limit}0 s")
-
-    @Slot()
-    def update_timer(self) -> None:
-        """Update the stall time progress bar and counter."""
-        self.progbar_stall_time.setValue(self.progbar_stall_time.value() - 1)
-        self.label_stall_time.setText(f"{self.progbar_stall_time.value() / 100} s")
-
-    @Slot()
-    def run_mandala_push(self) -> None:
-        """Start the mandala process and disable UI elements."""
-        try:
-            self.config = self.get_configuration()
-        except ValueError:
-            self.textbrowser_log.append("Error: Invalid configuration")
-            return
-
-        for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
-                self.was_enabled_map[name] = obj.isEnabled()
-                obj.setEnabled(False)
-
-        self.progbar_main.reset()
-        self.progbar_stall_time.setRange(0, int(self.stall_time_limit * 100))
-        self.progbar_stall_time.setValue(self.progbar_stall_time.maximum())
-        self.label_stall_time.setText(f"{self.stall_time_limit}0 s")
-
-        self.timer.start(10)
-        self.btn_run.setVisible(False)
-        self.btn_stop.setVisible(True)
-        self.is_stop_pushed = False
-
-        self.threadpool.globalInstance().start(self.worker)
-
-    @Slot()
-    def stop_mandala_on_push(self) -> None:
-        """Stop the mandala process."""
-        self.is_stop_pushed = True
-
-    ### SETTINGS SLOTS ###
+            self.ui_sect_sidebar.chk_invalid.setChecked(strtobool(val))
 
     @Slot()
     def save_config(self) -> None:
         """Save GUI settings to registry."""
-        save_file, _ = QFileDialog.getSaveFileName(self, "Save Config", "config.ini", "Configuration (*.ini)")
-        if save_file:
-            self.save_gui(QSettings(save_file, QSettings.Format.IniFormat))
-            self.setWindowTitle(f"{Path(save_file).stem} - Mandala: Copy random files")
+        path, _ = QFileDialog.getSaveFileName(self, "Save Config", "config.ini", "Config (*.ini)")
+        if path:
+            self.save_gui(QSettings(path, QSettings.Format.IniFormat))
+            self.setWindowTitle(f"Mandala: Copy random files ({Path(path).stem})")
 
     @Slot()
     def load_config(self) -> None:
         """Load GUI settings from registry."""
-        open_file, _ = QFileDialog.getOpenFileName(self, "Load Config", "", "Configuration (*.ini)")
-        if open_file:
-            self.restore_gui(QSettings(open_file, QSettings.Format.IniFormat))
-            self.setWindowTitle(f"{Path(open_file).stem} - Mandala: Copy random files")
+        path, _ = QFileDialog.getOpenFileName(self, "Load Config", "", "Config (*.ini)")
+        if path:
+            self.restore_gui(QSettings(path, QSettings.Format.IniFormat))
+            self.setWindowTitle(f"Mandala: Copy random files ({Path(path).stem})")
 
     @Slot()
     def save_gui(self, settings: QSettings) -> None:

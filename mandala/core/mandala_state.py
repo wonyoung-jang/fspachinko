@@ -1,0 +1,41 @@
+"""Mandala state dataclass."""
+
+from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+from time import perf_counter
+
+
+@dataclass(slots=True)
+class MandalaState:
+    """Dataclass for Mandala state."""
+
+    touched_files: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
+    touched_folders: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
+    path_cache: dict[Path, list[Path]] = field(default_factory=lambda: defaultdict(list))
+    weighted_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
+    touched_by_weight: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
+    count: int = 0
+    bytes_in_current_folder: int = 0
+    start_folder_time: float = 0.0
+    start_stall_time: float = 0.0
+    is_append_log: bool = False
+
+    def reset_for_folder(self, root_absolute: Path, *, unique_folders: bool) -> None:
+        """Reset state variables for a new folder."""
+        self.count = 0
+        self.bytes_in_current_folder = 0
+        self.start_folder_time = perf_counter()
+        self.start_stall_time = perf_counter()
+        self.weighted_counts.clear()
+        self.touched_by_weight.clear()
+
+        if unique_folders:
+            self.touched_folders[root_absolute] = False
+            for key in self.touched_by_weight:
+                self.touched_files[key] = False
+                self.touched_folders[key] = False
+        else:
+            self.touched_files.clear()
+            self.touched_folders.clear()
+            self.path_cache.clear()
