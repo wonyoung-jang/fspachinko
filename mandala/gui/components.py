@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QRadioButton,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +25,46 @@ from mandala.gui.main_window import QSpinBox
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+class FolderCreatorWidget(QGroupBox):
+    """Handles logic for creating folders."""
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        """Initialize the create folders widget."""
+        super().__init__(title, parent, checkable=True, flat=True)
+
+        self.spinbox_folder_count = QSpinBox(minimum=1, maximum=100_000)
+        self.lineedit_folder_name = QLineEdit("mandala_output")
+        self.checkbox_unique_folders = QCheckBox("Make Unique")
+        self.checkbox_unique_folders.setChecked(True)
+        layout = QGridLayout(self)
+        layout.addWidget(QLabel("Count"), 0, 0)
+        layout.addWidget(self.spinbox_folder_count, 0, 1)
+        layout.addWidget(QLabel("Name"), 1, 0)
+        layout.addWidget(self.lineedit_folder_name, 1, 1)
+        layout.addWidget(self.checkbox_unique_folders, 2, 0, 1, 2)
+
+
+class FilenameSettingsWidget(QGroupBox):
+    """Handles logic for filename settings."""
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        """Initialize the filename settings widget."""
+        super().__init__(title, parent, checkable=True, flat=True)
+
+        keep_filename = QRadioButton("Keep")
+        keep_filename.setChecked(True)
+        self.radio_index = QRadioButton("Index")
+        self.radio_rename = QRadioButton("Rename")
+        self.radio_rename.toggled.connect(lambda: self.lineedit_rename.setEnabled(self.radio_rename.isChecked()))
+        self.lineedit_rename = QLineEdit("New Name")
+        self.lineedit_rename.setEnabled(False)
+        filename_layout = QGridLayout(self)
+        filename_layout.addWidget(keep_filename, 0, 0, 1, 2)
+        filename_layout.addWidget(self.radio_index, 1, 0, 1, 2)
+        filename_layout.addWidget(self.radio_rename, 2, 0)
+        filename_layout.addWidget(self.lineedit_rename, 2, 1)
 
 
 class TrashSettingsWidget(QGroupBox):
@@ -36,10 +77,10 @@ class TrashSettingsWidget(QGroupBox):
         self.checkbox_empty_folders = QCheckBox("Empty Folders")
         self.checkbox_valid_files = QCheckBox("Valid Files")
         self.checkbox_invalid_files = QCheckBox("Invalid Files")
-        trash_layout = QVBoxLayout(self)
-        trash_layout.addWidget(self.checkbox_empty_folders)
-        trash_layout.addWidget(self.checkbox_valid_files)
-        trash_layout.addWidget(self.checkbox_invalid_files)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.checkbox_empty_folders)
+        layout.addWidget(self.checkbox_valid_files)
+        layout.addWidget(self.checkbox_invalid_files)
 
 
 class PathSelectorWidget(QGroupBox):

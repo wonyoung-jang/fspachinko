@@ -47,6 +47,8 @@ from ..config.constants import (
 from ..gui.components import (
     DblRangeFilterWidget,
     DualListWidget,
+    FilenameSettingsWidget,
+    FolderCreatorWidget,
     PathSelectorWidget,
     RangeFilterWidget,
     TrashSettingsWidget,
@@ -237,35 +239,8 @@ class MandalaMainGui(QWidget):
 
         self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()], parent=self)
         self.ui_dest = PathSelectorWidget(title="Destination", items=[QDir.homePath()], parent=self)
-
-        self.num_folders_count_spinbox = create_spinbox(1, 100000, enabled=True)
-        self.name_of_folders_entry_lineedit = QLineEdit("Folder Name")
-        self.is_make_folders_unique_checkbox = QCheckBox("Make Unique")
-        self.is_make_folders_unique_checkbox.setChecked(True)
-        self.folders_groupbox = QGroupBox(title="Create Folders", flat=True, checkable=True)
-        create_folders_layout = QGridLayout(self.folders_groupbox)
-        create_folders_layout.addWidget(QLabel("Count"), 0, 0)
-        create_folders_layout.addWidget(self.num_folders_count_spinbox, 0, 1)
-        create_folders_layout.addWidget(QLabel("Name"), 1, 0)
-        create_folders_layout.addWidget(self.name_of_folders_entry_lineedit, 1, 1)
-        create_folders_layout.addWidget(self.is_make_folders_unique_checkbox, 2, 0, 1, 2)
-
-        keep_filename = QRadioButton("Keep")
-        keep_filename.setChecked(True)
-        self.index_filename_radio = QRadioButton("Index")
-        self.rename_filename_radio = QRadioButton("Rename")
-        self.rename_filename_radio.toggled.connect(
-            lambda: self.rename_filename_entry.setEnabled(self.rename_filename_radio.isChecked())
-        )
-        self.rename_filename_entry = QLineEdit("New Name")
-        self.rename_filename_entry.setEnabled(False)
-        self.filename_groupbox = QGroupBox(title="Filenames", flat=True, checkable=True)
-        filename_layout = QGridLayout(self.filename_groupbox)
-        filename_layout.addWidget(keep_filename, 0, 0, 1, 2)
-        filename_layout.addWidget(self.index_filename_radio, 1, 0, 1, 2)
-        filename_layout.addWidget(self.rename_filename_radio, 2, 0)
-        filename_layout.addWidget(self.rename_filename_entry, 2, 1)
-
+        self.ui_folders = FolderCreatorWidget(title="Create Folders", parent=self)
+        self.ui_filenames = FilenameSettingsWidget(title="Filenames", parent=self)
         self.ui_trash = TrashSettingsWidget(title="Trash", parent=self)
 
         self.setup_section = QWidget()
@@ -273,8 +248,8 @@ class MandalaMainGui(QWidget):
         layout.addWidget(self.ui_root, 0, 0, 1, 6)
         layout.addWidget(self.ui_dest, 1, 0, 1, 6)
         layout.addWidget(self.file_count_groupbox, 2, 0, 1, 6)
-        layout.addWidget(self.folders_groupbox, 3, 0, 1, 2)
-        layout.addWidget(self.filename_groupbox, 3, 2, 1, 2)
+        layout.addWidget(self.ui_folders, 3, 0, 1, 2)
+        layout.addWidget(self.ui_filenames, 3, 2, 1, 2)
         layout.addWidget(self.ui_trash, 3, 4, 1, 2)
 
     # FILTER SECTION
@@ -465,13 +440,13 @@ class MandalaMainGui(QWidget):
             max_duration=max_duration,
             weight_top=self.filter_weight.min_spin.value(),
             weight_bottom=self.filter_weight.max_spin.value(),
-            create_folders=self.folders_groupbox.isChecked(),
-            folder_name=self.name_of_folders_entry_lineedit.text(),
-            unique_folders=self.is_make_folders_unique_checkbox.isChecked(),
-            num_folders=self.num_folders_count_spinbox.value() if self.folders_groupbox.isChecked() else 1,
-            index_files=self.index_filename_radio.isChecked() if self.filename_groupbox.isChecked() else False,
-            rename_files=self.rename_filename_radio.isChecked() if self.filename_groupbox.isChecked() else False,
-            rename_name=self.rename_filename_entry.text() if self.filename_groupbox.isChecked() else "",
+            create_folders=self.ui_folders.isChecked(),
+            folder_name=self.ui_folders.lineedit_folder_name.text(),
+            unique_folders=self.ui_folders.checkbox_unique_folders.isChecked(),
+            num_folders=self.ui_folders.spinbox_folder_count.value() if self.ui_folders.isChecked() else 1,
+            index_files=self.ui_filenames.radio_index.isChecked() if self.ui_filenames.isChecked() else False,
+            rename_files=self.ui_filenames.radio_rename.isChecked() if self.ui_filenames.isChecked() else False,
+            rename_name=self.ui_filenames.lineedit_rename.text() if self.ui_filenames.isChecked() else "",
             trash_empty_folders=self.ui_trash.checkbox_empty_folders.isChecked()
             if self.ui_trash.isChecked()
             else False,
