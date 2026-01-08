@@ -27,6 +27,72 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+class FileCountWidget(QGroupBox):
+    """Handles logic for file count settings."""
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        """Initialize the file count widget."""
+        super().__init__(title, parent, flat=True)
+
+        self.spin_fixed = QSpinBox(minimum=1, maximum=1_000_000_000)
+        self.groupbox_fixed = QGroupBox(title="Set Number", flat=True, checkable=True)
+        self.groupbox_fixed.toggled.connect(self.update_file_count_fixed)
+
+        fixed_layout = QGridLayout(self.groupbox_fixed)
+        fixed_layout.addWidget(QLabel("Count"), 0, 0)
+        fixed_layout.addWidget(self.spin_fixed, 0, 1)
+
+        self.spin_min_rand = QSpinBox(minimum=1, maximum=1_000_000_000)
+        self.spin_max_rand = QSpinBox(minimum=2, maximum=1_000_000_000)
+        self.groupbox_rand = QGroupBox(title="Randomize", flat=True, checkable=True, checked=False)
+
+        self.spin_min_rand.editingFinished.connect(self.validate_rand_file_count)
+        self.spin_max_rand.editingFinished.connect(self.validate_rand_file_count)
+        self.groupbox_rand.toggled.connect(self.validate_rand_file_count)
+        self.groupbox_rand.toggled.connect(self.update_file_count_rand)
+
+        rand_layout = QGridLayout(self.groupbox_rand)
+        rand_layout.addWidget(QLabel("Min"), 0, 0)
+        rand_layout.addWidget(self.spin_min_rand, 0, 1)
+        rand_layout.addWidget(QLabel("Max"), 1, 0)
+        rand_layout.addWidget(self.spin_max_rand, 1, 1)
+
+        layout = QGridLayout(self)
+        layout.addWidget(self.groupbox_fixed, 0, 0)
+        layout.addWidget(self.groupbox_rand, 0, 1)
+
+    @Slot()
+    def validate_rand_file_count(self) -> None:
+        """Switch the file count low and high values."""
+        if self.groupbox_rand.isChecked():
+            lo, hi = self.spin_min_rand.value(), self.spin_max_rand.value()
+            if lo > hi:
+                self.spin_min_rand.setValue(hi)
+                self.spin_max_rand.setValue(lo)
+
+    @Slot()
+    def update_file_count_rand(self) -> None:
+        """Change file count group box based on random or count selection."""
+        is_rand = self.groupbox_rand.isChecked()
+        self.groupbox_fixed.setChecked(not is_rand)
+        self._toggle_group_children(self.groupbox_rand, enabled=is_rand)
+        self._toggle_group_children(self.groupbox_fixed, enabled=not is_rand)
+
+    @Slot()
+    def update_file_count_fixed(self) -> None:
+        """Change file count group box based on random or count selection."""
+        is_fixed = self.groupbox_fixed.isChecked()
+        self.groupbox_rand.setChecked(not is_fixed)
+        self._toggle_group_children(self.groupbox_fixed, enabled=is_fixed)
+        self._toggle_group_children(self.groupbox_rand, enabled=not is_fixed)
+
+    def _toggle_group_children(self, groupbox: QGroupBox, *, enabled: bool) -> None:
+        """Enable or disable all children of a group box."""
+        for child in groupbox.children():
+            if isinstance(child, QWidget):
+                child.setEnabled(enabled)
+
+
 class FolderCreatorWidget(QGroupBox):
     """Handles logic for creating folders."""
 

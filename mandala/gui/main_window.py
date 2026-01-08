@@ -24,8 +24,6 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QProgressBar,
@@ -47,6 +45,7 @@ from ..config.constants import (
 from ..gui.components import (
     DblRangeFilterWidget,
     DualListWidget,
+    FileCountWidget,
     FilenameSettingsWidget,
     FolderCreatorWidget,
     PathSelectorWidget,
@@ -55,7 +54,6 @@ from ..gui.components import (
 )
 from ..gui.workers import RunMandalaWorker, WorkerSignals
 from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
-from .qt_helpers import create_spinbox
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -206,70 +204,6 @@ class MandalaMainGui(QWidget):
     ################# UI #################
     ######################################
 
-    # SETUP SECTION
-
-    def init_file_count_section(self) -> None:
-        """Initialize the file count UI components."""
-        self.num_file_count = create_spinbox(1, 1_000_000_000, enabled=True)
-        self.set_file_count_groupbox = QGroupBox(title="Set Number", flat=True, checkable=True)
-        self.set_file_count_groupbox.toggled.connect(self.change_file_label_count)
-        count_layout = QHBoxLayout(self.set_file_count_groupbox)
-        count_layout.addWidget(QLabel("Count"))
-        count_layout.addWidget(self.num_file_count)
-        self.min_num_files = create_spinbox(1, 1_000_000_000, enabled=False)
-        self.min_num_files.editingFinished.connect(self.switch_file_count)
-        self.max_num_files = create_spinbox(2, 1_000_000_000, enabled=False)
-        self.max_num_files.editingFinished.connect(self.switch_file_count)
-        self.random_file_count_groupbox = QGroupBox(title="Randomize", flat=True, checkable=True, checked=False)
-        self.random_file_count_groupbox.toggled.connect(self.switch_file_count)
-        self.random_file_count_groupbox.toggled.connect(self.change_file_label_rand)
-        random_layout = QGridLayout(self.random_file_count_groupbox)
-        random_layout.addWidget(QLabel("Min"), 0, 0)
-        random_layout.addWidget(self.min_num_files, 0, 1)
-        random_layout.addWidget(QLabel("Max"), 1, 0)
-        random_layout.addWidget(self.max_num_files, 1, 1)
-        self.file_count_groupbox = QGroupBox(title="File count", flat=True)
-        file_count_layout = QHBoxLayout(self.file_count_groupbox)
-        file_count_layout.addWidget(self.set_file_count_groupbox)
-        file_count_layout.addWidget(self.random_file_count_groupbox)
-
-    def setup_setup_section(self) -> None:
-        """Set up the setup tab UI components."""
-        self.init_file_count_section()
-
-        self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()], parent=self)
-        self.ui_dest = PathSelectorWidget(title="Destination", items=[QDir.homePath()], parent=self)
-        self.ui_folders = FolderCreatorWidget(title="Create Folders", parent=self)
-        self.ui_filenames = FilenameSettingsWidget(title="Filenames", parent=self)
-        self.ui_trash = TrashSettingsWidget(title="Trash", parent=self)
-
-        self.setup_section = QWidget()
-        layout = QGridLayout(self.setup_section)
-        layout.addWidget(self.ui_root, 0, 0, 1, 6)
-        layout.addWidget(self.ui_dest, 1, 0, 1, 6)
-        layout.addWidget(self.file_count_groupbox, 2, 0, 1, 6)
-        layout.addWidget(self.ui_folders, 3, 0, 1, 2)
-        layout.addWidget(self.ui_filenames, 3, 2, 1, 2)
-        layout.addWidget(self.ui_trash, 3, 4, 1, 2)
-
-    # FILTER SECTION
-
-    def setup_filter_section(self) -> None:
-        """Set up the customize tab UI components."""
-        self.filter_keywords = DualListWidget(title="Keywords", parent=self)
-        self.filter_extensions = DualListWidget(title="Extensions", parent=self)
-        self.filter_filesize = DblRangeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"), parent=self)
-        self.filter_duration = DblRangeFilterWidget(title="Duration", suffix_options=("s", "m"), parent=self)
-        self.filter_weight = RangeFilterWidget(title="Weight", parent=self)
-
-        self.filter_section = QWidget()
-        layout = QGridLayout(self.filter_section)
-        layout.addWidget(self.filter_keywords, 0, 0, 1, 3)
-        layout.addWidget(self.filter_extensions, 1, 0, 1, 3)
-        layout.addWidget(self.filter_filesize, 2, 0)
-        layout.addWidget(self.filter_duration, 2, 1)
-        layout.addWidget(self.filter_weight, 2, 2)
-
     # SIDEBAR SECTION
 
     def setup_sidebar_section(self) -> None:
@@ -357,8 +291,40 @@ class MandalaMainGui(QWidget):
 
     def setup_gui(self) -> None:
         """Set up the main UI components."""
-        self.setup_setup_section()
-        self.setup_filter_section()
+        # Init setup components
+        self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()], parent=self)
+        self.ui_dest = PathSelectorWidget(title="Destination", items=[QDir.homePath()], parent=self)
+        self.ui_file_count = FileCountWidget(title="File Count", parent=self)
+        self.ui_folders = FolderCreatorWidget(title="Create Folders", parent=self)
+        self.ui_filenames = FilenameSettingsWidget(title="Filenames", parent=self)
+        self.ui_trash = TrashSettingsWidget(title="Trash", parent=self)
+
+        # Init filter components
+        self.ui_keywords = DualListWidget(title="Keywords", parent=self)
+        self.ui_extensions = DualListWidget(title="Extensions", parent=self)
+        self.ui_filesize = DblRangeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"), parent=self)
+        self.ui_duration = DblRangeFilterWidget(title="Duration", suffix_options=("s", "m"), parent=self)
+        self.ui_weight = RangeFilterWidget(title="Weight", parent=self)
+
+        # Layout setup components
+        self.setup_section = QWidget()
+        layout = QGridLayout(self.setup_section)
+        layout.addWidget(self.ui_root, 0, 0, 1, 6)
+        layout.addWidget(self.ui_dest, 1, 0, 1, 6)
+        layout.addWidget(self.ui_file_count, 2, 0, 1, 6)
+        layout.addWidget(self.ui_folders, 3, 0, 1, 2)
+        layout.addWidget(self.ui_filenames, 3, 2, 1, 2)
+        layout.addWidget(self.ui_trash, 3, 4, 1, 2)
+
+        # Layout filter components
+        self.filter_section = QWidget()
+        layout = QGridLayout(self.filter_section)
+        layout.addWidget(self.ui_keywords, 0, 0, 1, 3)
+        layout.addWidget(self.ui_extensions, 1, 0, 1, 3)
+        layout.addWidget(self.ui_filesize, 2, 0)
+        layout.addWidget(self.ui_duration, 2, 1)
+        layout.addWidget(self.ui_weight, 2, 2)
+
         self.setup_sidebar_section()
         self.setup_run_section()
 
@@ -386,9 +352,9 @@ class MandalaMainGui(QWidget):
     def get_configuration(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
         # File Size Variables
-        size_unit = self.filter_filesize.combo.currentText()
-        min_size = self.filter_filesize.min_spin.value()
-        max_size = self.filter_filesize.max_spin.value()
+        size_unit = self.ui_filesize.combo.currentText()
+        min_size = self.ui_filesize.min_spin.value()
+        max_size = self.ui_filesize.max_spin.value()
         if size_unit == "KB":
             min_size *= BYTES_IN_KILOBYTE
             max_size *= BYTES_IN_KILOBYTE
@@ -400,9 +366,9 @@ class MandalaMainGui(QWidget):
             max_size *= BYTES_IN_GIGABYTE
 
         # File Duration Variables
-        min_duration = self.filter_duration.min_spin.value()
-        max_duration = self.filter_duration.max_spin.value()
-        if self.filter_duration.combo.currentText() == "m":
+        min_duration = self.ui_duration.min_spin.value()
+        max_duration = self.ui_duration.max_spin.value()
+        if self.ui_duration.combo.currentText() == "m":
             min_duration *= SECONDS_IN_MINUTE
             max_duration *= SECONDS_IN_MINUTE
 
@@ -411,35 +377,35 @@ class MandalaMainGui(QWidget):
             root=root_path,
             root_absolute=root_path.resolve(),
             dest=Path(self.ui_dest.current_path()),
-            num_files=self.num_file_count.value(),
+            num_files=self.ui_file_count.spin_fixed.value(),
             keywords=(
-                convert_string_to_list(self.filter_keywords.include_edit.text())
-                if self.filter_keywords.include_groupbox.isChecked()
+                convert_string_to_list(self.ui_keywords.include_edit.text())
+                if self.ui_keywords.include_groupbox.isChecked()
                 else []
             ),
             not_keywords=(
-                convert_string_to_list(self.filter_keywords.exclude_edit.text())
-                if self.filter_keywords.exclude_groupbox.isChecked()
+                convert_string_to_list(self.ui_keywords.exclude_edit.text())
+                if self.ui_keywords.exclude_groupbox.isChecked()
                 else []
             ),
             extensions=(
-                convert_string_to_list(self.filter_extensions.include_edit.text())
-                if self.filter_extensions.include_groupbox.isChecked()
+                convert_string_to_list(self.ui_extensions.include_edit.text())
+                if self.ui_extensions.include_groupbox.isChecked()
                 else []
             ),
             not_extensions=(
-                convert_string_to_list(self.filter_extensions.exclude_edit.text())
-                if self.filter_extensions.exclude_groupbox.isChecked()
+                convert_string_to_list(self.ui_extensions.exclude_edit.text())
+                if self.ui_extensions.exclude_groupbox.isChecked()
                 else []
             ),
-            limit_size=self.filter_filesize.isChecked(),
+            limit_size=self.ui_filesize.isChecked(),
             min_size=round(min_size, 2),
             max_size=round(max_size, 2),
-            limit_duration=self.filter_duration.isChecked(),
+            limit_duration=self.ui_duration.isChecked(),
             min_duration=min_duration,
             max_duration=max_duration,
-            weight_top=self.filter_weight.min_spin.value(),
-            weight_bottom=self.filter_weight.max_spin.value(),
+            weight_top=self.ui_weight.min_spin.value(),
+            weight_bottom=self.ui_weight.max_spin.value(),
             create_folders=self.ui_folders.isChecked(),
             folder_name=self.ui_folders.lineedit_folder_name.text(),
             unique_folders=self.ui_folders.checkbox_unique_folders.isChecked(),
@@ -469,8 +435,8 @@ class MandalaMainGui(QWidget):
 
     def get_file_count_for_run(self) -> int:
         """Get the number of files to process for the current run."""
-        if self.random_file_count_groupbox.isChecked():
-            return random.randint(self.min_num_files.value(), self.max_num_files.value())
+        if self.ui_file_count.groupbox_rand.isChecked():
+            return random.randint(self.ui_file_count.spin_min_rand.value(), self.ui_file_count.spin_max_rand.value())
         return self.config.num_files
 
     def process_folder(self) -> None:
@@ -947,39 +913,6 @@ class MandalaMainGui(QWidget):
     def stop_mandala_push(self) -> None:
         """Stop the mandala process."""
         self.stop_tracker = True
-
-    ### FILE COUNT SLOTS ###
-
-    @Slot()
-    def switch_file_count(self) -> None:
-        """Switch the file count low and high values."""
-        if self.random_file_count_groupbox.isChecked():
-            lo, hi = self.min_num_files.value(), self.max_num_files.value()
-            if lo > hi:
-                self.min_num_files.setValue(hi)
-                self.max_num_files.setValue(lo)
-
-    @Slot()
-    def change_file_label_rand(self) -> None:
-        """Change file count group box based on random or count selection."""
-        is_rand = self.random_file_count_groupbox.isChecked()
-        self.set_file_count_groupbox.setChecked(not is_rand)
-        self._toggle_group_children(self.random_file_count_groupbox, enabled=is_rand)
-        self._toggle_group_children(self.set_file_count_groupbox, enabled=not is_rand)
-
-    @Slot()
-    def change_file_label_count(self) -> None:
-        """Change file count group box based on random or count selection."""
-        is_fixed = self.set_file_count_groupbox.isChecked()
-        self.random_file_count_groupbox.setChecked(not is_fixed)
-        self._toggle_group_children(self.set_file_count_groupbox, enabled=is_fixed)
-        self._toggle_group_children(self.random_file_count_groupbox, enabled=not is_fixed)
-
-    def _toggle_group_children(self, groupbox: QGroupBox, *, enabled: bool) -> None:
-        """Enable or disable all children of a group box."""
-        for child in groupbox.children():
-            if isinstance(child, QWidget):
-                child.setEnabled(enabled)
 
     ### SETTINGS SLOTS ###
 
