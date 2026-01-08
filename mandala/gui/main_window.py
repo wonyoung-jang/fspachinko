@@ -42,7 +42,6 @@ from ..config.constants import (
     BYTES_IN_GIGABYTE,
     BYTES_IN_KILOBYTE,
     BYTES_IN_MEGABYTE,
-    NOWRAP,
     SECONDS_IN_MINUTE,
 )
 from ..gui.components import DblRangeFilterWidget, DualListWidget, RangeFilterWidget
@@ -329,11 +328,6 @@ class MandalaMainGui(QWidget):
         self.log_invalid_checkbox = QCheckBox("Log Invalid")
         self.log_invalid_checkbox.setChecked(True)
 
-        self.show_help = QCheckBox("Show Help")
-        self.show_help.stateChanged.connect(self.set_filecount_tooltip)
-        self.show_help.stateChanged.connect(self.set_randomize_filecount_tooltip)
-        self.show_help.setChecked(True)
-
         open_root_btn = QPushButton("Root")
         open_root_btn.clicked.connect(lambda: os.startfile(self.config.root))
 
@@ -361,7 +355,6 @@ class MandalaMainGui(QWidget):
         layout.addWidget(default_btn)
         layout.addWidget(reset_btn)
         layout.addStretch()
-        layout.addWidget(self.show_help)
         layout.addWidget(self.log_invalid_checkbox)
 
     # RUN SECTION
@@ -933,7 +926,6 @@ class MandalaMainGui(QWidget):
         self.settings.setValue("size", self.size())
         self.settings.setValue("pos", self.pos())
         self.settings.setValue("show_invalid", self.log_invalid_checkbox.isChecked())
-        self.settings.setValue("show_help", self.show_help.isChecked())
 
     def restore_global_settings(self) -> None:
         """Restore GUI settings from registry."""
@@ -949,50 +941,9 @@ class MandalaMainGui(QWidget):
         if val is not None:
             self.log_invalid_checkbox.setChecked(strtobool(val))
 
-        val = self.settings.value("show_help")
-        if val is not None:
-            self.show_help.setChecked(strtobool(val))
-
     #############################
     ########### SLOTS ###########
     #############################
-
-    ### TOOLTIPS SLOTS ###
-
-    @Slot()
-    def set_filecount_tooltip(self) -> None:
-        """Set the tooltip for the file count group box."""
-        if not self.show_help.isChecked():
-            self.file_count_groupbox.setToolTip("")
-            return
-
-        num_files_lo = self.min_num_files.value()
-        if not self.random_file_count_groupbox.isChecked():
-            self.file_count_groupbox.setToolTip(
-                f"{NOWRAP}{num_files_lo} file(s) will be copied from {self.config.root} to {self.config.dest}"
-            )
-            return
-
-        num_files_hi = self.max_num_files.value()
-        self.file_count_groupbox.setToolTip(
-            f"{NOWRAP}{num_files_lo} to {num_files_hi} "
-            f"files will be copied from {self.config.root} to {self.config.dest}"
-        )
-
-    @Slot()
-    def set_randomize_filecount_tooltip(self) -> None:
-        """Set the tooltip for the randomize file group box."""
-        if not self.show_help.isChecked():
-            self.random_file_count_groupbox.setToolTip("")
-            return
-
-        if self.random_file_count_groupbox.isChecked():
-            num_files_lo = self.min_num_files.value()
-            num_files_hi = self.max_num_files.value()
-            self.random_file_count_groupbox.setToolTip(
-                f"{NOWRAP}{num_files_lo} to {num_files_hi} "
-                f"files will be copied from {self.config.root} to {self.config.dest}"
-            )
 
     ### ROOT AND DESTINATION SLOTS ###
 
