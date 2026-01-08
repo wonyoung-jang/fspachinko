@@ -7,24 +7,19 @@ import os
 import random
 import shutil
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, TextIO
 
 import send2trash
 from PySide6.QtCore import QDir, QPoint, QSettings, QSize, Qt, QThreadPool, QTimer, Slot
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDoubleSpinBox,
-    QFileDialog,
     QGridLayout,
-    QLineEdit,
-    QRadioButton,
-    QSpinBox,
     QWidget,
 )
+
+from mandala.core.mandala_engine import MandalaEngine
+from mandala.core.mandala_logger import MandalaLogger
+from mandala.gui.settings import GuiSettingsManager
 
 from ..config.constants import (
     BYTES_IN_GIGABYTE,
@@ -48,10 +43,7 @@ from ..gui.components import (
     TrashSettingsWidget,
 )
 from ..gui.workers import RunMandalaWorker, WorkerSignals
-from ..utilities.utils import convert_byte_to_size, convert_string_to_list, strtobool
-
-if TYPE_CHECKING:
-    from PySide6.QtGui import QCloseEvent
+from ..utilities.utils import convert_string_to_list, strtobool
 
 
 @dataclass(slots=True)
@@ -61,16 +53,10 @@ class MandalaMainGui(QWidget):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.was_enabled_map = {}
 
         self.threadpool = QThreadPool()
         self.worker = RunMandalaWorker(self)
         self.worker.setAutoDelete(False)
-
-        self.state = MandalaState()
-
-        self.log: TextIO = None
-        self.log_temp: TextIO = None
 
         self.setup_components()
         self.setup_layout()
@@ -79,12 +65,42 @@ class MandalaMainGui(QWidget):
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self.update_timer)
 
-        self.settings = QSettings()
+        self.settings = GuiSettingsManager(settings=QSettings(parent=self))
+        registry = {
+            "show_invalid": self.ui_sect_sidebar.chk_invalid,
+            "ui_root": self.ui_root,
+            "ui_dest": self.ui_dest,
+            "ui_file_count": self.ui_file_count,
+            "ui_folders": self.ui_folders,
+            "ui_filenames": self.ui_filenames,
+            "ui_trash": self.ui_trash,
+            "ui_keywords": self.ui_keywords,
+            "ui_extensions": self.ui_extensions,
+            "ui_filesize": self.ui_filesize,
+            "ui_duration": self.ui_duration,
+            "ui_weight": self.ui_weight,
+            "ui_sect_sidebar": self.ui_sect_sidebar,
+            "ui_sect_exec": self.ui_sect_exec,
+        }
+        self.settings.register_widgets(registry)
+        self.settings.load_gui()
         self.restore_global_settings()
-        self.restore_gui(self.settings)
 
         self.is_stop_pushed = False
+
+        self.state = MandalaState()
         self.config = self.get_configuration()
+        self.loggers = MandalaLogger(
+            config=self.config,
+            state=self.state,
+        )
+        self.file_validator = FileValidator(config=self.config)
+        self.engine = MandalaEngine(
+            config=self.config,
+            state=self.state,
+            validator=self.file_validator,
+            logger=self.loggers,
+        )
 
         self.setWindowTitle("Mandala: Copy random files")
 
@@ -123,10 +139,8 @@ class MandalaMainGui(QWidget):
 
         self.ui_sect_sidebar.root_open_requested.connect(lambda: os.startfile(self.ui_root.current_path()))
         self.ui_sect_sidebar.dest_open_requested.connect(lambda: os.startfile(self.ui_dest.current_path()))
-        self.ui_sect_sidebar.save_requested.connect(self.save_config)
-        self.ui_sect_sidebar.load_requested.connect(self.load_config)
-        self.ui_sect_sidebar.default_requested.connect(lambda: self.save_gui(self.settings))
-        self.ui_sect_sidebar.reset_requested.connect(lambda: self.restore_gui(self.settings))
+        self.ui_sect_sidebar.default_requested.connect(lambda: self.settings.save_gui())
+        self.ui_sect_sidebar.reset_requested.connect(lambda: self.settings.load_gui())
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -233,7 +247,13 @@ class MandalaMainGui(QWidget):
             stall_time_limit=self.ui_sect_exec.dblspin_stall.value(),
         )
 
-    def run_mandala(self) -> None:
+    def get_file_count_for_run(self) -> int:
+        """Get the number of files to process for the current run."""
+        if self.ui_file_count.groupbox_rand.isChecked():
+            return random.randint(self.ui_file_count.spin_min_rand.value(), self.ui_file_count.spin_max_rand.value())
+        return self.config.num_files
+
+    def start(self) -> None:
         """Run the main file copying process."""
         for _ in range(self.config.num_folders):
             if self.is_stop_pushed:
@@ -243,12 +263,6 @@ class MandalaMainGui(QWidget):
 
         self.stop_mandala()
 
-    def get_file_count_for_run(self) -> int:
-        """Get the number of files to process for the current run."""
-        if self.ui_file_count.groupbox_rand.isChecked():
-            return random.randint(self.ui_file_count.spin_min_rand.value(), self.ui_file_count.spin_max_rand.value())
-        return self.config.num_files
-
     def process_folder(self) -> None:
         """Process a single folder for file copying."""
         root_absolute = self.config.root_absolute
@@ -256,10 +270,8 @@ class MandalaMainGui(QWidget):
         self.state.reset_for_folder(root_absolute, unique_folders=self.config.unique_folders)
 
         top_weight_mark = Path()
-        curr_dest = self.create_folders(self.config.dest)
-
-        temp_log_file = Path(self.log.name + ".tmp")
-        self.log_temp = temp_log_file.open("a", encoding="utf-8")
+        curr_dest = self.create_dest_folder()
+        self.loggers.setup_for_folder(curr_dest)
 
         main_path = self.config.root
 
@@ -276,7 +288,7 @@ class MandalaMainGui(QWidget):
 
             main_path = self.process_file(main_path, top_weight_mark, curr_file, curr_dest)
 
-        self.end_folder_actions(curr_dest)
+        self.finalize_folder(curr_dest)
 
     def process_file(self, main_path: Path, top_mark: Path, curr_file: int, curr_dest: Path) -> Path:
         """Process a single file for copying."""
@@ -345,10 +357,7 @@ class MandalaMainGui(QWidget):
     def handle_log(self, random_path: Path, curr_file: int) -> None:
         """Handle logging of valid files."""
         msg = f"{curr_file + 1}: {random_path}"
-        if self.state.is_append_log:
-            self.log_temp.write(f"{msg}\n")
-        else:
-            self.log.write(f"{msg}\n")
+        self.loggers.write_log(msg)
         self.signals.log_signal.emit(msg)
 
     def handle_invalid_file(self, random_path: Path, random_path_absolute: Path) -> None:
@@ -398,19 +407,39 @@ class MandalaMainGui(QWidget):
             main_path = self.config.root
         return main_path, top_weight_mark
 
-    def end_folder_actions(self, curr_dest: Path) -> None:
+    def finalize_folder(self, curr_dest: Path) -> None:
         """Create and write log at the end of folder."""
-        self.log_temp.close()
-        self.log.close()
-        self.signals.log_signal.emit(self.write_status_log(curr_dest))
+        runtime = round(perf_counter() - self.state.start_folder_time, 2)
+        timed_out = self.is_timed_out()
+        all_searched = self.state.touched_folders[self.config.root_absolute]
+        num_files = self.config.num_files
+        found = self.state.count
+        create_folders = self.config.create_folders
 
-        # Terminates the program if no files were collected
-        if self.state.count == 0:
-            create_folders = self.config.create_folders
+        if found == num_files:
+            status = f"SUCCESS: {found}/{num_files} files copied"
+        elif self.is_stop_pushed:
+            status = f"STOPPED: {found}/{num_files} files copied"
+        elif found == 0 and create_folders and (timed_out or all_searched):
+            reason = "timed out" if timed_out else "all files searched"
+            status = f"NO FILES FOUND: {reason} | folder deleted"
+        elif all_searched:
+            status = f"ALL FILES SEARCHED: {found}/{num_files} files copied"
+        elif timed_out:
+            status = f"TIMED OUT: {found}/{num_files} files copied"
+        else:
+            status = "FINISHED"
+
+        report = self.loggers.generate_report(curr_dest, status, runtime)
+        self.signals.log_signal.emit(report)
+        self.loggers.close()
+        self.loggers.finalize_log(report)
+
+        if found == 0:
             if create_folders:
                 shutil.rmtree(curr_dest)
-            elif not (create_folders or self.state.is_append_log):
-                Path(self.log.name).unlink()
+            else:
+                self.loggers.cleanup_empty()
 
     def copy_files_to_target(self, file_num: int, source: Path, dest: Path, source_size: int) -> bool | None:
         """Copy files to the target destination with appropriate naming."""
@@ -441,30 +470,22 @@ class MandalaMainGui(QWidget):
 
         return True
 
-    def create_folders(self, dest: Path) -> Path:
-        """Create folders in the destination if specified."""
-        final_dest = dest
-        log_path = Path(final_dest / f"!{final_dest.name}_log.txt")
-
+    def create_dest_folder(self) -> Path:
+        """Create the destination folder based on configuration."""
+        dest = self.config.dest
         if not self.config.create_folders:
-            self.state.is_append_log = log_path.exists()
-            self.log = log_path.open("a", encoding="utf-8")
-        else:
-            folder_name = self.config.folder_name
-            try:
-                Path(f"{final_dest}/{folder_name}").mkdir()
-                final_dest = final_dest / f"{folder_name}"
-                self.log = (final_dest / f"!{folder_name}_log.txt").open("a", encoding="utf-8")
-            except FileExistsError:
-                for x in range(len(list(final_dest.iterdir()))):
-                    try:
-                        Path(f"{final_dest}/{folder_name} {x + 2}").mkdir()
-                        final_dest = final_dest / f"{folder_name} {x + 2}"
-                        self.log = (final_dest / f"!{folder_name} {x + 2}_log.txt").open("a", encoding="utf-8")
-                        break
-                    except FileExistsError:
-                        continue
-        return final_dest
+            return dest
+
+        name = self.config.folder_name
+        final_dest = dest / name
+        x = 2
+        while True:
+            if not final_dest.exists():
+                final_dest.mkdir()
+                return final_dest
+
+            final_dest = dest / f"{name} {x}"
+            x += 1
 
     def touch_folder_if_all_files_touched(self, list_of_paths: list[Path], absolute_path: Path) -> None:
         """Mark folder as touched if all files inside are touched."""
@@ -481,86 +502,6 @@ class MandalaMainGui(QWidget):
     def is_timed_out(self) -> bool:
         """Check if the process has timed out based on stall time."""
         return (perf_counter() - self.state.start_stall_time) > self.config.stall_time_limit
-
-    def stop_mandala(self) -> None:
-        """Stop mandala process and reset UI elements."""
-        self.signals.finished_signal.emit()
-
-        self.log_temp.close()
-        self.log.close()
-
-        self.ui_sect_exec.btn_start.setEnabled(True)
-        self.ui_sect_exec.btn_stop.setEnabled(False)
-        self.ui_sect_exec.label_stall.setText(f"{self.config.stall_time_limit}0 s")
-
-        for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
-                obj.setEnabled(self.was_enabled_map[name])
-
-    ### LOG METHODS ###
-
-    def write_status_log(self, curr_dest: Path) -> str:
-        """Write the status log at the end of each folder."""
-        runtime = round(perf_counter() - self.state.start_folder_time, 2)
-        timed_out = self.is_timed_out()
-        all_searched = self.state.touched_folders[self.config.root_absolute]
-        num_files = self.config.num_files
-
-        count = self.state.count
-        create_folders = self.config.create_folders
-
-        if count == num_files:
-            status = f"SUCCESS: {count}/{num_files} files copied"
-        elif self.is_stop_pushed:
-            status = f"STOPPED: {count}/{num_files} files copied"
-        elif count == 0 and create_folders and (timed_out or all_searched):
-            reason = "timed out" if timed_out else "all files searched"
-            status = f"NO FILES FOUND: {reason} | folder deleted"
-        elif all_searched:
-            status = f"ALL FILES SEARCHED: {count}/{num_files} files copied"
-        elif timed_out:
-            status = f"TIMED OUT: {count}/{num_files} files copied"
-        else:
-            status = "FINISHED"
-
-        _extensions = self.config.extensions
-        _keywords = self.config.keywords
-        ext_str = ", ".join([f".{e}" for e in _extensions]) if _extensions else "All"
-        kw_str = ", ".join([f'"{k}"' for k in _keywords]) if _keywords else "All"
-
-        report = (
-            "------------------------------------------------------------------------\n"
-            f"{status}\n"
-            "------------------------------------------------------------------------\n"
-            f"Date:             {datetime.now(tz=UTC).strftime('%B %d, %Y')}\n"
-            f"Time:             {datetime.now(tz=UTC).strftime('%I:%M:%S%p')}\n"
-            f"Start:            {self.config.root}\n"
-            f"Destination:      {curr_dest}\n"
-            f"Extensions:       {ext_str}\n"
-            f"Keywords:         {kw_str}\n"
-            f"Total size:       {convert_byte_to_size(self.state.bytes_in_current_folder)}\n"
-            f"Total runtime:    {runtime}s\n"
-            "------------------------------------------------------------------------"
-        )
-        self.prepend_status_to_log(report)
-        return report
-
-    def prepend_status_to_log(self, status: str) -> None:
-        """Prepend the status to the log file."""
-        log_path = Path(self.log.name)
-        temp_log_path = Path(self.log_temp.name)
-
-        if self.state.is_append_log:
-            with temp_log_path.open(encoding="utf-8") as content, log_path.open("a", encoding="utf-8") as out:
-                out.write(status + "\n")
-                shutil.copyfileobj(content, out)
-            temp_log_path.unlink()
-        else:
-            with log_path.open(encoding="utf-8") as existing, temp_log_path.open("w", encoding="utf-8") as out:
-                out.write(status + "\n")
-                shutil.copyfileobj(existing, out)
-            log_path.unlink()
-            temp_log_path.rename(self.log.name)
 
     #############################
     ########### SLOTS ###########
@@ -589,11 +530,10 @@ class MandalaMainGui(QWidget):
             self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
             return
 
-        self.file_validator = FileValidator(self.config)
+        self.file_validator = FileValidator(config=self.config)
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
-                self.was_enabled_map[name] = obj.isEnabled()
                 obj.setEnabled(False)
 
         self.ui_sect_exec.progbar_main.reset()
@@ -607,87 +547,45 @@ class MandalaMainGui(QWidget):
 
         self.threadpool.globalInstance().start(self.worker)
 
+    def stop_mandala(self) -> None:
+        """Stop mandala process and reset UI elements."""
+        self.signals.finished_signal.emit()
+
+        self.loggers.close()
+
+        self.ui_sect_exec.btn_start.setEnabled(True)
+        self.ui_sect_exec.btn_stop.setEnabled(False)
+        self.ui_sect_exec.label_stall.setText(f"{self.config.stall_time_limit}0 s")
+        self.save_global_settings()
+
+        for name, obj in inspect.getmembers(self):
+            if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
+                obj.setEnabled(True)
+
     @Slot()
     def stop_mandala_on_push(self) -> None:
         """Stop the mandala process."""
         self.is_stop_pushed = True
+        self.save_global_settings()
 
     ### SETTINGS SLOTS AND METHODS ###
 
-    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        """Close event to save settings."""
-        self.save_global_settings()
-        super().closeEvent(event)
-
     def save_global_settings(self) -> None:
         """Save GUI settings to registry."""
-        self.settings.setValue("size", self.size())
-        self.settings.setValue("pos", self.pos())
-        self.settings.setValue("show_invalid", self.ui_sect_sidebar.chk_invalid.isChecked())
+        self.settings.settings.setValue("size", self.size())
+        self.settings.settings.setValue("pos", self.pos())
+        self.settings.settings.setValue("show_invalid", self.ui_sect_sidebar.chk_invalid.isChecked())
 
     def restore_global_settings(self) -> None:
         """Restore GUI settings from registry."""
-        size = self.settings.value("size", QSize(500, 500))
+        size = self.settings.settings.value("size", QSize(500, 500))
         if isinstance(size, QSize):
             self.resize(QSize(size))
 
-        pos = self.settings.value("pos", QPoint(60, 60))
+        pos = self.settings.settings.value("pos", QPoint(60, 60))
         if isinstance(pos, QPoint):
             self.move(pos)
 
-        val = self.settings.value("show_invalid")
+        val = self.settings.settings.value("show_invalid")
         if val is not None:
             self.ui_sect_sidebar.chk_invalid.setChecked(strtobool(val))
-
-    @Slot()
-    def save_config(self) -> None:
-        """Save GUI settings to registry."""
-        path, _ = QFileDialog.getSaveFileName(self, "Save Config", "config.ini", "Config (*.ini)")
-        if path:
-            self.save_gui(QSettings(path, QSettings.Format.IniFormat))
-            self.setWindowTitle(f"Mandala: Copy random files ({Path(path).stem})")
-
-    @Slot()
-    def load_config(self) -> None:
-        """Load GUI settings from registry."""
-        path, _ = QFileDialog.getOpenFileName(self, "Load Config", "", "Config (*.ini)")
-        if path:
-            self.restore_gui(QSettings(path, QSettings.Format.IniFormat))
-            self.setWindowTitle(f"Mandala: Copy random files ({Path(path).stem})")
-
-    @Slot()
-    def save_gui(self, settings: QSettings) -> None:
-        """Save GUI settings to registry."""
-        for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QComboBox):
-                settings.setValue(name, [obj.itemText(i) for i in range(obj.count())])
-                settings.setValue(f"current{name}", obj.currentText())
-            elif isinstance(obj, QLineEdit):
-                settings.setValue(name, obj.text())
-            elif isinstance(obj, (QSpinBox, QDoubleSpinBox)):
-                settings.setValue(name, obj.value())
-            elif isinstance(obj, (QCheckBox, QRadioButton)):
-                settings.setValue(name, obj.isChecked())
-
-    @Slot()
-    def restore_gui(self, settings: QSettings) -> None:
-        """Restore GUI settings from registry."""
-        for name, obj in inspect.getmembers(self):
-            if (val := settings.value(name)) is None:
-                continue
-
-            if isinstance(obj, QComboBox):
-                obj.addItems(val)
-                curr = settings.value(f"current{name}")
-                if curr:
-                    if obj.findText(curr) == -1:
-                        obj.addItem(curr)
-                    obj.setCurrentIndex(obj.findText(curr))
-            elif isinstance(obj, QLineEdit):
-                obj.setText(val)
-            elif isinstance(obj, QSpinBox):
-                obj.setValue(int(val))
-            elif isinstance(obj, QDoubleSpinBox):
-                obj.setValue(float(val))
-            elif isinstance(obj, (QCheckBox, QRadioButton)):
-                obj.setChecked(strtobool(val) if isinstance(val, str) else bool(val))

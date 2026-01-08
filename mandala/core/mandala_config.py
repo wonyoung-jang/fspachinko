@@ -1,11 +1,7 @@
 """Mandala configuration dataclass."""
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-
-import soundfile
-from mutagen.mp3 import MP3
 
 
 @dataclass(slots=True)
@@ -59,70 +55,3 @@ class MandalaConfig:
 
     # Stall time
     stall_time_limit: float = 0.0
-
-    def is_valid_size(self, size: int) -> bool:
-        """Check if a file is within the specified size range."""
-        if not self.limit_size:
-            return True
-
-        return self.min_size <= size <= self.max_size
-
-    def is_not_extension_or_keyword(self, source: Path) -> bool:
-        """Check if a file has the specified not extensions or not keywords."""
-        for not_extension in self.not_extensions:
-            if re.compile(rf"\.{not_extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return True
-
-        for not_keyword in self.not_keywords:
-            if re.compile(rf"(.*){not_keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return True
-
-        return False
-
-    def is_extension(self, source: Path) -> bool:
-        """Check if a file has the specified extensions."""
-        if not self.extensions:
-            return True
-
-        for extension in self.extensions:
-            if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return True
-
-        return False
-
-    def is_keyword(self, source: Path) -> bool:
-        """Check if a file contains the specified keywords."""
-        if not self.keywords:
-            return True
-
-        for keyword in self.keywords:
-            if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return True
-
-        return False
-
-    def is_within_duration(self, source: Path) -> bool:
-        """Check if a file is within the specified duration range."""
-        if not self.limit_duration:
-            return True
-
-        duration = 0.0
-        min_duration = self.min_duration
-        max_duration = self.max_duration
-
-        try:
-            sound = soundfile.SoundFile(source)
-            duration = len(sound) / sound.samplerate
-        except RuntimeError:
-            try:
-                if source.suffix == ".mp3":
-                    duration = MP3(source).info.length
-                    return min_duration <= duration <= max_duration
-            except ValueError:
-                return True
-            else:
-                return True
-        except ValueError:
-            return True
-
-        return min_duration <= duration <= max_duration

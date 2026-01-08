@@ -18,13 +18,12 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QRadioButton,
+    QSpinBox,
     QTextBrowser,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
-
-from mandala.gui.main_window import QSpinBox
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -296,8 +295,6 @@ class DualListWidget(QGroupBox):
 class SidebarWidget(QWidget):
     """Side panel with actions and global settings."""
 
-    save_requested = Signal()
-    load_requested = Signal()
     default_requested = Signal()
     reset_requested = Signal()
     root_open_requested = Signal()
@@ -307,8 +304,6 @@ class SidebarWidget(QWidget):
         """Initialize the sidebar widget."""
         super().__init__(parent)
 
-        self.btn_load = QPushButton("Load Config")
-        self.btn_save = QPushButton("Save Config")
         self.btn_root = QPushButton("Open Root")
         self.btn_dest = QPushButton("Open Destination")
         self.btn_default = QPushButton("Set Default Config")
@@ -318,8 +313,6 @@ class SidebarWidget(QWidget):
         self.chk_invalid.setChecked(True)
 
         # Signals
-        self.btn_save.clicked.connect(self.save_requested)
-        self.btn_load.clicked.connect(self.load_requested)
         self.btn_default.clicked.connect(self.default_requested)
         self.btn_reset.clicked.connect(self.reset_requested)
         self.btn_root.clicked.connect(self.root_open_requested)
@@ -329,8 +322,6 @@ class SidebarWidget(QWidget):
         layout.addWidget(self.btn_root)
         layout.addWidget(self.btn_dest)
         layout.addSpacing(64)
-        layout.addWidget(self.btn_load)
-        layout.addWidget(self.btn_save)
         layout.addWidget(self.btn_default)
         layout.addWidget(self.btn_reset)
         layout.addStretch()

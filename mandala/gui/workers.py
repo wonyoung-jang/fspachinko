@@ -36,4 +36,5 @@ class RunMandalaWorker(QRunnable):
 
     def run(self) -> None:
         """Run the Mandala process."""
-        self.window.run_mandala()
+        # self.window.engine.start()
+        self.window.start()
