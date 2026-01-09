@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, Signal, Slot
@@ -24,6 +25,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from mandala.config.constants import BYTES_IN_GIGABYTE, BYTES_IN_KILOBYTE, BYTES_IN_MEGABYTE, SECONDS_IN_MINUTE
+from mandala.utilities.utils import convert_string_to_list
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -94,6 +98,15 @@ class FileCountWidget(QGroupBox):
             if isinstance(child, QWidget):
                 child.setEnabled(enabled)
 
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "num_files": self.spin_fixed.value(),
+            "is_rand_file_count": self.groupbox_rand.isChecked(),
+            "num_files_rand_min": self.spin_min_rand.value(),
+            "num_files_rand_max": self.spin_max_rand.value(),
+        }
+
 
 class FolderCreatorWidget(QGroupBox):
     """Handles logic for creating folders."""
@@ -112,6 +125,15 @@ class FolderCreatorWidget(QGroupBox):
         layout.addWidget(QLabel("Name"), 1, 0)
         layout.addWidget(self.lineedit_folder_name, 1, 1)
         layout.addWidget(self.chk_unique_folders, 2, 0, 1, 2)
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "create_folders": self.isChecked(),
+            "folder_name": self.lineedit_folder_name.text(),
+            "unique_folders": self.chk_unique_folders.isChecked(),
+            "num_folders": self.spinbox_folder_count.value() if self.isChecked() else 1,
+        }
 
 
 class FilenameSettingsWidget(QGroupBox):
@@ -134,6 +156,14 @@ class FilenameSettingsWidget(QGroupBox):
         filename_layout.addWidget(self.radio_rename, 2, 0)
         filename_layout.addWidget(self.lineedit_rename, 2, 1)
 
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "index_files": self.radio_index.isChecked() if self.isChecked() else False,
+            "rename_files": self.radio_rename.isChecked() if self.isChecked() else False,
+            "rename_name": self.lineedit_rename.text() if self.isChecked() else "",
+        }
+
 
 class TrashSettingsWidget(QGroupBox):
     """Handles logic for trash settings."""
@@ -149,6 +179,14 @@ class TrashSettingsWidget(QGroupBox):
         layout.addWidget(self.chk_empty_folders)
         layout.addWidget(self.chk_valid_files)
         layout.addWidget(self.chk_invalid_files)
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "trash_empty_folders": self.chk_empty_folders.isChecked() if self.isChecked() else False,
+            "trash_source_files": self.chk_valid_files.isChecked() if self.isChecked() else False,
+            "trash_invalid_files": self.chk_invalid_files.isChecked() if self.isChecked() else False,
+        }
 
 
 class PathSelectorWidget(QGroupBox):
@@ -191,6 +229,28 @@ class PathSelectorWidget(QGroupBox):
         return self.combo.currentText()
 
 
+class RootPathSelectorWidget(PathSelectorWidget):
+    """Handles logic for selecting the root path."""
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        root = Path(self.current_path())
+        return {
+            "root": root,
+            "root_absolute": root.resolve(),
+        }
+
+
+class DestPathSelectorWidget(PathSelectorWidget):
+    """Handles logic for selecting the destination path."""
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "dest": Path(self.current_path()),
+        }
+
+
 class RangeFilterWidget(QGroupBox):
     """Handles logic for ranges (Min/Max), e.g., Weight."""
 
@@ -206,6 +266,17 @@ class RangeFilterWidget(QGroupBox):
         layout.addWidget(self.min_spin, 0, 1)
         layout.addWidget(QLabel("Max"), 1, 0)
         layout.addWidget(self.max_spin, 1, 1)
+
+
+class WeightFilterWidget(RangeFilterWidget):
+    """Handles logic for Weight range (Min/Max)."""
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "weight_top": self.min_spin.value(),
+            "weight_bottom": self.max_spin.value(),
+        }
 
 
 class DblRangeFilterWidget(QGroupBox):
@@ -240,13 +311,44 @@ class DblRangeFilterWidget(QGroupBox):
             self.min_spin.setValue(self.max_spin.value())
             self.max_spin.setValue(min_spin_val)
 
+
+class FilesizeFilterWidget(DblRangeFilterWidget):
+    """Handles logic for Size range (Min/Max)."""
+
     def get_config(self) -> dict:
         """Return clean data for the config."""
+        unit = self.combo.currentText()
+        min_size, max_size = self.min_spin.value(), self.max_spin.value()
+        if unit == "KB":
+            min_size *= BYTES_IN_KILOBYTE
+            max_size *= BYTES_IN_KILOBYTE
+        elif unit == "MB":
+            min_size *= BYTES_IN_MEGABYTE
+            max_size *= BYTES_IN_MEGABYTE
+        elif unit == "GB":
+            min_size *= BYTES_IN_GIGABYTE
+            max_size *= BYTES_IN_GIGABYTE
         return {
-            "enabled": self.isChecked(),
-            "min": self.min_spin.value(),
-            "max": self.max_spin.value(),
-            "unit": self.combo.currentText() if self.combo else None,
+            "limit_size": self.isChecked(),
+            "min_size": min_size,
+            "max_size": max_size,
+        }
+
+
+class DurationFilterWidget(DblRangeFilterWidget):
+    """Handles logic for Duration range (Min/Max)."""
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        unit = self.combo.currentText()
+        min_duration, max_duration = self.min_spin.value(), self.max_spin.value()
+        if unit == "m":
+            min_duration *= SECONDS_IN_MINUTE
+            max_duration *= SECONDS_IN_MINUTE
+        return {
+            "limit_duration": self.isChecked(),
+            "min_duration": min_duration,
+            "max_duration": max_duration,
         }
 
 
@@ -284,21 +386,40 @@ class DualListWidget(QGroupBox):
         self.include_edit.setText(exc)
         self.exclude_edit.setText(inc)
 
+
+class KeywordsFilterWidget(DualListWidget):
+    """Handles the Include/Exclude pattern for Keywords."""
+
     def get_config(self) -> dict:
-        """Return the include and exclude lists."""
+        """Return clean data for the config."""
         return {
-            "include": self.include_edit.text(),
-            "exclude": self.exclude_edit.text(),
+            "keywords": convert_string_to_list(self.include_edit.text()) if self.include_groupbox.isChecked() else [],
+            "not_keywords": convert_string_to_list(self.exclude_edit.text())
+            if self.exclude_groupbox.isChecked()
+            else [],
+        }
+
+
+class ExtensionsFilterWidget(DualListWidget):
+    """Handles the Include/Exclude pattern for Extensions."""
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "extensions": convert_string_to_list(self.include_edit.text()) if self.include_groupbox.isChecked() else [],
+            "not_extensions": convert_string_to_list(self.exclude_edit.text())
+            if self.exclude_groupbox.isChecked()
+            else [],
         }
 
 
 class SidebarWidget(QWidget):
     """Side panel with actions and global settings."""
 
-    default_requested = Signal()
-    reset_requested = Signal()
-    root_open_requested = Signal()
-    dest_open_requested = Signal()
+    signal_set_default = Signal()
+    signal_reset_to_default = Signal()
+    signal_open_root = Signal()
+    signal_open_dest = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the sidebar widget."""
@@ -313,10 +434,10 @@ class SidebarWidget(QWidget):
         self.chk_invalid.setChecked(True)
 
         # Signals
-        self.btn_default.clicked.connect(self.default_requested)
-        self.btn_reset.clicked.connect(self.reset_requested)
-        self.btn_root.clicked.connect(self.root_open_requested)
-        self.btn_dest.clicked.connect(self.dest_open_requested)
+        self.btn_default.clicked.connect(self.signal_set_default)
+        self.btn_reset.clicked.connect(self.signal_reset_to_default)
+        self.btn_root.clicked.connect(self.signal_open_root)
+        self.btn_dest.clicked.connect(self.signal_open_dest)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.btn_root)
@@ -326,6 +447,12 @@ class SidebarWidget(QWidget):
         layout.addWidget(self.btn_reset)
         layout.addStretch()
         layout.addWidget(self.chk_invalid)
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "log_invalid": self.chk_invalid.isChecked(),
+        }
 
 
 class ExecutionWidget(QWidget):
@@ -352,6 +479,8 @@ class ExecutionWidget(QWidget):
         self.progbar_main = QProgressBar(value=0, format="%v", textVisible=True, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.btn_start = QPushButton("Start")
+        self.btn_start.setShortcut("Ctrl+R")
+
         self.btn_stop = QPushButton("Stop")
         self.btn_stop.setEnabled(False)
 
@@ -410,3 +539,9 @@ class ExecutionWidget(QWidget):
         val = self.progbar_stall.value()
         self.progbar_stall.setValue(val - 1)
         self.label_stall.setText(f"{val / 100} s")
+
+    def get_config(self) -> dict:
+        """Return clean data for the config."""
+        return {
+            "stall_time_limit": self.dblspin_stall.value(),
+        }

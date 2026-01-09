@@ -5,32 +5,33 @@ from __future__ import annotations
 import inspect
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, QSettings, Qt, QThreadPool, QTimer, Slot
 from PySide6.QtWidgets import QGridLayout, QWidget
 
-from ..config.constants import BYTES_IN_GIGABYTE, BYTES_IN_KILOBYTE, BYTES_IN_MEGABYTE, SECONDS_IN_MINUTE
 from ..core.file_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
 from ..core.mandala_engine import MandalaEngine
 from ..core.mandala_logger import MandalaLogger
 from ..core.mandala_state import MandalaState
 from ..gui.components import (
-    DblRangeFilterWidget,
-    DualListWidget,
+    DestPathSelectorWidget,
+    DurationFilterWidget,
     ExecutionWidget,
+    ExtensionsFilterWidget,
     FileCountWidget,
     FilenameSettingsWidget,
+    FilesizeFilterWidget,
     FolderCreatorWidget,
-    PathSelectorWidget,
-    RangeFilterWidget,
+    KeywordsFilterWidget,
+    RootPathSelectorWidget,
     SidebarWidget,
     TrashSettingsWidget,
+    WeightFilterWidget,
 )
 from ..gui.workers import RunMandalaWorker
-from ..utilities.utils import convert_string_to_list, strtobool
+from ..utilities.utils import strtobool
 from .settings import GuiSettingsManager
 
 if TYPE_CHECKING:
@@ -120,32 +121,32 @@ class MandalaMainGui(QWidget):
     def setup_components(self) -> None:
         """Set up the main UI components."""
         # Init setup components
-        self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()], parent=self)
-        self.ui_dest = PathSelectorWidget(title="Destination", items=[QDir.homePath()], parent=self)
-        self.ui_file_count = FileCountWidget(title="File Count", parent=self)
-        self.ui_folders = FolderCreatorWidget(title="Create Folders", parent=self)
-        self.ui_filenames = FilenameSettingsWidget(title="Filenames", parent=self)
-        self.ui_trash = TrashSettingsWidget(title="Trash", parent=self)
+        self.ui_root = RootPathSelectorWidget(title="Root", items=[QDir.rootPath()])
+        self.ui_dest = DestPathSelectorWidget(title="Destination", items=[QDir.homePath()])
+        self.ui_file_count = FileCountWidget(title="File Count")
+        self.ui_folders = FolderCreatorWidget(title="Create Folders")
+        self.ui_filenames = FilenameSettingsWidget(title="Filenames")
+        self.ui_trash = TrashSettingsWidget(title="Trash")
 
         # Init filter components
-        self.ui_keywords = DualListWidget(title="Keywords", parent=self)
-        self.ui_extensions = DualListWidget(title="Extensions", parent=self)
-        self.ui_filesize = DblRangeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"), parent=self)
-        self.ui_duration = DblRangeFilterWidget(title="Duration", suffix_options=("s", "m"), parent=self)
-        self.ui_weight = RangeFilterWidget(title="Weight", parent=self)
+        self.ui_keywords = KeywordsFilterWidget(title="Keywords")
+        self.ui_extensions = ExtensionsFilterWidget(title="Extensions")
+        self.ui_filesize = FilesizeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"))
+        self.ui_duration = DurationFilterWidget(title="Duration", suffix_options=("s", "m"))
+        self.ui_weight = WeightFilterWidget(title="Weight")
 
         # Init sidebar and run components
-        self.ui_sect_sidebar = SidebarWidget(parent=self)
-        self.ui_sect_exec = ExecutionWidget(parent=self)
+        self.ui_sect_sidebar = SidebarWidget()
+        self.ui_sect_exec = ExecutionWidget()
 
         # Connections
         self.ui_sect_exec.signal_start.connect(self.start_mandala_on_push)
         self.ui_sect_exec.signal_stop.connect(self.stop_mandala_on_push)
 
-        self.ui_sect_sidebar.root_open_requested.connect(lambda: os.startfile(self.ui_root.current_path()))
-        self.ui_sect_sidebar.dest_open_requested.connect(lambda: os.startfile(self.ui_dest.current_path()))
-        self.ui_sect_sidebar.default_requested.connect(lambda: self.settings.save_gui())
-        self.ui_sect_sidebar.reset_requested.connect(lambda: self.settings.load_gui())
+        self.ui_sect_sidebar.signal_open_root.connect(lambda: os.startfile(self.ui_root.current_path()))
+        self.ui_sect_sidebar.signal_open_dest.connect(lambda: os.startfile(self.ui_dest.current_path()))
+        self.ui_sect_sidebar.signal_set_default.connect(lambda: self.settings.save_gui())
+        self.ui_sect_sidebar.signal_reset_to_default.connect(lambda: self.settings.load_gui())
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -183,76 +184,20 @@ class MandalaMainGui(QWidget):
 
     def get_configuration(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
-        # File Size Variables
-        size_unit = self.ui_filesize.combo.currentText()
-        min_size = self.ui_filesize.min_spin.value()
-        max_size = self.ui_filesize.max_spin.value()
-        if size_unit == "KB":
-            min_size *= BYTES_IN_KILOBYTE
-            max_size *= BYTES_IN_KILOBYTE
-        elif size_unit == "MB":
-            min_size *= BYTES_IN_MEGABYTE
-            max_size *= BYTES_IN_MEGABYTE
-        elif size_unit == "GB":
-            min_size *= BYTES_IN_GIGABYTE
-            max_size *= BYTES_IN_GIGABYTE
-
-        # File Duration Variables
-        min_duration = self.ui_duration.min_spin.value()
-        max_duration = self.ui_duration.max_spin.value()
-        if self.ui_duration.combo.currentText() == "m":
-            min_duration *= SECONDS_IN_MINUTE
-            max_duration *= SECONDS_IN_MINUTE
-
-        root_path = Path(self.ui_root.current_path())
         return MandalaConfig(
-            root=root_path,
-            root_absolute=root_path.resolve(),
-            dest=Path(self.ui_dest.current_path()),
-            num_files=self.ui_file_count.spin_fixed.value(),
-            is_rand_file_count=self.ui_file_count.groupbox_rand.isChecked(),
-            num_files_rand_min=self.ui_file_count.spin_min_rand.value(),
-            num_files_rand_max=self.ui_file_count.spin_max_rand.value(),
-            keywords=(
-                convert_string_to_list(self.ui_keywords.include_edit.text())
-                if self.ui_keywords.include_groupbox.isChecked()
-                else []
-            ),
-            not_keywords=(
-                convert_string_to_list(self.ui_keywords.exclude_edit.text())
-                if self.ui_keywords.exclude_groupbox.isChecked()
-                else []
-            ),
-            extensions=(
-                convert_string_to_list(self.ui_extensions.include_edit.text())
-                if self.ui_extensions.include_groupbox.isChecked()
-                else []
-            ),
-            not_extensions=(
-                convert_string_to_list(self.ui_extensions.exclude_edit.text())
-                if self.ui_extensions.exclude_groupbox.isChecked()
-                else []
-            ),
-            limit_size=self.ui_filesize.isChecked(),
-            min_size=round(min_size, 2),
-            max_size=round(max_size, 2),
-            limit_duration=self.ui_duration.isChecked(),
-            min_duration=min_duration,
-            max_duration=max_duration,
-            weight_top=self.ui_weight.min_spin.value(),
-            weight_bottom=self.ui_weight.max_spin.value(),
-            create_folders=self.ui_folders.isChecked(),
-            folder_name=self.ui_folders.lineedit_folder_name.text(),
-            unique_folders=self.ui_folders.chk_unique_folders.isChecked(),
-            num_folders=self.ui_folders.spinbox_folder_count.value() if self.ui_folders.isChecked() else 1,
-            index_files=self.ui_filenames.radio_index.isChecked() if self.ui_filenames.isChecked() else False,
-            rename_files=self.ui_filenames.radio_rename.isChecked() if self.ui_filenames.isChecked() else False,
-            rename_name=self.ui_filenames.lineedit_rename.text() if self.ui_filenames.isChecked() else "",
-            trash_empty_folders=self.ui_trash.chk_empty_folders.isChecked() if self.ui_trash.isChecked() else False,
-            trash_source_files=self.ui_trash.chk_valid_files.isChecked() if self.ui_trash.isChecked() else False,
-            trash_invalid_files=self.ui_trash.chk_invalid_files.isChecked() if self.ui_trash.isChecked() else False,
-            log_invalid=self.ui_sect_sidebar.chk_invalid.isChecked(),
-            stall_time_limit=self.ui_sect_exec.dblspin_stall.value(),
+            **self.ui_root.get_config(),
+            **self.ui_dest.get_config(),
+            **self.ui_file_count.get_config(),
+            **self.ui_keywords.get_config(),
+            **self.ui_extensions.get_config(),
+            **self.ui_filesize.get_config(),
+            **self.ui_duration.get_config(),
+            **self.ui_weight.get_config(),
+            **self.ui_folders.get_config(),
+            **self.ui_filenames.get_config(),
+            **self.ui_trash.get_config(),
+            **self.ui_sect_sidebar.get_config(),
+            **self.ui_sect_exec.get_config(),
         )
 
     @Slot(bool)
