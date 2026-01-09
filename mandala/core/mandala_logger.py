@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -49,15 +50,17 @@ class MandalaLogger:
 
     def write_log(self, message: str) -> None:
         """Write to the appropriate log stream."""
-        if self.state.is_append_log:
+        if self.state.is_append_log and self.log_temp:
             self.log_temp.write(f"{message}\n")
-        else:
+        elif self.log:
             self.log.write(f"{message}\n")
 
     def close(self) -> None:
         """Close file handles."""
-        self.log_temp.close()
-        self.log.close()
+        if self.log_temp:
+            self.log_temp.close()
+        if self.log:
+            self.log.close()
 
     def generate_report(self, dest: Path, status: str, runtime: float) -> str:
         """Generate the header report string."""
@@ -104,5 +107,7 @@ class MandalaLogger:
 
     def cleanup_empty(self) -> None:
         """Delete log if no files were found."""
-        if not (self.config.create_folders or self.state.is_append_log) and self.log_path.exists():
-            self.log_path.unlink()
+        self.close()
+        if not (self.config.create_folders or self.state.is_append_log) and (self.log_path and self.log_path.exists()):
+            with contextlib.suppress(OSError):
+                self.log_path.unlink()

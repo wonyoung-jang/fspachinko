@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import inspect
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from random import Random
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QDir, QSettings, Qt, QThreadPool, QTimer, Slot
+from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QGridLayout, QWidget
 
 from ..core.file_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
-from ..core.mandala_engine import MandalaEngine
+from ..core.mandala_engine import MandalaEngine, MandalaEngineSignals
 from ..core.mandala_logger import MandalaLogger
 from ..core.mandala_state import MandalaState
 from ..gui.components import (
@@ -31,7 +32,6 @@ from ..gui.components import (
     WeightFilterWidget,
 )
 from ..gui.workers import RunMandalaWorker
-from ..utilities.utils import strtobool
 from .settings import GuiSettingsManager
 
 if TYPE_CHECKING:
@@ -39,30 +39,108 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class MandalaMainGui(QWidget):
+class MandalaCentralGui(QWidget):
     """Main application window for Mandala."""
+
+    settings_manager: GuiSettingsManager = field(default_factory=GuiSettingsManager)
+    engine: MandalaEngine = field(init=False)
+    worker: RunMandalaWorker = field(init=False)
+    timer: QTimer = field(init=False)
+    ui_root: RootPathSelectorWidget = field(init=False)
+    ui_dest: DestPathSelectorWidget = field(init=False)
+    ui_file_count: FileCountWidget = field(init=False)
+    ui_folders: FolderCreatorWidget = field(init=False)
+    ui_filenames: FilenameSettingsWidget = field(init=False)
+    ui_trash: TrashSettingsWidget = field(init=False)
+    ui_keywords: KeywordsFilterWidget = field(init=False)
+    ui_extensions: ExtensionsFilterWidget = field(init=False)
+    ui_filesize: FilesizeFilterWidget = field(init=False)
+    ui_duration: DurationFilterWidget = field(init=False)
+    ui_weight: WeightFilterWidget = field(init=False)
+    ui_sect_sidebar: SidebarWidget = field(init=False)
+    ui_sect_exec: ExecutionWidget = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-
+        self.setWindowTitle("Mandala: Copy random files")
         self.setup_components()
         self.setup_layout()
+        self.setup_timer()
+        self.setup_settings()
 
-        self.engine: MandalaEngine | None = None
-        self.worker: RunMandalaWorker | None = None
+    def setup_components(self) -> None:
+        """Set up the main UI components."""
+        # Init setup components
+        self.ui_root = RootPathSelectorWidget(title="Root", items=[QDir.rootPath()])
+        self.ui_dest = DestPathSelectorWidget(title="Destination", items=[QDir.homePath()])
+        self.ui_file_count = FileCountWidget(title="File Count")
+        self.ui_folders = FolderCreatorWidget(title="Create Folders")
+        self.ui_filenames = FilenameSettingsWidget(title="Filenames")
+        self.ui_trash = TrashSettingsWidget(title="Trash")
 
+        # Init filter components
+        self.ui_keywords = KeywordsFilterWidget(title="Keywords")
+        self.ui_extensions = ExtensionsFilterWidget(title="Extensions")
+        self.ui_filesize = FilesizeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"))
+        self.ui_duration = DurationFilterWidget(title="Duration", suffix_options=("s", "m"))
+        self.ui_weight = WeightFilterWidget(title="Weight")
+
+        # Init sidebar and run components
+        self.ui_sect_sidebar = SidebarWidget()
+        self.ui_sect_exec = ExecutionWidget()
+
+        # Connections
+        self.ui_sect_exec.signal_start.connect(self._start_on_push)
+        self.ui_sect_exec.signal_stop.connect(self._stop_on_push)
+
+        self.ui_sect_sidebar.signal_open_root.connect(lambda: os.startfile(self.ui_root.current_path()))
+        self.ui_sect_sidebar.signal_open_dest.connect(lambda: os.startfile(self.ui_dest.current_path()))
+        self.ui_sect_sidebar.signal_set_default.connect(lambda: self.settings_manager.save_gui())
+        self.ui_sect_sidebar.signal_reset_to_default.connect(lambda: self.settings_manager.load_gui())
+
+    def setup_layout(self) -> None:
+        """Set up the main UI layouts."""
+        # Layout setup components
+        ui_sect_setup = QWidget()
+        l_setup = QGridLayout(ui_sect_setup)
+        l_setup.addWidget(self.ui_root, 0, 0, 1, 6)
+        l_setup.addWidget(self.ui_dest, 1, 0, 1, 6)
+        l_setup.addWidget(self.ui_file_count, 2, 0, 1, 6)
+        l_setup.addWidget(self.ui_folders, 3, 0, 1, 2)
+        l_setup.addWidget(self.ui_filenames, 3, 2, 1, 2)
+        l_setup.addWidget(self.ui_trash, 3, 4, 1, 2)
+
+        # Layout filter components
+        ui_sect_filter = QWidget()
+        l_filter = QGridLayout(ui_sect_filter)
+        l_filter.addWidget(self.ui_keywords, 0, 0, 1, 3)
+        l_filter.addWidget(self.ui_extensions, 1, 0, 1, 3)
+        l_filter.addWidget(self.ui_filesize, 2, 0)
+        l_filter.addWidget(self.ui_duration, 2, 1)
+        l_filter.addWidget(self.ui_weight, 2, 2)
+
+        # Main layout
+        layout = QGridLayout(self)
+        layout.addWidget(ui_sect_setup, 0, 0)
+        layout.addWidget(ui_sect_filter, 1, 0)
+        layout.addWidget(self.ui_sect_sidebar, 0, 1, 2, 1)
+        layout.addWidget(self.ui_sect_exec, 2, 0, 1, 2)
+
+    def setup_timer(self) -> None:
+        """Set up the timer for UI updates."""
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self.ui_sect_exec.update_timer)
 
-        self.settings = GuiSettingsManager(settings=QSettings("Wonyoung Jang", "Mandala"))
-        self.register_settings()
-        self.restore_window_settings()
-        self.settings.load_gui()
+    def setup_settings(self) -> None:
+        """Set up the GUI settings manager."""
+        self._register_settings()
+        geometry, show_invalid = self.settings_manager.get_window_settings()
+        self.ui_sect_sidebar.chk_invalid.setChecked(show_invalid)
+        self.restoreGeometry(geometry)
+        self.settings_manager.load_gui()
 
-        self.setWindowTitle("Mandala: Copy random files")
-
-    def register_settings(self) -> None:
+    def _register_settings(self) -> None:
         """Register GUI settings to the settings manager."""
         registry = {
             # Sidebar
@@ -116,73 +194,9 @@ class MandalaMainGui(QWidget):
             "weight_min": self.ui_weight.min_spin,
             "weight_max": self.ui_weight.max_spin,
         }
-        self.settings.register_widgets(registry)
+        self.settings_manager.register_widgets(registry)
 
-    def setup_components(self) -> None:
-        """Set up the main UI components."""
-        # Init setup components
-        self.ui_root = RootPathSelectorWidget(title="Root", items=[QDir.rootPath()])
-        self.ui_dest = DestPathSelectorWidget(title="Destination", items=[QDir.homePath()])
-        self.ui_file_count = FileCountWidget(title="File Count")
-        self.ui_folders = FolderCreatorWidget(title="Create Folders")
-        self.ui_filenames = FilenameSettingsWidget(title="Filenames")
-        self.ui_trash = TrashSettingsWidget(title="Trash")
-
-        # Init filter components
-        self.ui_keywords = KeywordsFilterWidget(title="Keywords")
-        self.ui_extensions = ExtensionsFilterWidget(title="Extensions")
-        self.ui_filesize = FilesizeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"))
-        self.ui_duration = DurationFilterWidget(title="Duration", suffix_options=("s", "m"))
-        self.ui_weight = WeightFilterWidget(title="Weight")
-
-        # Init sidebar and run components
-        self.ui_sect_sidebar = SidebarWidget()
-        self.ui_sect_exec = ExecutionWidget()
-
-        # Connections
-        self.ui_sect_exec.signal_start.connect(self.start_mandala_on_push)
-        self.ui_sect_exec.signal_stop.connect(self.stop_mandala_on_push)
-
-        self.ui_sect_sidebar.signal_open_root.connect(lambda: os.startfile(self.ui_root.current_path()))
-        self.ui_sect_sidebar.signal_open_dest.connect(lambda: os.startfile(self.ui_dest.current_path()))
-        self.ui_sect_sidebar.signal_set_default.connect(lambda: self.settings.save_gui())
-        self.ui_sect_sidebar.signal_reset_to_default.connect(lambda: self.settings.load_gui())
-
-    def setup_layout(self) -> None:
-        """Set up the main UI layouts."""
-        # Layout setup components
-        ui_sect_setup = QWidget()
-        l_setup = QGridLayout(ui_sect_setup)
-        l_setup.addWidget(self.ui_root, 0, 0, 1, 6)
-        l_setup.addWidget(self.ui_dest, 1, 0, 1, 6)
-        l_setup.addWidget(self.ui_file_count, 2, 0, 1, 6)
-        l_setup.addWidget(self.ui_folders, 3, 0, 1, 2)
-        l_setup.addWidget(self.ui_filenames, 3, 2, 1, 2)
-        l_setup.addWidget(self.ui_trash, 3, 4, 1, 2)
-
-        # Layout filter components
-        ui_sect_filter = QWidget()
-        l_filter = QGridLayout(ui_sect_filter)
-        l_filter.addWidget(self.ui_keywords, 0, 0, 1, 3)
-        l_filter.addWidget(self.ui_extensions, 1, 0, 1, 3)
-        l_filter.addWidget(self.ui_filesize, 2, 0)
-        l_filter.addWidget(self.ui_duration, 2, 1)
-        l_filter.addWidget(self.ui_weight, 2, 2)
-
-        # Main layout
-        layout = QGridLayout(self)
-        layout.addWidget(ui_sect_setup, 0, 0)
-        layout.addWidget(ui_sect_filter, 1, 0)
-        layout.addWidget(self.ui_sect_sidebar, 0, 1, 2, 1)
-        layout.addWidget(self.ui_sect_exec, 2, 0, 1, 2)
-
-    ###########################################
-    ################# METHODS #################
-    ###########################################
-
-    ### RUN METHODS ###
-
-    def get_configuration(self) -> MandalaConfig:
+    def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
         return MandalaConfig(
             **self.ui_root.get_config(),
@@ -201,7 +215,7 @@ class MandalaMainGui(QWidget):
         )
 
     @Slot(bool)
-    def toggle_ui(self, *, enabled: bool) -> None:
+    def _toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
         self.ui_sect_exec.btn_start.setEnabled(enabled)
         self.ui_sect_exec.btn_stop.setEnabled(not enabled)
@@ -212,10 +226,10 @@ class MandalaMainGui(QWidget):
                 obj.setEnabled(enabled)
 
     @Slot()
-    def start_mandala_on_push(self) -> None:
+    def _start_on_push(self) -> None:
         """Start the mandala process and disable UI elements."""
         try:
-            config = self.get_configuration()
+            config = self.get_mandala_config()
         except ValueError:
             self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
             return
@@ -224,7 +238,7 @@ class MandalaMainGui(QWidget):
         validator = FileValidator(config=config)
         logger = MandalaLogger(config=config, state=state)
 
-        self.toggle_ui(enabled=False)
+        self._toggle_ui(enabled=False)
 
         self.ui_sect_exec.progbar_main.reset()
         self.ui_sect_exec.progbar_stall.setRange(0, int(config.stall_time_limit * 100))
@@ -236,48 +250,38 @@ class MandalaMainGui(QWidget):
             state=state,
             validator=validator,
             logger=logger,
+            stop_requested=False,
+            signals=MandalaEngineSignals(),
+            rng=Random(x=Random().randint(0, 2**32 - 1)),
         )
         self.worker = RunMandalaWorker(self.engine)
 
         self.engine.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
         self.engine.signals.count.connect(self.ui_sect_exec.progbar_main.setValue)
         self.engine.signals.time.connect(self.ui_sect_exec.reset_stall_timer_display)
-        self.engine.signals.finished.connect(self.on_worker_finished)
+        self.engine.signals.finished.connect(self._stop_on_worker_finished)
 
         self.timer.start(10)
-        threadpool = QThreadPool(self)
-        threadpool.start(self.worker)
+        self.worker.start()
 
     @Slot()
-    def stop_mandala_on_push(self) -> None:
+    def _stop_on_push(self) -> None:
         """Stop the mandala process."""
         self.ui_sect_exec.textbrowser_log.append("Stop requested by user...")
         if self.worker:
             self.worker.stop()
 
     @Slot()
-    def on_worker_finished(self) -> None:
+    def _stop_on_worker_finished(self) -> None:
         """Handle worker finished signal."""
         self.timer.stop()
-        self.toggle_ui(enabled=True)
+        self._toggle_ui(enabled=True)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
-        self.save_window_settings()
-        self.settings.save_gui()
+        self.settings_manager.save_window_settings(
+            geometry=self.saveGeometry(),
+            show_invalid=self.ui_sect_sidebar.chk_invalid.isChecked(),
+        )
+        self.settings_manager.save_gui()
         super().closeEvent(event)
-
-    ### SETTINGS SLOTS AND METHODS ###
-
-    def save_window_settings(self) -> None:
-        """Save GUI settings to registry."""
-        self.settings.settings.setValue("show_invalid", self.ui_sect_sidebar.chk_invalid.isChecked())
-        self.settings.settings.setValue("geometry", self.saveGeometry())
-
-    def restore_window_settings(self) -> None:
-        """Restore GUI settings from registry."""
-        val = self.settings.settings.value("show_invalid")
-        if val is not None:
-            self.ui_sect_sidebar.chk_invalid.setChecked(strtobool(val))
-
-        self.restoreGeometry(self.settings.settings.value("geometry"))

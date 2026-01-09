@@ -25,8 +25,9 @@ class MandalaState:
         """Reset state variables for a new folder."""
         self.count = 0
         self.bytes_in_current_folder = 0
-        self.start_folder_time = perf_counter()
-        self.start_stall_time = perf_counter()
+        _start = perf_counter()
+        self.start_folder_time = _start
+        self.start_stall_time = _start
         self.weighted_counts.clear()
         self.touched_by_weight.clear()
 
@@ -39,6 +40,10 @@ class MandalaState:
             self.touched_files.clear()
             self.touched_folders.clear()
             self.path_cache.clear()
+
+    def is_touched(self, abs_path: Path) -> bool:
+        """Check if a file/folder is touched based on weight."""
+        return self.touched_files[abs_path] or self.touched_folders[abs_path]
 
     def touch_folder_if_all_files_touched(self, abs_path: Path) -> None:
         """Mark folder as touched if all files inside are touched."""

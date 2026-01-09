@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from PySide6.QtCore import QSettings, Slot
+from PySide6.QtCore import QByteArray, QCoreApplication, QSettings, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -18,15 +18,24 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.utilities.utils import strtobool
+from ..config.constants import SettingsEnum
+from ..utilities.utils import strtobool
+
+QCoreApplication.setOrganizationName(SettingsEnum.ORGANIZATION)
+QCoreApplication.setOrganizationDomain(SettingsEnum.DOMAIN)
+QCoreApplication.setApplicationName(SettingsEnum.APPLICATION)
 
 
 @dataclass(slots=True)
 class GuiSettingsManager:
     """Class for managing GUI settings."""
 
-    settings: QSettings
+    settings: QSettings = field(init=False)
     registry: dict[str, QWidget] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        self.settings = QSettings()
 
     def register_widgets(self, widgets: dict[str, QWidget]) -> None:
         """Register multiple widgets for settings management."""
@@ -85,3 +94,14 @@ class GuiSettingsManager:
         elif isinstance(widget, (QCheckBox, QRadioButton, QGroupBox)):
             state = strtobool(value) if isinstance(value, str) else bool(value)
             widget.setChecked(state)
+
+    def get_window_settings(self) -> tuple[QByteArray, bool]:
+        """Restore the geometry and state of the main window."""
+        geometry_val = self.settings.value("geometry")
+        show_invalid_val = self.settings.value("show_invalid")
+        return geometry_val, strtobool(show_invalid_val)
+
+    def save_window_settings(self, geometry: QByteArray, *, show_invalid: bool) -> None:
+        """Save the geometry and state of the main window."""
+        self.settings.setValue("geometry", geometry)
+        self.settings.setValue("show_invalid", show_invalid)

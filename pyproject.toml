@@ -92,3 +92,8 @@ paths = ["./mandala", "whitelist.py"]
 ignore_decorators = ["@app.*"]
 min_confidence = 40
 verbose = false
+
+[dependency-groups]
+dev = [
+    "line-profiler>=5.0.0",
+]

@@ -4,7 +4,7 @@ from __future__ import annotations  # noqa: I001
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import QRunnable
+from PySide6.QtCore import QThread
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class RunMandalaWorker(QRunnable):
+class RunMandalaWorker(QThread):
     """Worker thread for running Mandala."""
 
     engine: MandalaEngine
