@@ -12,7 +12,7 @@ from mutagen.mp3 import MP3
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from mandala.core.mandala_config import MandalaConfig
+    from .mandala_config import MandalaConfig
 
 
 @dataclass(slots=True)
