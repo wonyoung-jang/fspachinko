@@ -18,12 +18,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mandala.utilities.utils import strtobool
+
 
 @dataclass(slots=True)
 class GuiSettingsManager:
     """Class for managing GUI settings."""
 
-    settings: QSettings = field(default_factory=QSettings)
+    settings: QSettings
     registry: dict[str, QWidget] = field(default_factory=dict)
 
     def register_widgets(self, widgets: dict[str, QWidget]) -> None:
@@ -49,6 +51,8 @@ class GuiSettingsManager:
         if isinstance(widget, (QSpinBox, QDoubleSpinBox)):
             return widget.value()
         if isinstance(widget, (QCheckBox, QRadioButton, QGroupBox)):
+            if isinstance(widget, QGroupBox) and not widget.isCheckable():
+                return None
             return widget.isChecked()
         return None
 
@@ -71,10 +75,13 @@ class GuiSettingsManager:
             widget.setText(value)
         elif isinstance(widget, QComboBox):
             widget.setCurrentIndex(int(value))
-            if isinstance(value, Sequence[str]):
+            if isinstance(value, Sequence):
                 widget.clear()
                 widget.addItems(value)
-        elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-            widget.setValue(value)
+        elif isinstance(widget, QSpinBox):
+            widget.setValue(int(value))
+        elif isinstance(widget, QDoubleSpinBox):
+            widget.setValue(float(value))
         elif isinstance(widget, (QCheckBox, QRadioButton, QGroupBox)):
-            widget.setChecked(bool(value))
+            state = strtobool(value) if isinstance(value, str) else bool(value)
+            widget.setChecked(state)
