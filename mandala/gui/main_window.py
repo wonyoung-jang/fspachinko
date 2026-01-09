@@ -4,31 +4,18 @@ from __future__ import annotations
 
 import inspect
 import os
-import random
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from time import perf_counter
+from typing import TYPE_CHECKING
 
-import send2trash
-from PySide6.QtCore import QDir, QPoint, QSettings, QSize, Qt, QThreadPool, QTimer, Slot
-from PySide6.QtWidgets import (
-    QGridLayout,
-    QWidget,
-)
+from PySide6.QtCore import QDir, QSettings, Qt, QThreadPool, QTimer, Slot
+from PySide6.QtWidgets import QGridLayout, QWidget
 
-from mandala.core.mandala_engine import MandalaEngine
-from mandala.core.mandala_logger import MandalaLogger
-from mandala.gui.settings import GuiSettingsManager
-
-from ..config.constants import (
-    BYTES_IN_GIGABYTE,
-    BYTES_IN_KILOBYTE,
-    BYTES_IN_MEGABYTE,
-    SECONDS_IN_MINUTE,
-)
-from ..core.config_validator import FileValidator
+from ..config.constants import BYTES_IN_GIGABYTE, BYTES_IN_KILOBYTE, BYTES_IN_MEGABYTE, SECONDS_IN_MINUTE
+from ..core.file_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
+from ..core.mandala_engine import MandalaEngine
+from ..core.mandala_logger import MandalaLogger
 from ..core.mandala_state import MandalaState
 from ..gui.components import (
     DblRangeFilterWidget,
@@ -42,8 +29,12 @@ from ..gui.components import (
     SidebarWidget,
     TrashSettingsWidget,
 )
-from ..gui.workers import RunMandalaWorker, WorkerSignals
+from ..gui.workers import RunMandalaWorker
 from ..utilities.utils import convert_string_to_list, strtobool
+from .settings import GuiSettingsManager
+
+if TYPE_CHECKING:
+    from PySide6.QtGui import QCloseEvent
 
 
 @dataclass(slots=True)
@@ -54,65 +45,77 @@ class MandalaMainGui(QWidget):
         """Initialize the main window."""
         super().__init__()
 
-        self.threadpool = QThreadPool()
-        self.worker = RunMandalaWorker(self)
-        self.worker.setAutoDelete(False)
-
         self.setup_components()
         self.setup_layout()
 
+        self.engine: MandalaEngine | None = None
+        self.worker: RunMandalaWorker | None = None
+
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
-        self.timer.timeout.connect(self.update_timer)
+        self.timer.timeout.connect(self.ui_sect_exec.update_timer)
 
-        self.settings = GuiSettingsManager(settings=QSettings(parent=self))
-        registry = {
-            "show_invalid": self.ui_sect_sidebar.chk_invalid,
-            "ui_root": self.ui_root,
-            "ui_dest": self.ui_dest,
-            "ui_file_count": self.ui_file_count,
-            "ui_folders": self.ui_folders,
-            "ui_filenames": self.ui_filenames,
-            "ui_trash": self.ui_trash,
-            "ui_keywords": self.ui_keywords,
-            "ui_extensions": self.ui_extensions,
-            "ui_filesize": self.ui_filesize,
-            "ui_duration": self.ui_duration,
-            "ui_weight": self.ui_weight,
-            "ui_sect_sidebar": self.ui_sect_sidebar,
-            "ui_sect_exec": self.ui_sect_exec,
-        }
-        self.settings.register_widgets(registry)
+        self.settings = GuiSettingsManager(settings=QSettings("Wonyoung Jang", "Mandala"))
+        self.register_settings()
+        self.restore_window_settings()
         self.settings.load_gui()
-        self.restore_global_settings()
-
-        self.stop_requested = False
-
-        self.state = MandalaState()
-        self.config = self.get_configuration()
-        self.logger = MandalaLogger(
-            config=self.config,
-            state=self.state,
-        )
-        self.file_validator = FileValidator(config=self.config)
-        self.engine = MandalaEngine(
-            config=self.config,
-            state=self.state,
-            validator=self.file_validator,
-            logger=self.logger,
-        )
-
-        self.setup_gui_signals()
 
         self.setWindowTitle("Mandala: Copy random files")
 
-    def setup_gui_signals(self) -> None:
-        """Set up signals for the worker thread."""
-        self.signals = WorkerSignals()
-        self.signals.count_signal.connect(lambda: self.ui_sect_exec.progbar_main.setValue(self.state.count))
-        self.signals.time_signal.connect(self.reset_stall_timer_display)
-        self.signals.finished_signal.connect(lambda: self.timer.stop())
-
-        self.engine.signals.log.connect(lambda s: self.ui_sect_exec.textbrowser_log.append(s))
+    def register_settings(self) -> None:
+        """Register GUI settings to the settings manager."""
+        registry = {
+            # Sidebar
+            "show_invalid": self.ui_sect_sidebar.chk_invalid,
+            # Paths
+            "root_path": self.ui_root.combo,
+            "dest_path": self.ui_dest.combo,
+            # File Count
+            "fc_fixed_val": self.ui_file_count.spin_fixed,
+            "fc_fixed_chk": self.ui_file_count.groupbox_fixed,
+            "fc_rand_chk": self.ui_file_count.groupbox_rand,
+            "fc_rand_min": self.ui_file_count.spin_min_rand,
+            "fc_rand_max": self.ui_file_count.spin_max_rand,
+            # Folders
+            "folder_enabled": self.ui_folders,
+            "folder_count": self.ui_folders.spinbox_folder_count,
+            "folder_name": self.ui_folders.lineedit_folder_name,
+            "folder_unique": self.ui_folders.chk_unique_folders,
+            # Filenames
+            "filename_enabled": self.ui_filenames,
+            "filename_idx": self.ui_filenames.radio_index,
+            "filename_rename": self.ui_filenames.radio_rename,
+            "filename_text": self.ui_filenames.lineedit_rename,
+            # Trash
+            "trash_enabled": self.ui_trash,
+            "trash_empty": self.ui_trash.chk_empty_folders,
+            "trash_valid": self.ui_trash.chk_valid_files,
+            "trash_invalid": self.ui_trash.chk_invalid_files,
+            # Keywords
+            "kw_inc_chk": self.ui_keywords.include_groupbox,
+            "kw_inc_text": self.ui_keywords.include_edit,
+            "kw_exc_chk": self.ui_keywords.exclude_groupbox,
+            "kw_exc_text": self.ui_keywords.exclude_edit,
+            # Extensions
+            "ext_inc_chk": self.ui_extensions.include_groupbox,
+            "ext_inc_text": self.ui_extensions.include_edit,
+            "ext_exc_chk": self.ui_extensions.exclude_groupbox,
+            "ext_exc_text": self.ui_extensions.exclude_edit,
+            # File Size
+            "size_enabled": self.ui_filesize,
+            "size_min": self.ui_filesize.min_spin,
+            "size_max": self.ui_filesize.max_spin,
+            "size_unit": self.ui_filesize.combo,
+            # Duration
+            "dur_enabled": self.ui_duration,
+            "dur_min": self.ui_duration.min_spin,
+            "dur_max": self.ui_duration.max_spin,
+            "dur_unit": self.ui_duration.combo,
+            # Weight
+            "weight_enabled": self.ui_weight,
+            "weight_min": self.ui_weight.min_spin,
+            "weight_max": self.ui_weight.max_spin,
+        }
+        self.settings.register_widgets(registry)
 
     def setup_components(self) -> None:
         """Set up the main UI components."""
@@ -136,8 +139,8 @@ class MandalaMainGui(QWidget):
         self.ui_sect_exec = ExecutionWidget(parent=self)
 
         # Connections
-        self.ui_sect_exec.start_requested.connect(self.start_mandala_on_push)
-        self.ui_sect_exec.stop_requested.connect(self.stop_mandala_on_push)
+        self.ui_sect_exec.signal_start.connect(self.start_mandala_on_push)
+        self.ui_sect_exec.signal_stop.connect(self.stop_mandala_on_push)
 
         self.ui_sect_sidebar.root_open_requested.connect(lambda: os.startfile(self.ui_root.current_path()))
         self.ui_sect_sidebar.dest_open_requested.connect(lambda: os.startfile(self.ui_dest.current_path()))
@@ -252,246 +255,84 @@ class MandalaMainGui(QWidget):
             stall_time_limit=self.ui_sect_exec.dblspin_stall.value(),
         )
 
-    def get_file_count_for_run(self) -> int:
-        """Get the number of files to process for the current run."""
-        if self.config.is_rand_file_count:
-            return random.randint(self.config.num_files_rand_min, self.config.num_files_rand_max)
-        return self.config.num_files
+    @Slot(bool)
+    def toggle_ui(self, *, enabled: bool) -> None:
+        """Lock or unlock UI elements."""
+        self.ui_sect_exec.btn_start.setEnabled(enabled)
+        self.ui_sect_exec.btn_stop.setEnabled(not enabled)
 
-    def start(self) -> None:
-        """Run the main file copying process."""
-        for _ in range(self.config.num_folders):
-            if self.stop_requested:
-                break
-
-            self.process_folder()
-
-        self.stop_mandala()
-
-    def process_folder(self) -> None:
-        """Process a single folder for file copying."""
-        root_absolute = self.config.root_absolute
-
-        self.state.reset_for_folder(root_absolute, unique_folders=self.config.unique_folders)
-
-        top_weight_mark = Path()
-        curr_dest = self.engine.create_dest_folder()
-        self.logger.setup_for_folder(curr_dest)
-
-        main_path = self.config.root
-
-        # File Count
-        num_files = self.get_file_count_for_run()
-
-        self.ui_sect_exec.progbar_main.setRange(0, num_files)
-
-        for curr_file in range(num_files):
-            if self.stop_requested:
-                break
-
-            if self.state.touched_folders[root_absolute] and self.is_timed_out():
-                break
-
-            main_path = self.process_file(main_path, top_weight_mark, curr_file, curr_dest)
-
-        self.engine.finalize_folder(curr_dest)
-
-    def process_file(self, main_path: Path, top_mark: Path, curr_file: int, curr_dest: Path) -> Path:
-        """Process a single file for copying."""
-        while not self.state.touched_folders[self.config.root_absolute] and not self.is_timed_out():
-            if self.stop_requested:
-                return main_path
-
-            main_path_absolute = main_path.resolve()
-            # Try to get main path
-            try:
-                if not self.state.path_cache.setdefault(main_path_absolute, []):
-                    self.state.path_cache[main_path_absolute] = list(main_path.iterdir())
-            except PermissionError:
-                self.state.touched_folders[main_path_absolute] = True
-                main_path = self.config.root
-                continue
-
-            # If folder is empty
-            if len(self.state.path_cache[main_path_absolute]) == 0:
-                self.state.touched_folders[main_path_absolute] = True
-                if self.config.trash_empty_folders:
-                    send2trash.send2trash(str(main_path_absolute))
-                main_path = self.config.root
-            # If the folder is not empty
-            else:
-                # Chooses random path and stores absolute path
-                random_path = Path(random.choice(self.state.path_cache[main_path_absolute]))
-                random_path_absolute = random_path.resolve()
-                # If touched, try again:
-                if self.state.touched_files[random_path_absolute] or self.state.touched_folders[random_path_absolute]:
-                    self.state.touch_folder_if_all_files_touched(main_path_absolute)
-                    main_path = self.config.root
-                elif random_path.is_dir():
-                    main_path, top_mark = self.handle_random_path_is_dir(
-                        random_path, random_path_absolute, main_path, top_mark
-                    )
-                elif random_path.is_file():
-                    # Touch the file and get size
-                    self.state.touched_files[random_path_absolute] = True
-                    random_path_size = Path(random_path).stat().st_size
-                    random_path_relative = Path(os.path.relpath(random_path, self.config.root))
-                    # If file is valid
-                    if self.file_validator.is_valid(random_path, random_path_size) and self.copy_files_to_target(
-                        curr_file, random_path, curr_dest, random_path_size
-                    ):
-                        self.engine.log_success(random_path_relative, curr_file)
-
-                        self.state.bytes_in_current_folder += random_path_size
-                        self.state.count += 1
-                        self.signals.count_signal.emit()
-                        self.state.start_stall_time = perf_counter()
-                        self.signals.time_signal.emit()
-                        if self.config.trash_source_files:
-                            send2trash.send2trash(str(random_path_absolute))
-
-                        self.engine.handle_weights(top_mark, main_path_absolute)
-                        main_path = self.config.root
-                        break
-
-                    # If file is invalid
-                    self.engine.log_invalid(random_path_relative)
-
-                    main_path = self.config.root
-        return main_path
-
-    def handle_random_path_is_dir(
-        self, random_path: Path, random_path_absolute: Path, main_path: Path, top_weight_mark: Path
-    ) -> tuple[Path, Path]:
-        """Handle the case when the random path is a directory."""
-        try:
-            os.chdir(random_path)
-            main_path = Path.cwd()
-            if self.config.weight_top > 0 and Path(random_path_absolute).parent == self.config.root:
-                top_weight_mark = random_path_absolute
-        except PermissionError:
-            self.state.touched_folders[random_path_absolute] = True
-            main_path = self.config.root
-        return main_path, top_weight_mark
-
-    def copy_files_to_target(self, file_num: int, source: Path, dest: Path, source_size: int) -> bool | None:
-        """Copy files to the target destination with appropriate naming."""
-        source_absolute = source.resolve()
-        source_name = source.name
-        try:
-            if self.config.index_files:
-                shutil.copy(source_absolute, dest / f"{file_num + 1}.{source_name}")
-            elif self.config.rename_files:
-                rename_name = self.config.rename_name
-                if not (dest / f"{rename_name} {file_num + 1}{source.suffix}").exists():
-                    shutil.copy(source_absolute, dest / f"{rename_name} {file_num + 1}{source.suffix}")
-                else:
-                    x = 1
-                    while (dest / f"{rename_name} {file_num + x}{source.suffix}").exists():
-                        x += 1
-                    shutil.copy(source_absolute, dest / f"{rename_name} {file_num + x}{source.suffix}")
-            else:
-                x = 2
-                while (dest / f"{source_name}").exists():
-                    if source_size == (dest / f"{source_name}").stat().st_size:
-                        return False
-                    source_name = source.stem + f" ({x})" + source.suffix
-                    x += 1
-                shutil.copy(source_absolute, dest / f"{source_name}")
-        except PermissionError:
-            return False
-
-        return True
-
-    ### PROGRESS & TIMER METHODS ###
-
-    def is_timed_out(self) -> bool:
-        """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_stall_time) > self.config.stall_time_limit
-
-    #############################
-    ########### SLOTS ###########
-    #############################
-
-    ### PROGRESS & TIMER SLOTS ###
-
-    @Slot()
-    def reset_stall_timer_display(self) -> None:
-        """Reset the stall time progress bar and counter display."""
-        self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
-        self.ui_sect_exec.label_stall.setText(f"{self.ui_sect_exec.progbar_stall.value() / 100} s")
-
-    @Slot()
-    def update_timer(self) -> None:
-        """Update the stall time progress bar and counter."""
-        self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.value() - 1)
-        self.ui_sect_exec.label_stall.setText(f"{self.ui_sect_exec.progbar_stall.value() / 100} s")
+        # Disable all inputs while running
+        for name, obj in inspect.getmembers(self):
+            if isinstance(obj, QWidget) and name not in ("ui_sect_exec", "btn_stop", "textbrowser_log"):
+                obj.setEnabled(enabled)
 
     @Slot()
     def start_mandala_on_push(self) -> None:
         """Start the mandala process and disable UI elements."""
         try:
-            self.config = self.get_configuration()
+            config = self.get_configuration()
         except ValueError:
             self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
             return
 
-        self.file_validator = FileValidator(config=self.config)
+        state = MandalaState()
+        validator = FileValidator(config=config)
+        logger = MandalaLogger(config=config, state=state)
 
-        for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
-                obj.setEnabled(False)
+        self.toggle_ui(enabled=False)
 
         self.ui_sect_exec.progbar_main.reset()
-        self.ui_sect_exec.progbar_stall.setRange(0, int(self.config.stall_time_limit * 100))
+        self.ui_sect_exec.progbar_stall.setRange(0, int(config.stall_time_limit * 100))
         self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
-        self.ui_sect_exec.label_stall.setText(f"{self.config.stall_time_limit}0 s")
+        self.ui_sect_exec.label_stall.setText(f"{config.stall_time_limit}0 s")
+
+        self.engine = MandalaEngine(
+            config=config,
+            state=state,
+            validator=validator,
+            logger=logger,
+        )
+        self.worker = RunMandalaWorker(self.engine)
+
+        self.engine.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
+        self.engine.signals.count.connect(self.ui_sect_exec.progbar_main.setValue)
+        self.engine.signals.time.connect(self.ui_sect_exec.reset_stall_timer_display)
+        self.engine.signals.finished.connect(self.on_worker_finished)
 
         self.timer.start(10)
-        self.ui_sect_exec.btn_start.setEnabled(False)
-        self.ui_sect_exec.btn_stop.setEnabled(True)
-
-        self.threadpool.globalInstance().start(self.worker)
-
-    def stop_mandala(self) -> None:
-        """Stop mandala process and reset UI elements."""
-        self.signals.finished_signal.emit()
-
-        self.logger.close()
-
-        self.ui_sect_exec.btn_start.setEnabled(True)
-        self.ui_sect_exec.btn_stop.setEnabled(False)
-        self.ui_sect_exec.label_stall.setText(f"{self.config.stall_time_limit}0 s")
-        self.save_global_settings()
-
-        for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QWidget) and name not in ("stop_btn", "log_block"):
-                obj.setEnabled(True)
+        threadpool = QThreadPool(self)
+        threadpool.start(self.worker)
 
     @Slot()
     def stop_mandala_on_push(self) -> None:
         """Stop the mandala process."""
-        self.stop_requested = True
-        self.save_global_settings()
+        self.ui_sect_exec.textbrowser_log.append("Stop requested by user...")
+        if self.worker:
+            self.worker.stop()
+
+    @Slot()
+    def on_worker_finished(self) -> None:
+        """Handle worker finished signal."""
+        self.timer.stop()
+        self.toggle_ui(enabled=True)
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        """Handle window close event."""
+        self.save_window_settings()
+        self.settings.save_gui()
+        super().closeEvent(event)
 
     ### SETTINGS SLOTS AND METHODS ###
 
-    def save_global_settings(self) -> None:
+    def save_window_settings(self) -> None:
         """Save GUI settings to registry."""
-        self.settings.settings.setValue("size", self.size())
-        self.settings.settings.setValue("pos", self.pos())
         self.settings.settings.setValue("show_invalid", self.ui_sect_sidebar.chk_invalid.isChecked())
+        self.settings.settings.setValue("geometry", self.saveGeometry())
 
-    def restore_global_settings(self) -> None:
+    def restore_window_settings(self) -> None:
         """Restore GUI settings from registry."""
-        size = self.settings.settings.value("size", QSize(500, 500))
-        if isinstance(size, QSize):
-            self.resize(QSize(size))
-
-        pos = self.settings.settings.value("pos", QPoint(60, 60))
-        if isinstance(pos, QPoint):
-            self.move(pos)
-
         val = self.settings.settings.value("show_invalid")
         if val is not None:
             self.ui_sect_sidebar.chk_invalid.setChecked(strtobool(val))
+
+        self.restoreGeometry(self.settings.settings.value("geometry"))
