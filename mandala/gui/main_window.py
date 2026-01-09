@@ -60,7 +60,6 @@ class MandalaMainGui(QWidget):
 
         self.setup_components()
         self.setup_layout()
-        self.setup_gui_signals()
 
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self.update_timer)
@@ -86,11 +85,11 @@ class MandalaMainGui(QWidget):
         self.settings.load_gui()
         self.restore_global_settings()
 
-        self.is_stop_pushed = False
+        self.stop_requested = False
 
         self.state = MandalaState()
         self.config = self.get_configuration()
-        self.loggers = MandalaLogger(
+        self.logger = MandalaLogger(
             config=self.config,
             state=self.state,
         )
@@ -99,8 +98,10 @@ class MandalaMainGui(QWidget):
             config=self.config,
             state=self.state,
             validator=self.file_validator,
-            logger=self.loggers,
+            logger=self.logger,
         )
+
+        self.setup_gui_signals()
 
         self.setWindowTitle("Mandala: Copy random files")
 
@@ -109,8 +110,9 @@ class MandalaMainGui(QWidget):
         self.signals = WorkerSignals()
         self.signals.count_signal.connect(lambda: self.ui_sect_exec.progbar_main.setValue(self.state.count))
         self.signals.time_signal.connect(self.reset_stall_timer_display)
-        self.signals.log_signal.connect(lambda s: self.ui_sect_exec.textbrowser_log.append(s))
         self.signals.finished_signal.connect(lambda: self.timer.stop())
+
+        self.engine.signals.log.connect(lambda s: self.ui_sect_exec.textbrowser_log.append(s))
 
     def setup_components(self) -> None:
         """Set up the main UI components."""
@@ -205,6 +207,9 @@ class MandalaMainGui(QWidget):
             root_absolute=root_path.resolve(),
             dest=Path(self.ui_dest.current_path()),
             num_files=self.ui_file_count.spin_fixed.value(),
+            is_rand_file_count=self.ui_file_count.groupbox_rand.isChecked(),
+            num_files_rand_min=self.ui_file_count.spin_min_rand.value(),
+            num_files_rand_max=self.ui_file_count.spin_max_rand.value(),
             keywords=(
                 convert_string_to_list(self.ui_keywords.include_edit.text())
                 if self.ui_keywords.include_groupbox.isChecked()
@@ -249,14 +254,14 @@ class MandalaMainGui(QWidget):
 
     def get_file_count_for_run(self) -> int:
         """Get the number of files to process for the current run."""
-        if self.ui_file_count.groupbox_rand.isChecked():
-            return random.randint(self.ui_file_count.spin_min_rand.value(), self.ui_file_count.spin_max_rand.value())
+        if self.config.is_rand_file_count:
+            return random.randint(self.config.num_files_rand_min, self.config.num_files_rand_max)
         return self.config.num_files
 
     def start(self) -> None:
         """Run the main file copying process."""
         for _ in range(self.config.num_folders):
-            if self.is_stop_pushed:
+            if self.stop_requested:
                 break
 
             self.process_folder()
@@ -270,17 +275,18 @@ class MandalaMainGui(QWidget):
         self.state.reset_for_folder(root_absolute, unique_folders=self.config.unique_folders)
 
         top_weight_mark = Path()
-        curr_dest = self.create_dest_folder()
-        self.loggers.setup_for_folder(curr_dest)
+        curr_dest = self.engine.create_dest_folder()
+        self.logger.setup_for_folder(curr_dest)
 
         main_path = self.config.root
 
         # File Count
         num_files = self.get_file_count_for_run()
+
         self.ui_sect_exec.progbar_main.setRange(0, num_files)
 
         for curr_file in range(num_files):
-            if self.is_stop_pushed:
+            if self.stop_requested:
                 break
 
             if self.state.touched_folders[root_absolute] and self.is_timed_out():
@@ -288,12 +294,12 @@ class MandalaMainGui(QWidget):
 
             main_path = self.process_file(main_path, top_weight_mark, curr_file, curr_dest)
 
-        self.finalize_folder(curr_dest)
+        self.engine.finalize_folder(curr_dest)
 
     def process_file(self, main_path: Path, top_mark: Path, curr_file: int, curr_dest: Path) -> Path:
         """Process a single file for copying."""
         while not self.state.touched_folders[self.config.root_absolute] and not self.is_timed_out():
-            if self.is_stop_pushed:
+            if self.stop_requested:
                 return main_path
 
             main_path_absolute = main_path.resolve()
@@ -319,9 +325,7 @@ class MandalaMainGui(QWidget):
                 random_path_absolute = random_path.resolve()
                 # If touched, try again:
                 if self.state.touched_files[random_path_absolute] or self.state.touched_folders[random_path_absolute]:
-                    self.touch_folder_if_all_files_touched(
-                        self.state.path_cache[main_path_absolute], main_path_absolute
-                    )
+                    self.state.touch_folder_if_all_files_touched(main_path_absolute)
                     main_path = self.config.root
                 elif random_path.is_dir():
                     main_path, top_mark = self.handle_random_path_is_dir(
@@ -336,7 +340,8 @@ class MandalaMainGui(QWidget):
                     if self.file_validator.is_valid(random_path, random_path_size) and self.copy_files_to_target(
                         curr_file, random_path, curr_dest, random_path_size
                     ):
-                        self.handle_log(random_path_relative, curr_file)
+                        self.engine.log_success(random_path_relative, curr_file)
+
                         self.state.bytes_in_current_folder += random_path_size
                         self.state.count += 1
                         self.signals.count_signal.emit()
@@ -345,53 +350,15 @@ class MandalaMainGui(QWidget):
                         if self.config.trash_source_files:
                             send2trash.send2trash(str(random_path_absolute))
 
-                        self.handle_weights(top_mark, main_path_absolute)
+                        self.engine.handle_weights(top_mark, main_path_absolute)
                         main_path = self.config.root
                         break
 
                     # If file is invalid
-                    self.handle_invalid_file(random_path_relative, random_path_absolute)
+                    self.engine.log_invalid(random_path_relative)
+
                     main_path = self.config.root
         return main_path
-
-    def handle_log(self, random_path: Path, curr_file: int) -> None:
-        """Handle logging of valid files."""
-        msg = f"{curr_file + 1}: {random_path}"
-        self.loggers.write_log(msg)
-        self.signals.log_signal.emit(msg)
-
-    def handle_invalid_file(self, random_path: Path, random_path_absolute: Path) -> None:
-        """Handle invalid files by logging and trashing if necessary."""
-        count = self.state.count
-        if self.config.log_invalid:
-            prefix = "**"
-            if count >= 100:
-                prefix = "***"
-            elif count >= 1000:
-                prefix = "****"
-            self.signals.log_signal.emit(f"{prefix}: {random_path}")
-        if self.config.trash_invalid_files:
-            send2trash.send2trash(random_path_absolute)
-
-    def handle_weights(self, top_mark: Path, bottom_mark: Path) -> None:
-        """Handle weight assignments for folders."""
-        weight_top = self.config.weight_top
-        weight_bottom = self.config.weight_bottom
-        weighted_counts = self.state.weighted_counts
-        touched_folders = self.state.touched_folders
-        touched_by_weight = self.state.touched_by_weight
-
-        if weight_top > 0:
-            weighted_counts[top_mark] += 1
-            if weighted_counts[top_mark] == weight_top:
-                touched_folders[top_mark] = True
-                touched_by_weight[top_mark] = True
-
-        if weight_bottom > 0:
-            weighted_counts[bottom_mark] += 1
-            if weighted_counts[bottom_mark] == weight_bottom:
-                touched_folders[bottom_mark] = True
-                touched_by_weight[bottom_mark] = True
 
     def handle_random_path_is_dir(
         self, random_path: Path, random_path_absolute: Path, main_path: Path, top_weight_mark: Path
@@ -406,40 +373,6 @@ class MandalaMainGui(QWidget):
             self.state.touched_folders[random_path_absolute] = True
             main_path = self.config.root
         return main_path, top_weight_mark
-
-    def finalize_folder(self, curr_dest: Path) -> None:
-        """Create and write log at the end of folder."""
-        runtime = round(perf_counter() - self.state.start_folder_time, 2)
-        timed_out = self.is_timed_out()
-        all_searched = self.state.touched_folders[self.config.root_absolute]
-        num_files = self.config.num_files
-        found = self.state.count
-        create_folders = self.config.create_folders
-
-        if found == num_files:
-            status = f"SUCCESS: {found}/{num_files} files copied"
-        elif self.is_stop_pushed:
-            status = f"STOPPED: {found}/{num_files} files copied"
-        elif found == 0 and create_folders and (timed_out or all_searched):
-            reason = "timed out" if timed_out else "all files searched"
-            status = f"NO FILES FOUND: {reason} | folder deleted"
-        elif all_searched:
-            status = f"ALL FILES SEARCHED: {found}/{num_files} files copied"
-        elif timed_out:
-            status = f"TIMED OUT: {found}/{num_files} files copied"
-        else:
-            status = "FINISHED"
-
-        report = self.loggers.generate_report(curr_dest, status, runtime)
-        self.signals.log_signal.emit(report)
-        self.loggers.close()
-        self.loggers.finalize_log(report)
-
-        if found == 0:
-            if create_folders:
-                shutil.rmtree(curr_dest)
-            else:
-                self.loggers.cleanup_empty()
 
     def copy_files_to_target(self, file_num: int, source: Path, dest: Path, source_size: int) -> bool | None:
         """Copy files to the target destination with appropriate naming."""
@@ -469,33 +402,6 @@ class MandalaMainGui(QWidget):
             return False
 
         return True
-
-    def create_dest_folder(self) -> Path:
-        """Create the destination folder based on configuration."""
-        dest = self.config.dest
-        if not self.config.create_folders:
-            return dest
-
-        name = self.config.folder_name
-        final_dest = dest / name
-        x = 2
-        while True:
-            if not final_dest.exists():
-                final_dest.mkdir()
-                return final_dest
-
-            final_dest = dest / f"{name} {x}"
-            x += 1
-
-    def touch_folder_if_all_files_touched(self, list_of_paths: list[Path], absolute_path: Path) -> None:
-        """Mark folder as touched if all files inside are touched."""
-        for file_folder in list_of_paths:
-            path = file_folder.resolve()
-            if self.state.touched_files[path] or self.state.touched_folders[path]:
-                pass
-            else:
-                return
-        self.state.touched_folders[absolute_path] = True
 
     ### PROGRESS & TIMER METHODS ###
 
@@ -551,7 +457,7 @@ class MandalaMainGui(QWidget):
         """Stop mandala process and reset UI elements."""
         self.signals.finished_signal.emit()
 
-        self.loggers.close()
+        self.logger.close()
 
         self.ui_sect_exec.btn_start.setEnabled(True)
         self.ui_sect_exec.btn_stop.setEnabled(False)
@@ -565,7 +471,7 @@ class MandalaMainGui(QWidget):
     @Slot()
     def stop_mandala_on_push(self) -> None:
         """Stop the mandala process."""
-        self.is_stop_pushed = True
+        self.stop_requested = True
         self.save_global_settings()
 
     ### SETTINGS SLOTS AND METHODS ###

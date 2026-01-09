@@ -13,6 +13,9 @@ class MandalaConfig:
     dest: Path = field(default_factory=Path)
 
     num_files: int = 0
+    is_rand_file_count: bool = False
+    num_files_rand_min: int = 0
+    num_files_rand_max: int = 0
 
     # Filter Keywords and Extensions
     keywords: list[str] = field(default_factory=list)

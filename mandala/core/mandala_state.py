@@ -39,3 +39,12 @@ class MandalaState:
             self.touched_files.clear()
             self.touched_folders.clear()
             self.path_cache.clear()
+
+    def touch_folder_if_all_files_touched(self, abs_path: Path) -> None:
+        """Mark folder as touched if all files inside are touched."""
+        for file_folder in self.path_cache[abs_path]:
+            p = file_folder.resolve()
+            if not (self.touched_files[p] or self.touched_folders[p]):
+                return
+
+        self.touched_folders[abs_path] = True
