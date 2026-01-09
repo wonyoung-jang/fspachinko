@@ -8,11 +8,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
-from mandala.utilities.utils import convert_byte_to_size
+from ..utilities.utils import convert_byte_to_size
 
 if TYPE_CHECKING:
-    from mandala.core.mandala_config import MandalaConfig
-    from mandala.core.mandala_state import MandalaState
+    from .mandala_config import MandalaConfig
+    from .mandala_state import MandalaState
 
 
 @dataclass(slots=True)
@@ -44,7 +44,7 @@ class MandalaLogger:
         self.log = self.log_path.open("a", encoding="utf-8")
 
         # Open temp log (for current run details)
-        self.log_temp_path = Path(self.log_path.name + ".tmp")
+        self.log_temp_path = Path(self.log_path.stem + ".tmp.txt")
         self.log_temp = self.log_temp_path.open("a", encoding="utf-8")
 
     def write_log(self, message: str) -> None:
@@ -56,10 +56,8 @@ class MandalaLogger:
 
     def close(self) -> None:
         """Close file handles."""
-        if self.log_temp:
-            self.log_temp.close()
-        if self.log:
-            self.log.close()
+        self.log_temp.close()
+        self.log.close()
 
     def generate_report(self, dest: Path, status: str, runtime: float) -> str:
         """Generate the header report string."""

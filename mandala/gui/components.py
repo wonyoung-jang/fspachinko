@@ -331,8 +331,8 @@ class SidebarWidget(QWidget):
 class ExecutionWidget(QWidget):
     """Run/Stop controls, Logs, and Stall Timer."""
 
-    start_requested = Signal()
-    stop_requested = Signal()
+    signal_start = Signal()
+    signal_stop = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
@@ -375,11 +375,11 @@ class ExecutionWidget(QWidget):
     def on_start(self) -> None:
         """Handle start button click."""
         self.set_running_state(running=True)
-        self.start_requested.emit()
+        self.signal_start.emit()
 
     def on_stop(self) -> None:
         """Handle stop button click."""
-        self.stop_requested.emit()
+        self.signal_stop.emit()
 
     def set_running_state(self, *, running: bool) -> None:
         """Update the GUI based on running state."""
@@ -396,3 +396,17 @@ class ExecutionWidget(QWidget):
     def log(self, text: str) -> None:
         """Append text to the log viewer."""
         self.textbrowser_log.append(text)
+
+    @Slot()
+    def reset_stall_timer_display(self) -> None:
+        """Reset the stall timer progress bar."""
+        val = self.progbar_stall.maximum()
+        self.progbar_stall.setValue(val)
+        self.label_stall.setText(f"{val / 100} s")
+
+    @Slot()
+    def update_timer(self) -> None:
+        """Update the stall time progress bar."""
+        val = self.progbar_stall.value()
+        self.progbar_stall.setValue(val - 1)
+        self.label_stall.setText(f"{val / 100} s")

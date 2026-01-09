@@ -11,7 +11,5 @@ def main() -> None:
     """Run the application."""
     app = QApplication()
     gui = MandalaMainGui()
-    print(len(gui.__dict__))
     gui.show()
     app.exec()
-    print(len(gui.__dict__))
