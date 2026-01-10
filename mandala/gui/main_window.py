@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QGridLayout, QMainWindow, QWidget
 
 from ..core.file_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
-from ..core.mandala_engine import MandalaEngine, MandalaEngineSignals
+from ..core.mandala_engine import MandalaEngine
 from ..core.mandala_logger import MandalaLogger
 from ..core.mandala_state import MandalaState
 from ..gui.components import (
@@ -269,15 +269,14 @@ class MandalaCentralGui(QWidget):
             validator=validator,
             logger=logger,
             stop_requested=False,
-            signals=MandalaEngineSignals(),
             rng=Random(x=Random().randint(0, 2**32 - 1)),
         )
         self.worker = RunMandalaWorker(self.engine)
 
-        self.engine.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
-        self.engine.signals.count.connect(self.ui_sect_exec.progbar_main.setValue)
-        self.engine.signals.time.connect(self.ui_sect_exec.reset_stall_timer_display)
-        self.engine.signals.finished.connect(self._stop_on_worker_finished)
+        self.worker.observer.log.connect(self.ui_sect_exec.textbrowser_log.append)
+        self.worker.observer.count.connect(self.ui_sect_exec.progbar_main.setValue)
+        self.worker.observer.time.connect(self.ui_sect_exec.reset_stall_timer_display)
+        self.worker.observer.finished.connect(self._stop_on_worker_finished)
 
         self.timer.start(10)
         self.worker.start()

@@ -60,12 +60,13 @@ class MandalaState:
         self.bytes_in_current_folder += size
         self.start_stall_time = perf_counter()
 
-    def handle_weight(self, mark: Path, weight: int) -> None:
+    def handle_weight(self, dir_path: Path, weight: int) -> None:
         """Handle weight-based touching of folders."""
         if weight <= 0:
             return
 
-        self.weighted_counts[mark] += 1
-        if self.weighted_counts[mark] == weight:
-            self.touched_folders[mark] = True
-            self.touched_by_weight[mark] = True
+        self.weighted_counts[dir_path] += 1
+
+        if self.weighted_counts[dir_path] == weight:
+            self.touched_folders[dir_path] = True
+            self.touched_by_weight[dir_path] = True
