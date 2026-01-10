@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
-from ..gui.main_window import MandalaCentralGui
+from ..gui.main_window import MandalaMainWindow
 
 
 def main() -> None:
     """Run the application."""
     app = QApplication()
-    gui = MandalaCentralGui()
+    gui = MandalaMainWindow()
     gui.show()
     app.exec()

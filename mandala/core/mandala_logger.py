@@ -28,9 +28,6 @@ class MandalaLogger:
     log_path: Path = field(init=False)
     log_temp_path: Path = field(init=False)
 
-    def __post_init__(self) -> None:
-        """Initialize the logger."""
-
     def setup_for_folder(self, dest_folder: Path) -> None:
         """Initialize log files for a specific destination folder."""
         # Determine log path based on folder strategy
@@ -102,8 +99,7 @@ class MandalaLogger:
             with log_path.open(encoding="utf-8") as existing, temp_path.open("w", encoding="utf-8") as out:
                 out.write(report + "\n")
                 shutil.copyfileobj(existing, out)
-            log_path.unlink()
-            temp_path.rename(log_path)
+            shutil.move(temp_path, log_path)
 
     def cleanup_empty(self) -> None:
         """Delete log if no files were found."""

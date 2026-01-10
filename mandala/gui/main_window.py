@@ -9,7 +9,7 @@ from random import Random
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
-from PySide6.QtWidgets import QGridLayout, QWidget
+from PySide6.QtWidgets import QGridLayout, QMainWindow, QWidget
 
 from ..core.file_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
@@ -39,10 +39,95 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
+class MandalaMainWindow(QMainWindow):
+    """Main application window for Mandala."""
+
+    settings: GuiSettingsManager = field(default_factory=GuiSettingsManager)
+    ui: MandalaCentralGui = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize the main window."""
+        super().__init__()
+        self.setWindowTitle("Mandala: Copy random files")
+        self.ui = MandalaCentralGui()
+        self.setCentralWidget(self.ui)
+        self.setup_settings()
+        self.ui.ui_sect_sidebar.signal_set_default.connect(lambda: self.settings.save_gui())
+        self.ui.ui_sect_sidebar.signal_reset_to_default.connect(lambda: self.settings.load_gui())
+
+    def setup_settings(self) -> None:
+        """Set up the GUI settings manager."""
+        self._register_settings()
+        self.restoreGeometry(self.settings.get_window_settings())
+        self.settings.load_gui()
+
+    def _register_settings(self) -> None:
+        """Register GUI settings to the settings manager."""
+        registry = {
+            # Sidebar
+            "show_invalid": self.ui.ui_sect_sidebar.chk_invalid,
+            # Paths
+            "root_path": self.ui.ui_root.combo,
+            "dest_path": self.ui.ui_dest.combo,
+            # File Count
+            "fc_fixed_val": self.ui.ui_file_count.spin_fixed,
+            "fc_fixed_chk": self.ui.ui_file_count.groupbox_fixed,
+            "fc_rand_chk": self.ui.ui_file_count.groupbox_rand,
+            "fc_rand_min": self.ui.ui_file_count.spin_min_rand,
+            "fc_rand_max": self.ui.ui_file_count.spin_max_rand,
+            # Folders
+            "folder_enabled": self.ui.ui_folders,
+            "folder_count": self.ui.ui_folders.spinbox_folder_count,
+            "folder_name": self.ui.ui_folders.lineedit_folder_name,
+            "folder_unique": self.ui.ui_folders.chk_unique_folders,
+            # Filenames
+            "filename_enabled": self.ui.ui_filenames,
+            "filename_idx": self.ui.ui_filenames.radio_index,
+            "filename_rename": self.ui.ui_filenames.radio_rename,
+            "filename_text": self.ui.ui_filenames.lineedit_rename,
+            # Trash
+            "trash_enabled": self.ui.ui_trash,
+            "trash_empty": self.ui.ui_trash.chk_empty_folders,
+            "trash_valid": self.ui.ui_trash.chk_valid_files,
+            "trash_invalid": self.ui.ui_trash.chk_invalid_files,
+            # Keywords
+            "kw_inc_chk": self.ui.ui_keywords.include_groupbox,
+            "kw_inc_text": self.ui.ui_keywords.include_edit,
+            "kw_exc_chk": self.ui.ui_keywords.exclude_groupbox,
+            "kw_exc_text": self.ui.ui_keywords.exclude_edit,
+            # Extensions
+            "ext_inc_chk": self.ui.ui_extensions.include_groupbox,
+            "ext_inc_text": self.ui.ui_extensions.include_edit,
+            "ext_exc_chk": self.ui.ui_extensions.exclude_groupbox,
+            "ext_exc_text": self.ui.ui_extensions.exclude_edit,
+            # File Size
+            "size_enabled": self.ui.ui_filesize,
+            "size_min": self.ui.ui_filesize.min_spin,
+            "size_max": self.ui.ui_filesize.max_spin,
+            "size_unit": self.ui.ui_filesize.combo,
+            # Duration
+            "dur_enabled": self.ui.ui_duration,
+            "dur_min": self.ui.ui_duration.min_spin,
+            "dur_max": self.ui.ui_duration.max_spin,
+            "dur_unit": self.ui.ui_duration.combo,
+            # Weight
+            "weight_enabled": self.ui.ui_weight,
+            "weight_min": self.ui.ui_weight.min_spin,
+            "weight_max": self.ui.ui_weight.max_spin,
+        }
+        self.settings.register_widgets(registry)
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        """Handle window close event."""
+        self.settings.save_window_settings(geometry=self.saveGeometry())
+        self.settings.save_gui()
+        super().closeEvent(event)
+
+
+@dataclass(slots=True)
 class MandalaCentralGui(QWidget):
     """Main application window for Mandala."""
 
-    settings_manager: GuiSettingsManager = field(default_factory=GuiSettingsManager)
     engine: MandalaEngine = field(init=False)
     worker: RunMandalaWorker = field(init=False)
     timer: QTimer = field(init=False)
@@ -67,7 +152,6 @@ class MandalaCentralGui(QWidget):
         self.setup_components()
         self.setup_layout()
         self.setup_timer()
-        self.setup_settings()
 
     def setup_components(self) -> None:
         """Set up the main UI components."""
@@ -96,8 +180,6 @@ class MandalaCentralGui(QWidget):
 
         self.ui_sect_sidebar.signal_open_root.connect(lambda: os.startfile(self.ui_root.current_path()))
         self.ui_sect_sidebar.signal_open_dest.connect(lambda: os.startfile(self.ui_dest.current_path()))
-        self.ui_sect_sidebar.signal_set_default.connect(lambda: self.settings_manager.save_gui())
-        self.ui_sect_sidebar.signal_reset_to_default.connect(lambda: self.settings_manager.load_gui())
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -131,70 +213,6 @@ class MandalaCentralGui(QWidget):
         """Set up the timer for UI updates."""
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self.ui_sect_exec.update_timer)
-
-    def setup_settings(self) -> None:
-        """Set up the GUI settings manager."""
-        self._register_settings()
-        geometry, show_invalid = self.settings_manager.get_window_settings()
-        self.ui_sect_sidebar.chk_invalid.setChecked(show_invalid)
-        self.restoreGeometry(geometry)
-        self.settings_manager.load_gui()
-
-    def _register_settings(self) -> None:
-        """Register GUI settings to the settings manager."""
-        registry = {
-            # Sidebar
-            "show_invalid": self.ui_sect_sidebar.chk_invalid,
-            # Paths
-            "root_path": self.ui_root.combo,
-            "dest_path": self.ui_dest.combo,
-            # File Count
-            "fc_fixed_val": self.ui_file_count.spin_fixed,
-            "fc_fixed_chk": self.ui_file_count.groupbox_fixed,
-            "fc_rand_chk": self.ui_file_count.groupbox_rand,
-            "fc_rand_min": self.ui_file_count.spin_min_rand,
-            "fc_rand_max": self.ui_file_count.spin_max_rand,
-            # Folders
-            "folder_enabled": self.ui_folders,
-            "folder_count": self.ui_folders.spinbox_folder_count,
-            "folder_name": self.ui_folders.lineedit_folder_name,
-            "folder_unique": self.ui_folders.chk_unique_folders,
-            # Filenames
-            "filename_enabled": self.ui_filenames,
-            "filename_idx": self.ui_filenames.radio_index,
-            "filename_rename": self.ui_filenames.radio_rename,
-            "filename_text": self.ui_filenames.lineedit_rename,
-            # Trash
-            "trash_enabled": self.ui_trash,
-            "trash_empty": self.ui_trash.chk_empty_folders,
-            "trash_valid": self.ui_trash.chk_valid_files,
-            "trash_invalid": self.ui_trash.chk_invalid_files,
-            # Keywords
-            "kw_inc_chk": self.ui_keywords.include_groupbox,
-            "kw_inc_text": self.ui_keywords.include_edit,
-            "kw_exc_chk": self.ui_keywords.exclude_groupbox,
-            "kw_exc_text": self.ui_keywords.exclude_edit,
-            # Extensions
-            "ext_inc_chk": self.ui_extensions.include_groupbox,
-            "ext_inc_text": self.ui_extensions.include_edit,
-            "ext_exc_chk": self.ui_extensions.exclude_groupbox,
-            "ext_exc_text": self.ui_extensions.exclude_edit,
-            # File Size
-            "size_enabled": self.ui_filesize,
-            "size_min": self.ui_filesize.min_spin,
-            "size_max": self.ui_filesize.max_spin,
-            "size_unit": self.ui_filesize.combo,
-            # Duration
-            "dur_enabled": self.ui_duration,
-            "dur_min": self.ui_duration.min_spin,
-            "dur_max": self.ui_duration.max_spin,
-            "dur_unit": self.ui_duration.combo,
-            # Weight
-            "weight_enabled": self.ui_weight,
-            "weight_min": self.ui_weight.min_spin,
-            "weight_max": self.ui_weight.max_spin,
-        }
-        self.settings_manager.register_widgets(registry)
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
@@ -276,12 +294,3 @@ class MandalaCentralGui(QWidget):
         """Handle worker finished signal."""
         self.timer.stop()
         self._toggle_ui(enabled=True)
-
-    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        """Handle window close event."""
-        self.settings_manager.save_window_settings(
-            geometry=self.saveGeometry(),
-            show_invalid=self.ui_sect_sidebar.chk_invalid.isChecked(),
-        )
-        self.settings_manager.save_gui()
-        super().closeEvent(event)

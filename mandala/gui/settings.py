@@ -95,13 +95,10 @@ class GuiSettingsManager:
             state = strtobool(value) if isinstance(value, str) else bool(value)
             widget.setChecked(state)
 
-    def get_window_settings(self) -> tuple[QByteArray, bool]:
+    def get_window_settings(self) -> QByteArray:
         """Restore the geometry and state of the main window."""
-        geometry_val = self.settings.value("geometry")
-        show_invalid_val = self.settings.value("show_invalid")
-        return geometry_val, strtobool(show_invalid_val)
+        return self.settings.value("geometry")
 
-    def save_window_settings(self, geometry: QByteArray, *, show_invalid: bool) -> None:
+    def save_window_settings(self, geometry: QByteArray) -> None:
         """Save the geometry and state of the main window."""
         self.settings.setValue("geometry", geometry)
-        self.settings.setValue("show_invalid", show_invalid)
