@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import contextlib
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +19,13 @@ if TYPE_CHECKING:
     from .mandala_config import MandalaConfig
     from .mandala_logger import MandalaLogger
     from .mandala_state import MandalaState
+
+
+def trash_path(path: Path, *, condition: bool) -> None:
+    """Trash a path if the condition is met."""
+    if condition:
+        with contextlib.suppress(Exception):
+            send2trash.send2trash(path)
 
 
 class MandalaEngineSignals(QObject):
@@ -55,111 +62,134 @@ class MandalaEngine:
     def process_folder(self) -> None:
         """Process a single folder for file copying."""
         root_abs = self.config.root_absolute
-
         self.state.reset_for_folder(root_abs, unique_folders=self.config.unique_folders)
 
-        top_mark = Path()
-        curr_dest = self._create_dest_folder()
-        self.logger.setup_for_folder(curr_dest)
+        top = Path()
+        dest = self._create_dest_folder()
+        self.logger.setup_for_folder(dest)
 
-        main_path = self.config.root
-
-        # File Count
-        target_count = self._get_file_count_for_folder()
-
-        for index in range(target_count):
+        main = self.config.root
+        for index in range(self._get_file_count_for_folder()):
             if self.stop_requested or self._is_stop_condition():
                 break
 
-            main_path = self.process_file(main_path, top_mark, index, curr_dest)
+            main = self.process_file(main, top, index, dest)
 
-        self._finalize_folder(curr_dest)
+        self._finalize_folder(dest)
 
-    def process_file(self, main_path: Path, top_mark: Path, index: int, curr_dest: Path) -> Path:
+    def process_file(self, main: Path, top: Path, index: int, dest: Path) -> Path:
         """Process a single file for copying."""
+        root = self.config.root
+        start = main
+
         while not (self.state.touched_folders[self.config.root_absolute] or self._is_stall_timeout()):
             if self.stop_requested:
                 break
 
-            main_path_abs = main_path.resolve()
+            start_abs = start.resolve()
 
-            # Try to get main path
-            try:
-                if not self.state.path_cache.setdefault(main_path_abs, []):
-                    self.state.path_cache[main_path_abs] = list(main_path.iterdir())
-            except PermissionError:
-                self.state.touched_folders[main_path_abs] = True
-                main_path = self.config.root
+            choices = self._select_random_path(start, start_abs)
+            if choices is None:
+                start = root
                 continue
 
-            # If folder is empty
-            if len(self.state.path_cache[main_path_abs]) == 0:
-                self.state.touched_folders[main_path_abs] = True
+            chosen, chosen_abs = choices
 
-                if self.config.trash_empty_folders:
-                    send2trash.send2trash(str(main_path_abs))
-
-                main_path = self.config.root
+            if chosen.is_dir():
+                start, top = self._enter_directory(chosen, chosen_abs, start, top)
                 continue
 
-            # If the folder is not empty
-            # Chooses random path and stores absolute path
-            _path = Path(self.rng.choice(self.state.path_cache[main_path_abs]))
-            _abs_path = _path.resolve()
+            if chosen.is_file():
+                self.state.touched_files[chosen_abs] = True
 
-            # If touched, try again:
-            if self.state.is_touched(_abs_path):
-                self.state.touch_folder_if_all_files_touched(main_path_abs)
-                main_path = self.config.root
-            elif _path.is_dir():
-                main_path, top_mark = self._enter_directory(_path, _abs_path, main_path, top_mark)
-            elif _path.is_file():
-                # Touch the file and get size
-                self.state.touched_files[_abs_path] = True
-                _pathsize = _path.stat().st_size
-                _rel_path = Path(os.path.relpath(_path, self.config.root))
-                # If file is valid
-                if self.validator.is_valid(_path, _pathsize) and self._copy_file(index, _path, curr_dest, _pathsize):
-                    self._log_success(_rel_path, index)
+                if self._attempt_copy_file(chosen, dest, index, top, start):
+                    return root
 
-                    self.state.bytes_in_current_folder += _pathsize
+                start = root
+                continue
 
-                    self.state.count += 1
-                    self.signals.count.emit(self.state.count)
+        return start
 
-                    self.state.start_stall_time = perf_counter()
-                    self.signals.time.emit()
+    def _select_random_path(self, start: Path, start_abs: Path) -> tuple[Path, ...] | None:
+        """Select a random path from the given start directory."""
+        try:
+            if not self.state.path_cache.setdefault(start_abs, []):
+                self.state.path_cache[start_abs] = list(start.glob("*"))
+        except PermissionError:
+            self.state.touched_folders[start_abs] = True
+            return None
 
-                    if self.config.trash_source_files:
-                        send2trash.send2trash(str(_abs_path))
+        # If folder is empty
+        if not (children := self.state.path_cache[start_abs]):
+            self.state.touched_folders[start_abs] = True
 
-                    self._handle_weights(top_mark, main_path_abs)
-                    main_path = self.config.root
-                    break
+            # Trash empty folder if configured
+            trash_path(start_abs, condition=self.config.trash_empty_folders)
+            return None
 
-                # If file is invalid
-                self._log_invalid(_rel_path)
+        # If the folder is not empty
+        # Chooses random path and stores absolute path
+        chosen = self.rng.choice(children)
+        chosen_abs = chosen.resolve()
 
-                main_path = self.config.root
+        # If touched, try again:
+        if self.state.is_touched(chosen_abs):
+            self.state.touch_folder_if_all_files_touched(start_abs)
+            return None
 
-        return main_path
+        return chosen, chosen_abs
+
+    def _attempt_copy_file(self, chosen: Path, dest: Path, index: int, top: Path, start: Path) -> bool:
+        """Attempt to copy a file and return success status."""
+        chosen_abs = chosen.resolve()
+        chosen_rel = chosen.relative_to(self.config.root)
+
+        size = chosen.stat().st_size
+
+        if not self.validator.is_valid(chosen, size):
+            self._handle_invalid(chosen_rel, chosen_abs, to_trash=self.config.trash_invalid_files)
+            return False
+
+        target_path = self._calc_dest_file_path(chosen, dest, index, size)
+        if target_path is None:
+            self._handle_invalid(chosen_rel, chosen_abs, to_trash=self.config.trash_invalid_files)
+            return False
+
+        try:
+            shutil.copy(chosen_abs, target_path)
+        except PermissionError:
+            self._handle_invalid(chosen_rel, chosen_abs, to_trash=self.config.trash_invalid_files)
+            return False
+
+        # Success
+        self._log_success(chosen_rel, index)
+        self.state.update_success(size)
+        self.signals.count.emit(self.state.count)
+        self.signals.time.emit()
+        trash_path(chosen_abs, condition=self.config.trash_source_files)
+        self._handle_weights(top, start.resolve())
+        return True
+
+    def _handle_invalid(self, chosen_rel: Path, chosen_abs: Path, *, to_trash: bool) -> None:
+        """Reset state after encountering an invalid file."""
+        self._log_invalid(chosen_rel)
+        trash_path(chosen_abs, condition=to_trash)
 
     def _create_dest_folder(self) -> Path:
         """Create the destination folder based on configuration."""
-        if not self.config.create_folders:
-            return self.config.dest
-
         dest = self.config.dest
+        if not self.config.create_folders:
+            return dest
+
         name = self.config.folder_name
         final_dest = dest / name
         x = 2
-        while True:
-            if not final_dest.exists():
-                final_dest.mkdir()
-                return final_dest
-
-            final_dest = dest / f"{name} {x}"
+        while final_dest.exists():
+            final_dest = dest / f"{name}_{x}"
             x += 1
+
+        final_dest.mkdir(parents=False, exist_ok=False)
+        return final_dest
 
     def _get_file_count_for_folder(self) -> int:
         """Get the number of files to process for the current folder."""
@@ -177,83 +207,71 @@ class MandalaEngine:
         """Check if the process has timed out based on stall time."""
         return (perf_counter() - self.state.start_stall_time) > self.config.stall_time_limit
 
-    def _finalize_folder(self, curr_dest: Path) -> None:
+    def _finalize_folder(self, dest: Path) -> None:
         """Create and write log at the end of folder."""
         runtime = round(perf_counter() - self.state.start_folder_time, 2)
         timed_out = self._is_stall_timeout()
         all_searched = self.state.touched_folders[self.config.root_absolute]
+        count = self.state.count
         num_files = self.config.num_files
-        found = self.state.count
         create_folders = self.config.create_folders
 
-        if found == num_files:
-            status = f"SUCCESS: {found}/{num_files} files copied"
+        if count == num_files:
+            status = f"SUCCESS: {count}/{num_files} files copied"
         elif self.stop_requested:
-            status = f"STOPPED: {found}/{num_files} files copied"
-        elif found == 0 and create_folders and (timed_out or all_searched):
+            status = f"STOPPED: {count}/{num_files} files copied"
+        elif count == 0 and create_folders and (timed_out or all_searched):
             reason = "timed out" if timed_out else "all files searched"
             status = f"NO FILES FOUND: {reason} | folder deleted"
         elif all_searched:
-            status = f"ALL FILES SEARCHED: {found}/{num_files} files copied"
+            status = f"ALL FILES SEARCHED: {count}/{num_files} files copied"
         elif timed_out:
-            status = f"TIMED OUT: {found}/{num_files} files copied"
+            status = f"TIMED OUT: {count}/{num_files} files copied"
         else:
             status = "FINISHED"
 
-        report = self.logger.generate_report(curr_dest, status, runtime)
+        report = self.logger.generate_report(dest, status, runtime)
         self.signals.log.emit(report)
         self.logger.close()
         self.logger.finalize_log(report)
 
-        if found == 0:
+        if count == 0:
             if create_folders:
-                shutil.rmtree(curr_dest)
+                shutil.rmtree(dest)
             else:
                 self.logger.cleanup_empty()
 
-    def _enter_directory(self, path: Path, abs_path: Path, main_path: Path, top_mark: Path) -> tuple[Path, Path]:
+    def _enter_directory(self, chosen: Path, chosen_abs: Path, start: Path, top: Path) -> tuple[Path, Path]:
         """Handle the case when the random path is a directory."""
-        try:
-            os.chdir(path)
-            main_path = Path.cwd()
-            if self.config.weight_top > 0 and abs_path.parent == self.config.root:
-                top_mark = abs_path
-        except PermissionError:
-            self.state.touched_folders[abs_path] = True
-            main_path = self.config.root
-        return main_path, top_mark
+        start = chosen
+        if self.config.weight_top > 0 and chosen_abs.parent == self.config.root:
+            top = chosen_abs
+        return start, top
 
-    def _copy_file(self, index: int, src: Path, dest: Path, size: int) -> bool | None:
-        """Copy files to the target destination with appropriate naming."""
-        try:
-            src_abs = src.resolve()
-            src_name = src.name
+    def _calc_dest_file_path(self, chosen: Path, dest: Path, index: int, size: int) -> Path | None:
+        """Calculate the destination file path based on naming conventions."""
+        target = dest / chosen.name
 
-            _target = dest / src_name
+        if self.config.index_files:
+            target = dest / f"{index + 1}.{chosen.name}"
+        elif self.config.rename_files:
+            rn = self.config.rename_name
+            target = dest / f"{rn} {index + 1}{chosen.suffix}"
 
-            if self.config.index_files:
-                _target = dest / f"{index + 1}.{src_name}"
-            elif self.config.rename_files:
-                rn = self.config.rename_name
-                _target = dest / f"{rn} {index + 1}{src.suffix}"
-
-                x = 1
-                while _target.exists():
-                    x += 1
-                    _target = dest / f"{rn} {index + x}{src.suffix}"
-            else:
-                x = 2
-                while _target.exists():
-                    if size == _target.stat().st_size:
-                        return False
-
-                    _target = dest / f"{src.stem} ({x}){src.suffix}"
-                    x += 1
-            shutil.copy(src_abs, _target)
-        except PermissionError:
-            return False
+            x = 1
+            while target.exists():
+                x += 1
+                target = dest / f"{rn} {index + x}{chosen.suffix}"
         else:
-            return True
+            x = 2
+            while target.exists():
+                if size == target.stat().st_size:
+                    return None
+
+                target = dest / f"{chosen.stem} ({x}){chosen.suffix}"
+                x += 1
+
+        return target
 
     def _log_success(self, random_path: Path, curr_file: int) -> None:
         """Handle logging of valid files."""
@@ -261,33 +279,15 @@ class MandalaEngine:
         self.logger.write_log(msg)
         self.signals.log.emit(msg)
 
-    def _handle_weights(self, top_mark: Path, bottom_mark: Path) -> None:
+    def _handle_weights(self, top: Path, bottom: Path) -> None:
         """Handle weight assignments for folders."""
-        weight_top = self.config.weight_top
-        weight_bottom = self.config.weight_bottom
-        weighted_counts = self.state.weighted_counts
-        touched_folders = self.state.touched_folders
-        touched_by_weight = self.state.touched_by_weight
-
-        if weight_top > 0:
-            weighted_counts[top_mark] += 1
-            if weighted_counts[top_mark] == weight_top:
-                touched_folders[top_mark] = True
-                touched_by_weight[top_mark] = True
-
-        if weight_bottom > 0:
-            weighted_counts[bottom_mark] += 1
-            if weighted_counts[bottom_mark] == weight_bottom:
-                touched_folders[bottom_mark] = True
-                touched_by_weight[bottom_mark] = True
+        self.state.handle_weight(top, self.config.weight_top)
+        self.state.handle_weight(bottom, self.config.weight_bottom)
 
     def _log_invalid(self, path: Path) -> None:
         """Handle logging of invalid files."""
         if self.config.log_invalid:
             self.signals.log.emit(f"Invalid: {path}")
-
-        if self.config.trash_invalid_files:
-            send2trash.send2trash(path.resolve())
 
     def request_stop(self) -> None:
         """Request to stop the engine."""

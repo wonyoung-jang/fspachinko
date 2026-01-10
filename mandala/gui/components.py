@@ -26,8 +26,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.config.constants import BYTES_IN_GIGABYTE, BYTES_IN_KILOBYTE, BYTES_IN_MEGABYTE, SECONDS_IN_MINUTE
-from mandala.utilities.utils import convert_string_to_list
+from ..config.constants import BYTES_IN_GIGABYTE, BYTES_IN_KILOBYTE, BYTES_IN_MEGABYTE, SECONDS_IN_MINUTE
+from ..utilities.utils import convert_string_to_list
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

@@ -12,9 +12,9 @@ class MandalaState:
 
     touched_files: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
     touched_folders: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
-    path_cache: dict[Path, list[Path]] = field(default_factory=lambda: defaultdict(list))
-    weighted_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
     touched_by_weight: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
+    weighted_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
+    path_cache: dict[Path, list[Path]] = field(default_factory=lambda: defaultdict(list))
     count: int = 0
     bytes_in_current_folder: int = 0
     start_folder_time: float = 0.0
@@ -53,3 +53,19 @@ class MandalaState:
                 return
 
         self.touched_folders[abs_path] = True
+
+    def update_success(self, size: int) -> None:
+        """Update state on successful operation."""
+        self.count += 1
+        self.bytes_in_current_folder += size
+        self.start_stall_time = perf_counter()
+
+    def handle_weight(self, mark: Path, weight: int) -> None:
+        """Handle weight-based touching of folders."""
+        if weight <= 0:
+            return
+
+        self.weighted_counts[mark] += 1
+        if self.weighted_counts[mark] == weight:
+            self.touched_folders[mark] = True
+            self.touched_by_weight[mark] = True
