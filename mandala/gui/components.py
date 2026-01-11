@@ -268,9 +268,9 @@ class RangeFilterWidget(QGroupBox):
         self.max_spin = QSpinBox(minimum=0, maximum=1_000_000)
 
         layout = QGridLayout(self)
-        layout.addWidget(QLabel("Min"), 0, 0)
+        layout.addWidget(QLabel("Max per Root Folder"), 0, 0)
         layout.addWidget(self.min_spin, 0, 1)
-        layout.addWidget(QLabel("Max"), 1, 0)
+        layout.addWidget(QLabel("Max per Subfolder"), 1, 0)
         layout.addWidget(self.max_spin, 1, 1)
 
 

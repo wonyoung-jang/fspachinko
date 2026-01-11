@@ -12,16 +12,14 @@ class MandalaState:
 
     touched_files: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
     touched_folders: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
-    touched_by_weight: dict[Path, bool] = field(default_factory=lambda: defaultdict(bool))
     weighted_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
-    path_cache: dict[Path, list[Path]] = field(default_factory=lambda: defaultdict(list))
     count: int = 0
     bytes_in_current_folder: int = 0
     start_folder_time: float = 0.0
     start_stall_time: float = 0.0
     is_append_log: bool = False
 
-    def reset_for_folder(self, root_dir: Path, *, unique_folders: bool) -> None:
+    def reset_for_folder(self, *, unique_folders: bool) -> None:
         """Reset state variables for a new folder."""
         self.count = 0
         self.bytes_in_current_folder = 0
@@ -29,28 +27,20 @@ class MandalaState:
         self.start_folder_time = _start
         self.start_stall_time = _start
         self.weighted_counts.clear()
-        self.touched_by_weight.clear()
-
-        if unique_folders:
-            self.touched_folders[root_dir] = False
-            for key in self.touched_by_weight:
-                self.touched_files[key] = False
-                self.touched_folders[key] = False
-        else:
+        self.touched_folders.clear()
+        if not unique_folders:
             self.touched_files.clear()
-            self.touched_folders.clear()
-            self.path_cache.clear()
 
     def is_touched(self, path: Path) -> bool:
         """Check if a file/folder is touched based on weight."""
         return self.touched_files[path] or self.touched_folders[path]
 
-    def touch_folder_if_all_files_touched(self, dir_path: Path) -> None:
-        """Mark folder as touched if all files inside are touched."""
-        for path in self.path_cache[dir_path]:
-            if not self.is_touched(path):
-                return
+    def touch_file(self, file_path: Path) -> None:
+        """Mark a file as touched."""
+        self.touched_files[file_path] = True
 
+    def touch_dir(self, dir_path: Path) -> None:
+        """Mark a directory as touched."""
         self.touched_folders[dir_path] = True
 
     def update_success(self, size: int) -> None:
@@ -65,7 +55,5 @@ class MandalaState:
             return
 
         self.weighted_counts[dir_path] += 1
-
         if self.weighted_counts[dir_path] == weight:
             self.touched_folders[dir_path] = True
-            self.touched_by_weight[dir_path] = True

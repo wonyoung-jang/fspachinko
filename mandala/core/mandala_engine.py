@@ -54,7 +54,7 @@ class MandalaEngine:
 
     def process_folder(self) -> None:
         """Process a single folder for file copying."""
-        self.state.reset_for_folder(self.config.root, unique_folders=self.config.unique_folders)
+        self.state.reset_for_folder(unique_folders=self.config.unique_folders)
 
         top = Path()
         dest = self._create_dest_folder()
@@ -62,7 +62,7 @@ class MandalaEngine:
 
         curr_root = self.config.root
         for index in range(self._get_file_count_for_folder()):
-            if self.stop_requested or self._is_stop_condition():
+            if self._is_stop_condition():
                 break
 
             curr_root = self.process_file(curr_root, top, index, dest)
@@ -75,14 +75,8 @@ class MandalaEngine:
         start_dir = curr_root
 
         while True:
-            if self.stop_requested:
-                break
-
-            if self.state.touched_folders[self.config.root]:
-                break
-
-            if self._is_stall_timeout():
-                break
+            if self._is_stop_condition():
+                return start_dir
 
             chosen = self._select_random_path(start_dir)
             if chosen is None:
@@ -90,48 +84,46 @@ class MandalaEngine:
                 continue
 
             if chosen.is_dir():
-                start_dir, top = self._enter_folder(chosen, start_dir, top)
+                start_dir, top = self._enter_folder(chosen, top)
                 continue
 
             if chosen.is_file():
-                self.state.touched_files[chosen] = True
+                self.state.touch_file(chosen)
+                chosen_rel = chosen.relative_to(self.config.root)
 
                 if not self._attempt_copy_file(chosen, dest, index, top, start_dir):
-                    self._log_invalid(chosen.relative_to(self.config.root))
+                    self._log_invalid(chosen_rel)
                     trash_path(chosen, condition=self.config.trash_invalid_files)
                     start_dir = root
                     continue
 
                 return root
 
-        return start_dir
-
     def _select_random_path(self, start_dir: Path) -> Path | None:
         """Select a random path from the given start directory."""
         try:
-            children = self.state.path_cache[start_dir]
-            if not children:
-                children.extend(start_dir.glob("*"))
+            children = list(start_dir.glob("*"))
         except PermissionError:
-            self.state.touched_folders[start_dir] = True
+            self.state.touch_dir(start_dir)
             return None
 
         if not children:
-            self.state.touched_folders[start_dir] = True
+            self.state.touch_dir(start_dir)
             trash_path(start_dir, condition=self.config.trash_empty_folders)
             return None
 
-        chosen = self.rng.choice(children)
-
-        if self.state.is_touched(chosen):
-            self.state.touch_folder_if_all_files_touched(start_dir)
+        self.rng.shuffle(children)
+        available = (p for p in children if not self.state.is_touched(p))
+        chosen = next(available, None)
+        if chosen is None:
+            self.state.touch_dir(start_dir)
             return None
 
         return chosen
 
     def _attempt_copy_file(self, chosen: Path, dest: Path, index: int, top: Path, start: Path) -> bool:
         """Attempt to copy a file and return success status."""
-        chosen_rel = chosen.relative_to(self.config.root)
+        chosen_new = chosen.relative_to(self.config.root)
         size = chosen.stat().st_size
 
         if not self.validator.is_valid(chosen, size):
@@ -144,7 +136,7 @@ class MandalaEngine:
             return False
 
         # Success
-        self._log_success(chosen_rel, index)
+        self._log_success(chosen_new, index)
         self.state.update_success(size)
         self.observer.on_count(self.state.count)
         self.observer.on_time()
@@ -176,7 +168,7 @@ class MandalaEngine:
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
-        return self.state.touched_folders[self.config.root] and self._is_stall_timeout()
+        return self.stop_requested or self.state.touched_folders[self.config.root] or self._is_stall_timeout()
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
@@ -218,12 +210,11 @@ class MandalaEngine:
             else:
                 self.logger.cleanup_empty()
 
-    def _enter_folder(self, chosen: Path, start: Path, top: Path) -> tuple[Path, Path]:
+    def _enter_folder(self, chosen: Path, top: Path) -> tuple[Path, Path]:
         """Handle the case when the random path is a directory."""
-        start = chosen
         if self.config.weight_top > 0 and chosen.parent == self.config.root:
             top = chosen
-        return start, top
+        return chosen, top
 
     def _calc_dest_file_path(self, chosen: Path, dest: Path, index: int) -> Path:
         """Calculate the destination file path based on naming conventions."""
