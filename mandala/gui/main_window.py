@@ -5,17 +5,12 @@ from __future__ import annotations
 import inspect
 import os
 from dataclasses import dataclass, field
-from random import Random
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QGridLayout, QMainWindow, QWidget
 
-from ..core.file_validator import FileValidator
 from ..core.mandala_config import MandalaConfig
-from ..core.mandala_engine import MandalaEngine
-from ..core.mandala_logger import MandalaLogger
-from ..core.mandala_state import MandalaState
 from ..gui.components import (
     DestPathSelectorWidget,
     DurationFilterWidget,
@@ -128,7 +123,6 @@ class MandalaMainWindow(QMainWindow):
 class MandalaCentralGui(QWidget):
     """Main application window for Mandala."""
 
-    engine: MandalaEngine = field(init=False)
     worker: RunMandalaWorker = field(init=False)
     timer: QTimer = field(init=False)
     ui_root: RootPathSelectorWidget = field(init=False)
@@ -252,10 +246,6 @@ class MandalaCentralGui(QWidget):
             self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
             return
 
-        state = MandalaState()
-        validator = FileValidator(config=config)
-        logger = MandalaLogger(config=config, state=state)
-
         self._toggle_ui(enabled=False)
 
         self.ui_sect_exec.progbar_main.reset()
@@ -263,16 +253,7 @@ class MandalaCentralGui(QWidget):
         self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
         self.ui_sect_exec.label_stall.setText(f"{config.stall_time_limit}0 s")
 
-        self.engine = MandalaEngine(
-            config=config,
-            state=state,
-            validator=validator,
-            logger=logger,
-            stop_requested=False,
-            rng=Random(x=Random().randint(0, 2**32 - 1)),
-        )
-        self.worker = RunMandalaWorker(self.engine)
-
+        self.worker = RunMandalaWorker(config=config)
         self.worker.observer.log.connect(self.ui_sect_exec.textbrowser_log.append)
         self.worker.observer.count.connect(self.ui_sect_exec.progbar_main.setValue)
         self.worker.observer.time.connect(self.ui_sect_exec.reset_stall_timer_display)

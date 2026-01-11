@@ -1,15 +1,20 @@
 """Workers for mandala GUI."""
 
-from __future__ import annotations  # noqa: I001
+from __future__ import annotations
 
-from dataclasses import dataclass, field
-
-from PySide6.QtCore import QThread, Signal, QObject
+from dataclasses import InitVar, dataclass, field
+from random import Random
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import QObject, QThread, Signal
+
+from ..core.file_validator import FileValidator
+from ..core.mandala_engine import MandalaEngine
+from ..core.mandala_logger import MandalaLogger
+from ..core.mandala_state import MandalaState
 
 if TYPE_CHECKING:
-    from ..core.mandala_engine import MandalaEngine
+    from mandala.core.mandala_config import MandalaConfig
 
 
 class MandalaQtSignalObserver(QObject):
@@ -41,13 +46,24 @@ class MandalaQtSignalObserver(QObject):
 class RunMandalaWorker(QThread):
     """Worker thread for running Mandala."""
 
-    engine: MandalaEngine
-    observer: MandalaQtSignalObserver = field(init=False)
+    config: InitVar[MandalaConfig]
+    engine: MandalaEngine = field(init=False)
+    observer: MandalaQtSignalObserver = field(default_factory=MandalaQtSignalObserver)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, config: MandalaConfig) -> None:
         """Initialize the worker thread."""
         super().__init__()
-        self.observer = MandalaQtSignalObserver()
+        state = MandalaState()
+        validator = FileValidator(config)
+        logger = MandalaLogger(config, state)
+        self.engine = MandalaEngine(
+            config=config,
+            state=state,
+            validator=validator,
+            logger=logger,
+            stop_requested=False,
+            rng=Random(x=Random().randint(0, 2**32 - 1)),
+        )
         self.engine.set_observer(self.observer)
 
     def run(self) -> None:
