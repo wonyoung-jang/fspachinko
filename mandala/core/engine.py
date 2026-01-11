@@ -68,27 +68,29 @@ class MandalaEngine:
         index = 0
         target = self._get_target_count()
 
-        while index < target:
+        for candidate in self.walker.generate_candidates():
+            if index >= target:
+                break
+
             if self._is_stop_condition():
                 break
 
-            candidate = self.walker.get_next_file()
             if candidate is None:
                 break
 
             if not self.validator.is_valid(candidate):
-                self._handle_invalid(candidate)
+                self._handle_invalid(candidate.path)
                 continue
 
-            if self._try_copy(candidate, dest_dir, index):
+            if self._try_copy(candidate.path, dest_dir, index):
                 index += 1
-                self.quota.register_success(candidate)
-                self.state.update_success(candidate.stat().st_size)
+                self.quota.register_success(candidate.path)
+                self.state.update_success(candidate.size)
                 self.observer.on_count(index)
                 self.observer.on_time()
-                trash_path(candidate, condition=self.config.trash_source_files)
+                trash_path(candidate.path, condition=self.config.trash_source_files)
             else:
-                self._handle_invalid(candidate)
+                self._handle_invalid(candidate.path)
 
         self._finalize_folder(dest_dir)
 

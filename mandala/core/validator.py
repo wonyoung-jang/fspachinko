@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from .config import MandalaConfig
+    from .walker import FSEntry
 
 
 @dataclass(slots=True)
@@ -21,29 +22,28 @@ class FileValidator:
 
     config: MandalaConfig
 
-    def is_valid(self, source: Path) -> bool:
+    def is_valid(self, source: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
         if not self.is_valid_size(source):
             return False
 
-        if self.is_not_extension_or_keyword(source):
+        if self.is_not_extension_or_keyword(source.path):
             return False
 
-        if not self.is_extension(source):
+        if not self.is_extension(source.path):
             return False
 
-        if not self.is_keyword(source):
+        if not self.is_keyword(source.path):
             return False
 
-        return self.is_within_duration(source)
+        return self.is_within_duration(source.path)
 
-    def is_valid_size(self, source: Path) -> bool:
+    def is_valid_size(self, source: FSEntry) -> bool:
         """Check if a file is within the specified size range."""
-        size = source.stat().st_size
         if not self.config.limit_size:
             return True
 
-        return self.config.min_size <= size <= self.config.max_size
+        return self.config.min_size <= source.size <= self.config.max_size
 
     def is_not_extension_or_keyword(self, source: Path) -> bool:
         """Check if a file has the specified not extensions or not keywords."""
