@@ -22,3 +22,24 @@ class SettingsEnum(StrEnum):
     ORGANIZATION = "Wonyoung Jang"
     DOMAIN = "wonyoungjang.org"
     APPLICATION = "Mandala"
+
+
+class SizeUnitEnum(StrEnum):
+    """Enumeration for size units."""
+
+    BYTES = "B"
+    KILOBYTES = "KB"
+    MEGABYTES = "MB"
+    GIGABYTES = "GB"
+    B = "B"
+    KB = "KB"
+    MB = "MB"
+    GB = "GB"
+
+
+class TimeUnitEnum(StrEnum):
+    """Enumeration for time units."""
+
+    SECONDS = "s"
+    MINUTES = "m"
+    HOURS = "h"

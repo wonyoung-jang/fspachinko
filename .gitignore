@@ -120,3 +120,4 @@ venv.bak/
 .pre-commit-config.yaml
 ..playground/
 *.prof
+*.lprof
