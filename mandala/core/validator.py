@@ -21,9 +21,9 @@ class FileValidator:
 
     config: MandalaConfig
 
-    def is_valid(self, source: Path, size: int) -> bool:
+    def is_valid(self, source: Path) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not self.is_valid_size(size):
+        if not self.is_valid_size(source):
             return False
 
         if self.is_not_extension_or_keyword(source):
@@ -37,8 +37,9 @@ class FileValidator:
 
         return self.is_within_duration(source)
 
-    def is_valid_size(self, size: int) -> bool:
+    def is_valid_size(self, source: Path) -> bool:
         """Check if a file is within the specified size range."""
+        size = source.stat().st_size
         if not self.config.limit_size:
             return True
 

@@ -243,7 +243,7 @@ class RootPathSelectorWidget(PathSelectorWidget):
         """Return clean data for the config."""
         root = Path(self.current_path())
         return {
-            "root": root,
+            "root": root.resolve(),
         }
 
 

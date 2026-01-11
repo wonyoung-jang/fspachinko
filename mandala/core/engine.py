@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .config import MandalaConfig
     from .interfaces import MandalaObserver
     from .logger import MandalaLogger
+    from .quota import DiversityQuota
     from .state import MandalaState
     from .validator import FileValidator
 
@@ -38,6 +39,7 @@ class MandalaEngine:
     logger: MandalaLogger
     stop_requested: bool
     rng: Random
+    quota: DiversityQuota
     observer: MandalaObserver = field(init=False)
 
     def set_observer(self, observer: MandalaObserver) -> None:
@@ -56,7 +58,8 @@ class MandalaEngine:
 
     def process_folder(self) -> None:
         """Process a single folder for file copying."""
-        self.state.reset_for_folder(unique_folders=self.config.unique_folders)
+        self.state.reset_for_folder()
+        self.quota.prepare_for_batch(clear_history=not self.config.unique_folders)
 
         dest_dir = self._create_dest_folder()
         self.logger.setup_for_folder(dest_dir)
@@ -83,7 +86,7 @@ class MandalaEngine:
 
             chosen_path = self._select_random_path(curr_leafdir)
             if chosen_path is None:
-                self.state.touch_dir(curr_leafdir)
+                self.quota.lock_folder(curr_leafdir)
                 curr_leafdir = base_rootdir
                 continue
 
@@ -92,35 +95,27 @@ class MandalaEngine:
                 continue
 
             if chosen_path.is_file():
-                self.state.touch_file(chosen_path)
+                self.quota.lock_file(chosen_path)
 
-                size = chosen_path.stat().st_size
-                chosen_rel = chosen_path.relative_to(self.config.root)
+                chosen_new = self._attempt_copy_file(chosen_path, dest_dir, index)
 
-                if not self._attempt_copy_file(chosen_path, dest_dir, index, size):
-                    self._log_invalid(chosen_rel)
+                if not chosen_new:
+                    self._log_invalid(chosen_path)
                     trash_path(chosen_path, condition=self.config.trash_invalid_files)
                     curr_leafdir = base_rootdir
                     continue
 
-                self._do_success(chosen_rel, curr_rootdir, curr_leafdir, index, size)
+                self._log_success(chosen_path, chosen_new, index)
+                self._do_success(chosen_new.stat().st_size)
+                self._handle_locks(curr_rootdir, curr_leafdir)
                 trash_path(chosen_path, condition=self.config.trash_source_files)
                 return
 
-    def _do_success(
-        self,
-        chosen_rel: Path,
-        curr_root_dir: Path,
-        curr_leafdir: Path,
-        index: int,
-        size: int,
-    ) -> None:
+    def _do_success(self, size: int) -> None:
         """Handle successful file copy operations."""
-        self._log_success(chosen_rel, index)
         self.state.update_success(size)
         self.observer.on_count(self.state.count)
         self.observer.on_time()
-        self._handle_weights(curr_root_dir, curr_leafdir)
 
     def _select_random_path(self, curr_leafdir: Path) -> Path | None:
         """Select a random path from the given start directory."""
@@ -134,25 +129,26 @@ class MandalaEngine:
             return None
 
         self.rng.shuffle(curr_leafdir_content)
-        available_content = (p for p in curr_leafdir_content if not self.state.is_touched(p))
+        available_content = (p for p in curr_leafdir_content if self.quota.is_available(p))
 
         if (chosen_path := next(available_content, None)) is None:
             return None
 
         return chosen_path
 
-    def _attempt_copy_file(self, chosen: Path, dest: Path, index: int, size: int) -> bool:
+    def _attempt_copy_file(self, chosen: Path, dest: Path, index: int) -> Path | None:
         """Attempt to copy a file and return success status."""
-        if not self.validator.is_valid(chosen, size):
-            return False
+        if not self.validator.is_valid(chosen):
+            return None
 
         target = self._calc_dest_file_path(chosen, dest, index)
+
         try:
             shutil.copy(chosen, target)
         except PermissionError:
-            return False
+            return None
 
-        return True
+        return target
 
     def _create_dest_folder(self) -> Path:
         """Create the destination folder based on configuration."""
@@ -178,7 +174,7 @@ class MandalaEngine:
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
-        return self.stop_requested or self.state.touched_folders[self.config.root] or self._is_stall_timeout()
+        return self.stop_requested or self.quota.all_locked() or self._is_stall_timeout()
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
@@ -189,8 +185,8 @@ class MandalaEngine:
         runtime = round(perf_counter() - self.state.start_folder_time, 2)
 
         timed_out = self._is_stall_timeout()
+        all_searched = self.quota.all_locked()
 
-        all_searched = self.state.touched_folders[self.config.root]
         count = self.state.count
         num_files = self.config.num_files
         create_folders = self.config.create_folders
@@ -258,14 +254,14 @@ class MandalaEngine:
 
         return target
 
-    def _handle_weights(self, top: Path, bottom: Path) -> None:
-        """Handle weight assignments for folders."""
-        self.state.handle_weight(top, self.config.weight_top)
-        self.state.handle_weight(bottom, self.config.weight_bottom)
+    def _handle_locks(self, curr_root: Path, curr_leaf: Path) -> None:
+        """Handle lock assignments for folders."""
+        self.quota.update_and_lock(curr_root, self.config.weight_top)
+        self.quota.update_and_lock(curr_leaf, self.config.weight_bottom)
 
-    def _log_success(self, chosen_rel: Path, index: int) -> None:
+    def _log_success(self, chosen_file: Path, chosen_new: Path, index: int) -> None:
         """Handle logging of valid files."""
-        msg = f"{index + 1}: {chosen_rel}"
+        msg = f"{index + 1}: {chosen_file} -> {chosen_new}"
         self.logger.write_log(msg)
         self.observer.on_log(msg)
 
