@@ -22,6 +22,7 @@ class MandalaLogger:
 
     config: MandalaConfig
     state: MandalaState
+    is_append_log: bool = False
 
     log: TextIO = field(init=False)
     log_temp: TextIO = field(init=False)
@@ -36,7 +37,7 @@ class MandalaLogger:
         if self.config.create_folders:
             pass
 
-        self.state.is_append_log = self.log_path.exists()
+        self.is_append_log = self.log_path.exists()
 
         # Open main log (append mode)
         self.log = self.log_path.open("a", encoding="utf-8")
@@ -47,7 +48,7 @@ class MandalaLogger:
 
     def write_log(self, message: str) -> None:
         """Write to the appropriate log stream."""
-        if self.state.is_append_log and self.log_temp:
+        if self.is_append_log and self.log_temp:
             self.log_temp.write(f"{message}\n")
         elif self.log:
             self.log.write(f"{message}\n")
@@ -76,7 +77,7 @@ class MandalaLogger:
             f"Destination:      {dest}\n"
             f"Extensions:       {ext_str}\n"
             f"Keywords:         {kw_str}\n"
-            f"Total size:       {convert_byte_to_size(self.state.bytes_in_current_folder)}\n"
+            f"Total size:       {convert_byte_to_size(self.state.bytes_in_currdir)}\n"
             f"Total runtime:    {runtime}s\n"
             "------------------------------------------------------------------------"
         )
@@ -87,7 +88,7 @@ class MandalaLogger:
         log_path = self.log_path
         temp_path = self.log_temp_path
 
-        if self.state.is_append_log:
+        if self.is_append_log:
             # Append temp content (current run) to main log, with report in between?
             # Based on original logic:
             with temp_path.open(encoding="utf-8") as content, log_path.open("a", encoding="utf-8") as out:
@@ -104,6 +105,6 @@ class MandalaLogger:
     def cleanup_empty(self) -> None:
         """Delete log if no files were found."""
         self.close()
-        if not (self.config.create_folders or self.state.is_append_log) and (self.log_path and self.log_path.exists()):
+        if not (self.config.create_folders or self.is_append_log) and (self.log_path and self.log_path.exists()):
             with contextlib.suppress(OSError):
                 self.log_path.unlink()

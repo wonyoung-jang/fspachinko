@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import filecmp
 import shutil
 from dataclasses import dataclass, field
@@ -41,6 +42,10 @@ class MandalaEngine:
         """Set the observer for the engine."""
         self.observer = observer
 
+    def request_stop(self) -> None:
+        """Request to stop the engine."""
+        self.stop_requested = True
+
     def start(self) -> None:
         """Run the main file copying process."""
         clear_history = not self.config.unique_folders
@@ -60,10 +65,10 @@ class MandalaEngine:
         dest_dir = self._create_dest_folder()
         self.logger.setup_for_folder(dest_dir)
 
-        target = self._get_target_count()
         index = 0
+        target = self._get_target_count()
 
-        while self.state.count < target:
+        while index < target:
             if self._is_stop_condition():
                 break
 
@@ -72,38 +77,37 @@ class MandalaEngine:
                 break
 
             if not self.validator.is_valid(candidate):
-                self._log_invalid(candidate)
-                trash_path(candidate, condition=self.config.trash_invalid_files)
+                self._handle_invalid(candidate)
                 continue
 
-            chosen_new = self._try_copy(candidate, dest_dir, index)
-            if chosen_new is not None:
+            if self._try_copy(candidate, dest_dir, index):
                 index += 1
                 self.quota.register_success(candidate)
-                self._log_success(candidate, chosen_new, index)
-                self._do_success(chosen_new.stat().st_size)
+                self.state.update_success(candidate.stat().st_size)
+                self.observer.on_count(index)
+                self.observer.on_time()
                 trash_path(candidate, condition=self.config.trash_source_files)
+            else:
+                self._handle_invalid(candidate)
 
         self._finalize_folder(dest_dir)
 
-    def _do_success(self, size: int) -> None:
-        """Handle successful file copy operations."""
-        self.state.update_success(size)
-        self.observer.on_count(self.state.count)
-        self.observer.on_time()
-
-    def _try_copy(self, chosen: Path, dest: Path, index: int) -> Path | None:
+    def _try_copy(self, chosen: Path, dest: Path, index: int) -> bool:
         """Attempt to copy a file and return success status."""
         target = self._calc_dest_file_path(chosen, dest, index)
         if target is None:
-            return None
+            return False
 
         try:
             shutil.copy(chosen, target)
         except (PermissionError, OSError):
-            return None
+            return False
 
-        return target
+        # Success
+        msg = f"{index + 1}: {chosen} -> {target}"
+        self.logger.write_log(msg)
+        self.observer.on_log(msg)
+        return True
 
     def _get_target_count(self) -> int:
         """Get the number of files to process for the current folder."""
@@ -157,32 +161,23 @@ class MandalaEngine:
 
         return target
 
-    def _log_success(self, chosen_file: Path, chosen_new: Path, index: int) -> None:
-        """Handle logging of valid files."""
-        msg = f"{index + 1}: {chosen_file} -> {chosen_new}"
-        self.logger.write_log(msg)
-        self.observer.on_log(msg)
-
-    def _log_invalid(self, path: Path) -> None:
+    def _handle_invalid(self, path: Path) -> None:
         """Handle logging of invalid files."""
         if self.config.log_invalid:
             self.observer.on_log(f"Invalid: {path}")
+        trash_path(path, condition=self.config.trash_invalid_files)
+
+    def _is_stall_timeout(self) -> bool:
+        """Check if the process has timed out based on stall time."""
+        return (perf_counter() - self.state.start_time) > self.config.stall_time_limit
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
         return self.stop_requested or self.quota.all_locked() or self._is_stall_timeout()
 
-    def request_stop(self) -> None:
-        """Request to stop the engine."""
-        self.stop_requested = True
-
-    def _is_stall_timeout(self) -> bool:
-        """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_stall_time) > self.config.stall_time_limit
-
     def _finalize_folder(self, dest: Path) -> None:
         """Create and write log at the end of folder."""
-        runtime = round(perf_counter() - self.state.start_folder_time, 2)
+        runtime = round(perf_counter() - self.state.start_currdir, 2)
 
         timed_out = self._is_stall_timeout()
         all_searched = self.quota.all_locked()
@@ -210,8 +205,7 @@ class MandalaEngine:
         self.logger.close()
         self.logger.finalize_log(report)
 
-        if count == 0:
-            if create_folders:
+        if count == 0 and create_folders:
+            with contextlib.suppress(OSError):
                 shutil.rmtree(dest)
-            else:
-                self.logger.cleanup_empty()
+            self.logger.cleanup_empty()

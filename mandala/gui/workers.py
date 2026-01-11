@@ -8,16 +8,15 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from mandala.core.quota import DiversityQuota
-
 from ..core.engine import MandalaEngine
 from ..core.logger import MandalaLogger
-from ..core.processor import RandomFSWalker
+from ..core.quota import DiversityQuota
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
+from ..core.walker import RandomFSWalker
 
 if TYPE_CHECKING:
-    from mandala.core.config import MandalaConfig
+    from ..core.config import MandalaConfig
 
 
 class MandalaQtSignalObserver(QObject):
