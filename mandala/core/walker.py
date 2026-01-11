@@ -47,10 +47,6 @@ class RandomFSWalker:
     trash_empty_folders: bool = False
     cache: dict[Path, tuple[FSEntry, ...] | None] = field(default_factory=dict)
 
-    def get_next_file(self) -> FSEntry | None:
-        """Entry point: starts a fresh random descent from Root."""
-        return self.recursive_pick(self.root)
-
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
         while True:

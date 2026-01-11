@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QGridLayout, QMainWindow, QWidget
 
+from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
 from .components import (
     DestPathSelectorWidget,
@@ -201,7 +202,7 @@ class MandalaCentralGui(QWidget):
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
-        return MandalaConfig(
+        model = MandalaConfigModel(
             **self.ui_root.get_config(),
             **self.ui_dest.get_config(),
             **self.ui_file_count.get_config(),
@@ -215,6 +216,7 @@ class MandalaCentralGui(QWidget):
             **self.ui_trash.get_config(),
             **self.ui_sect_exec.get_config(),
         )
+        return MandalaConfig(**model.model_dump())
 
     @Slot(bool)
     def _toggle_ui(self, *, enabled: bool) -> None:

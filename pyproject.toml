@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "mutagen>=1.47.0",
+    "pydantic>=2.12.5",
     "pyside6>=6.10.1",
     "send2trash>=1.8.3",
     "soundfile>=0.13.1",
