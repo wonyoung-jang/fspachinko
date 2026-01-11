@@ -9,7 +9,6 @@ class MandalaConfig:
     """Dataclass for Mandala configuration."""
 
     root: Path = field(default_factory=Path)
-    root_absolute: Path = field(default_factory=Path)
     dest: Path = field(default_factory=Path)
 
     num_files: int = 0

@@ -26,7 +26,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..config.constants import BYTES_IN_GIGABYTE, BYTES_IN_KILOBYTE, BYTES_IN_MEGABYTE, SECONDS_IN_MINUTE
+from ..config.constants import (
+    BYTES_IN_GIGABYTE,
+    BYTES_IN_KILOBYTE,
+    BYTES_IN_MEGABYTE,
+    SECONDS_IN_MINUTE,
+    SizeUnitEnum,
+    TimeUnitEnum,
+)
 from ..utilities.utils import convert_string_to_list
 
 if TYPE_CHECKING:
@@ -237,7 +244,6 @@ class RootPathSelectorWidget(PathSelectorWidget):
         root = Path(self.current_path())
         return {
             "root": root,
-            "root_absolute": root.resolve(),
         }
 
 
@@ -319,13 +325,13 @@ class FilesizeFilterWidget(DblRangeFilterWidget):
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_size, max_size = self.min_spin.value(), self.max_spin.value()
-        if unit == "KB":
+        if unit == SizeUnitEnum.KB:
             min_size *= BYTES_IN_KILOBYTE
             max_size *= BYTES_IN_KILOBYTE
-        elif unit == "MB":
+        elif unit == SizeUnitEnum.MB:
             min_size *= BYTES_IN_MEGABYTE
             max_size *= BYTES_IN_MEGABYTE
-        elif unit == "GB":
+        elif unit == SizeUnitEnum.GB:
             min_size *= BYTES_IN_GIGABYTE
             max_size *= BYTES_IN_GIGABYTE
         return {
@@ -342,7 +348,7 @@ class DurationFilterWidget(DblRangeFilterWidget):
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_duration, max_duration = self.min_spin.value(), self.max_spin.value()
-        if unit == "m":
+        if unit == TimeUnitEnum.MINUTES:
             min_duration *= SECONDS_IN_MINUTE
             max_duration *= SECONDS_IN_MINUTE
         return {

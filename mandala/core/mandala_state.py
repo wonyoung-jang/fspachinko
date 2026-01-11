@@ -21,7 +21,7 @@ class MandalaState:
     start_stall_time: float = 0.0
     is_append_log: bool = False
 
-    def reset_for_folder(self, root_absolute: Path, *, unique_folders: bool) -> None:
+    def reset_for_folder(self, root_dir: Path, *, unique_folders: bool) -> None:
         """Reset state variables for a new folder."""
         self.count = 0
         self.bytes_in_current_folder = 0
@@ -32,7 +32,7 @@ class MandalaState:
         self.touched_by_weight.clear()
 
         if unique_folders:
-            self.touched_folders[root_absolute] = False
+            self.touched_folders[root_dir] = False
             for key in self.touched_by_weight:
                 self.touched_files[key] = False
                 self.touched_folders[key] = False
@@ -41,18 +41,17 @@ class MandalaState:
             self.touched_folders.clear()
             self.path_cache.clear()
 
-    def is_touched(self, abs_path: Path) -> bool:
+    def is_touched(self, path: Path) -> bool:
         """Check if a file/folder is touched based on weight."""
-        return self.touched_files[abs_path] or self.touched_folders[abs_path]
+        return self.touched_files[path] or self.touched_folders[path]
 
-    def touch_folder_if_all_files_touched(self, abs_path: Path) -> None:
+    def touch_folder_if_all_files_touched(self, dir_path: Path) -> None:
         """Mark folder as touched if all files inside are touched."""
-        for file_folder in self.path_cache[abs_path]:
-            p = file_folder.resolve()
-            if not (self.touched_files[p] or self.touched_folders[p]):
+        for path in self.path_cache[dir_path]:
+            if not self.is_touched(path):
                 return
 
-        self.touched_folders[abs_path] = True
+        self.touched_folders[dir_path] = True
 
     def update_success(self, size: int) -> None:
         """Update state on successful operation."""
