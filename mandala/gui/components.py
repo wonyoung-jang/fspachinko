@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -207,14 +208,18 @@ class PathSelectorWidget(QGroupBox):
         self.combo.addItems(items)
 
         browse_btn = QPushButton("Browse")
-        browse_btn.clicked.connect(self.browse)
         delete_btn = QPushButton("Delete")
+        btn_open = QPushButton("Open")
+
+        browse_btn.clicked.connect(self.browse)
         delete_btn.clicked.connect(self.delete_curr_item)
+        btn_open.clicked.connect(self.open)
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.combo, stretch=1)
         layout.addWidget(browse_btn)
         layout.addWidget(delete_btn)
+        layout.addWidget(btn_open)
 
     @Slot()
     def browse(self) -> None:
@@ -230,6 +235,11 @@ class PathSelectorWidget(QGroupBox):
         """Delete the currently selected item."""
         if self.combo.count() > 1:
             self.combo.removeItem(self.combo.currentIndex())
+
+    @Slot()
+    def open(self) -> None:
+        """Open the currently selected path in file explorer."""
+        os.startfile(self.current_path())
 
     def current_path(self) -> str:
         """Return the currently selected path."""
@@ -419,54 +429,19 @@ class ExtensionsFilterWidget(DualListWidget):
         }
 
 
-class SidebarWidget(QWidget):
-    """Side panel with actions and global settings."""
-
-    signal_open_root = Signal()
-    signal_open_dest = Signal()
-    signal_close = Signal()
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        """Initialize the sidebar widget."""
-        super().__init__(parent)
-
-        self.btn_root = QPushButton("Open Root")
-        self.btn_dest = QPushButton("Open Destination")
-
-        self.btn_close = QPushButton("Close")
-        self.btn_close.setShortcut("Ctrl+W")
-
-        self.chk_invalid = QCheckBox("Log Invalid")
-        self.chk_invalid.setChecked(True)
-
-        # Signals
-        self.btn_root.clicked.connect(self.signal_open_root)
-        self.btn_dest.clicked.connect(self.signal_open_dest)
-        self.btn_close.clicked.connect(self.signal_close)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.btn_root)
-        layout.addWidget(self.btn_dest)
-        layout.addStretch()
-        layout.addWidget(self.chk_invalid)
-        layout.addWidget(self.btn_close)
-
-    def get_config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            "log_invalid": self.chk_invalid.isChecked(),
-        }
-
-
 class ExecutionWidget(QWidget):
     """Run/Stop controls, Logs, and Stall Timer."""
 
     signal_start = Signal()
     signal_stop = Signal()
+    signal_close = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
         super().__init__(parent=parent)
+
+        self.chk_invalid = QCheckBox("Log Invalid")
+        self.chk_invalid.setChecked(True)
 
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setMinimumHeight(175)
@@ -488,31 +463,44 @@ class ExecutionWidget(QWidget):
         self.btn_stop.setEnabled(False)
         self.btn_stop.setShortcut("ESC")
 
+        self.btn_close = QPushButton("Close")
+        self.btn_close.setShortcut("Ctrl+W")
+
         self.btn_start.clicked.connect(self.on_start)
         self.btn_stop.clicked.connect(self.on_stop)
+        self.btn_close.clicked.connect(self.on_close)
 
         layout = QGridLayout(self)
-        layout.addWidget(self.textbrowser_log, 0, 0, 1, 3)
-        layout.addWidget(self.progbar_stall, 1, 0)
-        layout.addWidget(self.dblspin_stall, 1, 1)
-        layout.addWidget(self.label_stall, 1, 2)
-        layout.addWidget(self.progbar_main, 2, 0)
-        layout.addWidget(self.btn_start, 2, 1)
-        layout.addWidget(self.btn_stop, 2, 2)
+        layout.addWidget(self.chk_invalid, 0, 0)
+        layout.addWidget(self.textbrowser_log, 1, 0, 1, 3)
+        layout.addWidget(self.progbar_stall, 2, 0)
+        layout.addWidget(self.dblspin_stall, 2, 1)
+        layout.addWidget(self.label_stall, 2, 2)
+        layout.addWidget(self.progbar_main, 3, 0)
+        layout.addWidget(self.btn_start, 4, 0)
+        layout.addWidget(self.btn_stop, 4, 1)
+        layout.addWidget(self.btn_close, 4, 2)
 
     @Slot()
     def update_stall_display(self) -> None:
         """Update the stall time label based on spin box value."""
         self.label_stall.setText(f"{self.dblspin_stall.value()} s")
 
+    @Slot()
     def on_start(self) -> None:
         """Handle start button click."""
         self.set_running_state(running=True)
         self.signal_start.emit()
 
+    @Slot()
     def on_stop(self) -> None:
         """Handle stop button click."""
         self.signal_stop.emit()
+
+    @Slot()
+    def on_close(self) -> None:
+        """Handle close button click."""
+        self.signal_close.emit()
 
     def set_running_state(self, *, running: bool) -> None:
         """Update the GUI based on running state."""
@@ -548,4 +536,5 @@ class ExecutionWidget(QWidget):
         """Return clean data for the config."""
         return {
             "stall_time_limit": self.dblspin_stall.value(),
+            "log_invalid": self.chk_invalid.isChecked(),
         }

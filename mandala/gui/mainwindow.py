@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -22,7 +21,6 @@ from .components import (
     FolderCreatorWidget,
     KeywordsFilterWidget,
     RootPathSelectorWidget,
-    SidebarWidget,
     TrashSettingsWidget,
     WeightFilterWidget,
 )
@@ -47,7 +45,7 @@ class MandalaMainWindow(QMainWindow):
         self.ui = MandalaCentralGui()
         self.setCentralWidget(self.ui)
         self.setup_settings()
-        self.ui.ui_sect_sidebar.signal_close.connect(self.close)
+        self.ui.ui_sect_exec.signal_close.connect(self.close)
 
     def setup_settings(self) -> None:
         """Set up the GUI settings manager."""
@@ -59,7 +57,7 @@ class MandalaMainWindow(QMainWindow):
         """Register GUI settings to the settings manager."""
         registry = {
             # Sidebar
-            "show_invalid": self.ui.ui_sect_sidebar.chk_invalid,
+            "show_invalid": self.ui.ui_sect_exec.chk_invalid,
             # Paths
             "root_path": self.ui.ui_root.combo,
             "dest_path": self.ui.ui_dest.combo,
@@ -135,7 +133,6 @@ class MandalaCentralGui(QWidget):
     ui_filesize: FilesizeFilterWidget = field(init=False)
     ui_duration: DurationFilterWidget = field(init=False)
     ui_weight: WeightFilterWidget = field(init=False)
-    ui_sect_sidebar: SidebarWidget = field(init=False)
     ui_sect_exec: ExecutionWidget = field(init=False)
 
     def __post_init__(self) -> None:
@@ -164,15 +161,11 @@ class MandalaCentralGui(QWidget):
         self.ui_weight = WeightFilterWidget(title="Weight")
 
         # Init sidebar and run components
-        self.ui_sect_sidebar = SidebarWidget()
         self.ui_sect_exec = ExecutionWidget()
 
         # Connections
         self.ui_sect_exec.signal_start.connect(self._start_on_push)
         self.ui_sect_exec.signal_stop.connect(self._stop_on_push)
-
-        self.ui_sect_sidebar.signal_open_root.connect(lambda: os.startfile(self.ui_root.current_path()))
-        self.ui_sect_sidebar.signal_open_dest.connect(lambda: os.startfile(self.ui_dest.current_path()))
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -199,8 +192,7 @@ class MandalaCentralGui(QWidget):
         layout = QGridLayout(self)
         layout.addWidget(ui_sect_setup, 0, 0)
         layout.addWidget(ui_sect_filter, 1, 0)
-        layout.addWidget(self.ui_sect_sidebar, 0, 1, 2, 1)
-        layout.addWidget(self.ui_sect_exec, 2, 0, 1, 2)
+        layout.addWidget(self.ui_sect_exec, 2, 0)
 
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
@@ -221,7 +213,6 @@ class MandalaCentralGui(QWidget):
             **self.ui_folders.get_config(),
             **self.ui_filenames.get_config(),
             **self.ui_trash.get_config(),
-            **self.ui_sect_sidebar.get_config(),
             **self.ui_sect_exec.get_config(),
         )
 
