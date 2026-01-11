@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -67,6 +66,14 @@ class GuiSettingsManager:
     def load_gui(self) -> None:
         """Load the state of all registered widgets."""
         for name, widget in self.registry.items():
+            if isinstance(widget, QComboBox):
+                items_key = f"{name}_items"
+                if self.settings.contains(items_key):
+                    items = self.settings.value(items_key)
+                    if isinstance(items, (list, tuple)):
+                        widget.clear()
+                        widget.addItems([str(i) for i in items])
+
             if not self.settings.contains(name):
                 continue
 
@@ -81,10 +88,13 @@ class GuiSettingsManager:
         if isinstance(widget, QLineEdit):
             widget.setText(value)
         elif isinstance(widget, QComboBox):
-            widget.setCurrentIndex(int(value))
-            if isinstance(value, Sequence):
-                widget.clear()
-                widget.addItems(value)
+            try:
+                index = int(value)
+                if index >= widget.count():
+                    index = 0
+                widget.setCurrentIndex(index)
+            except (ValueError, TypeError):
+                pass
         elif isinstance(widget, QSpinBox):
             widget.setValue(int(value))
         elif isinstance(widget, QDoubleSpinBox):
