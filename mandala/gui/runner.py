@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
-from ..gui.main_window import MandalaMainWindow
+from .mainwindow import MandalaMainWindow
 
 
 def main() -> None:

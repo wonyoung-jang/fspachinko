@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from ..core.file_validator import FileValidator
-from ..core.mandala_engine import MandalaEngine
-from ..core.mandala_logger import MandalaLogger
-from ..core.mandala_state import MandalaState
+from ..core.engine import MandalaEngine
+from ..core.logger import MandalaLogger
+from ..core.state import MandalaState
+from ..core.validator import FileValidator
 
 if TYPE_CHECKING:
-    from mandala.core.mandala_config import MandalaConfig
+    from mandala.core.config import MandalaConfig
 
 
 class MandalaQtSignalObserver(QObject):

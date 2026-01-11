@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QGridLayout, QMainWindow, QWidget
 
-from ..core.mandala_config import MandalaConfig
-from ..gui.components import (
+from ..core.config import MandalaConfig
+from .components import (
     DestPathSelectorWidget,
     DurationFilterWidget,
     ExecutionWidget,
@@ -26,8 +26,8 @@ from ..gui.components import (
     TrashSettingsWidget,
     WeightFilterWidget,
 )
-from ..gui.workers import RunMandalaWorker
 from .settings import GuiSettingsManager
+from .workers import RunMandalaWorker
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -47,8 +47,7 @@ class MandalaMainWindow(QMainWindow):
         self.ui = MandalaCentralGui()
         self.setCentralWidget(self.ui)
         self.setup_settings()
-        self.ui.ui_sect_sidebar.signal_set_default.connect(lambda: self.settings.save_gui())
-        self.ui.ui_sect_sidebar.signal_reset_to_default.connect(lambda: self.settings.load_gui())
+        self.ui.ui_sect_sidebar.signal_close.connect(self.close)
 
     def setup_settings(self) -> None:
         """Set up the GUI settings manager."""

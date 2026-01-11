@@ -422,10 +422,9 @@ class ExtensionsFilterWidget(DualListWidget):
 class SidebarWidget(QWidget):
     """Side panel with actions and global settings."""
 
-    signal_set_default = Signal()
-    signal_reset_to_default = Signal()
     signal_open_root = Signal()
     signal_open_dest = Signal()
+    signal_close = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the sidebar widget."""
@@ -433,26 +432,24 @@ class SidebarWidget(QWidget):
 
         self.btn_root = QPushButton("Open Root")
         self.btn_dest = QPushButton("Open Destination")
-        self.btn_default = QPushButton("Set Default Config")
-        self.btn_reset = QPushButton("Reset to Default Config")
+
+        self.btn_close = QPushButton("Close")
+        self.btn_close.setShortcut("Ctrl+W")
 
         self.chk_invalid = QCheckBox("Log Invalid")
         self.chk_invalid.setChecked(True)
 
         # Signals
-        self.btn_default.clicked.connect(self.signal_set_default)
-        self.btn_reset.clicked.connect(self.signal_reset_to_default)
         self.btn_root.clicked.connect(self.signal_open_root)
         self.btn_dest.clicked.connect(self.signal_open_dest)
+        self.btn_close.clicked.connect(self.signal_close)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.btn_root)
         layout.addWidget(self.btn_dest)
-        layout.addSpacing(64)
-        layout.addWidget(self.btn_default)
-        layout.addWidget(self.btn_reset)
         layout.addStretch()
         layout.addWidget(self.chk_invalid)
+        layout.addWidget(self.btn_close)
 
     def get_config(self) -> dict:
         """Return clean data for the config."""
@@ -469,7 +466,7 @@ class ExecutionWidget(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
-        super().__init__(parent)
+        super().__init__(parent=parent)
 
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setMinimumHeight(175)
@@ -489,6 +486,7 @@ class ExecutionWidget(QWidget):
 
         self.btn_stop = QPushButton("Stop")
         self.btn_stop.setEnabled(False)
+        self.btn_stop.setShortcut("ESC")
 
         self.btn_start.clicked.connect(self.on_start)
         self.btn_stop.clicked.connect(self.on_stop)

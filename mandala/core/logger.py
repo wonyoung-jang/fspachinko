@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, TextIO
 from ..utilities.utils import convert_byte_to_size
 
 if TYPE_CHECKING:
-    from .mandala_config import MandalaConfig
-    from .mandala_state import MandalaState
+    from .config import MandalaConfig
+    from .state import MandalaState
 
 
 @dataclass(slots=True)

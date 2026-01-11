@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from PySide6.QtCore import QByteArray, QCoreApplication, QSettings, Slot
+from PySide6.QtCore import QByteArray, QCoreApplication, QSettings
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -41,7 +41,6 @@ class GuiSettingsManager:
         """Register multiple widgets for settings management."""
         self.registry.update(widgets)
 
-    @Slot()
     def save_gui(self) -> None:
         """Save the state of all registered widgets."""
         for name, widget in self.registry.items():
@@ -65,7 +64,6 @@ class GuiSettingsManager:
             return widget.isChecked()
         return None
 
-    @Slot()
     def load_gui(self) -> None:
         """Load the state of all registered widgets."""
         for name, widget in self.registry.items():

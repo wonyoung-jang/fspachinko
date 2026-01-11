@@ -5,20 +5,20 @@ from __future__ import annotations
 import contextlib
 import shutil
 from dataclasses import dataclass, field
-from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
 import send2trash
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from random import Random
 
-    from .file_validator import FileValidator
+    from .config import MandalaConfig
     from .interfaces import MandalaObserver
-    from .mandala_config import MandalaConfig
-    from .mandala_logger import MandalaLogger
-    from .mandala_state import MandalaState
+    from .logger import MandalaLogger
+    from .state import MandalaState
+    from .validator import FileValidator
 
 
 def trash_path(path: Path, *, condition: bool) -> None:
@@ -49,83 +49,100 @@ class MandalaEngine:
         for _ in range(self.config.num_folders):
             if self.stop_requested:
                 break
+
             self.process_folder()
+
         self.observer.on_finished()
 
     def process_folder(self) -> None:
         """Process a single folder for file copying."""
         self.state.reset_for_folder(unique_folders=self.config.unique_folders)
 
-        top = Path()
-        dest = self._create_dest_folder()
-        self.logger.setup_for_folder(dest)
+        dest_dir = self._create_dest_folder()
+        self.logger.setup_for_folder(dest_dir)
 
-        curr_root = self.config.root
+        curr_rootdir = self.config.root
+        input_leafdir = self.config.root
+
         for index in range(self._get_file_count_for_folder()):
             if self._is_stop_condition():
                 break
 
-            curr_root = self.process_file(curr_root, top, index, dest)
+            self.process_file(input_leafdir, curr_rootdir, index, dest_dir)
 
-        self._finalize_folder(dest)
+        self._finalize_folder(dest_dir)
 
-    def process_file(self, curr_root: Path, top: Path, index: int, dest: Path) -> Path:
+    def process_file(self, input_leafdir: Path, curr_rootdir: Path, index: int, dest_dir: Path) -> None:
         """Process a single file for copying."""
-        root = self.config.root
-        start_dir = curr_root
+        base_rootdir = self.config.root
+        curr_leafdir = input_leafdir
 
         while True:
             if self._is_stop_condition():
-                return start_dir
+                return
 
-            chosen = self._select_random_path(start_dir)
-            if chosen is None:
-                start_dir = root
+            chosen_path = self._select_random_path(curr_leafdir)
+            if chosen_path is None:
+                self.state.touch_dir(curr_leafdir)
+                curr_leafdir = base_rootdir
                 continue
 
-            if chosen.is_dir():
-                start_dir, top = self._enter_folder(chosen, top)
+            if chosen_path.is_dir():
+                curr_leafdir, curr_rootdir = self._enter_folder(chosen_path, curr_rootdir)
                 continue
 
-            if chosen.is_file():
-                self.state.touch_file(chosen)
-                chosen_rel = chosen.relative_to(self.config.root)
+            if chosen_path.is_file():
+                self.state.touch_file(chosen_path)
 
-                if not self._attempt_copy_file(chosen, dest, index, top, start_dir):
+                size = chosen_path.stat().st_size
+                chosen_rel = chosen_path.relative_to(self.config.root)
+
+                if not self._attempt_copy_file(chosen_path, dest_dir, index, size):
                     self._log_invalid(chosen_rel)
-                    trash_path(chosen, condition=self.config.trash_invalid_files)
-                    start_dir = root
+                    trash_path(chosen_path, condition=self.config.trash_invalid_files)
+                    curr_leafdir = base_rootdir
                     continue
 
-                return root
+                self._do_success(chosen_rel, curr_rootdir, curr_leafdir, index, size)
+                trash_path(chosen_path, condition=self.config.trash_source_files)
+                return
 
-    def _select_random_path(self, start_dir: Path) -> Path | None:
+    def _do_success(
+        self,
+        chosen_rel: Path,
+        curr_root_dir: Path,
+        curr_leafdir: Path,
+        index: int,
+        size: int,
+    ) -> None:
+        """Handle successful file copy operations."""
+        self._log_success(chosen_rel, index)
+        self.state.update_success(size)
+        self.observer.on_count(self.state.count)
+        self.observer.on_time()
+        self._handle_weights(curr_root_dir, curr_leafdir)
+
+    def _select_random_path(self, curr_leafdir: Path) -> Path | None:
         """Select a random path from the given start directory."""
         try:
-            children = list(start_dir.glob("*"))
+            curr_leafdir_content = list(curr_leafdir.glob("*"))
         except PermissionError:
-            self.state.touch_dir(start_dir)
             return None
 
-        if not children:
-            self.state.touch_dir(start_dir)
-            trash_path(start_dir, condition=self.config.trash_empty_folders)
+        if not curr_leafdir_content:
+            trash_path(curr_leafdir, condition=self.config.trash_empty_folders)
             return None
 
-        self.rng.shuffle(children)
-        available = (p for p in children if not self.state.is_touched(p))
-        chosen = next(available, None)
-        if chosen is None:
-            self.state.touch_dir(start_dir)
+        self.rng.shuffle(curr_leafdir_content)
+        available_content = (p for p in curr_leafdir_content if not self.state.is_touched(p))
+
+        if (chosen_path := next(available_content, None)) is None:
             return None
 
-        return chosen
+        return chosen_path
 
-    def _attempt_copy_file(self, chosen: Path, dest: Path, index: int, top: Path, start: Path) -> bool:
+    def _attempt_copy_file(self, chosen: Path, dest: Path, index: int, size: int) -> bool:
         """Attempt to copy a file and return success status."""
-        chosen_new = chosen.relative_to(self.config.root)
-        size = chosen.stat().st_size
-
         if not self.validator.is_valid(chosen, size):
             return False
 
@@ -135,13 +152,6 @@ class MandalaEngine:
         except PermissionError:
             return False
 
-        # Success
-        self._log_success(chosen_new, index)
-        self.state.update_success(size)
-        self.observer.on_count(self.state.count)
-        self.observer.on_time()
-        trash_path(chosen, condition=self.config.trash_source_files)
-        self._handle_weights(top, start)
         return True
 
     def _create_dest_folder(self) -> Path:
