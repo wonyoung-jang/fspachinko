@@ -12,6 +12,7 @@ from mandala.core.quota import DiversityQuota
 
 from ..core.engine import MandalaEngine
 from ..core.logger import MandalaLogger
+from ..core.processor import RandomFSWalker
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
 
@@ -63,14 +64,23 @@ class RunMandalaWorker(QThread):
             limit_root_folder=config.weight_top,
             limit_leaf_folder=config.weight_bottom,
         )
+        rng = Random(x=Random().randint(0, 2**32 - 1))
+        walker = RandomFSWalker(
+            root=config.root,
+            rng=rng,
+            quota=quota,
+            trash_empty_folders=config.trash_empty_folders,
+        )
+
         self.engine = MandalaEngine(
             config=config,
             state=state,
             validator=validator,
             logger=logger,
             stop_requested=False,
-            rng=Random(x=Random().randint(0, 2**32 - 1)),
+            rng=rng,
             quota=quota,
+            walker=walker,
         )
         self.engine.set_observer(self.observer)
 

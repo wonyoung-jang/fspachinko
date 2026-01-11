@@ -37,10 +37,6 @@ class DiversityQuota:
         """Mark a folder as locked without registering a success."""
         self.locked_folders.add(folder_path)
 
-    def is_locked(self, file_path: Path) -> bool:
-        """Check if a file has been used."""
-        return file_path in self.locked_files
-
     def is_available(self, path: Path) -> bool:
         """Check if a file or folder is eligible for selection."""
         if path.is_file():
