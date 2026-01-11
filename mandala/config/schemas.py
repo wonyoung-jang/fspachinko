@@ -17,6 +17,11 @@ class MandalaConfigModel(BaseModel):
     num_files_rand_max: int = 0
 
     # Filter Keywords and Extensions
+    is_keywords: bool = False
+    is_extensions: bool = False
+    is_not_keywords: bool = False
+    is_not_extensions: bool = False
+
     keywords: list[str] = Field(default_factory=list)
     not_keywords: list[str] = Field(default_factory=list)
     extensions: list[str] = Field(default_factory=list)

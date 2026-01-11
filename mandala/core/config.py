@@ -1,6 +1,6 @@
 """Mandala configuration dataclass."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -8,52 +8,59 @@ from pathlib import Path
 class MandalaConfig:
     """Dataclass for Mandala configuration."""
 
-    root: Path = field(default_factory=Path)
-    dest: Path = field(default_factory=Path)
+    # Paths
+    root: Path
+    dest: Path
 
-    num_files: int = 0
-    is_rand_file_count: bool = False
-    num_files_rand_min: int = 0
-    num_files_rand_max: int = 0
+    # File Count
+    num_files: int
+    is_rand_file_count: bool
+    num_files_rand_min: int
+    num_files_rand_max: int
 
     # Filter Keywords and Extensions
-    keywords: list[str] = field(default_factory=list)
-    not_keywords: list[str] = field(default_factory=list)
-    extensions: list[str] = field(default_factory=list)
-    not_extensions: list[str] = field(default_factory=list)
+    is_keywords: bool
+    is_extensions: bool
+    is_not_keywords: bool
+    is_not_extensions: bool
+
+    keywords: list[str]
+    extensions: list[str]
+    not_keywords: list[str]
+    not_extensions: list[str]
 
     # Filter Size
-    limit_size: bool = False
-    min_size: float = 0.0
-    max_size: float = 0.0
+    limit_size: bool
+    min_size: float
+    max_size: float
 
     # Filter Duration
-    limit_duration: bool = False
-    min_duration: float = 0.0
-    max_duration: float = 0.0
+    limit_duration: bool
+    min_duration: float
+    max_duration: float
 
     # Filter Weight
-    weight_top: int = 0
-    weight_bottom: int = 0
+    weight_top: int
+    weight_bottom: int
 
     # Folder Creation
-    create_folders: bool = False
-    folder_name: str = ""
-    unique_folders: bool = True
-    num_folders: int = 1
+    create_folders: bool
+    folder_name: str
+    unique_folders: bool
+    num_folders: int
 
     # Renaming
-    index_files: bool = False
-    rename_files: bool = False
-    rename_name: str = ""
+    index_files: bool
+    rename_files: bool
+    rename_name: str
 
     # Trash
-    trash_empty_folders: bool = False
-    trash_source_files: bool = False
-    trash_invalid_files: bool = False
+    trash_empty_folders: bool
+    trash_source_files: bool
+    trash_invalid_files: bool
 
     # Invalid
-    log_invalid: bool = True
+    log_invalid: bool
 
     # Stall time
-    stall_time_limit: float = 0.0
+    stall_time_limit: float

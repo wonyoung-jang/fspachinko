@@ -3,15 +3,11 @@
 -e .
 annotated-types==0.7.0
     # via pydantic
-cffi==2.0.0
-    # via soundfile
-line-profiler==5.0.0
-mutagen==1.47.0
+ffmpeg-python==0.2.0
     # via mandala
-numpy==2.4.0
-    # via soundfile
-pycparser==2.23 ; implementation_name != 'PyPy'
-    # via cffi
+future==1.0.0
+    # via ffmpeg-python
+line-profiler==5.0.0
 pydantic==2.12.5
     # via mandala
 pydantic-core==2.41.5
@@ -31,8 +27,6 @@ shiboken6==6.10.1
     #   pyside6
     #   pyside6-addons
     #   pyside6-essentials
-soundfile==0.13.1
-    # via mandala
 typing-extensions==4.15.0
     # via
     #   pydantic

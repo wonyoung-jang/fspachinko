@@ -6,14 +6,12 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import soundfile
-from mutagen.mp3 import MP3
+import ffmpeg
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from .config import MandalaConfig
-    from .walker import FSEntry
 
 
 @dataclass(slots=True)
@@ -22,85 +20,61 @@ class FileValidator:
 
     config: MandalaConfig
 
-    def is_valid(self, source: FSEntry) -> bool:
+    def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not self.is_valid_size(source):
+        if not self._check_size(size):
             return False
 
-        if self.is_not_extension_or_keyword(source.path):
+        if not self._check_name(path):
             return False
 
-        if not self.is_extension(source.path):
-            return False
+        if self.config.limit_duration:
+            return self._check_duration(path)
 
-        if not self.is_keyword(source.path):
-            return False
+        return True
 
-        return self.is_within_duration(source.path)
-
-    def is_valid_size(self, source: FSEntry) -> bool:
+    def _check_size(self, size: int) -> bool:
         """Check if a file is within the specified size range."""
         if not self.config.limit_size:
             return True
+        return self.config.min_size <= size <= self.config.max_size
 
-        return self.config.min_size <= source.size <= self.config.max_size
-
-    def is_not_extension_or_keyword(self, source: Path) -> bool:
+    def _check_name(self, source: Path) -> bool:
         """Check if a file has the specified not extensions or not keywords."""
-        for not_extension in self.config.not_extensions:
-            if re.compile(rf"\.{not_extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return True
+        not_exts = self.config.not_extensions
+        not_keys = self.config.not_keywords
+        exts = self.config.extensions
+        keys = self.config.keywords
+        suffix = source.suffix
+        stem = source.stem
 
-        for not_keyword in self.config.not_keywords:
-            if re.compile(rf"(.*){not_keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return True
+        if self.config.is_not_extensions and not_exts:
+            for ne in not_exts:
+                if re.compile(rf"\.{ne}$", re.IGNORECASE).search(suffix) is not None:
+                    return False
 
-        return False
+        if self.config.is_not_keywords and not_keys:
+            for nk in not_keys:
+                if re.compile(rf"(.*){nk}(.*)", re.IGNORECASE).search(stem) is not None:
+                    return False
 
-    def is_extension(self, source: Path) -> bool:
-        """Check if a file has the specified extensions."""
-        if not self.config.extensions:
-            return True
+        if self.config.is_extensions and exts:
+            for e in exts:
+                if re.compile(rf"\.{e}$", re.IGNORECASE).search(suffix) is None:
+                    return False
 
-        for extension in self.config.extensions:
-            if re.compile(rf"\.{extension}$", re.IGNORECASE).search(source.suffix) is not None:
-                return True
+        if self.config.is_keywords and keys:
+            for k in keys:
+                if re.compile(rf"(.*){k}(.*)", re.IGNORECASE).search(stem) is None:
+                    return False
 
-        return False
+        return True
 
-    def is_keyword(self, source: Path) -> bool:
-        """Check if a file contains the specified keywords."""
-        if not self.config.keywords:
-            return True
-
-        for keyword in self.config.keywords:
-            if re.compile(rf"(.*){keyword}(.*)", re.IGNORECASE).search(source.stem) is not None:
-                return True
-
-        return False
-
-    def is_within_duration(self, source: Path) -> bool:
+    def _check_duration(self, source: Path) -> bool:
         """Check if a file is within the specified duration range."""
-        if not self.config.limit_duration:
-            return True
-
-        duration = 0.0
-        min_duration = self.config.min_duration
-        max_duration = self.config.max_duration
-
         try:
-            sound = soundfile.SoundFile(source)
-            duration = len(sound) / sound.samplerate
-        except RuntimeError:
-            try:
-                if source.suffix == ".mp3":
-                    duration = MP3(source).info.length
-                    return min_duration <= duration <= max_duration
-            except ValueError:
-                return True
-            else:
-                return True
-        except ValueError:
+            probe = ffmpeg.probe(str(source))
+            duration = float(probe["format"]["duration"])
+        except ffmpeg.Error:
             return True
-
-        return min_duration <= duration <= max_duration
+        return self.config.min_duration <= duration <= self.config.max_duration

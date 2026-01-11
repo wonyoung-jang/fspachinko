@@ -409,6 +409,8 @@ class KeywordsFilterWidget(DualListWidget):
     def get_config(self) -> dict:
         """Return clean data for the config."""
         return {
+            "is_keywords": self.include_groupbox.isChecked(),
+            "is_not_keywords": self.exclude_groupbox.isChecked(),
             "keywords": convert_string_to_list(self.include_edit.text()) if self.include_groupbox.isChecked() else [],
             "not_keywords": convert_string_to_list(self.exclude_edit.text())
             if self.exclude_groupbox.isChecked()
@@ -422,6 +424,8 @@ class ExtensionsFilterWidget(DualListWidget):
     def get_config(self) -> dict:
         """Return clean data for the config."""
         return {
+            "is_extensions": self.include_groupbox.isChecked(),
+            "is_not_extensions": self.exclude_groupbox.isChecked(),
             "extensions": convert_string_to_list(self.include_edit.text()) if self.include_groupbox.isChecked() else [],
             "not_extensions": convert_string_to_list(self.exclude_edit.text())
             if self.exclude_groupbox.isChecked()

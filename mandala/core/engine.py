@@ -78,19 +78,21 @@ class MandalaEngine:
             if candidate is None:
                 break
 
-            if not self.validator.is_valid(candidate):
-                self._handle_invalid(candidate.path)
+            path = candidate.path
+            size = candidate.size
+            if not self.validator.is_valid(path, size):
+                self._handle_invalid(path)
                 continue
 
-            if self._try_copy(candidate.path, dest_dir, index):
+            if self._try_copy(path, dest_dir, index):
                 index += 1
-                self.quota.register_success(candidate.path)
-                self.state.update_success(candidate.size)
+                self.quota.register_success(path)
+                self.state.update_success(size)
                 self.observer.on_count(index)
                 self.observer.on_time()
-                trash_path(candidate.path, condition=self.config.trash_source_files)
+                trash_path(path, condition=self.config.trash_source_files)
             else:
-                self._handle_invalid(candidate.path)
+                self._handle_invalid(path)
 
         self._finalize_folder(dest_dir)
 
