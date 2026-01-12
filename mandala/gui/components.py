@@ -207,12 +207,18 @@ class PathSelectorWidget(QGroupBox):
         self.combo = QComboBox()
         self.combo.addItems(items)
 
-        browse_btn = QPushButton("Browse")
-        delete_btn = QPushButton("Delete")
-        btn_open = QPushButton("Open")
+        title = self.title().lower()
 
+        browse_btn = QPushButton("Browse", flat=True)
+        browse_btn.setStatusTip(f"Browse for {title} folder")
         browse_btn.clicked.connect(self.browse)
+
+        delete_btn = QPushButton("Delete", flat=True)
+        delete_btn.setStatusTip(f"Delete current {title} entry")
         delete_btn.clicked.connect(self.delete_curr_item)
+
+        btn_open = QPushButton("Open", flat=True)
+        btn_open.setStatusTip(f"Open current {title} folder in file explorer")
         btn_open.clicked.connect(self.open)
 
         layout = QHBoxLayout(self)
@@ -388,7 +394,8 @@ class DualListWidget(QGroupBox):
         self.exclude_groupbox = QGroupBox("Exclude", checkable=True, flat=True)
         QHBoxLayout(self.exclude_groupbox).addWidget(self.exclude_edit)
 
-        switch_btn = QPushButton("Switch")
+        switch_btn = QPushButton("Switch", flat=True)
+        switch_btn.setStatusTip(f"Switch {self.title().lower()} include and exclude filters")
         switch_btn.clicked.connect(self.switch_text)
 
         layout.addWidget(self.include_groupbox, 0, 0)
@@ -460,15 +467,18 @@ class ExecutionWidget(QWidget):
 
         self.progbar_main = QProgressBar(value=0, format="%v", textVisible=True, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.btn_start = QPushButton("Start")
+        self.btn_start = QPushButton("Start", flat=True)
         self.btn_start.setShortcut("Ctrl+R")
+        self.btn_start.setStatusTip("Start the file copying process (Ctrl+R)")
 
-        self.btn_stop = QPushButton("Stop")
+        self.btn_stop = QPushButton("Stop", flat=True)
         self.btn_stop.setEnabled(False)
         self.btn_stop.setShortcut("ESC")
+        self.btn_stop.setStatusTip("Stop the file copying process (ESC)")
 
-        self.btn_close = QPushButton("Close")
+        self.btn_close = QPushButton("Close", flat=True)
         self.btn_close.setShortcut("Ctrl+W")
+        self.btn_close.setStatusTip("Close the application (Ctrl+W)")
 
         self.btn_start.clicked.connect(self.on_start)
         self.btn_stop.clicked.connect(self.on_stop)

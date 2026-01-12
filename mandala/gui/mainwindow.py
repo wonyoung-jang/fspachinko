@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
-from PySide6.QtWidgets import QGridLayout, QMainWindow, QWidget
+from PySide6.QtWidgets import QGridLayout, QMainWindow, QStatusBar, QWidget
 
 from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
@@ -45,6 +45,7 @@ class MandalaMainWindow(QMainWindow):
         self.setWindowTitle("Mandala: Copy random files")
         self.ui = MandalaCentralGui()
         self.setCentralWidget(self.ui)
+        self.setStatusBar(QStatusBar(self))
         self.setup_settings()
         self.ui.ui_sect_exec.signal_close.connect(self.close)
 

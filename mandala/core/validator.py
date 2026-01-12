@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import ffmpeg
@@ -19,6 +19,7 @@ class FileValidator:
     """Class for validating files based on configuration."""
 
     config: MandalaConfig
+    regex_cache: dict[str, re.Pattern] = field(default_factory=dict)
 
     def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -32,6 +33,16 @@ class FileValidator:
             return self._check_duration(path)
 
         return True
+
+    def _get_ext_regex(self, extension: str) -> re.Pattern:
+        """Get a compiled regex pattern for a file extension."""
+        pattern = rf"\.{extension}$"
+        return self.regex_cache.setdefault(pattern, re.compile(pattern, re.IGNORECASE))
+
+    def _get_key_regex(self, keyword: str) -> re.Pattern:
+        """Get a compiled regex pattern for a keyword."""
+        pattern = rf"(.*){keyword}(.*)"
+        return self.regex_cache.setdefault(pattern, re.compile(pattern, re.IGNORECASE))
 
     def _check_size(self, size: int) -> bool:
         """Check if a file is within the specified size range."""
@@ -50,22 +61,22 @@ class FileValidator:
 
         if self.config.is_not_extensions and not_exts:
             for ne in not_exts:
-                if re.compile(rf"\.{ne}$", re.IGNORECASE).search(suffix) is not None:
+                if self._get_ext_regex(ne).search(suffix) is not None:
                     return False
 
         if self.config.is_not_keywords and not_keys:
             for nk in not_keys:
-                if re.compile(rf"(.*){nk}(.*)", re.IGNORECASE).search(stem) is not None:
+                if self._get_key_regex(nk).search(stem) is not None:
                     return False
 
         if self.config.is_extensions and exts:
             for e in exts:
-                if re.compile(rf"\.{e}$", re.IGNORECASE).search(suffix) is None:
+                if self._get_ext_regex(e).search(suffix) is None:
                     return False
 
         if self.config.is_keywords and keys:
             for k in keys:
-                if re.compile(rf"(.*){k}(.*)", re.IGNORECASE).search(stem) is None:
+                if self._get_key_regex(k).search(stem) is None:
                     return False
 
         return True
@@ -73,8 +84,14 @@ class FileValidator:
     def _check_duration(self, source: Path) -> bool:
         """Check if a file is within the specified duration range."""
         try:
-            probe = ffmpeg.probe(str(source))
+            probe = ffmpeg.probe(
+                filename=str(source),
+                cmd="ffprobe",
+                verbose="quiet",
+                print_format="json",
+                show_format=True,
+            )
             duration = float(probe["format"]["duration"])
-        except ffmpeg.Error:
+        except (ValueError, KeyError, ffmpeg.Error):
             return True
         return self.config.min_duration <= duration <= self.config.max_duration
