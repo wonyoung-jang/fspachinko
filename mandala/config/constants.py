@@ -12,8 +12,9 @@ BYTES_IN_MEGABYTE = 1 << 20
 BYTES_IN_GIGABYTE = 1 << 30
 
 SECONDS_IN_MINUTE = 60
+SECONDS_IN_HOUR = SECONDS_IN_MINUTE * 60
 
-NOWRAP = '<p style="white-space:pre">'
+# NOWRAP = '<p style="white-space:pre">'
 
 
 class SettingsEnum(StrEnum):
@@ -31,10 +32,6 @@ class SizeUnitEnum(StrEnum):
     KILOBYTES = "KB"
     MEGABYTES = "MB"
     GIGABYTES = "GB"
-    B = "B"
-    KB = "KB"
-    MB = "MB"
-    GB = "GB"
 
 
 class TimeUnitEnum(StrEnum):

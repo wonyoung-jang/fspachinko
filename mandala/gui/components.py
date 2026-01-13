@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mandala.config.constants import SECONDS_IN_HOUR
+
 from ..config.constants import (
     BYTES_IN_GIGABYTE,
     BYTES_IN_KILOBYTE,
@@ -336,15 +338,18 @@ class FilesizeFilterWidget(DblRangeFilterWidget):
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_size, max_size = self.min_spin.value(), self.max_spin.value()
-        if unit == SizeUnitEnum.KB:
-            min_size *= BYTES_IN_KILOBYTE
-            max_size *= BYTES_IN_KILOBYTE
-        elif unit == SizeUnitEnum.MB:
-            min_size *= BYTES_IN_MEGABYTE
-            max_size *= BYTES_IN_MEGABYTE
-        elif unit == SizeUnitEnum.GB:
-            min_size *= BYTES_IN_GIGABYTE
-            max_size *= BYTES_IN_GIGABYTE
+        match unit:
+            case SizeUnitEnum.BYTES:
+                pass
+            case SizeUnitEnum.KILOBYTES:
+                min_size *= BYTES_IN_KILOBYTE
+                max_size *= BYTES_IN_KILOBYTE
+            case SizeUnitEnum.MEGABYTES:
+                min_size *= BYTES_IN_MEGABYTE
+                max_size *= BYTES_IN_MEGABYTE
+            case SizeUnitEnum.GIGABYTES:
+                min_size *= BYTES_IN_GIGABYTE
+                max_size *= BYTES_IN_GIGABYTE
 
         return FilesizeModel(
             limit=self.isChecked(),
@@ -360,9 +365,16 @@ class DurationFilterWidget(DblRangeFilterWidget):
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_duration, max_duration = self.min_spin.value(), self.max_spin.value()
-        if unit == TimeUnitEnum.MINUTES:
-            min_duration *= SECONDS_IN_MINUTE
-            max_duration *= SECONDS_IN_MINUTE
+        match unit:
+            case TimeUnitEnum.SECONDS:
+                pass
+            case TimeUnitEnum.MINUTES:
+                min_duration *= SECONDS_IN_MINUTE
+                max_duration *= SECONDS_IN_MINUTE
+            case TimeUnitEnum.HOURS:
+                min_duration *= SECONDS_IN_HOUR
+                max_duration *= SECONDS_IN_HOUR
+
         return DurationModel(
             limit=self.isChecked(),
             minimum=min_duration,

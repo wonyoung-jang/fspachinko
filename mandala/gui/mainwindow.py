@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QGridLayout, QMainWindow, QScrollArea, QStatusBar, QWidget
 
+from ..config.constants import SizeUnitEnum, TimeUnitEnum
 from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
 from .components import (
@@ -162,8 +163,8 @@ class MandalaCentralGui(QWidget):
         # Init filter components
         self.ui_keywords = KeywordsFilterWidget(title="Keywords")
         self.ui_extensions = ExtensionsFilterWidget(title="Extensions")
-        self.ui_filesize = FilesizeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"))
-        self.ui_duration = DurationFilterWidget(title="Duration", suffix_options=("s", "m"))
+        self.ui_filesize = FilesizeFilterWidget(title="Size", suffix_options=[s.value for s in SizeUnitEnum])
+        self.ui_duration = DurationFilterWidget(title="Duration", suffix_options=[s.value for s in TimeUnitEnum])
         self.ui_weight = DiversityFilterWidget(title="Weight")
 
         # Init sidebar and run components
