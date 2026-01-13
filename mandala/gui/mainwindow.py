@@ -13,6 +13,7 @@ from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
 from .components import (
     DestPathSelectorWidget,
+    DiversityFilterWidget,
     DurationFilterWidget,
     ExecutionWidget,
     ExtensionsFilterWidget,
@@ -23,7 +24,6 @@ from .components import (
     KeywordsFilterWidget,
     RootPathSelectorWidget,
     TrashSettingsWidget,
-    WeightFilterWidget,
 )
 from .settings import GuiSettingsManager
 from .workers import RunMandalaWorker
@@ -142,7 +142,7 @@ class MandalaCentralGui(QWidget):
     ui_extensions: ExtensionsFilterWidget = field(init=False)
     ui_filesize: FilesizeFilterWidget = field(init=False)
     ui_duration: DurationFilterWidget = field(init=False)
-    ui_weight: WeightFilterWidget = field(init=False)
+    ui_weight: DiversityFilterWidget = field(init=False)
     ui_sect_exec: ExecutionWidget = field(init=False)
 
     def __post_init__(self) -> None:
@@ -168,7 +168,7 @@ class MandalaCentralGui(QWidget):
         self.ui_extensions = ExtensionsFilterWidget(title="Extensions")
         self.ui_filesize = FilesizeFilterWidget(title="Size", suffix_options=("B", "KB", "MB", "GB"))
         self.ui_duration = DurationFilterWidget(title="Duration", suffix_options=("s", "m"))
-        self.ui_weight = WeightFilterWidget(title="Weight")
+        self.ui_weight = DiversityFilterWidget(title="Weight")
 
         # Init sidebar and run components
         self.ui_sect_exec = ExecutionWidget()
@@ -179,30 +179,19 @@ class MandalaCentralGui(QWidget):
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
-        # Layout setup components
-        ui_sect_setup = QWidget()
-        l_setup = QGridLayout(ui_sect_setup)
-        l_setup.addWidget(self.ui_root, 0, 0, 1, 6)
-        l_setup.addWidget(self.ui_dest, 1, 0, 1, 6)
-        l_setup.addWidget(self.ui_file_count, 2, 0, 1, 6)
-        l_setup.addWidget(self.ui_folders, 3, 0, 1, 2)
-        l_setup.addWidget(self.ui_filenames, 3, 2, 1, 2)
-        l_setup.addWidget(self.ui_trash, 3, 4, 1, 2)
-
-        # Layout filter components
-        ui_sect_filter = QWidget()
-        l_filter = QGridLayout(ui_sect_filter)
-        l_filter.addWidget(self.ui_keywords, 0, 0, 1, 3)
-        l_filter.addWidget(self.ui_extensions, 1, 0, 1, 3)
-        l_filter.addWidget(self.ui_filesize, 2, 0)
-        l_filter.addWidget(self.ui_duration, 2, 1)
-        l_filter.addWidget(self.ui_weight, 2, 2)
-
-        # Main layout
         layout = QGridLayout(self)
-        layout.addWidget(ui_sect_setup, 0, 0)
-        layout.addWidget(ui_sect_filter, 1, 0)
-        layout.addWidget(self.ui_sect_exec, 2, 0)
+        layout.addWidget(self.ui_root, 0, 0, 1, 6)
+        layout.addWidget(self.ui_dest, 1, 0, 1, 6)
+        layout.addWidget(self.ui_file_count, 2, 0, 1, 6)
+        layout.addWidget(self.ui_folders, 3, 0, 1, 2)
+        layout.addWidget(self.ui_filenames, 3, 2, 1, 2)
+        layout.addWidget(self.ui_trash, 3, 4, 1, 2)
+        layout.addWidget(self.ui_keywords, 4, 0, 1, 6)
+        layout.addWidget(self.ui_extensions, 5, 0, 1, 6)
+        layout.addWidget(self.ui_filesize, 6, 0, 1, 2)
+        layout.addWidget(self.ui_duration, 6, 2, 1, 2)
+        layout.addWidget(self.ui_weight, 6, 4, 1, 2)
+        layout.addWidget(self.ui_sect_exec, 7, 0, 1, 6)
 
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
@@ -212,20 +201,20 @@ class MandalaCentralGui(QWidget):
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
         model = MandalaConfigModel(
-            **self.ui_root.get_config(),
-            **self.ui_dest.get_config(),
-            **self.ui_file_count.get_config(),
-            **self.ui_keywords.get_config(),
-            **self.ui_extensions.get_config(),
-            **self.ui_filesize.get_config(),
-            **self.ui_duration.get_config(),
-            **self.ui_weight.get_config(),
-            **self.ui_folders.get_config(),
-            **self.ui_filenames.get_config(),
-            **self.ui_trash.get_config(),
-            **self.ui_sect_exec.get_config(),
+            root=self.ui_root.get_config(),
+            dest=self.ui_dest.get_config(),
+            count_model=self.ui_file_count.get_config(),
+            folders_model=self.ui_folders.get_config(),
+            filename_model=self.ui_filenames.get_config(),
+            trash_model=self.ui_trash.get_config(),
+            keywords_model=self.ui_keywords.get_config(),
+            extensions_model=self.ui_extensions.get_config(),
+            size_model=self.ui_filesize.get_config(),
+            duration_model=self.ui_duration.get_config(),
+            diversity_model=self.ui_weight.get_config(),
+            execution_model=self.ui_sect_exec.get_config(),
         )
-        return MandalaConfig(**model.model_dump())
+        return MandalaConfig(**model.__dict__)
 
     @Slot(bool)
     def _toggle_ui(self, *, enabled: bool) -> None:
@@ -250,9 +239,9 @@ class MandalaCentralGui(QWidget):
         self._toggle_ui(enabled=False)
 
         self.ui_sect_exec.progbar_main.reset()
-        self.ui_sect_exec.progbar_stall.setRange(0, int(config.stall_time_limit * 100))
+        self.ui_sect_exec.progbar_stall.setRange(0, int(config.execution_model.stall_time_limit * 100))
         self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
-        self.ui_sect_exec.label_stall.setText(f"{config.stall_time_limit}0 s")
+        self.ui_sect_exec.label_stall.setText(f"{config.execution_model.stall_time_limit}0 s")
 
         self.worker = RunMandalaWorker(config=config)
         self.worker.observer.progress.connect(self.ui_sect_exec.progbar_main.setMaximum)

@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import contextlib
-import shutil
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING
 
 from ..utilities.utils import convert_byte_to_size
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from .config import MandalaConfig
     from .state import MandalaState
 
@@ -22,55 +22,30 @@ class MandalaLogger:
 
     config: MandalaConfig
     state: MandalaState
-    is_append_log: bool = False
 
-    log: TextIO = field(init=False)
-    log_temp: TextIO = field(init=False)
+    buffer: list[str] = field(default_factory=list)
+
     log_path: Path = field(init=False)
-    log_temp_path: Path = field(init=False)
 
-    def setup_for_folder(self, dest_folder: Path) -> None:
-        """Initialize log files for a specific destination folder."""
-        # Determine log path based on folder strategy
-        self.log_path = dest_folder / f"!{dest_folder.name}_log.txt"
+    def reset_for_dest(self, dest: Path) -> None:
+        """Initialize logger for a new run."""
+        self.buffer.clear()
+        self.log_path = dest / f"!{dest.name}_log.txt"
 
-        if self.config.create_folders:
-            pass
-
-        self.is_append_log = self.log_path.exists()
-
-        # Open main log (append mode)
-        self.log = self.log_path.open("a", encoding="utf-8")
-
-        # Open temp log (for current run details)
-        self.log_temp_path = Path(self.log_path.stem + ".tmp.txt")
-        self.log_temp = self.log_temp_path.open("a", encoding="utf-8")
-
-    def write_log(self, message: str) -> None:
-        """Write to the appropriate log stream."""
-        if self.is_append_log and self.log_temp:
-            self.log_temp.write(f"{message}\n")
-        elif self.log:
-            self.log.write(f"{message}\n")
-
-    def close(self) -> None:
-        """Close file handles."""
-        if self.log_temp:
-            self.log_temp.close()
-        if self.log:
-            self.log.close()
+    def log_message(self, message: str) -> None:
+        """Log a message to the buffer."""
+        self.buffer.append(message)
 
     def generate_report(self, dest: Path, status: str, runtime: float) -> str:
         """Generate the header report string."""
-        _extensions = self.config.extensions
-        _keywords = self.config.keywords
-        ext_str = ", ".join([f".{e}" for e in _extensions]) if _extensions else "All"
-        kw_str = ", ".join([f'"{k}"' for k in _keywords]) if _keywords else "All"
-
+        exts = self.config.extensions_model.text
+        keys = self.config.keywords_model.text
+        ext_str = ", ".join(exts) if exts else "ALL"
+        kw_str = ", ".join(keys) if keys else "ALL"
         return (
-            "------------------------------------------------------------------------\n"
+            "\n========================================================================\n"
             f"{status}\n"
-            "------------------------------------------------------------------------\n"
+            "========================================================================\n\n"
             f"Date:             {datetime.now(tz=UTC).strftime('%B %d, %Y')}\n"
             f"Time:             {datetime.now(tz=UTC).strftime('%I:%M:%S%p')}\n"
             f"Start:            {self.config.root}\n"
@@ -79,32 +54,17 @@ class MandalaLogger:
             f"Keywords:         {kw_str}\n"
             f"Total size:       {convert_byte_to_size(self.state.bytes_in_currdir)}\n"
             f"Total runtime:    {runtime}s\n"
-            "------------------------------------------------------------------------"
+            "------------------------------------------------------------------------\n"
         )
 
-    def finalize_log(self, report: str) -> None:
-        """Prepend status report to the log file and clean up temp files."""
-        # Re-open files for reading/writing logic
-        log_path = self.log_path
-        temp_path = self.log_temp_path
-
-        if self.is_append_log:
-            # Append temp content (current run) to main log, with report in between?
-            # Based on original logic:
-            with temp_path.open(encoding="utf-8") as content, log_path.open("a", encoding="utf-8") as out:
-                out.write(report + "\n")
-                shutil.copyfileobj(content, out)
-            temp_path.unlink()
-        else:
-            # New log: Write report first, then copy temp content (list of files)
-            with log_path.open(encoding="utf-8") as existing, temp_path.open("w", encoding="utf-8") as out:
-                out.write(report + "\n")
-                shutil.copyfileobj(existing, out)
-            shutil.move(temp_path, log_path)
-
-    def cleanup_empty(self) -> None:
-        """Delete log if no files were found."""
-        self.close()
-        if not (self.config.create_folders or self.is_append_log) and (self.log_path and self.log_path.exists()):
+    def save(self, report: str) -> None:
+        """Save the log to file."""
+        new_content = report + "\n".join(self.buffer) + "\n\n"
+        old_content = ""
+        if self.log_path.exists():
             with contextlib.suppress(OSError):
-                self.log_path.unlink()
+                old_content = self.log_path.read_text(encoding="utf-8")
+
+        final_content = new_content + old_content
+        with self.log_path.open("w", encoding="utf-8") as log_file:
+            log_file.write(final_content)

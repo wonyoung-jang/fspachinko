@@ -27,7 +27,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.config.schemas import DurationFilterModel
+from mandala.config.schemas import (
+    DiversityModel,
+    DurationModel,
+    ExecutionModel,
+    ExtensionsModel,
+    FilecountModel,
+    FilenameModel,
+    FilesizeModel,
+    FoldersModel,
+    KeywordsModel,
+    TrashModel,
+)
 
 from ..config.constants import (
     BYTES_IN_GIGABYTE,
@@ -108,14 +119,14 @@ class FileCountWidget(QGroupBox):
             if isinstance(child, QWidget):
                 child.setEnabled(enabled)
 
-    def get_config(self) -> dict:
+    def get_config(self) -> FilecountModel:
         """Return clean data for the config."""
-        return {
-            "num_files": self.spin_fixed.value(),
-            "is_rand_file_count": self.groupbox_rand.isChecked(),
-            "num_files_rand_min": self.spin_min_rand.value(),
-            "num_files_rand_max": self.spin_max_rand.value(),
-        }
+        return FilecountModel(
+            count=self.spin_fixed.value(),
+            is_rand_count=self.groupbox_rand.isChecked(),
+            count_min_rand=self.spin_min_rand.value(),
+            count_max_rand=self.spin_max_rand.value(),
+        )
 
 
 class FolderCreatorWidget(QGroupBox):
@@ -136,14 +147,14 @@ class FolderCreatorWidget(QGroupBox):
         layout.addWidget(self.lineedit_folder_name, 1, 1)
         layout.addWidget(self.chk_unique_folders, 2, 0, 1, 2)
 
-    def get_config(self) -> dict:
+    def get_config(self) -> FoldersModel:
         """Return clean data for the config."""
-        return {
-            "create_folders": self.isChecked(),
-            "folder_name": self.lineedit_folder_name.text(),
-            "unique_folders": self.chk_unique_folders.isChecked(),
-            "num_folders": self.spinbox_folder_count.value() if self.isChecked() else 1,
-        }
+        return FoldersModel(
+            create=self.isChecked(),
+            unique=self.chk_unique_folders.isChecked(),
+            name=self.lineedit_folder_name.text(),
+            count=self.spinbox_folder_count.value() if self.isChecked() else 1,
+        )
 
 
 class FilenameSettingsWidget(QGroupBox):
@@ -166,13 +177,13 @@ class FilenameSettingsWidget(QGroupBox):
         filename_layout.addWidget(self.radio_rename, 2, 0)
         filename_layout.addWidget(self.lineedit_rename, 2, 1)
 
-    def get_config(self) -> dict:
+    def get_config(self) -> FilenameModel:
         """Return clean data for the config."""
-        return {
-            "index_files": self.radio_index.isChecked() if self.isChecked() else False,
-            "rename_files": self.radio_rename.isChecked() if self.isChecked() else False,
-            "rename_name": self.lineedit_rename.text() if self.isChecked() else "",
-        }
+        return FilenameModel(
+            is_index=self.radio_index.isChecked() if self.isChecked() else False,
+            is_rename=self.radio_rename.isChecked() if self.isChecked() else False,
+            rename_to=self.lineedit_rename.text() if self.isChecked() else "",
+        )
 
 
 class TrashSettingsWidget(QGroupBox):
@@ -190,13 +201,13 @@ class TrashSettingsWidget(QGroupBox):
         layout.addWidget(self.chk_valid_files)
         layout.addWidget(self.chk_invalid_files)
 
-    def get_config(self) -> dict:
+    def get_config(self) -> TrashModel:
         """Return clean data for the config."""
-        return {
-            "trash_empty_folders": self.chk_empty_folders.isChecked() if self.isChecked() else False,
-            "trash_source_files": self.chk_valid_files.isChecked() if self.isChecked() else False,
-            "trash_invalid_files": self.chk_invalid_files.isChecked() if self.isChecked() else False,
-        }
+        return TrashModel(
+            empty_folder=self.chk_empty_folders.isChecked() if self.isChecked() else False,
+            source_file=self.chk_valid_files.isChecked() if self.isChecked() else False,
+            invalid_file=self.chk_invalid_files.isChecked() if self.isChecked() else False,
+        )
 
 
 class PathSelectorWidget(QGroupBox):
@@ -257,22 +268,18 @@ class PathSelectorWidget(QGroupBox):
 class RootPathSelectorWidget(PathSelectorWidget):
     """Handles logic for selecting the root path."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> Path:
         """Return clean data for the config."""
         root = Path(self.current_path())
-        return {
-            "root": root.resolve(),
-        }
+        return root.resolve()
 
 
 class DestPathSelectorWidget(PathSelectorWidget):
     """Handles logic for selecting the destination path."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> Path:
         """Return clean data for the config."""
-        return {
-            "dest": Path(self.current_path()),
-        }
+        return Path(self.current_path())
 
 
 class RangeFilterWidget(QGroupBox):
@@ -292,15 +299,15 @@ class RangeFilterWidget(QGroupBox):
         layout.addWidget(self.max_spin, 1, 1)
 
 
-class WeightFilterWidget(RangeFilterWidget):
-    """Handles logic for Weight range (Min/Max)."""
+class DiversityFilterWidget(RangeFilterWidget):
+    """Handles logic for diversity range (root/leaf)."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> DiversityModel:
         """Return clean data for the config."""
-        return {
-            "weight_top": self.min_spin.value(),
-            "weight_bottom": self.max_spin.value(),
-        }
+        return DiversityModel(
+            root_limit=self.min_spin.value(),
+            leaf_limit=self.max_spin.value(),
+        )
 
 
 class DblRangeFilterWidget(QGroupBox):
@@ -339,7 +346,7 @@ class DblRangeFilterWidget(QGroupBox):
 class FilesizeFilterWidget(DblRangeFilterWidget):
     """Handles logic for Size range (Min/Max)."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> FilesizeModel:
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_size, max_size = self.min_spin.value(), self.max_spin.value()
@@ -352,29 +359,29 @@ class FilesizeFilterWidget(DblRangeFilterWidget):
         elif unit == SizeUnitEnum.GB:
             min_size *= BYTES_IN_GIGABYTE
             max_size *= BYTES_IN_GIGABYTE
-        return {
-            "limit_size": self.isChecked(),
-            "min_size": min_size,
-            "max_size": max_size,
-        }
+
+        return FilesizeModel(
+            limit=self.isChecked(),
+            minimum=min_size,
+            maximum=max_size,
+        )
 
 
 class DurationFilterWidget(DblRangeFilterWidget):
     """Handles logic for Duration range (Min/Max)."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> DurationModel:
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_duration, max_duration = self.min_spin.value(), self.max_spin.value()
         if unit == TimeUnitEnum.MINUTES:
             min_duration *= SECONDS_IN_MINUTE
             max_duration *= SECONDS_IN_MINUTE
-        duration_model = DurationFilterModel(
-            limit_duration=self.isChecked(),
-            min_duration=min_duration,
-            max_duration=max_duration,
+        return DurationModel(
+            limit=self.isChecked(),
+            minimum=min_duration,
+            maximum=max_duration,
         )
-        return duration_model.model_dump()
 
 
 class DualListWidget(QGroupBox):
@@ -400,25 +407,25 @@ class DualListWidget(QGroupBox):
 class KeywordsFilterWidget(DualListWidget):
     """Handles the Include/Exclude pattern for Keywords."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> KeywordsModel:
         """Return clean data for the config."""
-        return {
-            "is_keywords_include": self.filter_include_radio.isChecked(),
-            "is_keywords_exclude": self.filter_exclude_radio.isChecked(),
-            "keywords": convert_string_to_list(self.filter_edit.text()),
-        }
+        return KeywordsModel(
+            include=self.filter_include_radio.isChecked(),
+            exclude=self.filter_exclude_radio.isChecked(),
+            text=convert_string_to_list(self.filter_edit.text()),
+        )
 
 
 class ExtensionsFilterWidget(DualListWidget):
     """Handles the Include/Exclude pattern for Extensions."""
 
-    def get_config(self) -> dict:
+    def get_config(self) -> ExtensionsModel:
         """Return clean data for the config."""
-        return {
-            "is_extensions_include": self.filter_include_radio.isChecked(),
-            "is_extensions_exclude": self.filter_exclude_radio.isChecked(),
-            "extensions": convert_string_to_list(self.filter_edit.text()),
-        }
+        return ExtensionsModel(
+            include=self.filter_include_radio.isChecked(),
+            exclude=self.filter_exclude_radio.isChecked(),
+            text=convert_string_to_list(self.filter_edit.text()),
+        )
 
 
 class ExecutionWidget(QWidget):
@@ -527,9 +534,9 @@ class ExecutionWidget(QWidget):
         self.progbar_stall.setValue(val - 1)
         self.label_stall.setText(f"{val / 100} s")
 
-    def get_config(self) -> dict:
+    def get_config(self) -> ExecutionModel:
         """Return clean data for the config."""
-        return {
-            "stall_time_limit": self.dblspin_stall.value(),
-            "log_invalid": self.chk_invalid.isChecked(),
-        }
+        return ExecutionModel(
+            log_invalid=self.chk_invalid.isChecked(),
+            stall_time_limit=self.dblspin_stall.value(),
+        )
