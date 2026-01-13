@@ -45,7 +45,9 @@ class FileValidator:
 
     def _check_size(self, size: int) -> bool:
         """Check if a file is within the specified size range."""
-        return self.config.size_model.check(size)
+        if not self.config.size_model.limit:
+            return True
+        return self.config.size_model.minimum <= size <= self.config.size_model.maximum
 
     def _check_name(self, source: Path) -> bool:
         """Check if a file has the specified not extensions or not keywords."""
@@ -83,6 +85,9 @@ class FileValidator:
 
     def _check_duration(self, source: Path) -> bool:
         """Check if a file is within the specified duration range."""
+        if not self.config.duration_model.limit:
+            return True
+
         try:
             probe = ffmpeg.probe(
                 filename=str(source),
@@ -92,4 +97,4 @@ class FileValidator:
         except (ValueError, KeyError, ffmpeg.Error):
             return True
 
-        return self.config.duration_model.check(duration)
+        return self.config.duration_model.minimum <= duration <= self.config.duration_model.maximum

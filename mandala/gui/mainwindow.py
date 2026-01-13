@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import inspect
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
-from PySide6.QtWidgets import QGridLayout, QMainWindow, QStatusBar, QWidget
+from PySide6.QtWidgets import QGridLayout, QMainWindow, QScrollArea, QStatusBar, QWidget
 
 from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
 from .components import (
-    DestPathSelectorWidget,
     DiversityFilterWidget,
     DurationFilterWidget,
     ExecutionWidget,
@@ -22,7 +20,7 @@ from .components import (
     FilesizeFilterWidget,
     FolderCreatorWidget,
     KeywordsFilterWidget,
-    RootPathSelectorWidget,
+    PathSelectorWidget,
     TrashSettingsWidget,
 )
 from .settings import GuiSettingsManager
@@ -44,8 +42,13 @@ class MandalaMainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Mandala: Copy random files")
         self.ui = MandalaCentralGui()
-        self.setCentralWidget(self.ui)
+
+        scroll = QScrollArea(widgetResizable=True)
+        scroll.setWidget(self.ui)
+        self.setCentralWidget(scroll)
+
         self.setStatusBar(QStatusBar(self))
+
         self.setup_settings()
         self.ui.ui_sect_exec.signal_close.connect(self.close)
 
@@ -58,8 +61,9 @@ class MandalaMainWindow(QMainWindow):
     def _register_settings(self) -> None:
         """Register GUI settings to the settings manager."""
         registry = {
-            # Sidebar
+            # Execution
             "show_invalid": self.ui.ui_sect_exec.chk_invalid,
+            "stall_time_limit": self.ui.ui_sect_exec.dblspin_stall,
             # Paths
             "root_path": self.ui.ui_root.combo,
             "dest_path": self.ui.ui_dest.combo,
@@ -89,19 +93,11 @@ class MandalaMainWindow(QMainWindow):
             "kw_filter_text": self.ui.ui_keywords.filter_edit,
             "kw_filter_include": self.ui.ui_keywords.filter_include_radio,
             "kw_filter_exclude": self.ui.ui_keywords.filter_exclude_radio,
-            # "kw_inc_chk": self.ui.ui_keywords.include_groupbox,
-            # "kw_inc_text": self.ui.ui_keywords.include_edit,
-            # "kw_exc_chk": self.ui.ui_keywords.exclude_groupbox,
-            # "kw_exc_text": self.ui.ui_keywords.exclude_edit,
             # Extensions
             "ext_filter_enabled": self.ui.ui_extensions,
             "ext_filter_text": self.ui.ui_extensions.filter_edit,
             "ext_filter_include": self.ui.ui_extensions.filter_include_radio,
             "ext_filter_exclude": self.ui.ui_extensions.filter_exclude_radio,
-            # "ext_inc_chk": self.ui.ui_extensions.include_groupbox,
-            # "ext_inc_text": self.ui.ui_extensions.include_edit,
-            # "ext_exc_chk": self.ui.ui_extensions.exclude_groupbox,
-            # "ext_exc_text": self.ui.ui_extensions.exclude_edit,
             # File Size
             "size_enabled": self.ui.ui_filesize,
             "size_min": self.ui.ui_filesize.min_spin,
@@ -132,8 +128,8 @@ class MandalaCentralGui(QWidget):
 
     worker: RunMandalaWorker = field(init=False)
     timer: QTimer = field(init=False)
-    ui_root: RootPathSelectorWidget = field(init=False)
-    ui_dest: DestPathSelectorWidget = field(init=False)
+    ui_root: PathSelectorWidget = field(init=False)
+    ui_dest: PathSelectorWidget = field(init=False)
     ui_file_count: FileCountWidget = field(init=False)
     ui_folders: FolderCreatorWidget = field(init=False)
     ui_filenames: FilenameSettingsWidget = field(init=False)
@@ -156,8 +152,8 @@ class MandalaCentralGui(QWidget):
     def setup_components(self) -> None:
         """Set up the main UI components."""
         # Init setup components
-        self.ui_root = RootPathSelectorWidget(title="Root", items=[QDir.rootPath()])
-        self.ui_dest = DestPathSelectorWidget(title="Destination", items=[QDir.homePath()])
+        self.ui_root = PathSelectorWidget(title="Root", items=[QDir.rootPath()])
+        self.ui_dest = PathSelectorWidget(title="Destination", items=[QDir.homePath()])
         self.ui_file_count = FileCountWidget(title="File Count")
         self.ui_folders = FolderCreatorWidget(title="Create Folders")
         self.ui_filenames = FilenameSettingsWidget(title="Filenames")
@@ -174,8 +170,8 @@ class MandalaCentralGui(QWidget):
         self.ui_sect_exec = ExecutionWidget()
 
         # Connections
-        self.ui_sect_exec.signal_start.connect(self._start_on_push)
-        self.ui_sect_exec.signal_stop.connect(self._stop_on_push)
+        self.ui_sect_exec.signal_start.connect(self._on_start)
+        self.ui_sect_exec.signal_stop.connect(self._on_stop)
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -221,14 +217,12 @@ class MandalaCentralGui(QWidget):
         """Lock or unlock UI elements."""
         self.ui_sect_exec.btn_start.setEnabled(enabled)
         self.ui_sect_exec.btn_stop.setEnabled(not enabled)
-
-        # Disable all inputs while running
-        for name, obj in inspect.getmembers(self):
-            if isinstance(obj, QWidget) and name not in ("ui_sect_exec", "btn_stop", "textbrowser_log"):
-                obj.setEnabled(enabled)
+        for child in self.findChildren(QWidget):
+            if child not in (self.ui_sect_exec, self.ui_sect_exec.btn_stop, self.ui_sect_exec.textbrowser_log):
+                child.setEnabled(enabled)
 
     @Slot()
-    def _start_on_push(self) -> None:
+    def _on_start(self) -> None:
         """Start the mandala process and disable UI elements."""
         try:
             config = self.get_mandala_config()
@@ -238,30 +232,32 @@ class MandalaCentralGui(QWidget):
 
         self._toggle_ui(enabled=False)
 
+        stall_limit = config.execution_model.stall_time_limit
+        stall_max = int(stall_limit * 100)
         self.ui_sect_exec.progbar_main.reset()
-        self.ui_sect_exec.progbar_stall.setRange(0, int(config.execution_model.stall_time_limit * 100))
-        self.ui_sect_exec.progbar_stall.setValue(self.ui_sect_exec.progbar_stall.maximum())
-        self.ui_sect_exec.label_stall.setText(f"{config.execution_model.stall_time_limit}0 s")
+        self.ui_sect_exec.progbar_stall.setRange(0, stall_max)
+        self.ui_sect_exec.progbar_stall.setValue(stall_max)
+        self.ui_sect_exec.label_stall.setText(f"{stall_limit}0 s")
 
         self.worker = RunMandalaWorker(config=config)
         self.worker.observer.progress.connect(self.ui_sect_exec.progbar_main.setMaximum)
         self.worker.observer.log.connect(self.ui_sect_exec.textbrowser_log.append)
         self.worker.observer.count.connect(self.ui_sect_exec.progbar_main.setValue)
         self.worker.observer.time.connect(self.ui_sect_exec.reset_stall_timer_display)
-        self.worker.observer.finished.connect(self._stop_on_worker_finished)
+        self.worker.observer.finished.connect(self._on_finished)
 
         self.timer.start(10)
         self.worker.start()
 
     @Slot()
-    def _stop_on_push(self) -> None:
+    def _on_stop(self) -> None:
         """Stop the mandala process."""
-        self.ui_sect_exec.textbrowser_log.append("Stop requested by user...")
         if self.worker:
             self.worker.stop()
+        self.ui_sect_exec.textbrowser_log.append("Stop requested by user...")
 
     @Slot()
-    def _stop_on_worker_finished(self) -> None:
+    def _on_finished(self) -> None:
         """Handle worker finished signal."""
         self.timer.stop()
         self._toggle_ui(enabled=True)

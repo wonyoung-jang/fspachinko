@@ -71,32 +71,34 @@ class GuiSettingsManager:
                 return widget.currentIndex()
             case QSpinBox() | QDoubleSpinBox():
                 return widget.value()
+            case QGroupBox() if not widget.isCheckable():
+                return None
             case QCheckBox() | QRadioButton() | QGroupBox():
-                if isinstance(widget, QGroupBox) and not widget.isCheckable():
-                    return None
                 return widget.isChecked()
-        return None
+            case _:
+                return None
 
-    def set_widget_value(self, widget: QWidget, value: Any) -> None:
+    def set_widget_value(self, widget: QWidget, val: Any) -> None:
         """Set the value of a widget based on its type."""
         match widget:
             case QLineEdit():
-                widget.setText(value)
+                widget.setText(val)
             case QComboBox():
                 try:
-                    index = int(value)
-                    if index >= widget.count():
-                        index = 0
-                    widget.setCurrentIndex(index)
+                    index = int(val)
+                    if 0 <= index < widget.count():
+                        widget.setCurrentIndex(index)
                 except (ValueError, TypeError):
                     pass
             case QSpinBox():
-                widget.setValue(int(value))
+                widget.setValue(int(val))
             case QDoubleSpinBox():
-                widget.setValue(float(value))
+                widget.setValue(float(val))
             case QCheckBox() | QRadioButton() | QGroupBox():
-                state = strtobool(value) if isinstance(value, str) else bool(value)
+                state = strtobool(val) if isinstance(val, str) else bool(val)
                 widget.setChecked(state)
+            case _:
+                return
 
     def get_window_settings(self) -> QByteArray:
         """Restore the geometry and state of the main window."""

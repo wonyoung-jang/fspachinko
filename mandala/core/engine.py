@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from .helpers import trash_path
+from .helpers import calc_dest_file_path, trash_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,23 +48,23 @@ class MandalaEngine:
     def start(self) -> None:
         """Run the main file copying process."""
         clear_history = not self.config.folders_model.unique
+        target_counts = self._prepare_folder_targets()
 
-        for _ in range(self.config.folders_model.count):
+        for target in target_counts:
             if self.stop_requested:
                 break
 
             self.state.reset_for_folder()
             self.quota.prepare_for_batch(clear_history=clear_history)
-            self.process_folder()
+            self.process_folder(target)
 
         self.observer.on_finished()
 
-    def process_folder(self) -> None:
+    def process_folder(self, target: int) -> None:
         """Process a single folder for file copying."""
         dest_dir = self._create_dest_folder()
         self.logger.reset_for_dest(dest_dir)
         index = 0
-        target = self.config.count_model.get_target(self.rng)
         self.observer.on_progress(target)
 
         for candidate in self.walker.generate_candidates():
@@ -91,7 +91,7 @@ class MandalaEngine:
 
     def _try_copy(self, chosen: Path, dest: Path, index: int) -> bool:
         """Attempt to copy a file and return success status."""
-        target = self.config.filename_model.calc_dest_file_path(chosen, dest, index)
+        target = calc_dest_file_path(self.config.filename_model, chosen, dest, index)
         if target is None:
             return False
 
@@ -122,6 +122,20 @@ class MandalaEngine:
 
         target.mkdir(parents=False)
         return target
+
+    def _prepare_folder_targets(self) -> list[int]:
+        """Prepare target file counts for each folder."""
+        folder_count = self.config.folders_model.count
+        targets = [self.config.count_model.count] * folder_count
+
+        if self.config.count_model.is_rand_count:
+            for i in range(folder_count):
+                targets[i] = self.rng.randint(
+                    self.config.count_model.count_min_rand,
+                    self.config.count_model.count_max_rand,
+                )
+
+        return targets
 
     def _handle_invalid(self, path: Path) -> None:
         """Handle logging of invalid files."""

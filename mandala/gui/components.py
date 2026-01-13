@@ -27,7 +27,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.config.schemas import (
+from ..config.constants import (
+    BYTES_IN_GIGABYTE,
+    BYTES_IN_KILOBYTE,
+    BYTES_IN_MEGABYTE,
+    SECONDS_IN_MINUTE,
+    SizeUnitEnum,
+    TimeUnitEnum,
+)
+from ..config.schemas import (
     DiversityModel,
     DurationModel,
     ExecutionModel,
@@ -38,15 +46,6 @@ from mandala.config.schemas import (
     FoldersModel,
     KeywordsModel,
     TrashModel,
-)
-
-from ..config.constants import (
-    BYTES_IN_GIGABYTE,
-    BYTES_IN_KILOBYTE,
-    BYTES_IN_MEGABYTE,
-    SECONDS_IN_MINUTE,
-    SizeUnitEnum,
-    TimeUnitEnum,
 )
 from ..utilities.utils import convert_string_to_list
 
@@ -264,22 +263,9 @@ class PathSelectorWidget(QGroupBox):
         """Return the currently selected path."""
         return self.combo.currentText()
 
-
-class RootPathSelectorWidget(PathSelectorWidget):
-    """Handles logic for selecting the root path."""
-
     def get_config(self) -> Path:
         """Return clean data for the config."""
-        root = Path(self.current_path())
-        return root.resolve()
-
-
-class DestPathSelectorWidget(PathSelectorWidget):
-    """Handles logic for selecting the destination path."""
-
-    def get_config(self) -> Path:
-        """Return clean data for the config."""
-        return Path(self.current_path())
+        return Path(self.combo.currentText()).resolve()
 
 
 class RangeFilterWidget(QGroupBox):

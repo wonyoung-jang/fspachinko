@@ -1,8 +1,6 @@
 """Pydantic schemas for Mandala configuration."""
 
-import filecmp
 from pathlib import Path
-from random import Random
 
 from pydantic import BaseModel, Field
 
@@ -23,26 +21,20 @@ class ExtensionsModel(BaseModel):
     text: list[str] = Field(default_factory=list)
 
 
-class LimitMinMaxModel(BaseModel):
-    """Base model for limit, minimum, and maximum fields."""
+class FilesizeModel(BaseModel):
+    """Model for size filter."""
 
     limit: bool = False
     minimum: float = 0.0
     maximum: float = 0.0
 
-    def check(self, value: float) -> bool:
-        """Check if a value is within the specified range."""
-        if not self.limit:
-            return True
-        return self.minimum <= value <= self.maximum
 
-
-class FilesizeModel(LimitMinMaxModel):
-    """Model for size filter."""
-
-
-class DurationModel(LimitMinMaxModel):
+class DurationModel(BaseModel):
     """Model for duration filter."""
+
+    limit: bool = False
+    minimum: float = 0.0
+    maximum: float = 0.0
 
 
 class FilenameModel(BaseModel):
@@ -51,31 +43,6 @@ class FilenameModel(BaseModel):
     is_index: bool = False
     is_rename: bool = False
     rename_to: str = ""
-
-    def calc_dest_file_path(self, chosen: Path, dest: Path, index: int) -> Path | None:
-        """Calculate the destination file path based on naming conventions."""
-        ext = chosen.suffix
-        stem = chosen.stem
-
-        if self.is_index:
-            name = f"{index + 1}_{stem}{ext}"
-        elif self.is_rename:
-            name = f"{self.rename_to}_{index + 1}{ext}"
-        else:
-            name = chosen.name
-
-        target = dest / name
-
-        if target.exists() and filecmp.cmp(chosen, target) and not (self.is_rename or self.is_index):
-            return None
-
-        x = 2
-        base_stem = target.stem
-        while target.exists():
-            target = dest / f"{base_stem} ({x}){ext}"
-            x += 1
-
-        return target
 
 
 class FoldersModel(BaseModel):
@@ -94,12 +61,6 @@ class FilecountModel(BaseModel):
     is_rand_count: bool = False
     count_min_rand: int = 0
     count_max_rand: int = 0
-
-    def get_target(self, rng: Random) -> int:
-        """Get the number of files to process for the current folder."""
-        if self.is_rand_count:
-            return rng.randint(self.count_min_rand, self.count_max_rand)
-        return self.count
 
 
 class TrashModel(BaseModel):
