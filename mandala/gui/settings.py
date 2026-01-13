@@ -43,65 +43,60 @@ class GuiSettingsManager:
     def save_gui(self) -> None:
         """Save the state of all registered widgets."""
         for name, widget in self.registry.items():
-            val = self.get_widget_value(widget)
-            self.settings.setValue(name, val)
+            if (val := self.get_widget_value(widget)) is not None:
+                self.settings.setValue(name, val)
+
             if isinstance(widget, QComboBox):
                 items = [widget.itemText(i) for i in range(widget.count())]
                 self.settings.setValue(f"{name}_items", items)
-
-    def get_widget_value(self, widget: QWidget) -> Any:
-        """Retrieve the value of a widget based on its type."""
-        if isinstance(widget, QLineEdit):
-            return widget.text()
-        if isinstance(widget, QComboBox):
-            return widget.currentIndex()
-        if isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-            return widget.value()
-        if isinstance(widget, (QCheckBox, QRadioButton, QGroupBox)):
-            if isinstance(widget, QGroupBox) and not widget.isCheckable():
-                return None
-            return widget.isChecked()
-        return None
 
     def load_gui(self) -> None:
         """Load the state of all registered widgets."""
         for name, widget in self.registry.items():
             if isinstance(widget, QComboBox):
-                items_key = f"{name}_items"
-                if self.settings.contains(items_key):
-                    items = self.settings.value(items_key)
-                    if isinstance(items, (list, tuple)):
-                        widget.clear()
-                        widget.addItems([str(i) for i in items])
+                items = self.settings.value(f"{name}_items")
+                if isinstance(items, list | tuple):
+                    widget.clear()
+                    widget.addItems([str(i) for i in items])
 
-            if not self.settings.contains(name):
-                continue
+            if (val := self.settings.value(name)) is not None:
+                self.set_widget_value(widget, val)
 
-            val = self.settings.value(name)
-            if val is None:
-                continue
-
-            self.set_widget_value(widget, val)
+    def get_widget_value(self, widget: QWidget) -> Any:
+        """Retrieve the value of a widget based on its type."""
+        match widget:
+            case QLineEdit():
+                return widget.text()
+            case QComboBox():
+                return widget.currentIndex()
+            case QSpinBox() | QDoubleSpinBox():
+                return widget.value()
+            case QCheckBox() | QRadioButton() | QGroupBox():
+                if isinstance(widget, QGroupBox) and not widget.isCheckable():
+                    return None
+                return widget.isChecked()
+        return None
 
     def set_widget_value(self, widget: QWidget, value: Any) -> None:
         """Set the value of a widget based on its type."""
-        if isinstance(widget, QLineEdit):
-            widget.setText(value)
-        elif isinstance(widget, QComboBox):
-            try:
-                index = int(value)
-                if index >= widget.count():
-                    index = 0
-                widget.setCurrentIndex(index)
-            except (ValueError, TypeError):
-                pass
-        elif isinstance(widget, QSpinBox):
-            widget.setValue(int(value))
-        elif isinstance(widget, QDoubleSpinBox):
-            widget.setValue(float(value))
-        elif isinstance(widget, (QCheckBox, QRadioButton, QGroupBox)):
-            state = strtobool(value) if isinstance(value, str) else bool(value)
-            widget.setChecked(state)
+        match widget:
+            case QLineEdit():
+                widget.setText(value)
+            case QComboBox():
+                try:
+                    index = int(value)
+                    if index >= widget.count():
+                        index = 0
+                    widget.setCurrentIndex(index)
+                except (ValueError, TypeError):
+                    pass
+            case QSpinBox():
+                widget.setValue(int(value))
+            case QDoubleSpinBox():
+                widget.setValue(float(value))
+            case QCheckBox() | QRadioButton() | QGroupBox():
+                state = strtobool(value) if isinstance(value, str) else bool(value)
+                widget.setChecked(state)
 
     def get_window_settings(self) -> QByteArray:
         """Restore the geometry and state of the main window."""
