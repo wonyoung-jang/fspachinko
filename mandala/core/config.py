@@ -20,14 +20,14 @@ class MandalaConfig:
 
     # Filter Keywords and Extensions
     is_keywords: bool
-    is_extensions: bool
-    is_not_keywords: bool
-    is_not_extensions: bool
-
+    is_keywords_include: bool
+    is_keywords_exclude: bool
     keywords: list[str]
+
+    is_extensions: bool
+    is_extensions_include: bool
+    is_extensions_exclude: bool
     extensions: list[str]
-    not_keywords: list[str]
-    not_extensions: list[str]
 
     # Filter Size
     limit_size: bool

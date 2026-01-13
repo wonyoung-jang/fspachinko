@@ -52,32 +52,30 @@ class FileValidator:
 
     def _check_name(self, source: Path) -> bool:
         """Check if a file has the specified not extensions or not keywords."""
-        not_exts = self.config.not_extensions
-        not_keys = self.config.not_keywords
         exts = self.config.extensions
         keys = self.config.keywords
         suffix = source.suffix
         stem = source.stem
 
-        if self.config.is_not_extensions and not_exts:
-            for ne in not_exts:
-                if self._get_ext_regex(ne).search(suffix) is not None:
-                    return False
+        if self.config.is_keywords:
+            if self.config.is_keywords_include and keys:
+                for k in keys:
+                    if self._get_key_regex(k).search(stem) is None:
+                        return False
+            if self.config.is_keywords_exclude and keys:
+                for nk in keys:
+                    if self._get_key_regex(nk).search(stem) is not None:
+                        return False
 
-        if self.config.is_not_keywords and not_keys:
-            for nk in not_keys:
-                if self._get_key_regex(nk).search(stem) is not None:
-                    return False
-
-        if self.config.is_extensions and exts:
-            for e in exts:
-                if self._get_ext_regex(e).search(suffix) is None:
-                    return False
-
-        if self.config.is_keywords and keys:
-            for k in keys:
-                if self._get_key_regex(k).search(stem) is None:
-                    return False
+        if self.config.is_extensions:
+            if self.config.is_extensions_include and exts:
+                for e in exts:
+                    if self._get_ext_regex(e).search(suffix) is None:
+                        return False
+            if self.config.is_extensions_exclude and exts:
+                for ne in exts:
+                    if self._get_ext_regex(ne).search(suffix) is not None:
+                        return False
 
         return True
 
