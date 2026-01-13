@@ -67,6 +67,7 @@ class MandalaEngine:
 
         index = 0
         target = self._get_target_count()
+        self.observer.on_progress(target)
 
         for candidate in self.walker.generate_candidates():
             if index >= target:

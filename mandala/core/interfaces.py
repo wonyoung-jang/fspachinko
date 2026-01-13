@@ -8,6 +8,9 @@ from typing import Protocol
 class MandalaObserver(Protocol):
     """Interface for Mandala Observer."""
 
+    def on_progress(self, maximum: int) -> None:
+        """Call when starting a new progress cycle."""
+
     def on_finished(self) -> None:
         """Call when processing is finished."""
 

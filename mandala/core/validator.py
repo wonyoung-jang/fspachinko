@@ -37,12 +37,14 @@ class FileValidator:
     def _get_ext_regex(self, extension: str) -> re.Pattern:
         """Get a compiled regex pattern for a file extension."""
         pattern = rf"\.{extension}$"
-        return self.regex_cache.setdefault(pattern, re.compile(pattern, re.IGNORECASE))
+        ext_key = f"ext::{extension}"
+        return self.regex_cache.setdefault(ext_key, re.compile(pattern, re.IGNORECASE))
 
     def _get_key_regex(self, keyword: str) -> re.Pattern:
         """Get a compiled regex pattern for a keyword."""
         pattern = rf"(.*){keyword}(.*)"
-        return self.regex_cache.setdefault(pattern, re.compile(pattern, re.IGNORECASE))
+        key_key = f"key::{keyword}"
+        return self.regex_cache.setdefault(key_key, re.compile(pattern, re.IGNORECASE))
 
     def _check_size(self, size: int) -> bool:
         """Check if a file is within the specified size range."""
@@ -52,31 +54,36 @@ class FileValidator:
 
     def _check_name(self, source: Path) -> bool:
         """Check if a file has the specified not extensions or not keywords."""
-        exts = self.config.extensions
-        keys = self.config.keywords
-        suffix = source.suffix
-        stem = source.stem
+        if self._check_keywords(source) is False:
+            return False
+        return self._check_extensions(source) is not False
 
-        if self.config.is_keywords:
-            if self.config.is_keywords_include and keys:
+    def _check_keywords(self, source: Path) -> bool:
+        """Check if a file has the specified keywords."""
+        stem = source.stem
+        if keys := self.config.keywords:
+            if self.config.is_keywords_include:
                 for k in keys:
                     if self._get_key_regex(k).search(stem) is None:
                         return False
-            if self.config.is_keywords_exclude and keys:
+            elif self.config.is_keywords_exclude:
                 for nk in keys:
                     if self._get_key_regex(nk).search(stem) is not None:
                         return False
+        return True
 
-        if self.config.is_extensions:
-            if self.config.is_extensions_include and exts:
+    def _check_extensions(self, source: Path) -> bool:
+        """Check if a file has the specified extensions."""
+        suffix = source.suffix
+        if exts := self.config.extensions:
+            if self.config.is_extensions_include:
                 for e in exts:
                     if self._get_ext_regex(e).search(suffix) is None:
                         return False
-            if self.config.is_extensions_exclude and exts:
+            elif self.config.is_extensions_exclude:
                 for ne in exts:
                     if self._get_ext_regex(ne).search(suffix) is not None:
                         return False
-
         return True
 
     def _check_duration(self, source: Path) -> bool:
@@ -85,9 +92,6 @@ class FileValidator:
             probe = ffmpeg.probe(
                 filename=str(source),
                 cmd="ffprobe",
-                verbose="quiet",
-                print_format="json",
-                show_format=True,
             )
             duration = float(probe["format"]["duration"])
         except (ValueError, KeyError, ffmpeg.Error):

@@ -22,10 +22,15 @@ if TYPE_CHECKING:
 class MandalaQtSignalObserver(QObject):
     """Qt signal observer implementation for Mandala."""
 
+    progress = Signal(int)
     finished = Signal()
     log = Signal(str)
     time = Signal()
     count = Signal(int)
+
+    def on_progress(self, maximum: int) -> None:
+        """Emit progress signal."""
+        self.progress.emit(maximum)
 
     def on_finished(self) -> None:
         """Emit finished signal."""

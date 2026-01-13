@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mandala.config.schemas import DurationFilterModel
+
 from ..config.constants import (
     BYTES_IN_GIGABYTE,
     BYTES_IN_KILOBYTE,
@@ -367,11 +369,12 @@ class DurationFilterWidget(DblRangeFilterWidget):
         if unit == TimeUnitEnum.MINUTES:
             min_duration *= SECONDS_IN_MINUTE
             max_duration *= SECONDS_IN_MINUTE
-        return {
-            "limit_duration": self.isChecked(),
-            "min_duration": min_duration,
-            "max_duration": max_duration,
-        }
+        duration_model = DurationFilterModel(
+            limit_duration=self.isChecked(),
+            min_duration=min_duration,
+            max_duration=max_duration,
+        )
+        return duration_model.model_dump()
 
 
 class DualListWidget(QGroupBox):
@@ -379,42 +382,19 @@ class DualListWidget(QGroupBox):
 
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
         """Initialize the dual list widget."""
-        super().__init__(title, parent, checkable=True, flat=True)
+        super().__init__(title, parent, flat=True)
 
         self.filter_edit = QLineEdit()
+
         self.filter_include_radio = QRadioButton("Include")
         self.filter_include_radio.setChecked(True)
+
         self.filter_exclude_radio = QRadioButton("Exclude")
+
         hbox = QHBoxLayout(self)
         hbox.addWidget(self.filter_edit)
         hbox.addWidget(self.filter_include_radio)
         hbox.addWidget(self.filter_exclude_radio)
-
-        # self.include_edit = QLineEdit()
-        # self.exclude_edit = QLineEdit()
-
-
-        # Sub-groups for visual clarity
-        # self.include_groupbox = QGroupBox("Include", checkable=True, flat=True)
-        # QHBoxLayout(self.include_groupbox).addWidget(self.include_edit)
-
-        # self.exclude_groupbox = QGroupBox("Exclude", checkable=True, flat=True)
-        # QHBoxLayout(self.exclude_groupbox).addWidget(self.exclude_edit)
-
-        # switch_btn = QPushButton("Switch", flat=True)
-        # switch_btn.setStatusTip(f"Switch {self.title().lower()} include and exclude filters")
-        # switch_btn.clicked.connect(self.switch_text)
-
-        # layout.addWidget(self.include_groupbox, 0, 0)
-        # layout.addWidget(self.exclude_groupbox, 1, 0)
-        # layout.addWidget(switch_btn, 0, 1, 2, 1)
-
-    @Slot()
-    def switch_text(self) -> None:
-        """Switch the text between include and exclude."""
-        # inc, exc = self.include_edit.text(), self.exclude_edit.text()
-        # self.include_edit.setText(exc)
-        # self.exclude_edit.setText(inc)
 
 
 class KeywordsFilterWidget(DualListWidget):
@@ -423,16 +403,9 @@ class KeywordsFilterWidget(DualListWidget):
     def get_config(self) -> dict:
         """Return clean data for the config."""
         return {
-            "is_keywords": self.isChecked(),
             "is_keywords_include": self.filter_include_radio.isChecked(),
             "is_keywords_exclude": self.filter_exclude_radio.isChecked(),
             "keywords": convert_string_to_list(self.filter_edit.text()),
-            # "is_keywords": self.include_groupbox.isChecked(),
-            # "is_not_keywords": self.exclude_groupbox.isChecked(),
-            # "keywords": convert_string_to_list(self.include_edit.text()) if self.include_groupbox.isChecked() else [],
-            # "not_keywords": convert_string_to_list(self.exclude_edit.text())
-            # if self.exclude_groupbox.isChecked()
-            # else [],
         }
 
 
@@ -442,17 +415,9 @@ class ExtensionsFilterWidget(DualListWidget):
     def get_config(self) -> dict:
         """Return clean data for the config."""
         return {
-            "is_extensions": self.isChecked(),
             "is_extensions_include": self.filter_include_radio.isChecked(),
             "is_extensions_exclude": self.filter_exclude_radio.isChecked(),
             "extensions": convert_string_to_list(self.filter_edit.text()),
-            # "is_extensions": self.include_groupbox.isChecked(),
-            # "is_not_extensions": self.exclude_groupbox.isChecked(),
-            # "extensions": convert_string_to_list(self.include_edit.text())
-            # if self.include_groupbox.isChecked() else [],
-            # "not_extensions": convert_string_to_list(self.exclude_edit.text())
-            # if self.exclude_groupbox.isChecked()
-            # else [],
         }
 
 
