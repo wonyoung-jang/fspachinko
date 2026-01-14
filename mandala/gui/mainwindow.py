@@ -240,11 +240,11 @@ class MandalaCentralGui(QWidget):
         self.ui_sect_exec.label_stall.setText(f"{stall_limit}0 s")
 
         self.worker = RunMandalaWorker(config=config)
-        self.worker.observer.progress.connect(self.ui_sect_exec.progbar_main.setMaximum)
-        self.worker.observer.log.connect(self.ui_sect_exec.textbrowser_log.append)
-        self.worker.observer.count.connect(self.ui_sect_exec.progbar_main.setValue)
-        self.worker.observer.time.connect(self.ui_sect_exec.reset_stall_timer_display)
-        self.worker.observer.finished.connect(self._on_finished)
+        self.worker.signals.progress.connect(self.ui_sect_exec.progbar_main.setMaximum)
+        self.worker.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
+        self.worker.signals.count.connect(self.ui_sect_exec.progbar_main.setValue)
+        self.worker.signals.time.connect(self.ui_sect_exec.reset_stall_timer_display)
+        self.worker.signals.finished.connect(self._on_finished)
 
         self.timer.start(10)
         self.worker.start()

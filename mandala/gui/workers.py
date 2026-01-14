@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..core.config import MandalaConfig
 
 
-class MandalaQtSignalObserver(QObject):
+class WorkerSignals(QObject):
     """Qt signal observer implementation for Mandala."""
 
     progress = Signal(int)
@@ -55,11 +55,15 @@ class RunMandalaWorker(QThread):
 
     config: InitVar[MandalaConfig]
     engine: MandalaEngine = field(init=False)
-    observer: MandalaQtSignalObserver = field(default_factory=MandalaQtSignalObserver)
+    signals: WorkerSignals = field(default_factory=WorkerSignals)
 
     def __post_init__(self, config: MandalaConfig) -> None:
         """Initialize the worker thread."""
         super().__init__()
+        self.init_engine(config)
+
+    def init_engine(self, config: MandalaConfig) -> None:
+        """Initialize the Mandala engine."""
         state = MandalaState()
         validator = FileValidator(config)
         logger = MandalaLogger(config, state)
@@ -68,7 +72,11 @@ class RunMandalaWorker(QThread):
             limit_root_folder=config.diversity_model.root_limit,
             limit_leaf_folder=config.diversity_model.leaf_limit,
         )
-        rng = Random(x=Random().randint(0, 2**32 - 1))
+
+        sys_rand = Random()
+        rng_seed = sys_rand.randint(0, 2**32 - 1)
+        rng = Random(rng_seed)
+
         walker = RandomFSWalker(
             root=config.root,
             rng=rng,
@@ -86,12 +94,14 @@ class RunMandalaWorker(QThread):
             quota=quota,
             walker=walker,
         )
-        self.engine.set_observer(self.observer)
+        self.engine.set_observer(self.signals)
 
     def run(self) -> None:
         """Run the Mandala process."""
-        self.engine.start()
+        if self.engine:
+            self.engine.start()
 
     def stop(self) -> None:
         """Stop the Mandala process."""
-        self.engine.request_stop()
+        if self.engine:
+            self.engine.request_stop()
