@@ -38,14 +38,13 @@ from ..config.constants import (
 )
 from ..config.schemas import (
     DiversityModel,
+    DualListFilterModel,
     DurationModel,
     ExecutionModel,
-    ExtensionsModel,
     FilecountModel,
     FilenameModel,
     FilesizeModel,
     FoldersModel,
-    KeywordsModel,
     TrashModel,
 )
 from ..utilities.utils import convert_string_to_list
@@ -294,7 +293,7 @@ class TrashSettingsWidget(BaseGroupBox):
         )
 
 
-class DualListWidget(BaseGroupBox):
+class DualListFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude pattern for Keywords and Extensions."""
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
@@ -312,25 +311,9 @@ class DualListWidget(BaseGroupBox):
         hbox.addWidget(self.filter_include_radio)
         hbox.addWidget(self.filter_exclude_radio)
 
-
-class KeywordsFilterWidget(DualListWidget):
-    """Handles the Include/Exclude pattern for Keywords."""
-
-    def get_config(self) -> KeywordsModel:
+    def get_config(self) -> DualListFilterModel:
         """Return clean data for the config."""
-        return KeywordsModel(
-            include=self.filter_include_radio.isChecked(),
-            exclude=self.filter_exclude_radio.isChecked(),
-            text=convert_string_to_list(self.filter_edit.text()),
-        )
-
-
-class ExtensionsFilterWidget(DualListWidget):
-    """Handles the Include/Exclude pattern for Extensions."""
-
-    def get_config(self) -> ExtensionsModel:
-        """Return clean data for the config."""
-        return ExtensionsModel(
+        return DualListFilterModel(
             include=self.filter_include_radio.isChecked(),
             exclude=self.filter_exclude_radio.isChecked(),
             text=convert_string_to_list(self.filter_edit.text()),
@@ -530,12 +513,12 @@ class ExecutionWidget(QWidget):
             self.textbrowser_log.clear()
 
     @Slot()
-    def reset_stall_timer_display(self) -> None:
+    def reset_stall_prog(self) -> None:
         """Reset the stall timer progress bar."""
         self.progbar_stall.setValue(self.progbar_stall.maximum())
 
     @Slot()
-    def update_timer(self) -> None:
+    def update_stall_prog(self) -> None:
         """Update the stall time progress bar."""
         self.progbar_stall.setValue(self.progbar_stall.value() - 1)
 

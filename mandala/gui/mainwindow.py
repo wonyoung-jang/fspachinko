@@ -13,14 +13,13 @@ from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
 from .components import (
     DiversityFilterWidget,
+    DualListFilterWidget,
     DurationFilterWidget,
     ExecutionWidget,
-    ExtensionsFilterWidget,
     FileCountWidget,
     FilenameSettingsWidget,
     FilesizeFilterWidget,
     FolderCreatorWidget,
-    KeywordsFilterWidget,
     PathSelectorWidget,
     TrashSettingsWidget,
 )
@@ -72,8 +71,8 @@ class MandalaCentralGui(QWidget):
     ui_folders: FolderCreatorWidget = field(init=False)
     ui_filenames: FilenameSettingsWidget = field(init=False)
     ui_trash: TrashSettingsWidget = field(init=False)
-    ui_keywords: KeywordsFilterWidget = field(init=False)
-    ui_extensions: ExtensionsFilterWidget = field(init=False)
+    ui_keywords: DualListFilterWidget = field(init=False)
+    ui_extensions: DualListFilterWidget = field(init=False)
     ui_filesize: FilesizeFilterWidget = field(init=False)
     ui_duration: DurationFilterWidget = field(init=False)
     ui_weight: DiversityFilterWidget = field(init=False)
@@ -97,8 +96,8 @@ class MandalaCentralGui(QWidget):
         self.ui_trash = TrashSettingsWidget("Trash", "trash")
 
         # Init filter components
-        self.ui_keywords = KeywordsFilterWidget("Keywords", "grp_keywords")
-        self.ui_extensions = ExtensionsFilterWidget("Extensions", "grp_extensions")
+        self.ui_keywords = DualListFilterWidget("Keywords", "grp_keywords")
+        self.ui_extensions = DualListFilterWidget("Extensions", "grp_extensions")
         self.ui_filesize = FilesizeFilterWidget("Size", "grp_size", suffix_options=[s.value for s in SizeUnitEnum])
         self.ui_duration = DurationFilterWidget(
             "Duration", "grp_duration", suffix_options=[s.value for s in TimeUnitEnum]
@@ -131,7 +130,7 @@ class MandalaCentralGui(QWidget):
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
-        self.timer.timeout.connect(self.ui_sect_exec.update_timer)
+        self.timer.timeout.connect(self.ui_sect_exec.update_stall_prog)
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
@@ -181,7 +180,7 @@ class MandalaCentralGui(QWidget):
         self.worker.signals.progress.connect(self.ui_sect_exec.progbar_folder.setMaximum)
         self.worker.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
         self.worker.signals.count.connect(self.ui_sect_exec.progbar_folder.setValue)
-        self.worker.signals.time.connect(self.ui_sect_exec.reset_stall_timer_display)
+        self.worker.signals.time.connect(self.ui_sect_exec.reset_stall_prog)
         self.worker.signals.finished.connect(self._on_finished)
 
         self.timer.start(10)

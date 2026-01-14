@@ -14,16 +14,8 @@ class HasLimitMinMax(Protocol):
     maximum: float
 
 
-class KeywordsModel(BaseModel):
-    """Model for keyword filtering."""
-
-    include: bool = False
-    exclude: bool = False
-    text: list[str] = Field(default_factory=list)
-
-
-class ExtensionsModel(BaseModel):
-    """Model for extension filtering."""
+class DualListFilterModel(BaseModel):
+    """Model for dual list filtering."""
 
     include: bool = False
     exclude: bool = False
@@ -106,8 +98,8 @@ class MandalaConfigModel(BaseModel):
     filename_model: FilenameModel
     trash_model: TrashModel
 
-    keywords_model: KeywordsModel
-    extensions_model: ExtensionsModel
+    keywords_model: DualListFilterModel
+    extensions_model: DualListFilterModel
 
     size_model: FilesizeModel
     duration_model: DurationModel

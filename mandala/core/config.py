@@ -5,14 +5,13 @@ from pathlib import Path
 
 from ..config.schemas import (
     DiversityModel,
+    DualListFilterModel,
     DurationModel,
     ExecutionModel,
-    ExtensionsModel,
     FilecountModel,
     FilenameModel,
     FilesizeModel,
     FoldersModel,
-    KeywordsModel,
     TrashModel,
 )
 
@@ -30,8 +29,8 @@ class MandalaConfig:
     filename_model: FilenameModel
     trash_model: TrashModel
 
-    keywords_model: KeywordsModel
-    extensions_model: ExtensionsModel
+    keywords_model: DualListFilterModel
+    extensions_model: DualListFilterModel
 
     size_model: FilesizeModel
     duration_model: DurationModel
