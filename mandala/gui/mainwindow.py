@@ -193,11 +193,15 @@ class MandalaCentralGui(QWidget):
 
         stall_limit = config.execution_model.stall_time_limit
         stall_max = int(stall_limit * 100)
-        self.ui_sect_exec.progbar_folder.reset()
+        self.ui_sect_exec.progbar_total.setValue(0)
+        self.ui_sect_exec.progbar_folder.setValue(0)
         self.ui_sect_exec.progbar_stall.setRange(0, stall_max)
         self.ui_sect_exec.progbar_stall.setValue(stall_max)
 
         self.worker = RunMandalaWorker(config=config)
+        self.worker.signals.progress_total.connect(self.ui_sect_exec.progbar_total.setMaximum)
+        self.worker.signals.count_total.connect(self.ui_sect_exec.update_total_prog)
+
         self.worker.signals.progress.connect(self.ui_sect_exec.progbar_folder.setMaximum)
         self.worker.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
         self.worker.signals.count.connect(self.ui_sect_exec.progbar_folder.setValue)

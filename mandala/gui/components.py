@@ -468,8 +468,13 @@ class ExecutionWidget(QWidget):
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
         # Progress bars
-        self.progbar_stall = QProgressBar(textVisible=True)
-        self.progbar_folder = QProgressBar(textVisible=True)
+        self.progbar_stall = QProgressBar(value=0, textVisible=True)
+        self.progbar_folder = QProgressBar(value=0, textVisible=True)
+        self.progbar_total = QProgressBar(value=0, textVisible=True)
+        prog_form_layout = QFormLayout()
+        prog_form_layout.addRow("Total Progress:", self.progbar_total)
+        prog_form_layout.addRow("Folder Progress:", self.progbar_folder)
+        prog_form_layout.addRow("Stall Timer:", self.progbar_stall)
 
         # Stall time
         self.dblspin_stall = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
@@ -494,15 +499,14 @@ class ExecutionWidget(QWidget):
         self.btn_close.clicked.connect(self.on_close)
 
         layout = QGridLayout(self)
-        layout.addWidget(self.progbar_folder, 0, 0, 1, 2)
-        layout.addWidget(self.progbar_stall, 1, 0, 1, 2)
-        layout.addWidget(QLabel("Stall Time:"), 2, 0, 1, 2)
-        layout.addWidget(self.dblspin_stall, 2, 1, 1, 1)
-        layout.addWidget(self.chk_log_invalid, 3, 0, 1, 2)
-        layout.addWidget(self.textbrowser_log, 4, 0, 1, 2)
-        layout.addWidget(self.btn_start, 5, 0)
-        layout.addWidget(self.btn_stop, 5, 1)
-        layout.addWidget(self.btn_close, 6, 0, 1, 2)
+        layout.addLayout(prog_form_layout, 0, 0, 1, 2)
+        layout.addWidget(QLabel("Stall Time:"), 1, 0, 1, 2)
+        layout.addWidget(self.dblspin_stall, 1, 1, 1, 1)
+        layout.addWidget(self.chk_log_invalid, 2, 0, 1, 2)
+        layout.addWidget(self.textbrowser_log, 3, 0, 1, 2)
+        layout.addWidget(self.btn_start, 4, 0)
+        layout.addWidget(self.btn_stop, 4, 1)
+        layout.addWidget(self.btn_close, 5, 0, 1, 2)
 
     @Slot()
     def on_start(self) -> None:
@@ -525,10 +529,6 @@ class ExecutionWidget(QWidget):
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
         self.dblspin_stall.setEnabled(not running)
-        if running:
-            self.progbar_stall.setValue(self.progbar_stall.maximum())
-            self.progbar_folder.reset()
-            self.textbrowser_log.clear()
 
     @Slot()
     def reset_stall_prog(self) -> None:
@@ -546,3 +546,8 @@ class ExecutionWidget(QWidget):
             log_invalid=self.chk_log_invalid.isChecked(),
             stall_time_limit=self.dblspin_stall.value(),
         )
+
+    @Slot()
+    def update_total_prog(self) -> None:
+        """Update the total progress bar."""
+        self.progbar_total.setValue(self.progbar_total.value() + 1)

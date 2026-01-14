@@ -57,6 +57,7 @@ class MandalaEngine:
             self.state.reset_for_folder()
             self.quota.prepare_for_batch(clear_history=clear_history)
             self.process_folder(target)
+            self.observer.on_count_total()
 
         self.observer.on_finished()
 
@@ -130,6 +131,8 @@ class MandalaEngine:
     def _prepare_folder_targets(self) -> list[int]:
         """Prepare target file counts for each folder."""
         folder_count = self.config.folders_model.count
+        self.observer.on_progress_total(folder_count)
+
         targets = [self.config.count_model.count] * folder_count
 
         if self.config.count_model.is_rand_count:

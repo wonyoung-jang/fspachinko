@@ -22,11 +22,21 @@ if TYPE_CHECKING:
 class WorkerSignals(QObject):
     """Qt signal observer implementation for Mandala."""
 
+    progress_total = Signal(int)
+    count_total = Signal()
     progress = Signal(int)
     finished = Signal()
     log = Signal(str)
     time = Signal()
     count = Signal(int)
+
+    def on_progress_total(self, maximum: int) -> None:
+        """Emit total progress signal."""
+        self.progress_total.emit(maximum)
+
+    def on_count_total(self) -> None:
+        """Emit total count signal."""
+        self.count_total.emit()
 
     def on_progress(self, maximum: int) -> None:
         """Emit progress signal."""
