@@ -44,9 +44,9 @@ class MandalaQtSignalObserver(QObject):
         """Emit time update signal."""
         self.time.emit()
 
-    def on_count(self, num: int) -> None:
+    def on_count(self, count: int) -> None:
         """Emit count update signal."""
-        self.count.emit(num)
+        self.count.emit(count)
 
 
 @dataclass(slots=True)

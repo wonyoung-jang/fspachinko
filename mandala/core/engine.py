@@ -64,47 +64,50 @@ class MandalaEngine:
         """Process a single folder for file copying."""
         dest_dir = self._create_dest_folder()
         self.logger.reset_for_dest(dest_dir)
-        index = 0
+        count = 0
         self.observer.on_progress(target)
 
         for candidate in self.walker.generate_candidates():
-            if candidate is None or index >= target or self._is_stop_condition():
+            if candidate is None or count >= target or self._is_stop_condition():
                 break
 
             path = candidate.path
             size = candidate.size
+
             if not self.validator.is_valid(path, size):
                 self._handle_invalid(path)
                 continue
 
-            if self._try_copy(path, dest_dir, index):
-                index += 1
+            if self._try_copy(path, dest_dir, count):
+                count += 1
                 self.quota.register_success(path)
                 self.state.update_success(size)
-                self.observer.on_count(index)
+
+                self.observer.on_count(count)
                 self.observer.on_time()
+
                 trash_path(path, condition=self.config.trash_model.source_file)
             else:
                 self._handle_invalid(path)
 
-        self._finalize_folder(dest_dir, index, target)
+        self._finalize_folder(dest_dir, count, target)
 
-    def _try_copy(self, chosen: Path, dest: Path, index: int) -> bool:
+    def _try_copy(self, chosen: Path, dest: Path, count: int) -> bool:
         """Attempt to copy a file and return success status."""
-        target = calc_dest_file_path(self.config.filename_model, chosen, dest, index)
+        target = calc_dest_file_path(self.config.filename_model, chosen, dest, count)
         if target is None:
             return False
 
         try:
-            shutil.copy(chosen, target)
+            shutil.copy2(chosen, target)
         except (PermissionError, OSError):
+            self.observer.on_log(f"Failed to copy: {chosen} -> {target}")
             return False
-
-        # Success
-        msg = f"{index + 1}: {chosen} -> {target}"
-        self.logger.log_message(msg)
-        self.observer.on_log(msg)
-        return True
+        else:
+            msg = f"{count + 1}: {chosen} -> {target}"
+            self.logger.log_message(msg)
+            self.observer.on_log(msg)
+            return True
 
     def _create_dest_folder(self) -> Path:
         """Create the destination folder based on configuration."""
@@ -151,32 +154,40 @@ class MandalaEngine:
         """Check if the process should stop based on conditions."""
         return self.stop_requested or self.quota.all_locked() or self._is_stall_timeout()
 
-    def _finalize_folder(self, dest: Path, index: int, target: int) -> None:
+    def _get_status_header(self, count: int, target: int) -> str:
+        """Generate a status header for logging."""
+        timed_out = self._is_stall_timeout()
+        all_searched = self.quota.all_locked()
+
+        copied_str = f"{count}/{target} files copied"
+
+        if count == target:
+            return f"SUCCESS: {copied_str}"
+
+        if self.stop_requested:
+            return f"STOPPED: {copied_str}"
+
+        if count == 0 and self.config.folders_model.create and (timed_out or all_searched):
+            reason = "timed out" if timed_out else "all files searched"
+            return f"NO FILES FOUND: Reason - {reason} | {copied_str} | folder deleted"
+
+        if all_searched:
+            return f"ALL FILES SEARCHED: {copied_str}"
+
+        if timed_out:
+            return f"TIMED OUT: {copied_str}"
+
+        return "FINISHED: Unknown reason"
+
+    def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
         """Create and write log at the end of folder."""
         runtime = round(perf_counter() - self.state.start_currdir, 2)
 
-        timed_out = self._is_stall_timeout()
-        all_searched = self.quota.all_locked()
-        create_folders = self.config.folders_model.create
-
-        if index == target:
-            status = f"SUCCESS: {index}/{target} files copied"
-        elif self.stop_requested:
-            status = f"STOPPED: {index}/{target} files copied"
-        elif index == 0 and create_folders and (timed_out or all_searched):
-            reason = "timed out" if timed_out else "all files searched"
-            status = f"NO FILES FOUND: {reason} | folder deleted"
-        elif all_searched:
-            status = f"ALL FILES SEARCHED: {index}/{target} files copied"
-        elif timed_out:
-            status = f"TIMED OUT: {index}/{target} files copied"
-        else:
-            status = "FINISHED"
-
+        status = self._get_status_header(count, target)
         report = self.logger.generate_report(dest, status, runtime)
         self.observer.on_log(report)
         self.logger.save(report)
 
-        if index == 0 and create_folders:
+        if count == 0 and self.config.folders_model.create:
             with contextlib.suppress(OSError):
                 shutil.rmtree(dest)

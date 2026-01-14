@@ -29,12 +29,8 @@ QCoreApplication.setApplicationName(SettingsEnum.APPLICATION)
 class GuiSettingsManager:
     """Class for managing GUI settings."""
 
-    settings: QSettings = field(init=False)
+    settings: QSettings = field(default_factory=QSettings)
     registry: dict[str, QWidget] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        self.settings = QSettings()
 
     def register_widgets(self, widgets: dict[str, QWidget]) -> None:
         """Register multiple widgets for settings management."""

@@ -20,5 +20,5 @@ class MandalaObserver(Protocol):
     def on_time(self) -> None:
         """Call to update time remaining."""
 
-    def on_count(self, num: int) -> None:
+    def on_count(self, count: int) -> None:
         """Call to update progress percentage."""
