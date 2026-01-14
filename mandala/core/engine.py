@@ -64,8 +64,9 @@ class MandalaEngine:
         """Process a single folder for file copying."""
         dest_dir = self._create_dest_folder()
         self.logger.reset_for_dest(dest_dir)
-        count = 0
         self.observer.on_progress(target)
+
+        count = 0
 
         for candidate in self.walker.generate_candidates():
             if candidate is None or count >= target or self._is_stop_condition():

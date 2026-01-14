@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from PySide6.QtCore import QByteArray, QCoreApplication, QSettings
+from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QGroupBox,
     QLineEdit,
+    QMainWindow,
     QRadioButton,
     QSpinBox,
     QWidget,
@@ -29,34 +30,62 @@ QCoreApplication.setApplicationName(SettingsEnum.APPLICATION)
 class GuiSettingsManager:
     """Class for managing GUI settings."""
 
+    prefix: str
     settings: QSettings = field(default_factory=QSettings)
-    registry: dict[str, QWidget] = field(default_factory=dict)
 
-    def register_widgets(self, widgets: dict[str, QWidget]) -> None:
-        """Register multiple widgets for settings management."""
-        self.registry.update(widgets)
-
-    def save_gui(self) -> None:
+    def save(self, window: QMainWindow) -> None:
         """Save the state of all registered widgets."""
-        for name, widget in self.registry.items():
-            if (val := self.get_widget_value(widget)) is not None:
-                self.settings.setValue(name, val)
+        self.save_window_state(window)
+        self.save_children_recursive(window)
 
-            if isinstance(widget, QComboBox):
-                items = [widget.itemText(i) for i in range(widget.count())]
-                self.settings.setValue(f"{name}_items", items)
-
-    def load_gui(self) -> None:
+    def load(self, window: QMainWindow) -> None:
         """Load the state of all registered widgets."""
-        for name, widget in self.registry.items():
-            if isinstance(widget, QComboBox):
-                items = self.settings.value(f"{name}_items")
-                if isinstance(items, list | tuple):
-                    widget.clear()
-                    widget.addItems([str(i) for i in items])
+        self.load_window_state(window)
+        self.load_children_recursive(window)
 
-            if (val := self.settings.value(name)) is not None:
-                self.set_widget_value(widget, val)
+    def load_window_state(self, window: QMainWindow) -> None:
+        """Restore the geometry and state of the main window."""
+        window.restoreGeometry(self.settings.value(f"{self.prefix}/geometry"))
+        window.restoreState(self.settings.value(f"{self.prefix}/state"))
+
+    def save_window_state(self, window: QMainWindow) -> None:
+        """Save the geometry and state of the main window."""
+        self.settings.setValue(f"{self.prefix}/geometry", window.saveGeometry())
+        self.settings.setValue(f"{self.prefix}/state", window.saveState())
+
+    def save_children_recursive(self, parent: QWidget) -> None:
+        """Recursively save settings for all child widgets."""
+        for child in parent.findChildren(QWidget):
+            if not child.objectName():
+                continue
+
+            val = self.get_widget_value(child)
+            if val is not None:
+                key = f"{self.prefix}/{child.objectName()}"
+                self.settings.setValue(key, val)
+
+                if isinstance(child, QComboBox):
+                    items = [child.itemText(i) for i in range(child.count())]
+                    self.settings.setValue(f"{key}_items", items)
+
+    def load_children_recursive(self, parent: QWidget) -> None:
+        """Recursively load settings for all child widgets."""
+        for child in parent.findChildren(QWidget):
+            if not child.objectName():
+                continue
+
+            key = f"{self.prefix}/{child.objectName()}"
+
+            if (
+                isinstance(child, QComboBox)
+                and (items := self.settings.value(f"{key}_items"))
+                and isinstance(items, (list, tuple))
+            ):
+                child.clear()
+                child.addItems([str(i) for i in items])
+
+            if (val := self.settings.value(key)) is not None:
+                self.set_widget_value(child, val)
 
     def get_widget_value(self, widget: QWidget) -> Any:
         """Retrieve the value of a widget based on its type."""
@@ -95,11 +124,3 @@ class GuiSettingsManager:
                 widget.setChecked(state)
             case _:
                 return
-
-    def get_window_settings(self) -> QByteArray:
-        """Restore the geometry and state of the main window."""
-        return self.settings.value("geometry")
-
-    def save_window_settings(self, geometry: QByteArray) -> None:
-        """Save the geometry and state of the main window."""
-        self.settings.setValue("geometry", geometry)
