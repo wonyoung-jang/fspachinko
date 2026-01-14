@@ -28,13 +28,9 @@ class FSEntry:
     @classmethod
     def from_scandir(cls, entry: os.DirEntry) -> FSEntry:
         """Create an FSEntry from a given Path."""
-        stats = entry.stat()
-        return cls(
-            path=Path(entry.path),
-            is_file=entry.is_file(),
-            is_dir=entry.is_dir(),
-            size=stats.st_size if entry.is_file() else 0,
-        )
+        if entry.is_file():
+            return cls(Path(entry.path), is_file=True, is_dir=False, size=entry.stat().st_size)
+        return cls(Path(entry.path), is_file=False, is_dir=True, size=0)
 
 
 @dataclass(slots=True)
@@ -45,58 +41,51 @@ class RandomFSWalker:
     quota: DiversityQuota
     rng: Random
     trash_empty_folders: bool = False
-    cache: dict[Path, tuple[FSEntry, ...] | None] = field(default_factory=dict)
+    cache: dict[Path, tuple[FSEntry, ...]] = field(default_factory=dict)
 
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
         while True:
-            result = self.recursive_pick(self.root)
-            if result:
+            if result := self.recursive_pick(self.root):
                 yield result
             else:
-                return
+                break
 
     def recursive_pick(self, current: Path) -> FSEntry | None:
         """Recursively descend directories finding a valid file."""
-        candidates = self._get_candidates(current)
-        if not candidates:
+        entries = self._get_entries(current)
+        if not entries:
             self.quota.lock_folder(current)
             return None
 
-        indices = list(range(len(candidates)))
+        indices = list(range(len(entries)))
         self.rng.shuffle(indices)
 
         for i in indices:
-            candidate = candidates[i]
+            entry = entries[i]
 
-            if candidate.is_file:
-                self.quota.lock_file(candidate.path)
-                return candidate
+            if entry.is_file:
+                self.quota.lock_file(entry.path)
+                return entry
 
-            if candidate.is_dir:
-                found = self.recursive_pick(candidate.path)
-                if found:
-                    return found
+            if entry.is_dir and (next_entry := self.recursive_pick(entry.path)):
+                return next_entry
 
         return None
 
-    def _get_candidates(self, path: Path) -> tuple[FSEntry, ...] | None:
+    def _get_entries(self, path: Path) -> tuple[FSEntry, ...] | None:
         """Retrieve and cache directory entries for a given path."""
         if path not in self.cache:
             try:
                 entries = ()
-                with os.scandir(path) as scanner:
-                    entries = tuple(FSEntry.from_scandir(entry) for entry in scanner)
-
-                if not entries:
-                    self.cache[path] = None
-                else:
-                    self.cache[path] = entries
+                with os.scandir(path) as it:
+                    entries = tuple(FSEntry.from_scandir(e) for e in it)
+                self.cache[path] = entries
             except (PermissionError, OSError):
-                self.cache[path] = None
+                self.cache[path] = ()
+                return None
 
-        items = self.cache[path]
-        if items is None:
+        if not (items := self.cache[path]):
             trash_path(path, condition=self.trash_empty_folders)
             return None
 
