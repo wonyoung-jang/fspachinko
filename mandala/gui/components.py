@@ -52,6 +52,8 @@ from ..utilities.utils import convert_string_to_list
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from PySide6.QtGui import QDragEnterEvent, QDropEvent
+
 
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
@@ -78,6 +80,8 @@ class PathSelectorWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, items: Sequence[str], parent: QWidget | None = None) -> None:
         """Initialize the path selector widget."""
         super().__init__(title, name, parent=parent, checkable=False, flat=True)
+        self.setAcceptDrops(True)
+
         self.combo = QComboBox()
         self.combo.addItems(items)
         self.combo.setObjectName(f"{name}_combo")
@@ -101,6 +105,20 @@ class PathSelectorWidget(BaseGroupBox):
         layout.addWidget(btn_browse)
         layout.addWidget(btn_delete)
         layout.addWidget(btn_open)
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
+        """Handle drag enter event for folder paths."""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
+        """Handle drop event for folder paths."""
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if Path(path).is_dir():
+                if self.combo.findText(path) == -1:
+                    self.combo.addItem(path)
+                self.combo.setCurrentText(path)
 
     @Slot()
     def browse(self) -> None:
