@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
+    from ..config.protocols import MandalaObserver
     from .config import MandalaConfig
-    from .interfaces import MandalaObserver
     from .logger import MandalaLogger
     from .quota import DiversityQuota
     from .state import MandalaState
@@ -47,7 +47,7 @@ class MandalaEngine:
 
     def start(self) -> None:
         """Run the main file copying process."""
-        clear_history = not self.config.folders_model.unique
+        clear_history = not self.config.folder.unique
         target_counts = self._prepare_folder_targets()
 
         for target in target_counts:
@@ -88,7 +88,7 @@ class MandalaEngine:
                 self.observer.on_count(count)
                 self.observer.on_time()
 
-                trash_path(path, condition=self.config.trash_model.source_file)
+                trash_path(path, condition=self.config.trash.source_file)
             else:
                 self._handle_invalid(path)
 
@@ -96,11 +96,11 @@ class MandalaEngine:
 
     def _try_copy(self, chosen: Path, dest: Path, count: int) -> bool:
         """Attempt to copy a file and return success status."""
-        target = calc_dest_file_path(self.config.filename_model, chosen, dest, count)
+        target = calc_dest_file_path(self.config.filename, chosen, dest, count)
         if target is None:
             return False
 
-        if self.config.execution_model.dry_run:
+        if self.config.execution.dry_run:
             msg = f"DRY RUN: {count + 1}: {chosen} -> {target}"
             self.logger.log_message(msg)
             self.observer.on_log(msg)
@@ -120,11 +120,11 @@ class MandalaEngine:
 
     def _create_dest_folder(self) -> Path:
         """Create the destination folder based on configuration."""
-        if not self.config.folders_model.create:
+        if not self.config.folder.create:
             return self.config.dest
 
         dest = self.config.dest
-        name = self.config.folders_model.name
+        name = self.config.folder.name
         target = dest / name
 
         x = 2
@@ -137,29 +137,29 @@ class MandalaEngine:
 
     def _prepare_folder_targets(self) -> list[int]:
         """Prepare target file counts for each folder."""
-        folder_count = self.config.folders_model.count
+        folder_count = self.config.folder.count
         self.observer.on_progress_total(folder_count)
 
-        targets = [self.config.count_model.count] * folder_count
+        targets = [self.config.filecount.count] * folder_count
 
-        if self.config.count_model.is_rand_count:
+        if self.config.filecount.is_rand_count:
             for i in range(folder_count):
                 targets[i] = self.rng.randint(
-                    self.config.count_model.count_min_rand,
-                    self.config.count_model.count_max_rand,
+                    self.config.filecount.count_min_rand,
+                    self.config.filecount.count_max_rand,
                 )
 
         return targets
 
     def _handle_invalid(self, path: Path) -> None:
         """Handle logging of invalid files."""
-        if self.config.execution_model.log_invalid:
+        if self.config.execution.log_invalid:
             self.observer.on_log(f"Invalid: {path}")
-        trash_path(path, condition=self.config.trash_model.invalid_file)
+        trash_path(path, condition=self.config.trash.invalid_file)
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_time) > self.config.execution_model.stall_time_limit
+        return (perf_counter() - self.state.start_time) > self.config.execution.stall_time_limit
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
@@ -178,7 +178,7 @@ class MandalaEngine:
         if self.stop_requested:
             return f"STOPPED: {copied_str}"
 
-        if count == 0 and self.config.folders_model.create and (timed_out or all_searched):
+        if count == 0 and self.config.folder.create and (timed_out or all_searched):
             reason = "timed out" if timed_out else "all files searched"
             return f"NO FILES FOUND: Reason - {reason} | {copied_str} | folder deleted"
 
@@ -199,6 +199,6 @@ class MandalaEngine:
         self.observer.on_log(report)
         self.logger.save(report)
 
-        if count == 0 and self.config.folders_model.create:
+        if count == 0 and self.config.folder.create:
             with contextlib.suppress(OSError):
                 shutil.rmtree(dest)

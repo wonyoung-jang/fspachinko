@@ -79,8 +79,8 @@ class RunMandalaWorker(QThread):
         logger = MandalaLogger(config, state)
         quota = DiversityQuota(
             root=config.root,
-            limit_root_folder=config.diversity_model.root_limit,
-            limit_leaf_folder=config.diversity_model.leaf_limit,
+            limit_root_folder=config.diversity.root_limit,
+            limit_leaf_folder=config.diversity.leaf_limit,
         )
 
         sys_rand = Random()
@@ -91,7 +91,7 @@ class RunMandalaWorker(QThread):
             root=config.root,
             rng=rng,
             quota=quota,
-            trash_empty_folders=config.trash_model.empty_folder,
+            trash_empty_folders=config.trash.empty_folder,
         )
 
         self.engine = MandalaEngine(

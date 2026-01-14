@@ -11,7 +11,7 @@ import ffmpeg
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.schemas import HasLimitMinMax
+    from ..config.schemas import LimitMinMaxModel
     from .config import MandalaConfig
 
 
@@ -29,7 +29,7 @@ def _check_filename(part: str, patterns: tuple[re.Pattern, ...], *, include: boo
     return True
 
 
-def _check_range(val: float, model: HasLimitMinMax) -> bool:
+def _check_range(val: float, model: LimitMinMaxModel) -> bool:
     """Check if a value is within the specified range."""
     if not model.limit:
         return True
@@ -64,32 +64,32 @@ class FileValidator:
 
     def _init_regexes(self) -> None:
         """Pre-build and cache regex patterns for extensions and keywords."""
-        if keys := self.config.keywords_model.text:
+        if keys := self.config.keyword.text:
             self.key_re_cache = tuple(re.compile(rf"(.*){k}(.*)", re.IGNORECASE) for k in keys)
 
-        if exts := self.config.extensions_model.text:
+        if exts := self.config.extension.text:
             self.ext_re_cache = tuple(re.compile(rf"\.{e}$", re.IGNORECASE) for e in exts)
 
     def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not _check_range(size, self.config.size_model):
+        if not _check_range(size, self.config.filesize):
             return False
 
         if not _check_filename(
             part=path.stem,
             patterns=self.key_re_cache,
-            include=self.config.keywords_model.include,
-            exclude=self.config.keywords_model.exclude,
+            include=self.config.keyword.include,
+            exclude=self.config.keyword.exclude,
         ):
             return False
 
         if not _check_filename(
             part=path.suffix,
             patterns=self.ext_re_cache,
-            include=self.config.extensions_model.include,
-            exclude=self.config.extensions_model.exclude,
+            include=self.config.extension.include,
+            exclude=self.config.extension.exclude,
         ):
             return False
 
         duration = _get_duration(path)
-        return _check_range(duration, self.config.duration_model)
+        return _check_range(duration, self.config.duration)

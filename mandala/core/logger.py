@@ -38,8 +38,8 @@ class MandalaLogger:
 
     def generate_report(self, dest: Path, status: str, runtime: float) -> str:
         """Generate the header report string."""
-        exts = self.config.extensions_model.text
-        keys = self.config.keywords_model.text
+        exts = self.config.extension.text
+        keys = self.config.keyword.text
         ext_str = ", ".join(exts) if exts else "ALL"
         kw_str = ", ".join(keys) if keys else "ALL"
         return (

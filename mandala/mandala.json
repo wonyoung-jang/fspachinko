@@ -1,53 +1,53 @@
 {
     "root": "C:/",
     "dest": "output/",
-    "count_model": {
+    "filecount": {
         "count": 12,
         "is_rand_count": false,
         "count_min_rand": 1,
         "count_max_rand": 12
     },
-    "folders_model": {
+    "folder": {
         "create": true,
         "unique": true,
         "name": "test_folder_output",
         "count": 2
     },
-    "filename_model": {
+    "filename": {
         "is_index": false,
         "is_rename": false,
         "rename_to": ""
     },
-    "trash_model": {
+    "trash": {
         "empty_folder": false,
         "source_file": false,
         "invalid_file": false
     },
-    "keywords_model": {
+    "keyword": {
         "include": true,
         "exclude": false,
         "text": []
     },
-    "extensions_model": {
+    "extension": {
         "include": true,
         "exclude": false,
         "text": ["wav"]
     },
-    "size_model": {
+    "filesize": {
         "limit": false,
         "minimum": 0,
         "maximum": 0
     },
-    "duration_model": {
+    "duration": {
         "limit": false,
         "minimum": 0,
         "maximum": 0
     },
-    "diversity_model": {
+    "diversity": {
         "root_limit": 8,
         "leaf_limit": 4
     },
-    "execution_model": {
+    "execution": {
         "log_invalid": false,
         "stall_time_limit": 10.0,
         "dry_run": false

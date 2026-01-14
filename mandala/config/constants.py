@@ -14,6 +14,9 @@ BYTES_IN_GIGABYTE = 1 << 30
 SECONDS_IN_MINUTE = 60
 SECONDS_IN_HOUR = SECONDS_IN_MINUTE * 60
 
+DEFAULT_JSON_CONFIG = "mandala/mandala.json"
+DEFAULT_PROFILE_DIR = ".profiles/"
+
 # NOWRAP = '<p style="white-space:pre">'
 
 

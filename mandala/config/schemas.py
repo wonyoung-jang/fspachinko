@@ -1,58 +1,8 @@
 """Pydantic schemas for Mandala configuration."""
 
 from pathlib import Path
-from typing import Protocol
 
 from pydantic import BaseModel, Field
-
-
-class HasLimitMinMax(Protocol):
-    """Protocol for models with limit, minimum, and maximum fields."""
-
-    limit: bool
-    minimum: float
-    maximum: float
-
-
-class DualListFilterModel(BaseModel):
-    """Model for dual list filtering."""
-
-    include: bool = False
-    exclude: bool = False
-    text: list[str] = Field(default_factory=list)
-
-
-class FilesizeModel(BaseModel):
-    """Model for size filter."""
-
-    limit: bool = False
-    minimum: float = 0.0
-    maximum: float = 0.0
-
-
-class DurationModel(BaseModel):
-    """Model for duration filter."""
-
-    limit: bool = False
-    minimum: float = 0.0
-    maximum: float = 0.0
-
-
-class FilenameModel(BaseModel):
-    """Model for file renaming."""
-
-    is_index: bool = False
-    is_rename: bool = False
-    rename_to: str = ""
-
-
-class FoldersModel(BaseModel):
-    """Model for folder creation configuration."""
-
-    create: bool = False
-    unique: bool = True
-    name: str = ""
-    count: int = 1
 
 
 class FilecountModel(BaseModel):
@@ -64,12 +14,45 @@ class FilecountModel(BaseModel):
     count_max_rand: int = 0
 
 
+class FolderModel(BaseModel):
+    """Model for folder creation configuration."""
+
+    create: bool = False
+    unique: bool = True
+    name: str = ""
+    count: int = 1
+
+
+class FilenameModel(BaseModel):
+    """Model for file renaming."""
+
+    is_index: bool = False
+    is_rename: bool = False
+    rename_to: str = ""
+
+
 class TrashModel(BaseModel):
     """Model for trash configuration."""
 
     empty_folder: bool = False
     source_file: bool = False
     invalid_file: bool = False
+
+
+class ListIncludeExcludeModel(BaseModel):
+    """Model for list filtering."""
+
+    include: bool = False
+    exclude: bool = False
+    text: list[str] = Field(default_factory=list)
+
+
+class LimitMinMaxModel(BaseModel):
+    """Model for size filter."""
+
+    limit: bool = False
+    minimum: float = 0.0
+    maximum: float = 0.0
 
 
 class DiversityModel(BaseModel):
@@ -92,18 +75,13 @@ class MandalaConfigModel(BaseModel):
 
     root: Path
     dest: Path
-
-    count_model: FilecountModel
-
-    folders_model: FoldersModel
-    filename_model: FilenameModel
-    trash_model: TrashModel
-
-    keywords_model: DualListFilterModel
-    extensions_model: DualListFilterModel
-
-    size_model: FilesizeModel
-    duration_model: DurationModel
-    diversity_model: DiversityModel
-
-    execution_model: ExecutionModel
+    filecount: FilecountModel
+    folder: FolderModel
+    filename: FilenameModel
+    trash: TrashModel
+    keyword: ListIncludeExcludeModel
+    extension: ListIncludeExcludeModel
+    filesize: LimitMinMaxModel
+    duration: LimitMinMaxModel
+    diversity: DiversityModel
+    execution: ExecutionModel

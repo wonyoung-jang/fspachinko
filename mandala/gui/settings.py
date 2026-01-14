@@ -2,23 +2,24 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QCoreApplication, QSettings
+from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QGroupBox,
     QLineEdit,
-    QMainWindow,
     QRadioButton,
     QSpinBox,
     QWidget,
 )
 
-from ..config.constants import SettingsEnum
+from ..config.constants import DEFAULT_PROFILE_DIR, SettingsEnum
 from ..utilities.utils import strtobool
 
 QCoreApplication.setOrganizationName(SettingsEnum.ORGANIZATION)
@@ -67,54 +68,56 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
 
 
 @dataclass(slots=True)
-class GuiSettingsManager:
-    """Class for managing GUI settings."""
+class ProfileManager:
+    """Class for managing GUI profiles."""
 
-    prefix: str
-    settings: QSettings = field(default_factory=QSettings)
+    profile_dir: Path = field(init=False)
 
-    def save(self, window: QMainWindow) -> None:
-        """Save the state of all registered widgets."""
-        self.settings.setValue(f"{self.prefix}/geometry", window.saveGeometry())
-        self.settings.setValue(f"{self.prefix}/state", window.saveState())
-        self.save_children_recursive(window)
+    def __post_init__(self) -> None:
+        """Initialize profile directory."""
+        self.profile_dir = Path(DEFAULT_PROFILE_DIR)
+        self.profile_dir.mkdir(parents=True, exist_ok=True)
 
-    def load(self, window: QMainWindow) -> None:
-        """Load the state of all registered widgets."""
-        window.restoreGeometry(self.settings.value(f"{self.prefix}/geometry"))
-        window.restoreState(self.settings.value(f"{self.prefix}/state"))
-        self.load_children_recursive(window)
+    def get_profile_path(self, profile: str) -> Path:
+        """Get the full path for a given profile name."""
+        return self.profile_dir / f"{profile}"
 
-    def save_children_recursive(self, parent: QWidget) -> None:
+    def save_profile(self, parent: QWidget, profile: str) -> None:
         """Recursively save settings for all child widgets."""
+        data = {}
         for child in parent.findChildren(QWidget):
-            if not child.objectName():
+            if not (key := child.objectName()) or key.startswith("qt_"):
                 continue
 
             val = get_widget_value(child)
             if val is not None:
-                key = f"{self.prefix}/{child.objectName()}"
-                self.settings.setValue(key, val)
+                data[key] = val
 
                 if isinstance(child, QComboBox):
                     items = [child.itemText(i) for i in range(child.count())]
-                    self.settings.setValue(f"{key}_items", items)
+                    data[f"{key}_items"] = items
 
-    def load_children_recursive(self, parent: QWidget) -> None:
+        path = self.get_profile_path(profile)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
+    def open_profile(self, parent: QWidget, profile: str) -> None:
         """Recursively load settings for all child widgets."""
+        path = self.get_profile_path(profile)
+        if not (path.exists() and path.is_file()):
+            return
+
+        data = {}
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+
         for child in parent.findChildren(QWidget):
-            if not child.objectName():
+            if not (key := child.objectName()) or key.startswith("qt_"):
                 continue
 
-            key = f"{self.prefix}/{child.objectName()}"
-
-            if (
-                isinstance(child, QComboBox)
-                and (items := self.settings.value(f"{key}_items"))
-                and isinstance(items, (list, tuple))
-            ):
+            if isinstance(child, QComboBox) and (items := data.get(f"{key}_items")) and isinstance(items, list | tuple):
                 child.clear()
                 child.addItems([str(i) for i in items])
 
-            if (val := self.settings.value(key)) is not None:
+            if (val := data.get(key)) is not None:
                 set_widget_value(child, val)

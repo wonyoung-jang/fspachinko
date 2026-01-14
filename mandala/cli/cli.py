@@ -5,6 +5,7 @@ from random import Random
 
 from cyclopts import App
 
+from ..config.constants import DEFAULT_JSON_CONFIG
 from ..core.config import MandalaConfig
 from ..core.engine import MandalaEngine
 from ..core.logger import MandalaLogger
@@ -12,8 +13,6 @@ from ..core.quota import DiversityQuota
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
-
-DEFAULT_JSON_CONFIG = "mandala/mandala.json"
 
 app = App(
     help="Mandala - Random file copier.",
@@ -62,8 +61,8 @@ def run_cli(json_path: str = "") -> None:
     validator = FileValidator(config)
     quota = DiversityQuota(
         root=config.root,
-        limit_root_folder=config.diversity_model.root_limit,
-        limit_leaf_folder=config.diversity_model.leaf_limit,
+        limit_root_folder=config.diversity.root_limit,
+        limit_leaf_folder=config.diversity.leaf_limit,
     )
 
     sys_rand = Random()
@@ -76,7 +75,7 @@ def run_cli(json_path: str = "") -> None:
         root=config.root,
         rng=rng,
         quota=quota,
-        trash_empty_folders=config.trash_model.empty_folder,
+        trash_empty_folders=config.trash.empty_folder,
     )
 
     engine = MandalaEngine(

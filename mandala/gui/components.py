@@ -38,13 +38,12 @@ from ..config.constants import (
 )
 from ..config.schemas import (
     DiversityModel,
-    DualListFilterModel,
-    DurationModel,
     ExecutionModel,
     FilecountModel,
     FilenameModel,
-    FilesizeModel,
-    FoldersModel,
+    FolderModel,
+    LimitMinMaxModel,
+    ListIncludeExcludeModel,
     TrashModel,
 )
 from ..utilities.utils import convert_string_to_list
@@ -245,9 +244,9 @@ class FolderCreatorWidget(BaseGroupBox):
         layout.addRow("Name", self.lineedit_folder_name)
         layout.addRow(self.chk_unique_folders)
 
-    def get_config(self) -> FoldersModel:
+    def get_config(self) -> FolderModel:
         """Return clean data for the config."""
-        return FoldersModel(
+        return FolderModel(
             create=self.isChecked(),
             unique=self.chk_unique_folders.isChecked(),
             name=self.lineedit_folder_name.text(),
@@ -260,7 +259,7 @@ class FilenameSettingsWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the filename settings widget."""
-        super().__init__(title, name, parent=parent, checkable=True, flat=True)
+        super().__init__(title, name, parent=parent, flat=True)
         keep_filename = QRadioButton("Keep")
         keep_filename.setChecked(True)
         self.radio_index = QRadioButton("Index")
@@ -279,9 +278,9 @@ class FilenameSettingsWidget(BaseGroupBox):
     def get_config(self) -> FilenameModel:
         """Return clean data for the config."""
         return FilenameModel(
-            is_index=self.radio_index.isChecked() if self.isChecked() else False,
-            is_rename=self.radio_rename.isChecked() if self.isChecked() else False,
-            rename_to=self.lineedit_rename.text() if self.isChecked() else "",
+            is_index=self.radio_index.isChecked(),
+            is_rename=self.radio_rename.isChecked(),
+            rename_to=self.lineedit_rename.text(),
         )
 
 
@@ -329,9 +328,9 @@ class DualListFilterWidget(BaseGroupBox):
         hbox.addWidget(self.filter_include_radio)
         hbox.addWidget(self.filter_exclude_radio)
 
-    def get_config(self) -> DualListFilterModel:
+    def get_config(self) -> ListIncludeExcludeModel:
         """Return clean data for the config."""
-        return DualListFilterModel(
+        return ListIncludeExcludeModel(
             include=self.filter_include_radio.isChecked(),
             exclude=self.filter_exclude_radio.isChecked(),
             text=convert_string_to_list(self.filter_edit.text()),
@@ -374,7 +373,7 @@ class DblRangeFilterWidget(BaseGroupBox):
 class FilesizeFilterWidget(DblRangeFilterWidget):
     """Handles logic for Size range (Min/Max)."""
 
-    def get_config(self) -> FilesizeModel:
+    def get_config(self) -> LimitMinMaxModel:
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_size, max_size = self.min_spin.value(), self.max_spin.value()
@@ -391,7 +390,7 @@ class FilesizeFilterWidget(DblRangeFilterWidget):
                 min_size *= BYTES_IN_GIGABYTE
                 max_size *= BYTES_IN_GIGABYTE
 
-        return FilesizeModel(
+        return LimitMinMaxModel(
             limit=self.isChecked(),
             minimum=min_size,
             maximum=max_size,
@@ -401,7 +400,7 @@ class FilesizeFilterWidget(DblRangeFilterWidget):
 class DurationFilterWidget(DblRangeFilterWidget):
     """Handles logic for Duration range (Min/Max)."""
 
-    def get_config(self) -> DurationModel:
+    def get_config(self) -> LimitMinMaxModel:
         """Return clean data for the config."""
         unit = self.combo.currentText()
         min_duration, max_duration = self.min_spin.value(), self.max_spin.value()
@@ -415,7 +414,7 @@ class DurationFilterWidget(DblRangeFilterWidget):
                 min_duration *= SECONDS_IN_HOUR
                 max_duration *= SECONDS_IN_HOUR
 
-        return DurationModel(
+        return LimitMinMaxModel(
             limit=self.isChecked(),
             minimum=min_duration,
             maximum=max_duration,

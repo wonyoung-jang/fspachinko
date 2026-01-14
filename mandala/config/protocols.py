@@ -1,4 +1,4 @@
-"""Interfaces for Mandala core components."""
+"""Protocols for Mandala."""
 
 from __future__ import annotations
 

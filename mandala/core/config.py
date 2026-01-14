@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING
 
 from ..config.schemas import (
     DiversityModel,
-    DualListFilterModel,
-    DurationModel,
     ExecutionModel,
     FilecountModel,
     FilenameModel,
-    FilesizeModel,
-    FoldersModel,
+    FolderModel,
+    LimitMinMaxModel,
+    ListIncludeExcludeModel,
     MandalaConfigModel,
     TrashModel,
 )
@@ -28,21 +27,16 @@ class MandalaConfig:
 
     root: Path
     dest: Path
-
-    count_model: FilecountModel
-
-    folders_model: FoldersModel
-    filename_model: FilenameModel
-    trash_model: TrashModel
-
-    keywords_model: DualListFilterModel
-    extensions_model: DualListFilterModel
-
-    size_model: FilesizeModel
-    duration_model: DurationModel
-    diversity_model: DiversityModel
-
-    execution_model: ExecutionModel
+    filecount: FilecountModel
+    folder: FolderModel
+    filename: FilenameModel
+    trash: TrashModel
+    keyword: ListIncludeExcludeModel
+    extension: ListIncludeExcludeModel
+    filesize: LimitMinMaxModel
+    duration: LimitMinMaxModel
+    diversity: DiversityModel
+    execution: ExecutionModel
 
     @classmethod
     def from_json(cls, path: Path) -> MandalaConfig:
