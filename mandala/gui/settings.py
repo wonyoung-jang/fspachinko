@@ -26,6 +26,46 @@ QCoreApplication.setOrganizationDomain(SettingsEnum.DOMAIN)
 QCoreApplication.setApplicationName(SettingsEnum.APPLICATION)
 
 
+def get_widget_value(widget: QWidget) -> Any:
+    """Retrieve the value of a widget based on its type."""
+    match widget:
+        case QLineEdit():
+            return widget.text()
+        case QComboBox():
+            return widget.currentIndex()
+        case QSpinBox() | QDoubleSpinBox():
+            return widget.value()
+        case QGroupBox() if not widget.isCheckable():
+            return None
+        case QCheckBox() | QRadioButton() | QGroupBox():
+            return widget.isChecked()
+        case _:
+            return None
+
+
+def set_widget_value(widget: QWidget, val: Any) -> None:
+    """Set the value of a widget based on its type."""
+    match widget:
+        case QLineEdit():
+            widget.setText(val)
+        case QComboBox():
+            try:
+                index = int(val)
+                if 0 <= index < widget.count():
+                    widget.setCurrentIndex(index)
+            except (ValueError, TypeError):
+                pass
+        case QSpinBox():
+            widget.setValue(int(val))
+        case QDoubleSpinBox():
+            widget.setValue(float(val))
+        case QCheckBox() | QRadioButton() | QGroupBox():
+            state = strtobool(val) if isinstance(val, str) else bool(val)
+            widget.setChecked(state)
+        case _:
+            return
+
+
 @dataclass(slots=True)
 class GuiSettingsManager:
     """Class for managing GUI settings."""
@@ -35,23 +75,15 @@ class GuiSettingsManager:
 
     def save(self, window: QMainWindow) -> None:
         """Save the state of all registered widgets."""
-        self.save_window_state(window)
+        self.settings.setValue(f"{self.prefix}/geometry", window.saveGeometry())
+        self.settings.setValue(f"{self.prefix}/state", window.saveState())
         self.save_children_recursive(window)
 
     def load(self, window: QMainWindow) -> None:
         """Load the state of all registered widgets."""
-        self.load_window_state(window)
-        self.load_children_recursive(window)
-
-    def load_window_state(self, window: QMainWindow) -> None:
-        """Restore the geometry and state of the main window."""
         window.restoreGeometry(self.settings.value(f"{self.prefix}/geometry"))
         window.restoreState(self.settings.value(f"{self.prefix}/state"))
-
-    def save_window_state(self, window: QMainWindow) -> None:
-        """Save the geometry and state of the main window."""
-        self.settings.setValue(f"{self.prefix}/geometry", window.saveGeometry())
-        self.settings.setValue(f"{self.prefix}/state", window.saveState())
+        self.load_children_recursive(window)
 
     def save_children_recursive(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
@@ -59,7 +91,7 @@ class GuiSettingsManager:
             if not child.objectName():
                 continue
 
-            val = self.get_widget_value(child)
+            val = get_widget_value(child)
             if val is not None:
                 key = f"{self.prefix}/{child.objectName()}"
                 self.settings.setValue(key, val)
@@ -85,42 +117,4 @@ class GuiSettingsManager:
                 child.addItems([str(i) for i in items])
 
             if (val := self.settings.value(key)) is not None:
-                self.set_widget_value(child, val)
-
-    def get_widget_value(self, widget: QWidget) -> Any:
-        """Retrieve the value of a widget based on its type."""
-        match widget:
-            case QLineEdit():
-                return widget.text()
-            case QComboBox():
-                return widget.currentIndex()
-            case QSpinBox() | QDoubleSpinBox():
-                return widget.value()
-            case QGroupBox() if not widget.isCheckable():
-                return None
-            case QCheckBox() | QRadioButton() | QGroupBox():
-                return widget.isChecked()
-            case _:
-                return None
-
-    def set_widget_value(self, widget: QWidget, val: Any) -> None:
-        """Set the value of a widget based on its type."""
-        match widget:
-            case QLineEdit():
-                widget.setText(val)
-            case QComboBox():
-                try:
-                    index = int(val)
-                    if 0 <= index < widget.count():
-                        widget.setCurrentIndex(index)
-                except (ValueError, TypeError):
-                    pass
-            case QSpinBox():
-                widget.setValue(int(val))
-            case QDoubleSpinBox():
-                widget.setValue(float(val))
-            case QCheckBox() | QRadioButton() | QGroupBox():
-                state = strtobool(val) if isinstance(val, str) else bool(val)
-                widget.setChecked(state)
-            case _:
-                return
+                set_widget_value(child, val)

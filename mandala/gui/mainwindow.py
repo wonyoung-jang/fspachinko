@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
-from PySide6.QtWidgets import QGridLayout, QMainWindow, QStatusBar, QWidget
+from PySide6.QtWidgets import QGridLayout, QMainWindow, QStatusBar, QToolBar, QWidget
 
 from ..config.constants import SizeUnitEnum, TimeUnitEnum
 from ..config.schemas import MandalaConfigModel
@@ -43,15 +43,36 @@ class MandalaMainWindow(QMainWindow):
         self.setWindowTitle("Mandala: Copy random files")
 
         self.ui = MandalaCentralGui()
-
         self.setCentralWidget(self.ui)
 
-        self.setStatusBar(QStatusBar(self))
+        self.init_toolbar()
+        self.init_menubar()
+        self.init_statusbar()
 
+        self.init_settings()
+        self.ui.ui_sect_exec.signal_close.connect(self.close)
+
+    def init_menubar(self) -> None:
+        """Initialize the menu bar."""
+        menubar = self.menuBar()
+        menubar.setObjectName("MainMenuBar")
+
+    def init_toolbar(self) -> None:
+        """Initialize the toolbar."""
+        toolbar = QToolBar("Main Toolbar")
+        toolbar.setObjectName("MainToolbar")
+        self.addToolBar(toolbar)
+
+    def init_statusbar(self) -> None:
+        """Initialize the status bar."""
+        statusbar = QStatusBar(self, sizeGripEnabled=True)
+        statusbar.setObjectName("MainStatusBar")
+        self.setStatusBar(statusbar)
+
+    def init_settings(self) -> None:
+        """Initialize GUI settings manager."""
         self.settings = GuiSettingsManager(prefix="MandalaMainWindow")
         self.settings.load(self)
-
-        self.ui.ui_sect_exec.signal_close.connect(self.close)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""

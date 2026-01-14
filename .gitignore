@@ -121,3 +121,4 @@ venv.bak/
 ..playground/
 *.prof
 *.lprof
+.profiles/
