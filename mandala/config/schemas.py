@@ -1,8 +1,17 @@
 """Pydantic schemas for Mandala configuration."""
 
 from pathlib import Path
+from typing import Protocol
 
 from pydantic import BaseModel, Field
+
+
+class HasLimitMinMax(Protocol):
+    """Protocol for models with limit, minimum, and maximum fields."""
+
+    limit: bool
+    minimum: float
+    maximum: float
 
 
 class KeywordsModel(BaseModel):

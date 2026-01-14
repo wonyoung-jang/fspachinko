@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import contextlib
-import filecmp
+from contextlib import suppress
+from filecmp import cmp
 from typing import TYPE_CHECKING
 
 from send2trash import send2trash
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def trash_path(path: Path, *, condition: bool) -> None:
     """Trash a path if the condition is met."""
     if condition:
-        with contextlib.suppress(Exception):
+        with suppress(Exception):
             send2trash(path)
 
 
@@ -37,7 +37,7 @@ def calc_dest_file_path(cfg: FilenameModel, chosen: Path, dest: Path, index: int
 
     target = dest / name
 
-    if target.exists() and filecmp.cmp(chosen, target) and not (is_rename or is_index):
+    if target.exists() and cmp(chosen, target) and not (is_rename or is_index):
         return None
 
     x = 2

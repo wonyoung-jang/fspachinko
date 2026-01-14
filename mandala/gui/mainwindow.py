@@ -145,7 +145,6 @@ class MandalaCentralGui(QWidget):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.setWindowTitle("Mandala: Copy random files")
         self.setup_components()
         self.setup_layout()
         self.setup_timer()
