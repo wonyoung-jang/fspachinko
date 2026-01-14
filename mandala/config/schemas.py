@@ -84,6 +84,7 @@ class ExecutionModel(BaseModel):
 
     log_invalid: bool = True
     stall_time_limit: float = 0.0
+    dry_run: bool = False
 
 
 class MandalaConfigModel(BaseModel):

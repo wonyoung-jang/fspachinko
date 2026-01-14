@@ -100,9 +100,16 @@ class MandalaEngine:
         if target is None:
             return False
 
+        if self.config.execution_model.dry_run:
+            msg = f"DRY RUN: {count + 1}: {chosen} -> {target}"
+            self.logger.log_message(msg)
+            self.observer.on_log(msg)
+            return True
+
         try:
             shutil.copy2(chosen, target)
         except (PermissionError, OSError):
+            self.logger.log_message(f"Failed to copy: {chosen} -> {target}")
             self.observer.on_log(f"Failed to copy: {chosen} -> {target}")
             return False
         else:

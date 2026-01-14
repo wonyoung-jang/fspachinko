@@ -467,6 +467,11 @@ class ExecutionWidget(QWidget):
         self.textbrowser_log.setMinimumHeight(175)
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
+        # Dry Run
+        self.chk_dry_run = QCheckBox("Dry Run")
+        self.chk_dry_run.setObjectName("exec_dry_run")
+        self.chk_dry_run.setToolTip("If checked, no files will actually be copied.")
+
         # Progress bars
         self.progbar_stall = QProgressBar(value=0, textVisible=True)
         self.progbar_folder = QProgressBar(value=0, textVisible=True)
@@ -502,7 +507,8 @@ class ExecutionWidget(QWidget):
         layout.addLayout(prog_form_layout, 0, 0, 1, 2)
         layout.addWidget(QLabel("Stall Time:"), 1, 0, 1, 2)
         layout.addWidget(self.dblspin_stall, 1, 1, 1, 1)
-        layout.addWidget(self.chk_log_invalid, 2, 0, 1, 2)
+        layout.addWidget(self.chk_log_invalid, 2, 0)
+        layout.addWidget(self.chk_dry_run, 2, 1)
         layout.addWidget(self.textbrowser_log, 3, 0, 1, 2)
         layout.addWidget(self.btn_start, 4, 0)
         layout.addWidget(self.btn_stop, 4, 1)
@@ -540,14 +546,15 @@ class ExecutionWidget(QWidget):
         """Update the stall time progress bar."""
         self.progbar_stall.setValue(self.progbar_stall.value() - 1)
 
+    @Slot()
+    def update_total_prog(self) -> None:
+        """Update the total progress bar."""
+        self.progbar_total.setValue(self.progbar_total.value() + 1)
+
     def get_config(self) -> ExecutionModel:
         """Return clean data for the config."""
         return ExecutionModel(
             log_invalid=self.chk_log_invalid.isChecked(),
             stall_time_limit=self.dblspin_stall.value(),
+            dry_run=self.chk_dry_run.isChecked(),
         )
-
-    @Slot()
-    def update_total_prog(self) -> None:
-        """Update the total progress bar."""
-        self.progbar_total.setValue(self.progbar_total.value() + 1)
