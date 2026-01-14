@@ -122,3 +122,5 @@ venv.bak/
 *.prof
 *.lprof
 .profiles/
+output/
+*.txt

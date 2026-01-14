@@ -3,15 +3,29 @@
 -e .
 annotated-types==0.7.0
     # via pydantic
+attrs==25.4.0
+    # via cyclopts
+cyclopts==4.4.5
+    # via mandala
+docstring-parser==0.17.0
+    # via cyclopts
+docutils==0.22.4
+    # via rich-rst
 ffmpeg-python==0.2.0
     # via mandala
 future==1.0.0
     # via ffmpeg-python
 line-profiler==5.0.0
+markdown-it-py==4.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
 pydantic==2.12.5
     # via mandala
 pydantic-core==2.41.5
     # via pydantic
+pygments==2.19.2
+    # via rich
 pyside6==6.10.1
     # via mandala
 pyside6-addons==6.10.1
@@ -20,6 +34,12 @@ pyside6-essentials==6.10.1
     # via
     #   pyside6
     #   pyside6-addons
+rich==14.2.0
+    # via
+    #   cyclopts
+    #   rich-rst
+rich-rst==1.3.2
+    # via cyclopts
 send2trash==2.0.0
     # via mandala
 shiboken6==6.10.1

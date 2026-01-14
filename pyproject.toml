@@ -5,6 +5,7 @@ description = "Copy random files from directory A to directory B."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "cyclopts>=4.4.5",
     "ffmpeg-python>=0.2.0",
     "pydantic>=2.12.5",
     "pyside6>=6.10.1",
@@ -12,6 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
+mandala-cli = "mandala.cli.cli:app"
 mandala-gui = "mandala.gui.runner:main"
 
 [build-system]
