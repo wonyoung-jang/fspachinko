@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDir, QSettings, Qt, QTimer, Slot
 from PySide6.QtWidgets import QFileDialog, QGridLayout, QMainWindow, QStatusBar, QToolBar, QWidget
 
+from mandala.gui.components import ProgressWidget
+
 from ..config.constants import SizeUnitEnum, TimeUnitEnum
 from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
@@ -155,6 +157,7 @@ class MandalaCentralGui(QWidget):
     ui_filesize: FilesizeFilterWidget = field(init=False)
     ui_duration: DurationFilterWidget = field(init=False)
     ui_weight: DiversityFilterWidget = field(init=False)
+    ui_progress: ProgressWidget = field(init=False)
     ui_sect_exec: ExecutionWidget = field(init=False)
 
     def __post_init__(self) -> None:
@@ -181,7 +184,8 @@ class MandalaCentralGui(QWidget):
         self.ui_duration = DurationFilterWidget("Duration", "duration", suffix_options=[s.value for s in TimeUnitEnum])
         self.ui_weight = DiversityFilterWidget("Diversity", "diversity")
 
-        # Init sidebar and run components
+        # Init execution components
+        self.ui_progress = ProgressWidget()
         self.ui_sect_exec = ExecutionWidget()
         self.ui_sect_exec.signal_start.connect(self._on_start)
         self.ui_sect_exec.signal_stop.connect(self._on_stop)
@@ -200,12 +204,13 @@ class MandalaCentralGui(QWidget):
         layout.addWidget(self.ui_filesize, 6, 0, 1, 2)
         layout.addWidget(self.ui_duration, 6, 2, 1, 2)
         layout.addWidget(self.ui_weight, 6, 4, 1, 2)
-        layout.addWidget(self.ui_sect_exec, 7, 0, 1, 6)
+        layout.addWidget(self.ui_progress, 7, 0, 1, 6)
+        layout.addWidget(self.ui_sect_exec, 8, 0, 1, 6)
 
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
-        self.timer.timeout.connect(self.ui_sect_exec.update_stall_prog)
+        self.timer.timeout.connect(self.ui_progress.update_stall_prog)
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
@@ -221,6 +226,7 @@ class MandalaCentralGui(QWidget):
             filesize=self.ui_filesize.get_config(),
             duration=self.ui_duration.get_config(),
             diversity=self.ui_weight.get_config(),
+            progress=self.ui_progress.get_config(),
             execution=self.ui_sect_exec.get_config(),
         )
         return MandalaConfig(**model.__dict__)
@@ -228,10 +234,17 @@ class MandalaCentralGui(QWidget):
     @Slot(bool)
     def _toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
-        self.ui_sect_exec.btn_start.setEnabled(enabled)
         self.ui_sect_exec.btn_stop.setEnabled(not enabled)
         for child in self.findChildren(QWidget):
-            if child not in (self.ui_sect_exec, self.ui_sect_exec.btn_stop, self.ui_sect_exec.textbrowser_log):
+            if child not in (
+                self.ui_sect_exec,
+                self.ui_sect_exec.btn_stop,
+                self.ui_sect_exec.textbrowser_log,
+                self.ui_progress,
+                self.ui_progress.progbar_total,
+                self.ui_progress.progbar_folder,
+                self.ui_progress.progbar_stall,
+            ):
                 child.setEnabled(enabled)
 
     @Slot()
@@ -245,21 +258,22 @@ class MandalaCentralGui(QWidget):
 
         self._toggle_ui(enabled=False)
 
-        stall_limit = config.execution.stall_time_limit
+        stall_limit = config.progress.stall_time_limit
         stall_max = int(stall_limit * 100)
-        self.ui_sect_exec.progbar_total.setValue(0)
-        self.ui_sect_exec.progbar_folder.setValue(0)
-        self.ui_sect_exec.progbar_stall.setRange(0, stall_max)
-        self.ui_sect_exec.progbar_stall.setValue(stall_max)
+
+        self.ui_progress.progbar_total.setValue(0)
+        self.ui_progress.progbar_folder.setValue(0)
+        self.ui_progress.progbar_stall.setRange(0, stall_max)
+        self.ui_progress.progbar_stall.setValue(stall_max)
 
         self.worker = RunMandalaWorker(config=config)
-        self.worker.signals.progress_total.connect(self.ui_sect_exec.progbar_total.setMaximum)
-        self.worker.signals.count_total.connect(self.ui_sect_exec.update_total_prog)
+        self.worker.signals.progress_total.connect(self.ui_progress.progbar_total.setMaximum)
+        self.worker.signals.count_total.connect(self.ui_progress.update_total_prog)
 
-        self.worker.signals.progress.connect(self.ui_sect_exec.progbar_folder.setMaximum)
+        self.worker.signals.progress.connect(self.ui_progress.progbar_folder.setMaximum)
         self.worker.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
-        self.worker.signals.count.connect(self.ui_sect_exec.progbar_folder.setValue)
-        self.worker.signals.time.connect(self.ui_sect_exec.reset_stall_prog)
+        self.worker.signals.count.connect(self.ui_progress.progbar_folder.setValue)
+        self.worker.signals.time.connect(self.ui_progress.reset_stall_prog)
         self.worker.signals.finished.connect(self._on_finished)
 
         self.timer.start(10)

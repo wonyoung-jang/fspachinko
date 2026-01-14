@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QProgressBar,
     QPushButton,
@@ -26,6 +25,8 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QWidget,
 )
+
+from mandala.config.schemas import ProgressModel
 
 from ..config.constants import (
     BYTES_IN_GIGABYTE,
@@ -447,6 +448,49 @@ class DiversityFilterWidget(RangeFilterWidget):
         )
 
 
+class ProgressWidget(QWidget):
+    """Progress bars and execution controls."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize the execution widget."""
+        super().__init__(parent=parent)
+
+        # Progress bars
+        self.progbar_stall = QProgressBar(value=0, textVisible=True)
+        self.progbar_folder = QProgressBar(value=0, textVisible=True)
+        self.progbar_total = QProgressBar(value=0, textVisible=True)
+        self.dblspin_stall = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
+        self.dblspin_stall.setObjectName("exec_stall_time_limit")
+        self.dblspin_stall.setStatusTip("Set the stall time limit for finding a valid file in seconds")
+
+        prog_form_layout = QFormLayout(self)
+        prog_form_layout.addRow("Total:", self.progbar_total)
+        prog_form_layout.addRow("Folder:", self.progbar_folder)
+        prog_form_layout.addRow("Stall:", self.progbar_stall)
+        prog_form_layout.addRow("Stall Time:", self.dblspin_stall)
+
+    @Slot()
+    def reset_stall_prog(self) -> None:
+        """Reset the stall timer progress bar."""
+        self.progbar_stall.setValue(self.progbar_stall.maximum())
+
+    @Slot()
+    def update_stall_prog(self) -> None:
+        """Update the stall time progress bar."""
+        self.progbar_stall.setValue(self.progbar_stall.value() - 1)
+
+    @Slot()
+    def update_total_prog(self) -> None:
+        """Update the total progress bar."""
+        self.progbar_total.setValue(self.progbar_total.value() + 1)
+
+    def get_config(self) -> ProgressModel:
+        """Return clean data for the config."""
+        return ProgressModel(
+            stall_time_limit=self.dblspin_stall.value(),
+        )
+
+
 class ExecutionWidget(QWidget):
     """Run/Stop controls, Logs, and Stall Timer."""
 
@@ -471,19 +515,6 @@ class ExecutionWidget(QWidget):
         self.chk_dry_run.setObjectName("exec_dry_run")
         self.chk_dry_run.setToolTip("If checked, no files will actually be copied.")
 
-        # Progress bars
-        self.progbar_stall = QProgressBar(value=0, textVisible=True)
-        self.progbar_folder = QProgressBar(value=0, textVisible=True)
-        self.progbar_total = QProgressBar(value=0, textVisible=True)
-        prog_form_layout = QFormLayout()
-        prog_form_layout.addRow("Total Progress:", self.progbar_total)
-        prog_form_layout.addRow("Folder Progress:", self.progbar_folder)
-        prog_form_layout.addRow("Stall Timer:", self.progbar_stall)
-
-        # Stall time
-        self.dblspin_stall = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
-        self.dblspin_stall.setObjectName("exec_stall_time_limit")
-
         # Controls
         self.btn_start = QPushButton("Start", flat=True)
         self.btn_start.setShortcut("Ctrl+R")
@@ -498,14 +529,11 @@ class ExecutionWidget(QWidget):
         self.btn_close.setShortcut("Ctrl+W")
         self.btn_close.setStatusTip("Close the application (Ctrl+W)")
 
-        self.btn_start.clicked.connect(self.on_start)
-        self.btn_stop.clicked.connect(self.on_stop)
-        self.btn_close.clicked.connect(self.on_close)
+        self.btn_start.clicked.connect(self.signal_start.emit)
+        self.btn_stop.clicked.connect(self.signal_stop.emit)
+        self.btn_close.clicked.connect(self.signal_close.emit)
 
         layout = QGridLayout(self)
-        layout.addLayout(prog_form_layout, 0, 0, 1, 2)
-        layout.addWidget(QLabel("Stall Time:"), 1, 0, 1, 2)
-        layout.addWidget(self.dblspin_stall, 1, 1, 1, 1)
         layout.addWidget(self.chk_log_invalid, 2, 0)
         layout.addWidget(self.chk_dry_run, 2, 1)
         layout.addWidget(self.textbrowser_log, 3, 0, 1, 2)
@@ -513,47 +541,9 @@ class ExecutionWidget(QWidget):
         layout.addWidget(self.btn_stop, 4, 1)
         layout.addWidget(self.btn_close, 5, 0, 1, 2)
 
-    @Slot()
-    def on_start(self) -> None:
-        """Handle start button click."""
-        self.set_running_state(running=True)
-        self.signal_start.emit()
-
-    @Slot()
-    def on_stop(self) -> None:
-        """Handle stop button click."""
-        self.signal_stop.emit()
-
-    @Slot()
-    def on_close(self) -> None:
-        """Handle close button click."""
-        self.signal_close.emit()
-
-    def set_running_state(self, *, running: bool) -> None:
-        """Update the GUI based on running state."""
-        self.btn_start.setEnabled(not running)
-        self.btn_stop.setEnabled(running)
-        self.dblspin_stall.setEnabled(not running)
-
-    @Slot()
-    def reset_stall_prog(self) -> None:
-        """Reset the stall timer progress bar."""
-        self.progbar_stall.setValue(self.progbar_stall.maximum())
-
-    @Slot()
-    def update_stall_prog(self) -> None:
-        """Update the stall time progress bar."""
-        self.progbar_stall.setValue(self.progbar_stall.value() - 1)
-
-    @Slot()
-    def update_total_prog(self) -> None:
-        """Update the total progress bar."""
-        self.progbar_total.setValue(self.progbar_total.value() + 1)
-
     def get_config(self) -> ExecutionModel:
         """Return clean data for the config."""
         return ExecutionModel(
             log_invalid=self.chk_log_invalid.isChecked(),
-            stall_time_limit=self.dblspin_stall.value(),
             dry_run=self.chk_dry_run.isChecked(),
         )

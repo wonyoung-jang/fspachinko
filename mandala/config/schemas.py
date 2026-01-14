@@ -62,11 +62,16 @@ class DiversityModel(BaseModel):
     leaf_limit: int = 0
 
 
+class ProgressModel(BaseModel):
+    """Model for progress tracking."""
+
+    stall_time_limit: float = 0.0
+
+
 class ExecutionModel(BaseModel):
     """Model for execution configuration."""
 
     log_invalid: bool = True
-    stall_time_limit: float = 0.0
     dry_run: bool = False
 
 
@@ -84,4 +89,5 @@ class MandalaConfigModel(BaseModel):
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
     diversity: DiversityModel
+    progress: ProgressModel
     execution: ExecutionModel

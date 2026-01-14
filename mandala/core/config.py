@@ -14,6 +14,7 @@ from ..config.schemas import (
     LimitMinMaxModel,
     ListIncludeExcludeModel,
     MandalaConfigModel,
+    ProgressModel,
     TrashModel,
 )
 
@@ -36,6 +37,7 @@ class MandalaConfig:
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
     diversity: DiversityModel
+    progress: ProgressModel
     execution: ExecutionModel
 
     @classmethod

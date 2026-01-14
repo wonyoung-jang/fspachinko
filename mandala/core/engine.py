@@ -159,7 +159,7 @@ class MandalaEngine:
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_time) > self.config.execution.stall_time_limit
+        return (perf_counter() - self.state.start_time) > self.config.progress.stall_time_limit
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
