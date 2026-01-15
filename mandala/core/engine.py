@@ -172,24 +172,22 @@ class MandalaEngine:
         all_searched = self.quota.all_locked()
 
         copied_str = f"{count}/{target} files copied"
+        status = f"FINISHED (Unknown reason): {copied_str}"
 
         if count == target:
-            return f"SUCCESS: {copied_str}"
-
-        if self.stop_requested:
-            return f"STOPPED: {copied_str}"
-
-        if count == 0 and self.config.folder.create and (timed_out or all_searched):
-            reason = "timed out" if timed_out else "all files searched"
-            return f"NO FILES FOUND: Reason - {reason} | {copied_str} | folder deleted"
-
-        if all_searched:
-            return f"ALL FILES SEARCHED: {copied_str}"
-
-        if timed_out:
-            return f"TIMED OUT: {copied_str}"
-
-        return "FINISHED: Unknown reason"
+            status = f"SUCCESS: {copied_str}"
+        elif self.stop_requested:
+            status = f"STOPPED: {copied_str}"
+        elif count == 0 and self.config.folder.create:
+            if timed_out:
+                status = f"NO FILES FOUND: Reason - timed out | {copied_str} | folder deleted"
+            elif all_searched:
+                status = f"NO FILES FOUND: Reason - all files searched | {copied_str} | folder deleted"
+        elif all_searched:
+            status = f"ALL FILES SEARCHED: {copied_str}"
+        elif timed_out:
+            status = f"TIMED OUT: {copied_str}"
+        return status
 
     def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
         """Create and write log at the end of folder."""

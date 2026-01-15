@@ -157,6 +157,7 @@ class MandalaCentralGui(QWidget):
     ui_weight: DiversityFilterWidget = field(init=False)
     ui_progress: ProgressWidget = field(init=False)
     ui_execution: ExecutionWidget = field(init=False)
+    _window_title_before_start: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the main window."""
@@ -264,17 +265,26 @@ class MandalaCentralGui(QWidget):
         self.ui_progress.progbar_stall.setRange(0, stall_max)
         self.ui_progress.progbar_stall.setValue(stall_max)
 
+        self._window_title_before_start = self.window().windowTitle()
+
         self.worker = RunMandalaWorker(config=config)
+
         w_signals = self.worker.observer.signals
         w_signals.progress_total.connect(self.ui_progress.progbar_total.setMaximum)
         w_signals.count_total.connect(self.ui_progress.update_total_prog)
         w_signals.progress.connect(self.ui_progress.progbar_folder.setMaximum)
         w_signals.log.connect(self.ui_execution.textbrowser_log.append)
+
         w_signals.count.connect(self.ui_progress.progbar_folder.setValue)
+        w_signals.count.connect(self._update_title_progress)
+
         w_signals.time.connect(self.ui_progress.reset_stall_prog)
+
         w_signals.finished.connect(self._on_finished)
+        w_signals.finished.connect(self._reset_title)
 
         self.timer.start(10)
+
         self.worker.start()
 
     @Slot()
@@ -289,3 +299,17 @@ class MandalaCentralGui(QWidget):
         """Handle worker finished signal."""
         self.timer.stop()
         self._toggle_ui(enabled=True)
+
+    @Slot(int)
+    def _update_title_progress(self, val: int) -> None:
+        curr_title = self._window_title_before_start
+        max_files = self.ui_progress.progbar_folder.maximum()
+        if max_files > 0:
+            pct = int((val / max_files) * 100)
+            self.window().setWindowTitle(f"[{pct}%] {curr_title}")
+        else:
+            self.window().setWindowTitle(f"[{val} files] {curr_title}")
+
+    @Slot()
+    def _reset_title(self) -> None:
+        self.window().setWindowTitle(self._window_title_before_start)
