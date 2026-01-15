@@ -7,13 +7,20 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from ..utilities.utils import convert_byte_to_size
+from ..config.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGABYTE
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from .config import MandalaConfig
     from .state import MandalaState
+
+
+def convert_byte_to_size(bytes_in_curr_dir: int) -> str:
+    """Convert bytes to MB or GB string."""
+    if bytes_in_curr_dir < BYTES_IN_GIGABYTE - 1:
+        return f"{round(bytes_in_curr_dir * BYTE_TO_MEGABYTE, 2)} MB"
+    return f"{round(bytes_in_curr_dir * BYTE_TO_GIGABYTE, 2)} GB"
 
 
 @dataclass(slots=True)

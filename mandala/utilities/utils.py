@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from ..config.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGABYTE
-
 
 def strtobool(val: str) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
@@ -25,13 +23,6 @@ def strtobool(val: str) -> bool:
 
     msg = f"invalid truth value {val!r}"
     raise ValueError(msg)
-
-
-def convert_byte_to_size(bytes_in_curr_dir: int) -> str:
-    """Convert bytes to MB or GB string."""
-    if bytes_in_curr_dir < BYTES_IN_GIGABYTE - 1:
-        return f"{round(bytes_in_curr_dir * BYTE_TO_MEGABYTE, 2)} MB"
-    return f"{round(bytes_in_curr_dir * BYTE_TO_GIGABYTE, 2)} GB"
 
 
 def convert_string_to_list(string: str, sep: str = " ") -> list[str]:
