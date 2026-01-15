@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QTextBrowser,
     QTextEdit,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -156,36 +157,52 @@ class FileCountWidget(BaseGroupBox):
         """Initialize the file count widget."""
         super().__init__(title, name, parent=parent, checkable=False, flat=True)
 
+        self.radio_fixed = QRadioButton("Fixed Count")
+        self.radio_fixed.setChecked(True)
+        self.radio_fixed.setObjectName(f"{name}_fixed_chk")
+        self.radio_fixed.toggled.connect(self.toggle_visibility)
+
+        self.radio_rand = QRadioButton("Randomize")
+        self.radio_rand.setObjectName(f"{name}_rand_chk")
+        self.radio_rand.toggled.connect(self.toggle_visibility)
+
+        mode_widget = QWidget()
+        mode_layout = QHBoxLayout(mode_widget)
+        mode_layout.addWidget(self.radio_fixed)
+        mode_layout.addWidget(self.radio_rand)
+
         self.spin_fixed = QSpinBox(minimum=1, maximum=1_000_000_000)
         self.spin_fixed.setObjectName(f"{name}_fixed_val")
 
-        self.grp_fixed = BaseGroupBox("Fixed Count", f"{name}_fixed_chk", flat=True, checkable=True)
-        self.grp_fixed.toggled.connect(self.update_file_count_fixed)
-
-        fixed_layout = QFormLayout(self.grp_fixed)
+        self.fixed_widget = QWidget()
+        fixed_layout = QFormLayout(self.fixed_widget)
         fixed_layout.addRow("Count", self.spin_fixed)
 
         self.spin_min_rand = QSpinBox(minimum=1, maximum=1_000_000_000)
         self.spin_min_rand.setObjectName(f"{name}_rand_min")
+        self.spin_min_rand.editingFinished.connect(self.validate_rand_file_count)
 
         self.spin_max_rand = QSpinBox(minimum=2, maximum=1_000_000_000)
         self.spin_max_rand.setObjectName(f"{name}_rand_max")
-
-        self.grp_rand = BaseGroupBox("Randomize", f"{name}_rand_chk", flat=True, checkable=True)
-        self.grp_rand.setChecked(False)
-
-        self.spin_min_rand.editingFinished.connect(self.validate_rand_file_count)
         self.spin_max_rand.editingFinished.connect(self.validate_rand_file_count)
-        self.grp_rand.toggled.connect(self.validate_rand_file_count)
-        self.grp_rand.toggled.connect(self.update_file_count_rand)
 
-        rand_layout = QFormLayout(self.grp_rand)
+        self.rand_widget = QWidget()
+        self.rand_widget.setVisible(False)
+        rand_layout = QFormLayout(self.rand_widget)
         rand_layout.addRow("Min", self.spin_min_rand)
         rand_layout.addRow("Max", self.spin_max_rand)
 
-        layout = QGridLayout(self)
-        layout.addWidget(self.grp_fixed, 0, 0)
-        layout.addWidget(self.grp_rand, 0, 1)
+        layout = QVBoxLayout(self)
+        layout.addWidget(mode_widget)
+        layout.addWidget(self.fixed_widget)
+        layout.addWidget(self.rand_widget)
+
+    @Slot()
+    def toggle_visibility(self) -> None:
+        """Toggle visibility of random/fixed widgets."""
+        is_rand = self.radio_rand.isChecked()
+        self.rand_widget.setVisible(is_rand)
+        self.fixed_widget.setVisible(not is_rand)
 
     @Slot()
     def validate_rand_file_count(self) -> None:
@@ -195,33 +212,11 @@ class FileCountWidget(BaseGroupBox):
             self.spin_min_rand.setValue(hi)
             self.spin_max_rand.setValue(lo)
 
-    @Slot()
-    def update_file_count_rand(self) -> None:
-        """Change file count group box based on random or count selection."""
-        is_rand = self.grp_rand.isChecked()
-        self.grp_fixed.setChecked(not is_rand)
-        self._toggle_group_children(self.grp_rand, enabled=is_rand)
-        self._toggle_group_children(self.grp_fixed, enabled=not is_rand)
-
-    @Slot()
-    def update_file_count_fixed(self) -> None:
-        """Change file count group box based on random or count selection."""
-        is_fixed = self.grp_fixed.isChecked()
-        self.grp_rand.setChecked(not is_fixed)
-        self._toggle_group_children(self.grp_fixed, enabled=is_fixed)
-        self._toggle_group_children(self.grp_rand, enabled=not is_fixed)
-
-    def _toggle_group_children(self, groupbox: QGroupBox, *, enabled: bool) -> None:
-        """Enable or disable all children of a group box."""
-        for child in groupbox.children():
-            if isinstance(child, QWidget):
-                child.setEnabled(enabled)
-
     def get_config(self) -> FilecountModel:
         """Return clean data for the config."""
         return FilecountModel(
             count=self.spin_fixed.value(),
-            is_rand_count=self.grp_rand.isChecked(),
+            is_rand_count=self.radio_rand.isChecked(),
             count_min_rand=self.spin_min_rand.value(),
             count_max_rand=self.spin_max_rand.value(),
         )
@@ -233,13 +228,17 @@ class FolderCreatorWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the create folders widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
+
         self.spinbox_folder_count = QSpinBox(minimum=1, maximum=100_000)
         self.spinbox_folder_count.setObjectName(f"{name}_count")
+
         self.lineedit_folder_name = QLineEdit("mandala_output")
         self.lineedit_folder_name.setObjectName(f"{name}_name")
+
         self.chk_unique_folders = QCheckBox("Make Unique")
         self.chk_unique_folders.setObjectName(f"{name}_unique")
         self.chk_unique_folders.setChecked(True)
+
         layout = QFormLayout(self)
         layout.addRow("Count", self.spinbox_folder_count)
         layout.addRow("Name", self.lineedit_folder_name)
@@ -261,16 +260,21 @@ class FilenameSettingsWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the filename settings widget."""
         super().__init__(title, name, parent=parent, flat=True)
+
         keep_filename = QRadioButton("Keep")
         keep_filename.setChecked(True)
+
         self.radio_index = QRadioButton("Index")
         self.radio_index.setObjectName(f"{name}_index")
+
         self.radio_rename = QRadioButton("Rename")
         self.radio_rename.setObjectName(f"{name}_rename")
         self.radio_rename.toggled.connect(lambda: self.lineedit_rename.setEnabled(self.radio_rename.isChecked()))
+
         self.lineedit_rename = QLineEdit("New Name")
         self.lineedit_rename.setObjectName(f"{name}_text")
         self.lineedit_rename.setEnabled(False)
+
         layout = QFormLayout(self)
         layout.addRow(keep_filename)
         layout.addRow(self.radio_index)
@@ -291,12 +295,16 @@ class TrashSettingsWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the trash settings widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
+
         self.chk_empty_folders = QCheckBox("Empty Folders")
         self.chk_empty_folders.setObjectName(f"{name}_empty_folders")
+
         self.chk_valid_files = QCheckBox("Valid Files")
         self.chk_valid_files.setObjectName(f"{name}_valid_files")
+
         self.chk_invalid_files = QCheckBox("Invalid Files")
         self.chk_invalid_files.setObjectName(f"{name}_invalid_files")
+
         layout = QFormLayout(self)
         layout.addRow(self.chk_empty_folders)
         layout.addRow(self.chk_valid_files)
@@ -304,10 +312,12 @@ class TrashSettingsWidget(BaseGroupBox):
 
     def get_config(self) -> TrashModel:
         """Return clean data for the config."""
+        if not self.isChecked():
+            return TrashModel(empty_folder=False, source_file=False, invalid_file=False)
         return TrashModel(
-            empty_folder=self.chk_empty_folders.isChecked() if self.isChecked() else False,
-            source_file=self.chk_valid_files.isChecked() if self.isChecked() else False,
-            invalid_file=self.chk_invalid_files.isChecked() if self.isChecked() else False,
+            empty_folder=self.chk_empty_folders.isChecked(),
+            source_file=self.chk_valid_files.isChecked(),
+            invalid_file=self.chk_invalid_files.isChecked(),
         )
 
 
@@ -317,13 +327,17 @@ class DualListFilterWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the dual list widget."""
         super().__init__(title, name, parent=parent, flat=True)
+
         self.filter_edit = QLineEdit()
         self.filter_edit.setObjectName(f"{name}_text")
+
         self.filter_include_radio = QRadioButton("Include")
         self.filter_include_radio.setChecked(True)
         self.filter_include_radio.setObjectName(f"{name}_include")
+
         self.filter_exclude_radio = QRadioButton("Exclude")
         self.filter_exclude_radio.setObjectName(f"{name}_exclude")
+
         hbox = QHBoxLayout(self)
         hbox.addWidget(self.filter_edit)
         hbox.addWidget(self.filter_include_radio)

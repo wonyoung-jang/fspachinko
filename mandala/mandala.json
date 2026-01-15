@@ -47,9 +47,11 @@
         "root_limit": 8,
         "leaf_limit": 4
     },
+    "progress": {
+        "stall_time_limit": 10.0
+    },
     "execution": {
         "log_invalid": false,
-        "stall_time_limit": 10.0,
         "dry_run": false
     }
 }

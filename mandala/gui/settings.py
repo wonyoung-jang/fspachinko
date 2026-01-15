@@ -72,17 +72,22 @@ class ProfileManager:
     """Class for managing GUI profiles."""
 
     profile_dir: Path = field(init=False)
+    current_profile: str = ""
 
     def __post_init__(self) -> None:
         """Initialize profile directory."""
         self.profile_dir = Path(DEFAULT_PROFILE_DIR)
         self.profile_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_profile_path(self, profile: str) -> Path:
-        """Get the full path for a given profile name."""
-        return self.profile_dir / f"{profile}"
+    def set_current(self, profile: str) -> None:
+        """Set the current profile name."""
+        self.current_profile = profile
 
-    def save_profile(self, parent: QWidget, profile: str) -> None:
+    def _get_profile_path(self) -> Path:
+        """Get the full path for a given profile name."""
+        return self.profile_dir / f"{self.current_profile}"
+
+    def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
         data = {}
         for child in parent.findChildren(QWidget):
@@ -97,13 +102,13 @@ class ProfileManager:
                     items = [child.itemText(i) for i in range(child.count())]
                     data[f"{key}_items"] = items
 
-        path = self.get_profile_path(profile)
+        path = self._get_profile_path()
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
-    def open_profile(self, parent: QWidget, profile: str) -> None:
+    def open_profile(self, parent: QWidget) -> None:
         """Recursively load settings for all child widgets."""
-        path = self.get_profile_path(profile)
+        path = self._get_profile_path()
         if not (path.exists() and path.is_file()):
             return
 

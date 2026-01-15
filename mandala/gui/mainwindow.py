@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, QSettings, Qt, QTimer, Slot
-from PySide6.QtWidgets import QFileDialog, QGridLayout, QMainWindow, QStatusBar, QToolBar, QWidget
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar, QVBoxLayout, QWidget
 
 from ..config.constants import SizeUnitEnum, TimeUnitEnum
 from ..config.schemas import MandalaConfigModel
@@ -23,6 +23,7 @@ from .components import (
     FolderCreatorWidget,
     PathSelectorWidget,
     ProgressWidget,
+    QHBoxLayout,
     TrashSettingsWidget,
 )
 from .settings import ProfileManager
@@ -38,7 +39,6 @@ class MandalaMainWindow(QMainWindow):
 
     ui: MandalaCentralGui = field(init=False)
     profiles: ProfileManager = field(init=False)
-    current_profile: str = field(default="")
     qsettings: QSettings = field(default_factory=QSettings)
 
     def __post_init__(self) -> None:
@@ -57,7 +57,7 @@ class MandalaMainWindow(QMainWindow):
 
         self.ui.ui_execution.close.connect(self.close)
 
-        self.setWindowTitle(f"{Path(self.current_profile).stem} - Mandala: Copy random files")
+        self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
 
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
@@ -96,13 +96,13 @@ class MandalaMainWindow(QMainWindow):
         """Initialize GUI settings manager."""
         self.restoreGeometry(self.qsettings.value("geometry"))
         self.restoreState(self.qsettings.value("state"))
-        self.current_profile = str(self.qsettings.value("profile", ""))
-        self.profiles.open_profile(self, self.current_profile)
+        self.profiles.set_current(str(self.qsettings.value("profile", "")))
+        self.profiles.open_profile(self)
 
     @Slot()
     def save_profile(self) -> None:
         """Save the current GUI profile."""
-        self.profiles.save_profile(self, self.current_profile)
+        self.profiles.save_profile(self)
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -111,7 +111,7 @@ class MandalaMainWindow(QMainWindow):
             self, "Save Profile As", str(self.profiles.profile_dir), "JSON Files (*.json)"
         )
         if filename:
-            self.current_profile = filename
+            self.profiles.set_current(filename)
             self.save_profile()
             self.setWindowTitle(f"{Path(filename).stem} - Mandala: Copy random files")
 
@@ -122,15 +122,15 @@ class MandalaMainWindow(QMainWindow):
             self, "Select Profile", str(self.profiles.profile_dir), "JSON Files (*.json)"
         )
         if filename:
-            self.current_profile = filename
-            self.profiles.open_profile(self, filename)
+            self.profiles.set_current(filename)
+            self.profiles.open_profile(self)
             self.setWindowTitle(f"{Path(filename).stem} - Mandala: Copy random files")
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""
         self.qsettings.setValue("geometry", self.saveGeometry())
         self.qsettings.setValue("state", self.saveState())
-        self.qsettings.setValue("profile", self.current_profile)
+        self.qsettings.setValue("profile", self.profiles.current_profile)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
@@ -191,20 +191,29 @@ class MandalaCentralGui(QWidget):
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
-        layout = QGridLayout(self)
-        layout.addWidget(self.ui_root, 0, 0, 1, 6)
-        layout.addWidget(self.ui_dest, 1, 0, 1, 6)
-        layout.addWidget(self.ui_file_count, 2, 0, 1, 6)
-        layout.addWidget(self.ui_folders, 3, 0, 1, 2)
-        layout.addWidget(self.ui_filenames, 3, 2, 1, 2)
-        layout.addWidget(self.ui_trash, 3, 4, 1, 2)
-        layout.addWidget(self.ui_keywords, 4, 0, 1, 6)
-        layout.addWidget(self.ui_extensions, 5, 0, 1, 6)
-        layout.addWidget(self.ui_filesize, 6, 0, 1, 2)
-        layout.addWidget(self.ui_duration, 6, 2, 1, 2)
-        layout.addWidget(self.ui_weight, 6, 4, 1, 2)
-        layout.addWidget(self.ui_progress, 7, 0, 1, 6)
-        layout.addWidget(self.ui_execution, 8, 0, 1, 6)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.ui_root)
+        layout.addWidget(self.ui_dest)
+
+        output_layout = QHBoxLayout()
+        output_layout.setContentsMargins(0, 0, 0, 0)
+        output_layout.addWidget(self.ui_file_count)
+        output_layout.addWidget(self.ui_folders)
+        output_layout.addWidget(self.ui_filenames)
+        output_layout.addWidget(self.ui_trash)
+
+        layout.addLayout(output_layout)
+        layout.addWidget(self.ui_keywords)
+        layout.addWidget(self.ui_extensions)
+
+        filter_layout = QHBoxLayout()
+        filter_layout.addWidget(self.ui_filesize)
+        filter_layout.addWidget(self.ui_duration)
+        filter_layout.addWidget(self.ui_weight)
+
+        layout.addLayout(filter_layout)
+        layout.addWidget(self.ui_progress)
+        layout.addWidget(self.ui_execution)
 
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
