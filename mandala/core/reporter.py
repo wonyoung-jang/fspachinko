@@ -1,4 +1,4 @@
-"""Logger for Mandala process."""
+"""Reporter for Mandala process."""
 
 from __future__ import annotations
 
@@ -17,23 +17,23 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class MandalaLogger:
-    """Logger class for Mandala."""
+class ReportWriter:
+    """ReportWriter class for Mandala."""
 
     config: MandalaConfig
     state: MandalaState
 
     buffer: list[str] = field(default_factory=list)
 
-    log_path: Path = field(init=False)
+    report_path: Path = field(init=False)
 
     def reset_for_dest(self, dest: Path) -> None:
-        """Initialize logger for a new run."""
+        """Initialize reporter for a new run."""
         self.buffer.clear()
-        self.log_path = dest / f"!{dest.name}_log.txt"
+        self.report_path = dest / f"!{dest.name}_report.txt"
 
-    def log_message(self, message: str) -> None:
-        """Log a message to the buffer."""
+    def record_message(self, message: str) -> None:
+        """Add a message to the buffer."""
         self.buffer.append(message)
 
     def generate_report(self, dest: Path, status: str, runtime: float) -> str:
@@ -58,13 +58,11 @@ class MandalaLogger:
         )
 
     def save(self, report: str) -> None:
-        """Save the log to file."""
-        new_content = report + "\n".join(self.buffer) + "\n\n"
-        old_content = ""
-        if self.log_path.exists():
+        """Save the report to file."""
+        content = report + "\n".join(self.buffer) + "\n\n"
+        if self.report_path.exists():
             with contextlib.suppress(OSError):
-                old_content = self.log_path.read_text(encoding="utf-8")
+                content += self.report_path.read_text(encoding="utf-8")
 
-        final_content = new_content + old_content
-        with self.log_path.open("w", encoding="utf-8") as log_file:
-            log_file.write(final_content)
+        with self.report_path.open("w", encoding="utf-8") as f:
+            f.write(content)

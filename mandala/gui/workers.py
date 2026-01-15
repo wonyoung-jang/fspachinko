@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
+from ..config.interfaces import MandalaObserver
 from ..core.engine import MandalaEngine
-from ..core.logger import MandalaLogger
 from ..core.quota import DiversityQuota
+from ..core.reporter import ReportWriter
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
@@ -30,33 +31,40 @@ class WorkerSignals(QObject):
     time = Signal()
     count = Signal(int)
 
+
+@dataclass(slots=True)
+class GuiObserver(MandalaObserver):
+    """Qt signal observer implementation for Mandala."""
+
+    signals: WorkerSignals = field(default_factory=WorkerSignals)
+
     def on_progress_total(self, maximum: int) -> None:
         """Emit total progress signal."""
-        self.progress_total.emit(maximum)
+        self.signals.progress_total.emit(maximum)
 
     def on_count_total(self) -> None:
         """Emit total count signal."""
-        self.count_total.emit()
+        self.signals.count_total.emit()
 
     def on_progress(self, maximum: int) -> None:
         """Emit progress signal."""
-        self.progress.emit(maximum)
+        self.signals.progress.emit(maximum)
 
     def on_finished(self) -> None:
         """Emit finished signal."""
-        self.finished.emit()
+        self.signals.finished.emit()
 
     def on_log(self, msg: str) -> None:
         """Emit log message signal."""
-        self.log.emit(msg)
+        self.signals.log.emit(msg)
 
     def on_time(self) -> None:
         """Emit time update signal."""
-        self.time.emit()
+        self.signals.time.emit()
 
     def on_count(self, count: int) -> None:
         """Emit count update signal."""
-        self.count.emit(count)
+        self.signals.count.emit(count)
 
 
 @dataclass(slots=True)
@@ -65,7 +73,7 @@ class RunMandalaWorker(QThread):
 
     config: InitVar[MandalaConfig]
     engine: MandalaEngine = field(init=False)
-    signals: WorkerSignals = field(default_factory=WorkerSignals)
+    observer: GuiObserver = field(default_factory=GuiObserver)
 
     def __post_init__(self, config: MandalaConfig) -> None:
         """Initialize the worker thread."""
@@ -76,7 +84,7 @@ class RunMandalaWorker(QThread):
         """Initialize the Mandala engine."""
         state = MandalaState()
         validator = FileValidator(config)
-        logger = MandalaLogger(config, state)
+        reporter = ReportWriter(config, state)
         quota = DiversityQuota(
             root=config.root,
             limit_root_folder=config.diversity.root_limit,
@@ -98,20 +106,18 @@ class RunMandalaWorker(QThread):
             config=config,
             state=state,
             validator=validator,
-            logger=logger,
+            reporter=reporter,
             stop_requested=False,
             rng=rng,
             quota=quota,
             walker=walker,
         )
-        self.engine.set_observer(self.signals)
+        self.engine.set_observer(self.observer)
 
     def run(self) -> None:
         """Run the Mandala process."""
-        if self.engine:
-            self.engine.start()
+        self.engine.start()
 
     def stop(self) -> None:
         """Stop the Mandala process."""
-        if self.engine:
-            self.engine.request_stop()
+        self.engine.request_stop()

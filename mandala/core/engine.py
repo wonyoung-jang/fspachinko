@@ -14,10 +14,10 @@ if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
-    from ..config.protocols import MandalaObserver
+    from ..config.interfaces import MandalaObserver
     from .config import MandalaConfig
-    from .logger import MandalaLogger
     from .quota import DiversityQuota
+    from .reporter import ReportWriter
     from .state import MandalaState
     from .validator import FileValidator
     from .walker import RandomFSWalker
@@ -30,7 +30,7 @@ class MandalaEngine:
     config: MandalaConfig
     state: MandalaState
     validator: FileValidator
-    logger: MandalaLogger
+    reporter: ReportWriter
     stop_requested: bool
     rng: Random
     quota: DiversityQuota
@@ -64,7 +64,7 @@ class MandalaEngine:
     def process_folder(self, target: int) -> None:
         """Process a single folder for file copying."""
         dest_dir = self._create_dest_folder()
-        self.logger.reset_for_dest(dest_dir)
+        self.reporter.reset_for_dest(dest_dir)
         self.observer.on_progress(target)
 
         count = 0
@@ -102,19 +102,20 @@ class MandalaEngine:
 
         if self.config.execution.dry_run:
             msg = f"DRY RUN: {count + 1}: {chosen} -> {target}"
-            self.logger.log_message(msg)
+            self.reporter.record_message(msg)
             self.observer.on_log(msg)
             return True
 
         try:
             shutil.copy2(chosen, target)
         except (PermissionError, OSError):
-            self.logger.log_message(f"Failed to copy: {chosen} -> {target}")
-            self.observer.on_log(f"Failed to copy: {chosen} -> {target}")
+            msg = f"Failed to copy: {chosen} -> {target}"
+            self.reporter.record_message(msg)
+            self.observer.on_log(msg)
             return False
         else:
             msg = f"{count + 1}: {chosen} -> {target}"
-            self.logger.log_message(msg)
+            self.reporter.record_message(msg)
             self.observer.on_log(msg)
             return True
 
@@ -195,9 +196,9 @@ class MandalaEngine:
         runtime = round(perf_counter() - self.state.start_currdir, 2)
 
         status = self._get_status_header(count, target)
-        report = self.logger.generate_report(dest, status, runtime)
+        report = self.reporter.generate_report(dest, status, runtime)
         self.observer.on_log(report)
-        self.logger.save(report)
+        self.reporter.save(report)
 
         if count == 0 and self.config.folder.create:
             with contextlib.suppress(OSError):

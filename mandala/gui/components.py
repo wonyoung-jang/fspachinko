@@ -344,14 +344,14 @@ class DblRangeFilterWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, suffix_options: Sequence[str], parent: QWidget | None = None) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
+
         self.min_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
         self.min_spin.setObjectName(f"{name}_min")
+        self.min_spin.valueChanged.connect(self.validate_range)
+
         self.max_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
         self.max_spin.setObjectName(f"{name}_max")
-
-        # Connect logic internally
-        self.min_spin.editingFinished.connect(self.validate_range)
-        self.max_spin.editingFinished.connect(self.validate_range)
+        self.max_spin.valueChanged.connect(self.validate_range)
 
         self.combo = QComboBox()
         self.combo.addItems(suffix_options)
@@ -428,10 +428,13 @@ class RangeFilterWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
+
         self.min_spin = QSpinBox(minimum=0, maximum=1_000_000)
         self.min_spin.setObjectName(f"{name}_min")
+
         self.max_spin = QSpinBox(minimum=0, maximum=1_000_000)
         self.max_spin.setObjectName(f"{name}_max")
+
         layout = QFormLayout(self)
         layout.addRow("Max per Root Folder", self.min_spin)
         layout.addRow("Max per Subfolder", self.max_spin)
@@ -455,10 +458,15 @@ class ProgressWidget(QWidget):
         """Initialize the execution widget."""
         super().__init__(parent=parent)
 
-        # Progress bars
-        self.progbar_stall = QProgressBar(value=0, textVisible=True)
-        self.progbar_folder = QProgressBar(value=0, textVisible=True)
         self.progbar_total = QProgressBar(value=0, textVisible=True)
+        self.progbar_total.setStatusTip("Total progress bar, max is set at number of output folders")
+
+        self.progbar_folder = QProgressBar(value=0, textVisible=True)
+        self.progbar_folder.setStatusTip("Current folder progress bar, max is set at number of files to copy")
+
+        self.progbar_stall = QProgressBar(value=0, textVisible=True)
+        self.progbar_stall.setStatusTip("Stall time progress bar, counts down from stall time limit per file")
+
         self.dblspin_stall = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
         self.dblspin_stall.setObjectName("exec_stall_time_limit")
         self.dblspin_stall.setStatusTip("Set the stall time limit for finding a valid file in seconds")
@@ -494,9 +502,9 @@ class ProgressWidget(QWidget):
 class ExecutionWidget(QWidget):
     """Run/Stop controls, Logs, and Stall Timer."""
 
-    signal_start = Signal()
-    signal_stop = Signal()
-    signal_close = Signal()
+    start = Signal()
+    stop = Signal()
+    close = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
@@ -505,15 +513,16 @@ class ExecutionWidget(QWidget):
         # Log
         self.chk_log_invalid = QCheckBox("Log Invalid")
         self.chk_log_invalid.setObjectName("exec_log_invalid")
+        self.chk_log_invalid.setStatusTip("If checked, invalid files will be logged in the output log.")
 
         self.textbrowser_log = QTextBrowser()
-        self.textbrowser_log.setMinimumHeight(175)
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.textbrowser_log.setStatusTip("Log for output messages")
 
         # Dry Run
         self.chk_dry_run = QCheckBox("Dry Run")
         self.chk_dry_run.setObjectName("exec_dry_run")
-        self.chk_dry_run.setToolTip("If checked, no files will actually be copied.")
+        self.chk_dry_run.setStatusTip("If checked, no files will actually be copied.")
 
         # Controls
         self.btn_start = QPushButton("Start", flat=True)
@@ -529,9 +538,9 @@ class ExecutionWidget(QWidget):
         self.btn_close.setShortcut("Ctrl+W")
         self.btn_close.setStatusTip("Close the application (Ctrl+W)")
 
-        self.btn_start.clicked.connect(self.signal_start.emit)
-        self.btn_stop.clicked.connect(self.signal_stop.emit)
-        self.btn_close.clicked.connect(self.signal_close.emit)
+        self.btn_start.clicked.connect(self.start.emit)
+        self.btn_stop.clicked.connect(self.stop.emit)
+        self.btn_close.clicked.connect(self.close.emit)
 
         layout = QGridLayout(self)
         layout.addWidget(self.chk_log_invalid, 2, 0)

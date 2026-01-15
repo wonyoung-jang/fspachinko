@@ -6,10 +6,11 @@ from random import Random
 from cyclopts import App
 
 from ..config.constants import DEFAULT_JSON_CONFIG
+from ..config.interfaces import MandalaObserver
 from ..core.config import MandalaConfig
 from ..core.engine import MandalaEngine
-from ..core.logger import MandalaLogger
 from ..core.quota import DiversityQuota
+from ..core.reporter import ReportWriter
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
@@ -19,7 +20,7 @@ app = App(
 )
 
 
-class ConsoleObserver:
+class ConsoleObserver(MandalaObserver):
     """A simple console observer for Mandala."""
 
     def on_progress_total(self, maximum: int) -> None:
@@ -57,7 +58,7 @@ def run_cli(json_path: str = "") -> None:
 
     config = MandalaConfig.from_json(Path(json_path))
     state = MandalaState()
-    logger = MandalaLogger(config, state)
+    reporter = ReportWriter(config, state)
     validator = FileValidator(config)
     quota = DiversityQuota(
         root=config.root,
@@ -82,7 +83,7 @@ def run_cli(json_path: str = "") -> None:
         config=config,
         state=state,
         validator=validator,
-        logger=logger,
+        reporter=reporter,
         stop_requested=False,
         rng=rng,
         quota=quota,

@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDir, QSettings, Qt, QTimer, Slot
 from PySide6.QtWidgets import QFileDialog, QGridLayout, QMainWindow, QStatusBar, QToolBar, QWidget
 
-from mandala.gui.components import ProgressWidget
-
 from ..config.constants import SizeUnitEnum, TimeUnitEnum
 from ..config.schemas import MandalaConfigModel
 from ..core.config import MandalaConfig
@@ -24,6 +22,7 @@ from .components import (
     FilesizeFilterWidget,
     FolderCreatorWidget,
     PathSelectorWidget,
+    ProgressWidget,
     TrashSettingsWidget,
 )
 from .settings import ProfileManager
@@ -56,7 +55,7 @@ class MandalaMainWindow(QMainWindow):
         self.profiles = ProfileManager()
         self.init_settings()
 
-        self.ui.ui_sect_exec.signal_close.connect(self.close)
+        self.ui.ui_execution.close.connect(self.close)
 
         self.setWindowTitle(f"{Path(self.current_profile).stem} - Mandala: Copy random files")
 
@@ -114,7 +113,7 @@ class MandalaMainWindow(QMainWindow):
         if filename:
             self.current_profile = filename
             self.save_profile()
-            self.setWindowTitle(f"{Path(self.current_profile).stem} - Mandala: Copy random files")
+            self.setWindowTitle(f"{Path(filename).stem} - Mandala: Copy random files")
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -125,14 +124,13 @@ class MandalaMainWindow(QMainWindow):
         if filename:
             self.current_profile = filename
             self.profiles.open_profile(self, filename)
-            self.setWindowTitle(f"{Path(self.current_profile).stem} - Mandala: Copy random files")
+            self.setWindowTitle(f"{Path(filename).stem} - Mandala: Copy random files")
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""
         self.qsettings.setValue("geometry", self.saveGeometry())
         self.qsettings.setValue("state", self.saveState())
         self.qsettings.setValue("profile", self.current_profile)
-        self.save_profile()
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
@@ -158,7 +156,7 @@ class MandalaCentralGui(QWidget):
     ui_duration: DurationFilterWidget = field(init=False)
     ui_weight: DiversityFilterWidget = field(init=False)
     ui_progress: ProgressWidget = field(init=False)
-    ui_sect_exec: ExecutionWidget = field(init=False)
+    ui_execution: ExecutionWidget = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the main window."""
@@ -186,9 +184,9 @@ class MandalaCentralGui(QWidget):
 
         # Init execution components
         self.ui_progress = ProgressWidget()
-        self.ui_sect_exec = ExecutionWidget()
-        self.ui_sect_exec.signal_start.connect(self._on_start)
-        self.ui_sect_exec.signal_stop.connect(self._on_stop)
+        self.ui_execution = ExecutionWidget()
+        self.ui_execution.start.connect(self._on_start)
+        self.ui_execution.stop.connect(self._on_stop)
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -205,7 +203,7 @@ class MandalaCentralGui(QWidget):
         layout.addWidget(self.ui_duration, 6, 2, 1, 2)
         layout.addWidget(self.ui_weight, 6, 4, 1, 2)
         layout.addWidget(self.ui_progress, 7, 0, 1, 6)
-        layout.addWidget(self.ui_sect_exec, 8, 0, 1, 6)
+        layout.addWidget(self.ui_execution, 8, 0, 1, 6)
 
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
@@ -227,19 +225,19 @@ class MandalaCentralGui(QWidget):
             duration=self.ui_duration.get_config(),
             diversity=self.ui_weight.get_config(),
             progress=self.ui_progress.get_config(),
-            execution=self.ui_sect_exec.get_config(),
+            execution=self.ui_execution.get_config(),
         )
         return MandalaConfig(**model.__dict__)
 
     @Slot(bool)
     def _toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
-        self.ui_sect_exec.btn_stop.setEnabled(not enabled)
+        self.ui_execution.btn_stop.setEnabled(not enabled)
         for child in self.findChildren(QWidget):
             if child not in (
-                self.ui_sect_exec,
-                self.ui_sect_exec.btn_stop,
-                self.ui_sect_exec.textbrowser_log,
+                self.ui_execution,
+                self.ui_execution.btn_stop,
+                self.ui_execution.textbrowser_log,
                 self.ui_progress,
                 self.ui_progress.progbar_total,
                 self.ui_progress.progbar_folder,
@@ -253,7 +251,7 @@ class MandalaCentralGui(QWidget):
         try:
             config = self.get_mandala_config()
         except ValueError:
-            self.ui_sect_exec.textbrowser_log.append("Error: Invalid configuration")
+            self.ui_execution.textbrowser_log.append("Error: Invalid configuration")
             return
 
         self._toggle_ui(enabled=False)
@@ -267,14 +265,14 @@ class MandalaCentralGui(QWidget):
         self.ui_progress.progbar_stall.setValue(stall_max)
 
         self.worker = RunMandalaWorker(config=config)
-        self.worker.signals.progress_total.connect(self.ui_progress.progbar_total.setMaximum)
-        self.worker.signals.count_total.connect(self.ui_progress.update_total_prog)
-
-        self.worker.signals.progress.connect(self.ui_progress.progbar_folder.setMaximum)
-        self.worker.signals.log.connect(self.ui_sect_exec.textbrowser_log.append)
-        self.worker.signals.count.connect(self.ui_progress.progbar_folder.setValue)
-        self.worker.signals.time.connect(self.ui_progress.reset_stall_prog)
-        self.worker.signals.finished.connect(self._on_finished)
+        w_signals = self.worker.observer.signals
+        w_signals.progress_total.connect(self.ui_progress.progbar_total.setMaximum)
+        w_signals.count_total.connect(self.ui_progress.update_total_prog)
+        w_signals.progress.connect(self.ui_progress.progbar_folder.setMaximum)
+        w_signals.log.connect(self.ui_execution.textbrowser_log.append)
+        w_signals.count.connect(self.ui_progress.progbar_folder.setValue)
+        w_signals.time.connect(self.ui_progress.reset_stall_prog)
+        w_signals.finished.connect(self._on_finished)
 
         self.timer.start(10)
         self.worker.start()
@@ -284,7 +282,7 @@ class MandalaCentralGui(QWidget):
         """Stop the mandala process."""
         if self.worker:
             self.worker.stop()
-        self.ui_sect_exec.textbrowser_log.append("Stop requested by user...")
+        self.ui_execution.textbrowser_log.append("Stop requested by user...")
 
     @Slot()
     def _on_finished(self) -> None:
