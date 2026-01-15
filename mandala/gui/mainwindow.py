@@ -38,7 +38,7 @@ class MandalaMainWindow(QMainWindow):
         self.profiles = ProfileManager()
         self.init_settings()
 
-        self.ui.ui_execution.close.connect(self.close)
+        self.ui.ui_execution.signal_close.connect(self.close)
 
         self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
 

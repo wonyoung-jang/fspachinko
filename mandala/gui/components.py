@@ -518,7 +518,7 @@ class ExecutionWidget(QWidget):
 
     start = Signal()
     stop = Signal()
-    close = Signal()
+    signal_close = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
@@ -530,6 +530,7 @@ class ExecutionWidget(QWidget):
         self.chk_log_invalid.setStatusTip("If checked, invalid files will be logged in the output log.")
 
         self.textbrowser_log = QTextBrowser()
+        self.textbrowser_log.setFont("Consolas")
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         self.textbrowser_log.setStatusTip("Log for output messages")
 
@@ -554,7 +555,7 @@ class ExecutionWidget(QWidget):
 
         self.btn_start.clicked.connect(self.start.emit)
         self.btn_stop.clicked.connect(self.stop.emit)
-        self.btn_close.clicked.connect(self.close.emit)
+        self.btn_close.clicked.connect(self.signal_close.emit)
 
         layout = QGridLayout(self)
         layout.addWidget(self.chk_log_invalid, 2, 0)

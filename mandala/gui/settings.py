@@ -94,8 +94,7 @@ class ProfileManager:
             if not (key := child.objectName()) or key.startswith("qt_"):
                 continue
 
-            val = get_widget_value(child)
-            if val is not None:
+            if (val := get_widget_value(child)) is not None:
                 data[key] = val
 
                 if isinstance(child, QComboBox):

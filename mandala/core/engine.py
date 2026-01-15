@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from .helpers import calc_dest_file_path, trash_path
+from .helpers import calc_dest_file_path, create_dest_folder, get_status_header, trash_path
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
     from random import Random
 
@@ -48,9 +49,8 @@ class MandalaEngine:
     def start(self) -> None:
         """Run the main file copying process."""
         clear_history = not self.config.folder.unique
-        target_counts = self._prepare_folder_targets()
 
-        for target in target_counts:
+        for target in self._generate_folder_target_counts():
             if self.stop_requested:
                 break
 
@@ -63,24 +63,19 @@ class MandalaEngine:
 
     def process_folder(self, target: int) -> None:
         """Process a single folder for file copying."""
-        dest_dir = self._create_dest_folder()
+        dest_dir = create_dest_folder(self.config.folder, self.config.dest)
         self.reporter.reset_for_dest(dest_dir)
         self.observer.on_progress(target)
 
         count = 0
 
         for candidate in self.walker.generate_candidates():
-            if candidate is None or count >= target or self._is_stop_condition():
+            if self._is_stop_condition() or candidate is None or count >= target:
                 break
 
-            path = candidate.path
-            size = candidate.size
+            path, size = candidate.path, candidate.size
 
-            if not self.validator.is_valid(path, size):
-                self._handle_invalid(path)
-                continue
-
-            if self._try_copy(path, dest_dir, count):
+            if self.validator.is_valid(path, size) and self._try_copy(path, dest_dir, count):
                 count += 1
                 self.quota.register_success(path)
                 self.state.update_success(size)
@@ -90,7 +85,9 @@ class MandalaEngine:
 
                 trash_path(path, condition=self.config.trash.source_file)
             else:
-                self._handle_invalid(path)
+                msg = f"INVALID: {path.relative_to(self.config.root)}"
+                self._report_invalid(msg)
+                trash_path(path, condition=self.config.trash.invalid_file)
 
         self._finalize_folder(dest_dir, count, target)
 
@@ -104,61 +101,42 @@ class MandalaEngine:
         target_rel = target.relative_to(self.config.dest)
         if self.config.execution.dry_run:
             msg = f"DRY RUN: {count + 1}: {chosen_rel} -> {target_rel}"
-            self.reporter.record_message(msg)
-            self.observer.on_log(msg)
+            self._report(msg)
             return True
 
         try:
             shutil.copy2(chosen, target)
         except (PermissionError, OSError):
-            msg = f"Failed to copy: {chosen_rel} -> {target_rel}"
-            self.reporter.record_message(msg)
-            self.observer.on_log(msg)
+            msg = f"FAILED COPY: {chosen_rel} -> {target_rel}"
+            self._report(msg)
             return False
         else:
             msg = f"{count + 1}: {chosen_rel} -> {target_rel}"
-            self.reporter.record_message(msg)
-            self.observer.on_log(msg)
+            self._report(msg)
             return True
 
-    def _create_dest_folder(self) -> Path:
-        """Create the destination folder based on configuration."""
-        if not self.config.folder.create:
-            return self.config.dest
+    def _report(self, msg: str) -> None:
+        """Report and log a message."""
+        self.reporter.record_message(msg)
+        self.observer.on_log(msg)
 
-        dest = self.config.dest
-        name = self.config.folder.name
-        target = dest / name
+    def _report_invalid(self, msg: str) -> None:
+        """Report invalid file message if logging is enabled."""
+        if self.config.execution.log_invalid:
+            self._report(msg)
 
-        x = 2
-        while target.exists():
-            target = dest / f"{name}_{x}"
-            x += 1
-
-        target.mkdir(parents=False)
-        return target
-
-    def _prepare_folder_targets(self) -> list[int]:
+    def _generate_folder_target_counts(self) -> Iterator[int]:
         """Prepare target file counts for each folder."""
         folder_count = self.config.folder.count
         self.observer.on_progress_total(folder_count)
-
-        targets = [self.config.filecount.count] * folder_count
-
-        if self.config.filecount.is_rand_count:
-            for i in range(folder_count):
-                targets[i] = self.rng.randint(
+        for _ in range(folder_count):
+            if self.config.filecount.is_rand_count:
+                yield self.rng.randint(
                     self.config.filecount.count_min_rand,
                     self.config.filecount.count_max_rand,
                 )
-
-        return targets
-
-    def _handle_invalid(self, path: Path) -> None:
-        """Handle logging of invalid files."""
-        if self.config.execution.log_invalid:
-            self.observer.on_log(f"Invalid: {path}")
-        trash_path(path, condition=self.config.trash.invalid_file)
+            else:
+                yield self.config.filecount.count
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
@@ -168,38 +146,25 @@ class MandalaEngine:
         """Check if the process should stop based on conditions."""
         return self.stop_requested or self.quota.all_locked() or self._is_stall_timeout()
 
-    def _get_status_header(self, count: int, target: int) -> str:
-        """Generate a status header for logging."""
-        timed_out = self._is_stall_timeout()
-        all_searched = self.quota.all_locked()
-
-        copied_str = f"{count}/{target} files copied"
-        status = f"FINISHED (Unknown reason): {copied_str}"
-
-        if count == target:
-            status = f"SUCCESS: {copied_str}"
-        elif self.stop_requested:
-            status = f"STOPPED: {copied_str}"
-        elif count == 0 and self.config.folder.create:
-            if timed_out:
-                status = f"NO FILES FOUND: Reason - timed out | {copied_str} | folder deleted"
-            elif all_searched:
-                status = f"NO FILES FOUND: Reason - all files searched | {copied_str} | folder deleted"
-        elif all_searched:
-            status = f"ALL FILES SEARCHED: {copied_str}"
-        elif timed_out:
-            status = f"TIMED OUT: {copied_str}"
-        return status
-
     def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
         """Create and write log at the end of folder."""
         runtime = round(perf_counter() - self.state.start_currdir, 2)
+        copied = f"{count}/{target} files copied"
+        create_folders = self.config.folder.create
+        none_found = count == 0 and create_folders
+        prefix = get_status_header(
+            success=(count == target),
+            stopped=self.stop_requested,
+            none_found=none_found,
+            timeout=self._is_stall_timeout(),
+            all_searched=self.quota.all_locked(),
+        )
+        status = f"{prefix}: {copied}"
 
-        status = self._get_status_header(count, target)
         report = self.reporter.generate_report(dest, status, runtime)
-        self.observer.on_log(report)
-        self.reporter.save(report)
+        self._report(report)
+        self.reporter.save()
 
-        if count == 0 and self.config.folder.create:
+        if none_found:
             with contextlib.suppress(OSError):
                 shutil.rmtree(dest)

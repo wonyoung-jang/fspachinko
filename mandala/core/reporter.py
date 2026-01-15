@@ -53,9 +53,8 @@ class ReportWriter:
             "\n========================================================================\n"
             f"{status}\n"
             "========================================================================\n\n"
-            f"Date:             {datetime.now(tz=UTC).strftime('%B %d, %Y')}\n"
-            f"Time:             {datetime.now(tz=UTC).strftime('%I:%M:%S%p')}\n"
-            f"Start:            {self.config.root}\n"
+            f"Date:             {datetime.now(tz=UTC).strftime('%Y-%m-%d %H:%M')}\n"
+            f"Root:             {self.config.root}\n"
             f"Destination:      {dest}\n"
             f"Extensions:       {ext_str}\n"
             f"Keywords:         {kw_str}\n"
@@ -64,9 +63,9 @@ class ReportWriter:
             "------------------------------------------------------------------------\n"
         )
 
-    def save(self, report: str) -> None:
+    def save(self) -> None:
         """Save the report to file."""
-        content = report + "\n".join(self.buffer) + "\n\n"
+        content = "\n".join(self.buffer) + "\n\n"
         if self.report_path.exists():
             with contextlib.suppress(OSError):
                 content += self.report_path.read_text(encoding="utf-8")

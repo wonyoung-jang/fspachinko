@@ -11,7 +11,7 @@ from send2trash import send2trash
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.schemas import FilenameModel
+    from ..config.schemas import FilenameModel, FolderModel
 
 
 def trash_path(path: Path, *, condition: bool) -> None:
@@ -21,19 +21,35 @@ def trash_path(path: Path, *, condition: bool) -> None:
             send2trash(path)
 
 
-def calc_dest_file_path(cfg: FilenameModel, chosen: Path, dest: Path, index: int) -> Path | None:
+def create_dest_folder(model: FolderModel, dest: Path) -> Path:
+    """Create the destination folder based on configuration."""
+    if not model.create:
+        return dest
+
+    name = model.name
+    target = dest / name
+
+    x = 2
+    while target.exists():
+        target = dest / f"{name}_{x}"
+        x += 1
+
+    target.mkdir(parents=False)
+    return target
+
+
+def calc_dest_file_path(model: FilenameModel, chosen: Path, dest: Path, index: int) -> Path | None:
     """Calculate the destination file path based on naming conventions."""
     ext = chosen.suffix
     stem = chosen.stem
-    is_index = cfg.is_index
-    is_rename = cfg.is_rename
+    is_index = model.is_index
+    is_rename = model.is_rename
 
+    name = chosen.name
     if is_index:
         name = f"{index + 1}_{stem}{ext}"
     elif is_rename:
-        name = f"{cfg.rename_to}_{index + 1}{ext}"
-    else:
-        name = chosen.name
+        name = f"{model.rename_to}_{index + 1}{ext}"
 
     target = dest / name
 
@@ -47,3 +63,24 @@ def calc_dest_file_path(cfg: FilenameModel, chosen: Path, dest: Path, index: int
         x += 1
 
     return target
+
+
+def get_status_header(*, success: bool, stopped: bool, none_found: bool, timeout: bool, all_searched: bool) -> str:
+    """Generate a status header based on the processing outcome."""
+    prefix = "FINISHED (Unknown reason)"
+    if success:
+        prefix = "SUCCESS"
+    elif stopped:
+        prefix = "STOPPED"
+    elif none_found:
+        prefix = "NO FILES FOUND"
+        if timeout:
+            prefix += "| Reason - timed out"
+        elif all_searched:
+            prefix += "| Reason - all files searched"
+        prefix += " | folder deleted"
+    elif all_searched:
+        prefix = "ALL FILES SEARCHED"
+    elif timeout:
+        prefix = "TIMED OUT"
+    return prefix

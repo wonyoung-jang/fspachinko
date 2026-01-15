@@ -84,7 +84,6 @@ class MandalaCentralGui(QWidget):
         layout.addWidget(self.ui_dest)
 
         output_layout = QSplitter()
-        output_layout.setContentsMargins(0, 0, 0, 0)
         output_layout.addWidget(self.ui_file_count)
         output_layout.addWidget(self.ui_folders)
         output_layout.addWidget(self.ui_filenames)
