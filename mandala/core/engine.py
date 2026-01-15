@@ -100,8 +100,10 @@ class MandalaEngine:
         if target is None:
             return False
 
+        chosen_rel = chosen.relative_to(self.config.root)
+        target_rel = target.relative_to(self.config.dest)
         if self.config.execution.dry_run:
-            msg = f"DRY RUN: {count + 1}: {chosen} -> {target}"
+            msg = f"DRY RUN: {count + 1}: {chosen_rel} -> {target_rel}"
             self.reporter.record_message(msg)
             self.observer.on_log(msg)
             return True
@@ -109,12 +111,12 @@ class MandalaEngine:
         try:
             shutil.copy2(chosen, target)
         except (PermissionError, OSError):
-            msg = f"Failed to copy: {chosen} -> {target}"
+            msg = f"Failed to copy: {chosen_rel} -> {target_rel}"
             self.reporter.record_message(msg)
             self.observer.on_log(msg)
             return False
         else:
-            msg = f"{count + 1}: {chosen} -> {target}"
+            msg = f"{count + 1}: {chosen_rel} -> {target_rel}"
             self.reporter.record_message(msg)
             self.observer.on_log(msg)
             return True
