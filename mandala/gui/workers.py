@@ -11,7 +11,6 @@ from PySide6.QtCore import QObject, QThread, Signal
 from ..core.engine import MandalaEngine
 from ..core.quota import DiversityQuota
 from ..core.reporter import ReportWriter
-from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
 from ..utils.interfaces import MandalaObserver
@@ -85,7 +84,6 @@ class RunMandalaWorker(QThread):
     def init_engine(self) -> None:
         """Initialize the Mandala engine."""
         cfg = self.config
-        state = MandalaState()
         validator = FileValidator(cfg)
         reporter = ReportWriter(cfg)
         quota = DiversityQuota(
@@ -107,7 +105,6 @@ class RunMandalaWorker(QThread):
 
         self.engine = MandalaEngine(
             config=cfg,
-            state=state,
             validator=validator,
             reporter=reporter,
             rng=rng,

@@ -9,7 +9,6 @@ from ..config.config import MandalaConfig
 from ..core.engine import MandalaEngine
 from ..core.quota import DiversityQuota
 from ..core.reporter import ReportWriter
-from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
 from ..utils.constants import DEFAULT_JSON_CONFIG
@@ -57,7 +56,6 @@ def run_cli(json_path: str = "") -> None:
         json_path = DEFAULT_JSON_CONFIG
 
     config = MandalaConfig.from_json(Path(json_path))
-    state = MandalaState()
     reporter = ReportWriter(config)
     validator = FileValidator(config)
     quota = DiversityQuota(
@@ -81,7 +79,6 @@ def run_cli(json_path: str = "") -> None:
 
     engine = MandalaEngine(
         config=config,
-        state=state,
         validator=validator,
         reporter=reporter,
         rng=rng,

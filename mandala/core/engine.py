@@ -19,9 +19,29 @@ if TYPE_CHECKING:
     from ..utils.interfaces import MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
-    from .state import MandalaState
     from .validator import FileValidator
     from .walker import RandomFSWalker
+
+
+@dataclass(slots=True)
+class MandalaState:
+    """Dataclass for Mandala state."""
+
+    bytes_in_currdir: int = 0
+    start_time_currdir: float = 0.0
+    start_time_file: float = 0.0
+
+    def reset_for_folder(self) -> None:
+        """Reset state variables for a new folder."""
+        self.bytes_in_currdir = 0
+        _start = perf_counter()
+        self.start_time_currdir = _start
+        self.start_time_file = _start
+
+    def update_success(self, size: int) -> None:
+        """Update state on successful operation."""
+        self.bytes_in_currdir += size
+        self.start_time_file = perf_counter()
 
 
 @dataclass(slots=True)
@@ -29,13 +49,13 @@ class MandalaEngine:
     """Core engine class for Mandala."""
 
     config: MandalaConfig
-    state: MandalaState
     validator: FileValidator
     reporter: ReportWriter
     rng: Random
     quota: DiversityQuota
     walker: RandomFSWalker
     observer: MandalaObserver = field(init=False)
+    state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
 
     def set_observer(self, observer: MandalaObserver) -> None:

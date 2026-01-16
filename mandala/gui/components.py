@@ -483,7 +483,7 @@ class ProgressWidget(QWidget):
         self.progbar_stall.setStatusTip("Stall time progress bar, counts down from stall time limit per file")
 
         self.dblspin_stall = QDoubleSpinBox(suffix=" s", decimals=1, minimum=1.0, maximum=600_000.0, value=10.0)
-        self.dblspin_stall.setObjectName("exec_stall_time_limit")
+        self.dblspin_stall.setObjectName("progress_stall_time_limit")
         self.dblspin_stall.setStatusTip("Set the stall time limit for finding a valid file in seconds")
 
         prog_form_layout = QFormLayout(self)
@@ -527,7 +527,7 @@ class ExecutionWidget(QWidget):
 
         # Log
         self.chk_log_invalid = QCheckBox("Log Invalid")
-        self.chk_log_invalid.setObjectName("exec_log_invalid")
+        self.chk_log_invalid.setObjectName("execution_log_invalid")
         self.chk_log_invalid.setStatusTip("If checked, invalid files will be logged in the output log.")
 
         self.textbrowser_log = QTextBrowser()
@@ -537,7 +537,7 @@ class ExecutionWidget(QWidget):
 
         # Dry Run
         self.chk_dry_run = QCheckBox("Dry Run")
-        self.chk_dry_run.setObjectName("exec_dry_run")
+        self.chk_dry_run.setObjectName("execution_dry_run")
         self.chk_dry_run.setStatusTip("If checked, no files will actually be copied.")
 
         # Controls
