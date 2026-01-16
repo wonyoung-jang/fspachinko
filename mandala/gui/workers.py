@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from random import Random
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from ..core.engine import MandalaEngine
-from ..core.quota import DiversityQuota
-from ..core.reporter import ReportWriter
-from ..core.validator import FileValidator
-from ..core.walker import RandomFSWalker
+from ..core.builder import build_engine
 from ..utils.interfaces import MandalaObserver
 
 if TYPE_CHECKING:
     from ..config.config import MandalaConfig
+    from ..core.engine import MandalaEngine
 
 
 class WorkerSignals(QObject):
@@ -83,35 +79,7 @@ class RunMandalaWorker(QThread):
 
     def init_engine(self) -> None:
         """Initialize the Mandala engine."""
-        cfg = self.config
-        validator = FileValidator(cfg)
-        reporter = ReportWriter(cfg)
-        quota = DiversityQuota(
-            root=cfg.root,
-            unique_folders=cfg.folder.unique,
-            limit_root_folder=cfg.diversity.root_limit,
-            limit_leaf_folder=cfg.diversity.leaf_limit,
-        )
-
-        sys_rand = Random()
-        rng_seed = sys_rand.randint(0, 2**32 - 1)
-        rng = Random(rng_seed)
-
-        walker = RandomFSWalker(
-            root=cfg.root,
-            rng=rng,
-            quota=quota,
-            trash_empty_folders=cfg.trash.empty_folder,
-        )
-
-        self.engine = MandalaEngine(
-            config=cfg,
-            validator=validator,
-            reporter=reporter,
-            rng=rng,
-            quota=quota,
-            walker=walker,
-        )
+        self.engine = build_engine(self.config)
         self.engine.set_observer(self.observer)
 
     def run(self) -> None:

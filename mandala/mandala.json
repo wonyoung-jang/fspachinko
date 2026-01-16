@@ -35,13 +35,13 @@
     },
     "filesize": {
         "limit": false,
-        "minimum": 0,
-        "maximum": 0
+        "minimum": 0.0,
+        "maximum": 0.0
     },
     "duration": {
         "limit": false,
-        "minimum": 0,
-        "maximum": 0
+        "minimum": 0.0,
+        "maximum": 0.0
     },
     "diversity": {
         "root_limit": 8,

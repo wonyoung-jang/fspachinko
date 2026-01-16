@@ -1,16 +1,13 @@
 """CLI package for Mandala."""
 
+from __future__ import annotations
+
 from pathlib import Path
-from random import Random
 
 from cyclopts import App
 
 from ..config.config import MandalaConfig
-from ..core.engine import MandalaEngine
-from ..core.quota import DiversityQuota
-from ..core.reporter import ReportWriter
-from ..core.validator import FileValidator
-from ..core.walker import RandomFSWalker
+from ..core.builder import build_engine
 from ..utils.constants import DEFAULT_JSON_CONFIG
 from ..utils.interfaces import MandalaObserver
 
@@ -55,37 +52,9 @@ def run_cli(json_path: str = "") -> None:
     if not json_path:
         json_path = DEFAULT_JSON_CONFIG
 
-    config = MandalaConfig.from_json(Path(json_path))
-    reporter = ReportWriter(config)
-    validator = FileValidator(config)
-    quota = DiversityQuota(
-        root=config.root,
-        unique_folders=config.folder.unique,
-        limit_root_folder=config.diversity.root_limit,
-        limit_leaf_folder=config.diversity.leaf_limit,
-    )
-
-    sys_rand = Random()
-    rng_seed = sys_rand.randint(0, 2**32 - 1)
-    rng = Random(rng_seed)
-
     observer = ConsoleObserver()
-
-    walker = RandomFSWalker(
-        root=config.root,
-        rng=rng,
-        quota=quota,
-        trash_empty_folders=config.trash.empty_folder,
-    )
-
-    engine = MandalaEngine(
-        config=config,
-        validator=validator,
-        reporter=reporter,
-        rng=rng,
-        quota=quota,
-        walker=walker,
-    )
+    config = MandalaConfig.from_json(Path(json_path))
+    engine = build_engine(config)
     engine.set_observer(observer)
     engine.start()
 
