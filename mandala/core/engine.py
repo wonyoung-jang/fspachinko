@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
-    from ..config.interfaces import MandalaObserver
-    from .config import MandalaConfig
+    from ..config.config import MandalaConfig
+    from ..utils.interfaces import MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
     from .state import MandalaState
@@ -133,7 +133,7 @@ class MandalaEngine:
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_time) > self.config.progress.stall_time_limit
+        return (perf_counter() - self.state.start_time_file) > self.config.progress.stall_time_limit
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
@@ -141,7 +141,7 @@ class MandalaEngine:
 
     def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
         """Create and write log at the end of folder."""
-        runtime = round(perf_counter() - self.state.start_currdir, 2)
+        runtime = round(perf_counter() - self.state.start_time_currdir, 2)
         copied = f"{count}/{target} files copied"
         create_folders = self.config.folder.create
         none_found = count == 0 and create_folders
@@ -154,7 +154,7 @@ class MandalaEngine:
         )
         status = f"{prefix}: {copied}"
 
-        report = self.reporter.generate_report(dest, status, runtime)
+        report = self.reporter.generate_report(dest, status, runtime, self.state.bytes_in_currdir)
         self._report(report)
         self.reporter.save()
 

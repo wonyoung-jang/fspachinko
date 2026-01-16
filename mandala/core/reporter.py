@@ -7,13 +7,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from ..config.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGABYTE
+from ..utils.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGABYTE
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .config import MandalaConfig
-    from .state import MandalaState
+    from ..config.config import MandalaConfig
 
 
 def convert_byte_to_size(bytes_in_curr_dir: int) -> str:
@@ -28,10 +27,7 @@ class ReportWriter:
     """ReportWriter class for Mandala."""
 
     config: MandalaConfig
-    state: MandalaState
-
     buffer: list[str] = field(default_factory=list)
-
     report_path: Path = field(init=False)
 
     def reset_for_dest(self, dest: Path) -> None:
@@ -43,7 +39,7 @@ class ReportWriter:
         """Add a message to the buffer."""
         self.buffer.append(message)
 
-    def generate_report(self, dest: Path, status: str, runtime: float) -> str:
+    def generate_report(self, dest: Path, status: str, runtime: float, size: int) -> str:
         """Generate the header report string."""
         exts = self.config.extension.text
         keys = self.config.keyword.text
@@ -58,7 +54,7 @@ class ReportWriter:
             f"Destination:      {dest}\n"
             f"Extensions:       {ext_str}\n"
             f"Keywords:         {kw_str}\n"
-            f"Total size:       {convert_byte_to_size(self.state.bytes_in_currdir)}\n"
+            f"Total size:       {convert_byte_to_size(size)}\n"
             f"Total runtime:    {runtime}s\n"
             "------------------------------------------------------------------------\n"
         )

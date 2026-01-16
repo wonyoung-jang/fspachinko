@@ -5,15 +5,15 @@ from random import Random
 
 from cyclopts import App
 
-from ..config.constants import DEFAULT_JSON_CONFIG
-from ..config.interfaces import MandalaObserver
-from ..core.config import MandalaConfig
+from ..config.config import MandalaConfig
 from ..core.engine import MandalaEngine
 from ..core.quota import DiversityQuota
 from ..core.reporter import ReportWriter
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
+from ..utils.constants import DEFAULT_JSON_CONFIG
+from ..utils.interfaces import MandalaObserver
 
 app = App(
     help="Mandala - Random file copier.",
@@ -58,7 +58,7 @@ def run_cli(json_path: str = "") -> None:
 
     config = MandalaConfig.from_json(Path(json_path))
     state = MandalaState()
-    reporter = ReportWriter(config, state)
+    reporter = ReportWriter(config)
     validator = FileValidator(config)
     quota = DiversityQuota(
         root=config.root,

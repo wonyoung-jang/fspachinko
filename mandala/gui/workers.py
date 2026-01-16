@@ -8,16 +8,16 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from ..config.interfaces import MandalaObserver
 from ..core.engine import MandalaEngine
 from ..core.quota import DiversityQuota
 from ..core.reporter import ReportWriter
 from ..core.state import MandalaState
 from ..core.validator import FileValidator
 from ..core.walker import RandomFSWalker
+from ..utils.interfaces import MandalaObserver
 
 if TYPE_CHECKING:
-    from ..core.config import MandalaConfig
+    from ..config.config import MandalaConfig
 
 
 class WorkerSignals(QObject):
@@ -87,7 +87,7 @@ class RunMandalaWorker(QThread):
         cfg = self.config
         state = MandalaState()
         validator = FileValidator(cfg)
-        reporter = ReportWriter(cfg, state)
+        reporter = ReportWriter(cfg)
         quota = DiversityQuota(
             root=cfg.root,
             limit_root_folder=cfg.diversity.root_limit,

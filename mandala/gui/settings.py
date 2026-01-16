@@ -19,8 +19,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..config.constants import DEFAULT_PROFILE_DIR, SettingsEnum
-from ..utilities.utils import strtobool
+from ..utils.constants import DEFAULT_PROFILE_DIR, SettingsEnum
+from ..utils.helpers import strtobool
 
 QCoreApplication.setOrganizationName(SettingsEnum.ORGANIZATION)
 QCoreApplication.setOrganizationDomain(SettingsEnum.DOMAIN)

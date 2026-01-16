@@ -27,17 +27,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.config.schemas import ProgressModel
-
-from ..config.constants import (
-    BYTES_IN_GIGABYTE,
-    BYTES_IN_KILOBYTE,
-    BYTES_IN_MEGABYTE,
-    SECONDS_IN_HOUR,
-    SECONDS_IN_MINUTE,
-    SizeUnitEnum,
-    TimeUnitEnum,
-)
 from ..config.schemas import (
     DiversityModel,
     ExecutionModel,
@@ -46,9 +35,19 @@ from ..config.schemas import (
     FolderModel,
     LimitMinMaxModel,
     ListIncludeExcludeModel,
+    ProgressModel,
     TrashModel,
 )
-from ..utilities.utils import convert_string_to_list
+from ..utils.constants import (
+    BYTES_IN_GIGABYTE,
+    BYTES_IN_KILOBYTE,
+    BYTES_IN_MEGABYTE,
+    SECONDS_IN_HOUR,
+    SECONDS_IN_MINUTE,
+    SizeUnitEnum,
+    TimeUnitEnum,
+)
+from ..utils.helpers import convert_string_to_list
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

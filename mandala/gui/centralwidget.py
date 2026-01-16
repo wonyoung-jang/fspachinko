@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
-from ..config.constants import SizeUnitEnum, TimeUnitEnum
+from ..config.config import MandalaConfig
 from ..config.schemas import MandalaConfigModel
-from ..core.config import MandalaConfig
+from ..utils.constants import SizeUnitEnum, TimeUnitEnum
 from .components import (
     DiversityFilterWidget,
     DualListFilterWidget,

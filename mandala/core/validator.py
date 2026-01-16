@@ -11,8 +11,8 @@ import ffmpeg
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from ..config.config import MandalaConfig
     from ..config.schemas import LimitMinMaxModel
-    from .config import MandalaConfig
 
 
 def _check_filename(part: str, patterns: tuple[re.Pattern, ...], *, include: bool, exclude: bool) -> bool:
@@ -72,24 +72,25 @@ class FileValidator:
 
     def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not _check_range(size, self.config.filesize):
+        cfg = self.config
+        if not _check_range(size, cfg.filesize):
             return False
 
         if not _check_filename(
             part=path.stem,
             patterns=self.key_re_cache,
-            include=self.config.keyword.include,
-            exclude=self.config.keyword.exclude,
+            include=cfg.keyword.include,
+            exclude=cfg.keyword.exclude,
         ):
             return False
 
         if not _check_filename(
             part=path.suffix,
             patterns=self.ext_re_cache,
-            include=self.config.extension.include,
-            exclude=self.config.extension.exclude,
+            include=cfg.extension.include,
+            exclude=cfg.extension.exclude,
         ):
             return False
 
         duration = _get_duration(path)
-        return _check_range(duration, self.config.duration)
+        return _check_range(duration, cfg.duration)
