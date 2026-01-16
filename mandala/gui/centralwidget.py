@@ -51,6 +51,7 @@ class MandalaCentralGui(QWidget):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
+        self.setObjectName("MandalaCentralGui")
         self.setup_components()
         self.setup_layout()
         self.setup_timer()
@@ -79,8 +80,6 @@ class MandalaCentralGui(QWidget):
         # Init execution components
         self.ui_progress = ProgressWidget()
         self.ui_execution = ExecutionWidget()
-        self.ui_execution.start.connect(self._on_start)
-        self.ui_execution.stop.connect(self._on_stop)
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -134,11 +133,9 @@ class MandalaCentralGui(QWidget):
     @Slot(bool)
     def _toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
-        self.ui_execution.btn_stop.setEnabled(not enabled)
         for child in self.findChildren(QWidget):
             if child not in (
                 self.ui_execution,
-                self.ui_execution.btn_stop,
                 self.ui_execution.textbrowser_log,
                 self.ui_progress,
                 self.ui_progress.progbar_total,
@@ -148,7 +145,7 @@ class MandalaCentralGui(QWidget):
                 child.setEnabled(enabled)
 
     @Slot()
-    def _on_start(self) -> None:
+    def on_start(self) -> None:
         """Start the mandala process and disable UI elements."""
         try:
             config = self.get_mandala_config()
@@ -189,7 +186,7 @@ class MandalaCentralGui(QWidget):
         self.worker.start()
 
     @Slot()
-    def _on_stop(self) -> None:
+    def on_stop(self) -> None:
         """Stop the mandala process."""
         if self.worker:
             self.worker.stop()

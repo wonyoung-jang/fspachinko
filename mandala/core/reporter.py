@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -37,7 +36,7 @@ class ReportWriter:
 
     def record_message(self, message: str) -> None:
         """Add a message to the buffer."""
-        self.buffer.append(message)
+        self.buffer.append(f"{message}\n")
 
     def generate_report(self, dest: Path, status: str, runtime: float, size: int) -> str:
         """Generate the header report string."""
@@ -49,7 +48,7 @@ class ReportWriter:
             "\n========================================================================\n"
             f"{status}\n"
             "========================================================================\n\n"
-            f"Date:             {datetime.now(tz=UTC).strftime('%Y-%m-%d %H:%M')}\n"
+            f"Date:             {datetime.now(tz=UTC).strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"Root:             {self.config.root}\n"
             f"Destination:      {dest}\n"
             f"Extensions:       {ext_str}\n"
@@ -61,10 +60,7 @@ class ReportWriter:
 
     def save(self) -> None:
         """Save the report to file."""
-        content = "\n".join(self.buffer) + "\n\n"
-        if self.report_path.exists():
-            with contextlib.suppress(OSError):
-                content += self.report_path.read_text(encoding="utf-8")
-
-        with self.report_path.open("w", encoding="utf-8") as f:
-            f.write(content)
+        mode = "a" if self.report_path.exists() else "w"
+        with self.report_path.open(mode=mode, encoding="utf-8") as f:
+            f.writelines(self.buffer)
+            f.write("\n\n")

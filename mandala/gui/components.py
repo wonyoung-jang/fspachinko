@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Signal, Slot
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -468,10 +468,7 @@ class ProgressWidget(QWidget):
 
 
 class ExecutionWidget(QWidget):
-    """Run/Stop controls, Logs, and Stall Timer."""
-
-    start = Signal()
-    stop = Signal()
+    """Logging and execution widget."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
@@ -492,24 +489,10 @@ class ExecutionWidget(QWidget):
         self.chk_dry_run.setObjectName("execution_dry_run")
         self.chk_dry_run.setStatusTip("If checked, no files will actually be copied.")
 
-        # Controls
-        self.btn_start = QPushButton("Start", flat=True)
-        self.btn_start.setShortcut("Ctrl+R")
-        self.btn_start.setStatusTip("Start the file copying process (Ctrl+R)")
-        self.btn_start.clicked.connect(self.start.emit)
-
-        self.btn_stop = QPushButton("Stop", flat=True)
-        self.btn_stop.setEnabled(False)
-        self.btn_stop.setShortcut("ESC")
-        self.btn_stop.setStatusTip("Stop the file copying process (ESC)")
-        self.btn_stop.clicked.connect(self.stop.emit)
-
         layout = QGridLayout(self)
-        layout.addWidget(self.textbrowser_log, 0, 0, 1, 4)
-        layout.addWidget(self.chk_log_invalid, 1, 0)
-        layout.addWidget(self.chk_dry_run, 1, 1)
-        layout.addWidget(self.btn_start, 1, 2)
-        layout.addWidget(self.btn_stop, 1, 3)
+        layout.addWidget(self.chk_log_invalid, 0, 0)
+        layout.addWidget(self.chk_dry_run, 0, 1)
+        layout.addWidget(self.textbrowser_log, 1, 0, 1, 2)
 
     def get_config(self) -> ExecutionModel:
         """Return clean data for the config."""
