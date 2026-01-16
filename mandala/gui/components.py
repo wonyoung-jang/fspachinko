@@ -361,11 +361,11 @@ class DblRangeFilterWidget(BaseGroupBox):
         self.mapping = mapping
 
         self.min_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
-        self.min_spin.setObjectName(f"{name}_min")
+        self.min_spin.setObjectName(f"{name}_minimum")
         self.min_spin.valueChanged.connect(self.validate_range)
 
         self.max_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
-        self.max_spin.setObjectName(f"{name}_max")
+        self.max_spin.setObjectName(f"{name}_maximum")
         self.max_spin.valueChanged.connect(self.validate_range)
 
         self.combo = QComboBox()
@@ -392,34 +392,30 @@ class DblRangeFilterWidget(BaseGroupBox):
         return LimitMinMaxModel(limit=self.isChecked(), minimum=minimum, maximum=maximum)
 
 
-class RangeFilterWidget(BaseGroupBox):
-    """Handles logic for ranges (Min/Max), e.g., Weight."""
+class DiversityFilterWidget(BaseGroupBox):
+    """Handles logic for diversity range (root/leaf)."""
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
 
-        self.min_spin = QSpinBox(minimum=0, maximum=1_000_000)
-        self.min_spin.setObjectName(f"{name}_min")
+        self.spin_root_limit = QSpinBox(minimum=0, maximum=1_000_000)
+        self.spin_root_limit.setObjectName(f"{name}_root_limit")
 
-        self.max_spin = QSpinBox(minimum=0, maximum=1_000_000)
-        self.max_spin.setObjectName(f"{name}_max")
+        self.spin_leaf_limit = QSpinBox(minimum=0, maximum=1_000_000)
+        self.spin_leaf_limit.setObjectName(f"{name}_leaf_limit")
 
         layout = QFormLayout(self)
-        layout.addRow("Max per Root Folder", self.min_spin)
-        layout.addRow("Max per Subfolder", self.max_spin)
-
-
-class DiversityFilterWidget(RangeFilterWidget):
-    """Handles logic for diversity range (root/leaf)."""
+        layout.addRow("Max per Root Folder", self.spin_root_limit)
+        layout.addRow("Max per Subfolder", self.spin_leaf_limit)
 
     def get_config(self) -> DiversityModel:
         """Return clean data for the config."""
         if not self.isChecked():
             return DiversityModel(root_limit=0, leaf_limit=0)
         return DiversityModel(
-            root_limit=self.min_spin.value(),
-            leaf_limit=self.max_spin.value(),
+            root_limit=self.spin_root_limit.value(),
+            leaf_limit=self.spin_leaf_limit.value(),
         )
 
 
