@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,6 +16,8 @@ from .settings import ProfileManager
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -31,12 +34,12 @@ class MandalaMainWindow(QMainWindow):
         super().__init__()
         self.setCentralWidget(self.ui)
 
-        # GUI
+        logger.info("Initializing GUI")
         self.init_menubar()
         self.init_toolbar()
         self.init_statusbar()
 
-        # Settings/Profiles
+        logger.info("Loading settings")
         self.init_settings()
 
     def init_menubar(self) -> None:
