@@ -79,7 +79,7 @@ class PathSelectorWidget(BaseGroupBox):
         self.combo.addItems(items)
         self.combo.setObjectName(f"{name}_combo")
 
-        title = self.title().lower()
+        title = self.title().casefold()
 
         btn_browse = QPushButton("Browse", flat=True)
         btn_browse.setStatusTip(f"Browse for {title} folder")

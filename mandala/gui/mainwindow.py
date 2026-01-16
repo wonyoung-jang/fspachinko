@@ -61,6 +61,8 @@ class MandalaMainWindow(QMainWindow):
         load_config_action.setStatusTip("Load a GUI profile")
         load_config_action.triggered.connect(self.open_profile_dialog)
 
+        filemenu.addSeparator()
+
         exit_action = filemenu.addAction("Exit")
         exit_action.setShortcut("Ctrl+W")
         exit_action.setStatusTip("Exit the application")

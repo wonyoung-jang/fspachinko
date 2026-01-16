@@ -106,12 +106,12 @@ def strtobool(val: str) -> bool:
 
     Raises ValueError if val is anything else.
     """
-    val_lower = str(val).lower()
+    clean_val = str(val).casefold()
 
-    if val_lower in ("y", "yes", "t", "true", "on", "1"):
+    if clean_val in ("y", "yes", "t", "true", "on", "1"):
         return True
 
-    if val_lower in ("n", "no", "f", "false", "off", "0"):
+    if clean_val in ("n", "no", "f", "false", "off", "0"):
         return False
 
     msg = f"invalid truth value {val!r}"
