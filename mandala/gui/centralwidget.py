@@ -7,17 +7,18 @@ from dataclasses import dataclass, field
 from PySide6.QtCore import QDir, Qt, QTimer, Slot
 from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
+from mandala.utils.constants import SIZE_MAP
+
 from ..config.config import MandalaConfig
 from ..config.schemas import MandalaConfigModel
-from ..utils.constants import SizeUnitEnum, TimeUnitEnum
+from ..utils.constants import TIME_MAP, SizeUnitEnum, TimeUnitEnum
 from .components import (
+    DblRangeFilterWidget,
     DiversityFilterWidget,
     DualListFilterWidget,
-    DurationFilterWidget,
     ExecutionWidget,
     FileCountWidget,
     FilenameSettingsWidget,
-    FilesizeFilterWidget,
     FolderCreatorWidget,
     PathSelectorWidget,
     ProgressWidget,
@@ -40,8 +41,8 @@ class MandalaCentralGui(QWidget):
     ui_trash: TrashSettingsWidget = field(init=False)
     ui_keywords: DualListFilterWidget = field(init=False)
     ui_extensions: DualListFilterWidget = field(init=False)
-    ui_filesize: FilesizeFilterWidget = field(init=False)
-    ui_duration: DurationFilterWidget = field(init=False)
+    ui_filesize: DblRangeFilterWidget = field(init=False)
+    ui_duration: DblRangeFilterWidget = field(init=False)
     ui_weight: DiversityFilterWidget = field(init=False)
     ui_progress: ProgressWidget = field(init=False)
     ui_execution: ExecutionWidget = field(init=False)
@@ -67,8 +68,12 @@ class MandalaCentralGui(QWidget):
         # Init filter components
         self.ui_keywords = DualListFilterWidget("Keywords", "keyword")
         self.ui_extensions = DualListFilterWidget("Extensions", "extension")
-        self.ui_filesize = FilesizeFilterWidget("Size", "filesize", suffix_options=[s.value for s in SizeUnitEnum])
-        self.ui_duration = DurationFilterWidget("Duration", "duration", suffix_options=[s.value for s in TimeUnitEnum])
+        self.ui_filesize = DblRangeFilterWidget(
+            "Size", "filesize", suffix_options=[s.value for s in SizeUnitEnum], mapping=SIZE_MAP
+        )
+        self.ui_duration = DblRangeFilterWidget(
+            "Duration", "duration", suffix_options=[s.value for s in TimeUnitEnum], mapping=TIME_MAP
+        )
         self.ui_weight = DiversityFilterWidget("Diversity", "diversity")
 
         # Init execution components

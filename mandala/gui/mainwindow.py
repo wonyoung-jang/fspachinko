@@ -38,8 +38,6 @@ class MandalaMainWindow(QMainWindow):
         self.profiles = ProfileManager()
         self.init_settings()
 
-        self.ui.ui_execution.signal_close.connect(self.close)
-
         self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
 
     def init_menubar(self) -> None:
@@ -62,6 +60,11 @@ class MandalaMainWindow(QMainWindow):
         load_config_action.setShortcut("Ctrl+O")
         load_config_action.setStatusTip("Load a GUI profile")
         load_config_action.triggered.connect(self.open_profile_dialog)
+
+        exit_action = filemenu.addAction("Exit")
+        exit_action.setShortcut("Ctrl+W")
+        exit_action.setStatusTip("Exit the application")
+        exit_action.triggered.connect(self.close)
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""

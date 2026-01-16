@@ -89,3 +89,8 @@ def get_status_header(*, success: bool, stopped: bool, none_found: bool, timeout
     elif timeout:
         prefix = "TIMED OUT"
     return prefix
+
+
+def get_multiplier(unit: str, mapping: dict[str, int]) -> int:
+    """Get the multiplier for a given unit from the provided map."""
+    return mapping.get(unit, 1)

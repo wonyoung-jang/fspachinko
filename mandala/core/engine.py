@@ -55,7 +55,7 @@ class MandalaEngine:
     quota: DiversityQuota
     walker: RandomFSWalker
     observer: MandalaObserver = field(init=False)
-    state: MandalaState = field(default_factory=MandalaState)
+    _state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
 
     def set_observer(self, observer: MandalaObserver) -> None:
@@ -68,37 +68,42 @@ class MandalaEngine:
 
     def start(self) -> None:
         """Run the main file copying process."""
-        clear_history = not self.config.folder.unique
-
-        for target in self._generate_folder_target_counts():
+        for target, dest in self._generate_target_and_dest():
             if self._request_stop:
                 break
 
-            self.state.reset_for_folder()
-            self.quota.prepare_for_batch(clear_history=clear_history)
-            self.process_folder(target)
+            self.process_folder(target, dest)
 
         self.observer.on_finished()
 
-    def process_folder(self, target: int) -> None:
-        """Process a single folder for file copying."""
-        dest_dir = create_dest_folder(self.config.folder, self.config.dest)
-        self.reporter.reset_for_dest(dest_dir)
-        self.observer.on_progress(target)
+    def process_folder(self, target: int, dest: Path) -> None:
+        """Run processing for a single folder."""
+        self._prep_folder(target, dest)
+        copied = self._copy_folder(target, dest)
+        self._complete_folder(dest, copied, target)
 
-        count = 0
+    def _prep_folder(self, target: int, dest: Path) -> None:
+        """Prepare state for processing a new folder."""
+        self.reporter.reset_for_dest(dest)
+        self.observer.on_progress(target)
+        self.quota.prepare_for_batch()
+        self._state.reset_for_folder()
+
+    def _copy_folder(self, target: int, dest: Path) -> int:
+        """Process a single folder for file copying."""
+        copied = 0
 
         for candidate in self.walker.generate_candidates():
-            if self._is_stop_condition() or candidate is None or count >= target:
+            if self._is_stop_condition() or candidate is None or copied >= target:
                 break
 
             path, size = candidate.path, candidate.size
 
-            if self.validator.is_valid(path, size) and self._try_copy(path, dest_dir, count):
-                count += 1
-                self.state.update_success(size)
+            if self.validator.is_valid(path, size) and self._try_copy(path, dest, copied):
+                copied += 1
+                self._state.update_success(size)
                 self.quota.register_success(path)
-                self.observer.on_count(count)
+                self.observer.on_count(copied)
                 self.observer.on_time()
                 trash_path(path, condition=self.config.trash.source_file)
             else:
@@ -106,8 +111,12 @@ class MandalaEngine:
                     self._report(msg=f"INVALID: {path.relative_to(self.config.root)}")
                 trash_path(path, condition=self.config.trash.invalid_file)
 
+        return copied
+
+    def _complete_folder(self, dest: Path, copied: int, target: int) -> None:
+        """Post-process actions after folder processing."""
         self.observer.on_count_total()
-        self._finalize_folder(dest_dir, count, target)
+        self._finalize_folder(dest, copied, target)
 
     def _try_copy(self, chosen: Path, dest: Path, count: int) -> bool:
         """Attempt to copy a file and return success status."""
@@ -137,23 +146,24 @@ class MandalaEngine:
         self.reporter.record_message(msg)
         self.observer.on_log(msg)
 
-    def _generate_folder_target_counts(self) -> Iterator[int]:
+    def _generate_target_and_dest(self) -> Iterator[tuple[int, Path]]:
         """Prepare target file counts for each folder."""
         folder_count = self.config.folder.count
-        file_count_model = self.config.filecount
+        filecount_model = self.config.filecount
         self.observer.on_progress_total(folder_count)
-        for _ in range(folder_count):
-            if file_count_model.is_rand_count:
-                yield self.rng.randint(
-                    file_count_model.count_min_rand,
-                    file_count_model.count_max_rand,
-                )
-            else:
-                yield file_count_model.count
+
+        fcount = filecount_model.count
+        is_rand = filecount_model.is_rand_count
+        rmin = filecount_model.count_min_rand
+        rmax = filecount_model.count_max_rand
+        counts = [self.rng.randint(rmin, rmax) if is_rand else fcount for _ in range(folder_count)]
+        folders = [create_dest_folder(self.config.folder, self.config.dest) for _ in range(folder_count)]
+
+        yield from zip(counts, folders, strict=True)
 
     def _is_stall_timeout(self) -> bool:
         """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self.state.start_time_file) > self.config.progress.stall_time_limit
+        return (perf_counter() - self._state.start_time_file) > self.config.progress.stall_time_limit
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
@@ -161,7 +171,7 @@ class MandalaEngine:
 
     def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
         """Create and write log at the end of folder."""
-        runtime = round(perf_counter() - self.state.start_time_currdir, 2)
+        runtime = round(perf_counter() - self._state.start_time_currdir, 2)
         copied = f"{count}/{target} files copied"
         create_folders = self.config.folder.create
         none_found = count == 0 and create_folders
@@ -174,7 +184,7 @@ class MandalaEngine:
         )
         status = f"{prefix}: {copied}"
 
-        report = self.reporter.generate_report(dest, status, runtime, self.state.bytes_in_currdir)
+        report = self.reporter.generate_report(dest, status, runtime, self._state.bytes_in_currdir)
         self._report(report)
         self.reporter.save()
 

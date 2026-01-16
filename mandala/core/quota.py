@@ -11,6 +11,7 @@ class DiversityQuota:
 
     root: Path
 
+    unique_folders: bool = False
     limit_root_folder: int = 0
     limit_leaf_folder: int = 0
 
@@ -18,11 +19,11 @@ class DiversityQuota:
     locked_folders: set[Path] = field(default_factory=set)
     folder_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
 
-    def prepare_for_batch(self, *, clear_history: bool) -> None:
+    def prepare_for_batch(self) -> None:
         """Reset batch-specific counters, optionally keeping file history."""
         self.folder_counts.clear()
         self.locked_folders.clear()
-        if clear_history:
+        if not self.unique_folders:
             self.locked_files.clear()
 
     def all_locked(self) -> bool:

@@ -88,6 +88,7 @@ class RunMandalaWorker(QThread):
         reporter = ReportWriter(cfg)
         quota = DiversityQuota(
             root=cfg.root,
+            unique_folders=cfg.folder.unique,
             limit_root_folder=cfg.diversity.root_limit,
             limit_leaf_folder=cfg.diversity.leaf_limit,
         )

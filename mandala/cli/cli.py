@@ -60,6 +60,7 @@ def run_cli(json_path: str = "") -> None:
     validator = FileValidator(config)
     quota = DiversityQuota(
         root=config.root,
+        unique_folders=config.folder.unique,
         limit_root_folder=config.diversity.root_limit,
         limit_leaf_folder=config.diversity.leaf_limit,
     )

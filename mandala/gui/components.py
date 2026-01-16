@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mandala.core.helpers import get_multiplier
+
 from ..config.schemas import (
     DiversityModel,
     ExecutionModel,
@@ -37,15 +39,6 @@ from ..config.schemas import (
     ListIncludeExcludeModel,
     ProgressModel,
     TrashModel,
-)
-from ..utils.constants import (
-    BYTES_IN_GIGABYTE,
-    BYTES_IN_KILOBYTE,
-    BYTES_IN_MEGABYTE,
-    SECONDS_IN_HOUR,
-    SECONDS_IN_MINUTE,
-    SizeUnitEnum,
-    TimeUnitEnum,
 )
 from ..utils.helpers import convert_string_to_list
 
@@ -354,9 +347,18 @@ class DualListFilterWidget(BaseGroupBox):
 class DblRangeFilterWidget(BaseGroupBox):
     """Handles logic for ranges (Min/Max), e.g., Size or Duration."""
 
-    def __init__(self, title: str, name: str, suffix_options: Sequence[str], parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        title: str,
+        name: str,
+        suffix_options: Sequence[str],
+        mapping: dict[str, int],
+        parent: QWidget | None = None,
+    ) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
+
+        self.mapping = mapping
 
         self.min_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
         self.min_spin.setObjectName(f"{name}_min")
@@ -378,61 +380,16 @@ class DblRangeFilterWidget(BaseGroupBox):
     @Slot()
     def validate_range(self) -> None:
         """Auto-corrects if Min > Max."""
-        if self.min_spin.value() > self.max_spin.value():
-            min_spin_val = self.min_spin.value()
-            self.min_spin.setValue(self.max_spin.value())
-            self.max_spin.setValue(min_spin_val)
-
-
-class FilesizeFilterWidget(DblRangeFilterWidget):
-    """Handles logic for Size range (Min/Max)."""
+        lo, hi = self.min_spin.value(), self.max_spin.value()
+        if lo > hi:
+            self.min_spin.setValue(hi)
+            self.max_spin.setValue(lo)
 
     def get_config(self) -> LimitMinMaxModel:
         """Return clean data for the config."""
-        unit = self.combo.currentText()
-        min_size, max_size = self.min_spin.value(), self.max_spin.value()
-        match unit:
-            case SizeUnitEnum.BYTES:
-                pass
-            case SizeUnitEnum.KILOBYTES:
-                min_size *= BYTES_IN_KILOBYTE
-                max_size *= BYTES_IN_KILOBYTE
-            case SizeUnitEnum.MEGABYTES:
-                min_size *= BYTES_IN_MEGABYTE
-                max_size *= BYTES_IN_MEGABYTE
-            case SizeUnitEnum.GIGABYTES:
-                min_size *= BYTES_IN_GIGABYTE
-                max_size *= BYTES_IN_GIGABYTE
-
-        return LimitMinMaxModel(
-            limit=self.isChecked(),
-            minimum=min_size,
-            maximum=max_size,
-        )
-
-
-class DurationFilterWidget(DblRangeFilterWidget):
-    """Handles logic for Duration range (Min/Max)."""
-
-    def get_config(self) -> LimitMinMaxModel:
-        """Return clean data for the config."""
-        unit = self.combo.currentText()
-        min_duration, max_duration = self.min_spin.value(), self.max_spin.value()
-        match unit:
-            case TimeUnitEnum.SECONDS:
-                pass
-            case TimeUnitEnum.MINUTES:
-                min_duration *= SECONDS_IN_MINUTE
-                max_duration *= SECONDS_IN_MINUTE
-            case TimeUnitEnum.HOURS:
-                min_duration *= SECONDS_IN_HOUR
-                max_duration *= SECONDS_IN_HOUR
-
-        return LimitMinMaxModel(
-            limit=self.isChecked(),
-            minimum=min_duration,
-            maximum=max_duration,
-        )
+        mult = get_multiplier(self.combo.currentText(), self.mapping)
+        minimum, maximum = self.min_spin.value() * mult, self.max_spin.value() * mult
+        return LimitMinMaxModel(limit=self.isChecked(), minimum=minimum, maximum=maximum)
 
 
 class RangeFilterWidget(BaseGroupBox):
@@ -519,7 +476,6 @@ class ExecutionWidget(QWidget):
 
     start = Signal()
     stop = Signal()
-    signal_close = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the execution widget."""
@@ -544,27 +500,20 @@ class ExecutionWidget(QWidget):
         self.btn_start = QPushButton("Start", flat=True)
         self.btn_start.setShortcut("Ctrl+R")
         self.btn_start.setStatusTip("Start the file copying process (Ctrl+R)")
+        self.btn_start.clicked.connect(self.start.emit)
 
         self.btn_stop = QPushButton("Stop", flat=True)
         self.btn_stop.setEnabled(False)
         self.btn_stop.setShortcut("ESC")
         self.btn_stop.setStatusTip("Stop the file copying process (ESC)")
-
-        self.btn_close = QPushButton("Close", flat=True)
-        self.btn_close.setShortcut("Ctrl+W")
-        self.btn_close.setStatusTip("Close the application (Ctrl+W)")
-
-        self.btn_start.clicked.connect(self.start.emit)
         self.btn_stop.clicked.connect(self.stop.emit)
-        self.btn_close.clicked.connect(self.signal_close.emit)
 
         layout = QGridLayout(self)
-        layout.addWidget(self.chk_log_invalid, 2, 0)
-        layout.addWidget(self.chk_dry_run, 2, 1)
-        layout.addWidget(self.textbrowser_log, 3, 0, 1, 2)
-        layout.addWidget(self.btn_start, 4, 0)
-        layout.addWidget(self.btn_stop, 4, 1)
-        layout.addWidget(self.btn_close, 5, 0, 1, 2)
+        layout.addWidget(self.textbrowser_log, 0, 0, 1, 4)
+        layout.addWidget(self.chk_log_invalid, 1, 0)
+        layout.addWidget(self.chk_dry_run, 1, 1)
+        layout.addWidget(self.btn_start, 1, 2)
+        layout.addWidget(self.btn_stop, 1, 3)
 
     def get_config(self) -> ExecutionModel:
         """Return clean data for the config."""
