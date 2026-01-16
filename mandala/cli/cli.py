@@ -84,7 +84,6 @@ def run_cli(json_path: str = "") -> None:
         state=state,
         validator=validator,
         reporter=reporter,
-        stop_requested=False,
         rng=rng,
         quota=quota,
         walker=walker,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from random import Random
 from typing import TYPE_CHECKING
 
@@ -36,7 +36,7 @@ class WorkerSignals(QObject):
 class GuiObserver(MandalaObserver):
     """Qt signal observer implementation for Mandala."""
 
-    signals: WorkerSignals = field(default_factory=WorkerSignals)
+    signals: WorkerSignals
 
     def on_progress_total(self, maximum: int) -> None:
         """Emit total progress signal."""
@@ -71,24 +71,27 @@ class GuiObserver(MandalaObserver):
 class RunMandalaWorker(QThread):
     """Worker thread for running Mandala."""
 
-    config: InitVar[MandalaConfig]
+    config: MandalaConfig
     engine: MandalaEngine = field(init=False)
-    observer: GuiObserver = field(default_factory=GuiObserver)
+    signals: WorkerSignals = field(init=False)
+    observer: GuiObserver = field(init=False)
 
-    def __post_init__(self, config: MandalaConfig) -> None:
+    def __post_init__(self) -> None:
         """Initialize the worker thread."""
         super().__init__()
-        self.init_engine(config)
+        self.signals = WorkerSignals()
+        self.observer = GuiObserver(signals=self.signals)
 
-    def init_engine(self, config: MandalaConfig) -> None:
+    def init_engine(self) -> None:
         """Initialize the Mandala engine."""
+        cfg = self.config
         state = MandalaState()
-        validator = FileValidator(config)
-        reporter = ReportWriter(config, state)
+        validator = FileValidator(cfg)
+        reporter = ReportWriter(cfg, state)
         quota = DiversityQuota(
-            root=config.root,
-            limit_root_folder=config.diversity.root_limit,
-            limit_leaf_folder=config.diversity.leaf_limit,
+            root=cfg.root,
+            limit_root_folder=cfg.diversity.root_limit,
+            limit_leaf_folder=cfg.diversity.leaf_limit,
         )
 
         sys_rand = Random()
@@ -96,18 +99,17 @@ class RunMandalaWorker(QThread):
         rng = Random(rng_seed)
 
         walker = RandomFSWalker(
-            root=config.root,
+            root=cfg.root,
             rng=rng,
             quota=quota,
-            trash_empty_folders=config.trash.empty_folder,
+            trash_empty_folders=cfg.trash.empty_folder,
         )
 
         self.engine = MandalaEngine(
-            config=config,
+            config=cfg,
             state=state,
             validator=validator,
             reporter=reporter,
-            stop_requested=False,
             rng=rng,
             quota=quota,
             walker=walker,
@@ -116,6 +118,7 @@ class RunMandalaWorker(QThread):
 
     def run(self) -> None:
         """Run the Mandala process."""
+        self.init_engine()
         self.engine.start()
 
     def stop(self) -> None:

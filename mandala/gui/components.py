@@ -459,6 +459,8 @@ class DiversityFilterWidget(RangeFilterWidget):
 
     def get_config(self) -> DiversityModel:
         """Return clean data for the config."""
+        if not self.isChecked():
+            return DiversityModel(root_limit=0, leaf_limit=0)
         return DiversityModel(
             root_limit=self.min_spin.value(),
             leaf_limit=self.max_spin.value(),

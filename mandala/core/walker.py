@@ -46,23 +46,27 @@ class RandomFSWalker:
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
         while True:
-            if result := self.recursive_pick(self.root):
-                yield result
-            else:
+            if not (candidate := self.recursive_pick(self.root)):
                 break
+            yield candidate
 
     def recursive_pick(self, current: Path) -> FSEntry | None:
         """Recursively descend directories finding a valid file."""
-        entries = self._get_entries(current)
-        if not entries:
+        if not (entries := self._get_entries(current)):
+            self.quota.lock_folder(current)
+            trash_path(current, condition=self.trash_empty_folders)
+            return None
+
+        available = tuple(e for e in entries if self.quota.is_available(e.path, is_file=e.is_file))
+        if not available:
             self.quota.lock_folder(current)
             return None
 
-        indices = list(range(len(entries)))
+        indices = list(range(len(available)))
         self.rng.shuffle(indices)
 
         for i in indices:
-            entry = entries[i]
+            entry = available[i]
 
             if entry.is_file:
                 self.quota.lock_file(entry.path)
@@ -73,21 +77,15 @@ class RandomFSWalker:
 
         return None
 
-    def _get_entries(self, path: Path) -> tuple[FSEntry, ...] | None:
+    def _get_entries(self, current: Path) -> tuple[FSEntry, ...]:
         """Retrieve and cache directory entries for a given path."""
-        if path not in self.cache:
-            try:
-                entries = ()
-                with os.scandir(path) as it:
-                    entries = tuple(FSEntry.from_scandir(e) for e in it)
-                self.cache[path] = entries
-            except (PermissionError, OSError):
-                self.cache[path] = ()
-                return None
+        if current in self.cache:
+            return self.cache[current]
 
-        if not (items := self.cache[path]):
-            trash_path(path, condition=self.trash_empty_folders)
-            return None
+        try:
+            with os.scandir(current) as it:
+                self.cache[current] = tuple(FSEntry.from_scandir(e) for e in it)
+        except (PermissionError, OSError):
+            self.cache[current] = ()
 
-        available = tuple(e for e in items if self.quota.is_available(e.path))
-        return available if available else None
+        return self.cache[current]
