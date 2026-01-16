@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Slot
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
+from .actions import MandalaActions
 from .centralwidget import MandalaCentralGui
 from .settings import ProfileManager
 
@@ -21,78 +21,66 @@ if TYPE_CHECKING:
 class MandalaMainWindow(QMainWindow):
     """Main application window for Mandala."""
 
-    profiles: ProfileManager = field(init=False)
+    ui: MandalaCentralGui = field(default_factory=MandalaCentralGui)
+    profiles: ProfileManager = field(default_factory=ProfileManager)
     qsettings: QSettings = field(default_factory=QSettings)
+    _actions: MandalaActions = field(default_factory=MandalaActions)
 
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
+        self.setCentralWidget(self.ui)
 
-        ui = MandalaCentralGui()
-        self.setCentralWidget(ui)
-
+        # GUI
+        self.init_menubar()
         self.init_toolbar()
-        self.init_menubar(ui)
         self.init_statusbar()
 
-        self.profiles = ProfileManager()
+        # Settings/Profiles
         self.init_settings()
 
-        self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
-
-    def init_menubar(self, ui: MandalaCentralGui) -> None:
+    def init_menubar(self) -> None:
         """Initialize the menu bar."""
         menubar = self.menuBar()
         menubar.setObjectName("MandalaMenuBar")
 
-        file_menu = menubar.addMenu("File")
-
-        save_config_action = file_menu.addAction("Save Profile")
-        save_config_action.setShortcut("Ctrl+S")
-        save_config_action.setStatusTip("Save the current GUI profile")
-        save_config_action.triggered.connect(self.save_profile)
-
-        save_config_as_action = file_menu.addAction("Save Profile As")
-        save_config_as_action.setShortcut("Ctrl+Shift+S")
-        save_config_as_action.setStatusTip("Save the current GUI profile as...")
-        save_config_as_action.triggered.connect(self.save_profile_as_dialog)
-
-        load_config_action = file_menu.addAction("Load Profile")
-        load_config_action.setShortcut("Ctrl+O")
-        load_config_action.setStatusTip("Load a GUI profile")
-        load_config_action.triggered.connect(self.open_profile_dialog)
-
+        file_menu = menubar.addMenu("&File")
+        file_menu.setObjectName("MandalaFileMenu")
+        file_actions = self._actions.file
+        file_menu.addAction(file_actions.save)
+        file_menu.addAction(file_actions.save_as)
+        file_menu.addAction(file_actions.load)
         file_menu.addSeparator()
-
-        autosave_config_action = file_menu.addAction("Autosave Profile")
-        autosave_config_action.setObjectName("AutoSaveProfile")
-        autosave_config_action.setCheckable(True)
-        autosave_config_action.setChecked(True)
-
+        file_menu.addAction(file_actions.autosave)
         file_menu.addSeparator()
+        file_menu.addAction(file_actions.exit)
+        file_actions.save.triggered.connect(self.save_profile)
+        file_actions.save_as.triggered.connect(self.save_profile_as_dialog)
+        file_actions.load.triggered.connect(self.open_profile_dialog)
+        file_actions.exit.triggered.connect(self.close)
 
-        exit_action = file_menu.addAction("Exit")
-        exit_action.setShortcut("Ctrl+W")
-        exit_action.setStatusTip("Exit the application (Ctrl+W)")
-        exit_action.triggered.connect(self.close)
-
-        run_menu = menubar.addMenu("Run")
-
-        start_action = run_menu.addAction("Start")
-        start_action.setShortcut("Ctrl+R")
-        start_action.setStatusTip("Start the file copying process (Ctrl+R)")
-        start_action.triggered.connect(ui.on_start)
-
-        stop_action = run_menu.addAction("Stop")
-        stop_action.setShortcut("Ctrl+T")
-        stop_action.setStatusTip("Stop the file copying process (Ctrl+T)")
-        stop_action.triggered.connect(ui.on_stop)
+        run_menu = menubar.addMenu("&Run")
+        run_menu.setObjectName("MandalaRunMenu")
+        run_actions = self._actions.run
+        run_menu.addAction(run_actions.start)
+        run_menu.addAction(run_actions.stop)
+        run_actions.start.triggered.connect(self.ui.on_start)
+        run_actions.stop.triggered.connect(self.ui.on_stop)
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
         toolbar = QToolBar("MandalaToolBar")
         toolbar.setObjectName("MandalaToolBar")
-        self.removeToolBar(toolbar)
+        toolbar.addAction(self._actions.file.save)
+        toolbar.addAction(self._actions.file.save_as)
+        toolbar.addAction(self._actions.file.load)
+        toolbar.addAction(self._actions.file.autosave)
+        toolbar.addSeparator()
+        toolbar.addAction(self._actions.run.start)
+        toolbar.addAction(self._actions.run.stop)
+        toolbar.addSeparator()
+        toolbar.addAction(self._actions.file.exit)
+        self.addToolBar(toolbar)
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
@@ -106,6 +94,7 @@ class MandalaMainWindow(QMainWindow):
         self.restoreState(self.qsettings.value("state"))
         self.profiles.set_current(str(self.qsettings.value("profile", "")))
         self.profiles.open_profile(self)
+        self.update_window_title()
 
     @Slot()
     def save_profile(self) -> None:
@@ -121,7 +110,7 @@ class MandalaMainWindow(QMainWindow):
         if filename:
             self.profiles.set_current(filename)
             self.save_profile()
-            self.setWindowTitle(f"{Path(filename).stem} - Mandala: Copy random files")
+            self.update_window_title()
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -132,7 +121,11 @@ class MandalaMainWindow(QMainWindow):
         if filename:
             self.profiles.set_current(filename)
             self.profiles.open_profile(self)
-            self.setWindowTitle(f"{Path(filename).stem} - Mandala: Copy random files")
+            self.update_window_title()
+
+    def update_window_title(self) -> None:
+        """Update the window title based on the current profile."""
+        self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""
@@ -143,6 +136,6 @@ class MandalaMainWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
         self.save_settings()
-        if self.menuBar().findChild(QAction, "AutoSaveProfile").isChecked():  # ty:ignore[possibly-missing-attribute]
+        if self._actions.file.autosave.isChecked():
             self.save_profile()
         super().closeEvent(event)
