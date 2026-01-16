@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..core.helpers import trash_path
+from ..utils.helpers import trash_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

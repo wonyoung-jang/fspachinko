@@ -50,6 +50,13 @@ def _get_duration(path: Path) -> float:
         return 0.0
 
 
+def _compile_patterns(items: tuple[str, ...], pattern_fmt: str) -> tuple[re.Pattern, ...]:
+    """Compile a list of regex patterns."""
+    if not items:
+        return ()
+    return tuple(re.compile(pattern_fmt.format(i), re.IGNORECASE) for i in items)
+
+
 @dataclass(slots=True)
 class FileValidator:
     """Class for validating files based on configuration."""
@@ -64,11 +71,8 @@ class FileValidator:
 
     def _init_regexes(self) -> None:
         """Pre-build and cache regex patterns for extensions and keywords."""
-        if keys := self.config.keyword.text:
-            self.key_re_cache = tuple(re.compile(rf"(.*){k}(.*)", re.IGNORECASE) for k in keys)
-
-        if exts := self.config.extension.text:
-            self.ext_re_cache = tuple(re.compile(rf"\.{e}$", re.IGNORECASE) for e in exts)
+        self.key_re_cache = _compile_patterns(self.config.keyword.text, r"(.*){}(.*)")
+        self.ext_re_cache = _compile_patterns(self.config.extension.text, r"\.{}$")
 
     def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -76,21 +80,13 @@ class FileValidator:
         if not _check_range(size, cfg.filesize):
             return False
 
-        if not _check_filename(
-            part=path.stem,
-            patterns=self.key_re_cache,
-            include=cfg.keyword.include,
-            exclude=cfg.keyword.exclude,
-        ):
-            return False
-
-        if not _check_filename(
-            part=path.suffix,
-            patterns=self.ext_re_cache,
-            include=cfg.extension.include,
-            exclude=cfg.extension.exclude,
-        ):
-            return False
+        checks = (
+            (path.stem, self.key_re_cache, cfg.keyword),
+            (path.suffix, self.ext_re_cache, cfg.extension),
+        )
+        for part, patterns, model in checks:
+            if not _check_filename(part=part, patterns=patterns, include=model.include, exclude=model.exclude):
+                return False
 
         duration = _get_duration(path)
         return _check_range(duration, cfg.duration)

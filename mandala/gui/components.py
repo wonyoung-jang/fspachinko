@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.core.helpers import get_multiplier
+from mandala.utils.helpers import get_multiplier
 
 from ..config.schemas import (
     DiversityModel,

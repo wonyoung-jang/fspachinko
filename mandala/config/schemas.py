@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class FilecountModel(BaseModel):
@@ -44,7 +44,7 @@ class ListIncludeExcludeModel(BaseModel):
 
     include: bool = False
     exclude: bool = False
-    text: list[str] = Field(default_factory=list)
+    text: tuple[str, ...] = ()
 
 
 class LimitMinMaxModel(BaseModel):

@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from .helpers import calc_dest_file_path, create_dest_folder, get_status_header, trash_path
+from ..utils.helpers import calc_dest_file_path, create_dest_folder, get_status_header, trash_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

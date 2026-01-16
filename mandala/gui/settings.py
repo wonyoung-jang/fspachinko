@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import (
@@ -21,6 +21,9 @@ from PySide6.QtWidgets import (
 
 from ..utils.constants import DEFAULT_PROFILE_DIR, SettingsEnum
 from ..utils.helpers import strtobool
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 QCoreApplication.setOrganizationName(SettingsEnum.ORGANIZATION)
 QCoreApplication.setOrganizationDomain(SettingsEnum.DOMAIN)
@@ -87,13 +90,16 @@ class ProfileManager:
         """Get the full path for a given profile name."""
         return self.profile_dir / f"{self.current_profile}"
 
+    def _iter_valid_widgets(self, parent: QWidget) -> Iterator[tuple[str, QWidget]]:
+        """Iterate over valid child widgets."""
+        for child in parent.findChildren(QWidget):
+            if (key := child.objectName()) and not key.startswith("qt_"):
+                yield key, child
+
     def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
         data = {}
-        for child in parent.findChildren(QWidget):
-            if not (key := child.objectName()) or key.startswith("qt_"):
-                continue
-
+        for key, child in self._iter_valid_widgets(parent):
             if (val := get_widget_value(child)) is not None:
                 data[key] = val
 
@@ -115,10 +121,7 @@ class ProfileManager:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
-        for child in parent.findChildren(QWidget):
-            if not (key := child.objectName()) or key.startswith("qt_"):
-                continue
-
+        for key, child in self._iter_valid_widgets(parent):
             if isinstance(child, QComboBox) and (items := data.get(f"{key}_items")) and isinstance(items, list | tuple):
                 child.clear()
                 child.addItems([str(i) for i in items])
