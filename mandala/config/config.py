@@ -14,7 +14,7 @@ from .schemas import (
     LimitMinMaxModel,
     ListIncludeExcludeModel,
     MandalaConfigModel,
-    TrashModel,
+    TransferModeModel,
 )
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class MandalaConfig:
     filecount: FilecountModel
     folder: FolderModel
     filename: FilenameModel
-    trash: TrashModel
+    transfermode: TransferModeModel
     keyword: ListIncludeExcludeModel
     extension: ListIncludeExcludeModel
     filesize: LimitMinMaxModel

@@ -31,11 +31,11 @@ class FilenameModel(BaseModel):
     rename_to: str = ""
 
 
-class TrashModel(BaseModel):
-    """Model for trash configuration."""
+class TransferModeModel(BaseModel):
+    """Model for mode configuration."""
 
-    empty_folder: bool = False
-    source_file: bool = False
+    trash_empty_folder: bool = False
+    move_files: bool = False
 
 
 class ListIncludeExcludeModel(BaseModel):
@@ -74,7 +74,7 @@ class MandalaConfigModel(BaseModel):
     filecount: FilecountModel
     folder: FolderModel
     filename: FilenameModel
-    trash: TrashModel
+    transfermode: TransferModeModel
     keyword: ListIncludeExcludeModel
     extension: ListIncludeExcludeModel
     filesize: LimitMinMaxModel

@@ -23,7 +23,7 @@ from .components import (
     FolderCreatorWidget,
     PathSelectorWidget,
     ProgressWidget,
-    TrashSettingsWidget,
+    TransferModeWidget,
 )
 from .workers import RunMandalaWorker
 
@@ -37,15 +37,15 @@ class MandalaCentralGui(QWidget):
     timer: QTimer = field(init=False)
     ui_root: PathSelectorWidget = field(init=False)
     ui_dest: PathSelectorWidget = field(init=False)
-    ui_file_count: FileCountWidget = field(init=False)
+    ui_filecount: FileCountWidget = field(init=False)
     ui_folders: FolderCreatorWidget = field(init=False)
     ui_filenames: FilenameSettingsWidget = field(init=False)
-    ui_trash: TrashSettingsWidget = field(init=False)
+    ui_transfermode: TransferModeWidget = field(init=False)
     ui_keywords: DualListFilterWidget = field(init=False)
     ui_extensions: DualListFilterWidget = field(init=False)
     ui_filesize: DblRangeFilterWidget = field(init=False)
     ui_duration: DblRangeFilterWidget = field(init=False)
-    ui_weight: DiversityFilterWidget = field(init=False)
+    ui_diversity: DiversityFilterWidget = field(init=False)
     ui_progress: ProgressWidget = field(init=False)
     ui_execution: ExecutionWidget = field(init=False)
     _window_title_before_start: str = field(init=False)
@@ -63,10 +63,10 @@ class MandalaCentralGui(QWidget):
         # Init setup components
         self.ui_root = PathSelectorWidget("Root", "root", items=[QDir.rootPath()])
         self.ui_dest = PathSelectorWidget("Destination", "dest", items=[QDir.homePath()])
-        self.ui_file_count = FileCountWidget("File Count", "filecount")
+        self.ui_filecount = FileCountWidget("File Count", "filecount")
         self.ui_folders = FolderCreatorWidget("Create Folders", "folder")
         self.ui_filenames = FilenameSettingsWidget("Filenames", "filename")
-        self.ui_trash = TrashSettingsWidget("Trash", "trash")
+        self.ui_transfermode = TransferModeWidget("Transfer Mode", "transfermode")
 
         # Init filter components
         self.ui_keywords = DualListFilterWidget("Keywords", "keyword")
@@ -77,7 +77,7 @@ class MandalaCentralGui(QWidget):
         self.ui_duration = DblRangeFilterWidget(
             "Duration", "duration", suffix_options=[s.value for s in TimeUnitEnum], mapping=TIME_MAP
         )
-        self.ui_weight = DiversityFilterWidget("Diversity", "diversity")
+        self.ui_diversity = DiversityFilterWidget("Diversity", "diversity")
 
         # Init execution components
         self.ui_progress = ProgressWidget()
@@ -90,10 +90,10 @@ class MandalaCentralGui(QWidget):
         layout.addWidget(self.ui_dest)
 
         output_layout = QSplitter()
-        output_layout.addWidget(self.ui_file_count)
         output_layout.addWidget(self.ui_folders)
+        output_layout.addWidget(self.ui_filecount)
         output_layout.addWidget(self.ui_filenames)
-        output_layout.addWidget(self.ui_trash)
+        output_layout.addWidget(self.ui_transfermode)
 
         layout.addWidget(output_layout)
         layout.addWidget(self.ui_keywords)
@@ -102,7 +102,7 @@ class MandalaCentralGui(QWidget):
         filter_layout = QSplitter()
         filter_layout.addWidget(self.ui_filesize)
         filter_layout.addWidget(self.ui_duration)
-        filter_layout.addWidget(self.ui_weight)
+        filter_layout.addWidget(self.ui_diversity)
 
         layout.addWidget(filter_layout)
         layout.addWidget(self.ui_progress)
@@ -117,15 +117,15 @@ class MandalaCentralGui(QWidget):
         model = MandalaConfigModel(
             root=self.ui_root.get_config(),
             dest=self.ui_dest.get_config(),
-            filecount=self.ui_file_count.get_config(),
+            filecount=self.ui_filecount.get_config(),
             folder=self.ui_folders.get_config(),
             filename=self.ui_filenames.get_config(),
-            trash=self.ui_trash.get_config(),
+            transfermode=self.ui_transfermode.get_config(),
             keyword=self.ui_keywords.get_config(),
             extension=self.ui_extensions.get_config(),
             filesize=self.ui_filesize.get_config(),
             duration=self.ui_duration.get_config(),
-            diversity=self.ui_weight.get_config(),
+            diversity=self.ui_diversity.get_config(),
             execution=self.ui_execution.get_config(),
         )
         return MandalaConfig(**model.__dict__)

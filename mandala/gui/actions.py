@@ -63,8 +63,8 @@ class RunActions:
         )
         self.stop = QAction(
             "S&top",
-            statusTip="Stop the file copying process (Ctrl+T)",
-            shortcut=QKeySequence.fromString("Ctrl+T"),
+            statusTip="Stop the file copying process (ESC)",
+            shortcut=QKeySequence.fromString("ESC"),
         )
 
 

@@ -37,7 +37,7 @@ from ..config.schemas import (
     FolderModel,
     LimitMinMaxModel,
     ListIncludeExcludeModel,
-    TrashModel,
+    TransferModeModel,
 )
 from ..utils.helpers import convert_string_to_list
 
@@ -280,28 +280,28 @@ class FilenameSettingsWidget(BaseGroupBox):
         )
 
 
-class TrashSettingsWidget(BaseGroupBox):
-    """Handles logic for trash settings."""
+class TransferModeWidget(BaseGroupBox):
+    """Handles logic for mode settings."""
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
-        """Initialize the trash settings widget."""
+        """Initialize the mode settings widget."""
         super().__init__(title, name, parent=parent, flat=True)
 
-        self.chk_empty_folders = QCheckBox("Empty Folders")
-        self.chk_empty_folders.setObjectName(f"{name}_empty_folders")
+        self.chk_trash_empty_folders = QCheckBox("Trash empty folders")
+        self.chk_trash_empty_folders.setObjectName(f"{name}_trash_empty_folders")
 
-        self.chk_valid_files = QCheckBox("Valid Files")
-        self.chk_valid_files.setObjectName(f"{name}_valid_files")
+        self.chk_move_files = QCheckBox("Move files")
+        self.chk_move_files.setObjectName(f"{name}_move_files")
 
         layout = QFormLayout(self)
-        layout.addRow(self.chk_empty_folders)
-        layout.addRow(self.chk_valid_files)
+        layout.addRow(self.chk_trash_empty_folders)
+        layout.addRow(self.chk_move_files)
 
-    def get_config(self) -> TrashModel:
+    def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
-        return TrashModel(
-            empty_folder=self.chk_empty_folders.isChecked(),
-            source_file=self.chk_valid_files.isChecked(),
+        return TransferModeModel(
+            trash_empty_folder=self.chk_trash_empty_folders.isChecked(),
+            move_files=self.chk_move_files.isChecked(),
         )
 
 
@@ -389,7 +389,7 @@ class DiversityFilterWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the range filter widget."""
-        super().__init__(title, name, parent=parent, checkable=True, flat=True)
+        super().__init__(title, name, parent=parent, flat=True)
 
         self.spin_max_per_folder = QSpinBox(minimum=0, maximum=1_000_000)
         self.spin_max_per_folder.setObjectName(f"{name}_max_per_folder")
@@ -399,8 +399,6 @@ class DiversityFilterWidget(BaseGroupBox):
 
     def get_config(self) -> DiversityModel:
         """Return clean data for the config."""
-        if not self.isChecked():
-            return DiversityModel(max_per_folder=0)
         return DiversityModel(max_per_folder=self.spin_max_per_folder.value())
 
 
