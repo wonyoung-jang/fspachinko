@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..utils.helpers import calc_dest_file_path, create_dest_folder, get_status_header, trash_path
+from ..utils.helpers import calc_dest_file_path, create_dest_folder, get_status_header
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from ..utils.interfaces import MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
+    from .trash import TrashHandler
     from .validator import FileValidator
     from .walker import RandomFSWalker
 
@@ -53,6 +54,7 @@ class MandalaEngine:
     reporter: ReportWriter
     rng: Random
     quota: DiversityQuota
+    trash: TrashHandler
     walker: RandomFSWalker
     observer: MandalaObserver = field(init=False)
     _state: MandalaState = field(default_factory=MandalaState)
@@ -68,12 +70,15 @@ class MandalaEngine:
 
     def start(self) -> None:
         """Run the main file copying process."""
+        self.observer.on_progress_total(self.config.folder.count)
+
         for target, dest in self._generate_target_and_dest():
             if self._request_stop:
                 break
 
             self.process_folder(target, dest)
 
+        self.trash.execute_trash()
         self.observer.on_finished()
 
     def process_folder(self, target: int, dest: Path) -> None:
@@ -105,11 +110,11 @@ class MandalaEngine:
                 self.quota.register_success(path)
                 self.observer.on_count(copied)
                 self.observer.on_time()
-                trash_path(path, condition=self.config.trash.source_file)
+                self.trash.collect_source_file(path)
             else:
                 if self.config.execution.log_invalid:
                     self._report(msg=f"INVALID: {path.relative_to(self.config.root)}")
-                trash_path(path, condition=self.config.trash.invalid_file)
+                self.trash.collect_invalid_file(path)
 
         return copied
 
@@ -148,17 +153,13 @@ class MandalaEngine:
 
     def _generate_target_and_dest(self) -> Iterator[tuple[int, Path]]:
         """Prepare target file counts for each folder."""
-        folder_count = self.config.folder.count
-        filecount_model = self.config.filecount
-        self.observer.on_progress_total(folder_count)
-
-        fcount = filecount_model.count
-        is_rand = filecount_model.is_rand_count
-        rmin = filecount_model.count_min_rand
-        rmax = filecount_model.count_max_rand
-        counts = [self.rng.randint(rmin, rmax) if is_rand else fcount for _ in range(folder_count)]
-        folders = [create_dest_folder(self.config.folder, self.config.dest) for _ in range(folder_count)]
-
+        counts = [
+            self.rng.randint(self.config.filecount.count_min_rand, self.config.filecount.count_max_rand)
+            if self.config.filecount.is_rand_count
+            else self.config.filecount.count
+            for _ in range(self.config.folder.count)
+        ]
+        folders = [create_dest_folder(self.config.folder, self.config.dest) for _ in range(self.config.folder.count)]
         yield from zip(counts, folders, strict=True)
 
     def _is_stall_timeout(self) -> bool:

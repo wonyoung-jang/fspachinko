@@ -1,8 +1,11 @@
 """Quota and State management."""
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -46,25 +49,15 @@ class DiversityQuota:
 
     def register_success(self, file_path: Path) -> None:
         """Record a successful copy and apply locking rules."""
-        self.locked_files.add(file_path)
+        self.lock_file(file_path)
 
-        # 1. Update Leaf Folder Quota
         leaf_dir = file_path.parent
         self.update_and_lock(leaf_dir, self.limit_leaf_folder)
+        logger.debug("Updating leaf: %s (%d)", leaf_dir, self.folder_counts[leaf_dir])
 
-        # 2. Update Root Subfolder Quota
-        if self.limit_root_folder > 0 and leaf_dir != self.root:
-            try:
-                # Optimized: avoid .relative_to calculation if parent is root
-                if leaf_dir.parent == self.root:
-                    self.update_and_lock(leaf_dir, self.limit_root_folder)
-                else:
-                    # Deeply nested case
-                    rel = file_path.relative_to(self.root)
-                    top_folder = self.root / rel.parts[0]
-                    self.update_and_lock(top_folder, self.limit_root_folder)
-            except ValueError:
-                pass
+        if (parent := leaf_dir.parent) == self.root:
+            self.update_and_lock(parent, self.limit_root_folder)
+            logger.debug("Updating root: %s (%d)", parent, self.folder_counts[parent])
 
     def update_and_lock(self, folder: Path, limit: int) -> None:
         """Update folder count and lock if limit reached."""
@@ -73,4 +66,4 @@ class DiversityQuota:
 
         self.folder_counts[folder] += 1
         if self.folder_counts[folder] >= limit:
-            self.locked_folders.add(folder)
+            self.lock_folder(folder)

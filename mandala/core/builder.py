@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
+from .trash import TrashHandler
 from .validator import FileValidator
 from .walker import RandomFSWalker
 
@@ -26,6 +27,13 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
         limit_leaf_folder=config.diversity.leaf_limit,
     )
 
+    trash = TrashHandler(
+        trash_source_files=config.trash.source_file,
+        trash_invalid_files=config.trash.invalid_file,
+        trash_empty_folders=config.trash.empty_folder,
+        dry_run=config.execution.dry_run,
+    )
+
     sys_rand = Random()
     rng_seed = sys_rand.randint(0, 2**32 - 1)
     rng = Random(rng_seed)
@@ -34,7 +42,7 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
         root=config.root,
         rng=rng,
         quota=quota,
-        trash_empty_folders=config.trash.empty_folder,
+        trash=trash,
     )
 
     return MandalaEngine(
@@ -43,5 +51,6 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
         reporter=reporter,
         rng=rng,
         quota=quota,
+        trash=trash,
         walker=walker,
     )

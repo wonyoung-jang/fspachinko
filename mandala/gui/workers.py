@@ -31,7 +31,7 @@ class WorkerSignals(QObject):
 class GuiObserver(MandalaObserver):
     """Qt signal observer implementation for Mandala."""
 
-    signals: WorkerSignals
+    signals: WorkerSignals = field(default_factory=WorkerSignals)
 
     def on_progress_total(self, maximum: int) -> None:
         """Emit total progress signal."""
@@ -68,14 +68,11 @@ class RunMandalaWorker(QThread):
 
     config: MandalaConfig
     engine: MandalaEngine = field(init=False)
-    signals: WorkerSignals = field(init=False)
-    observer: GuiObserver = field(init=False)
+    observer: GuiObserver = field(default_factory=GuiObserver)
 
     def __post_init__(self) -> None:
         """Initialize the worker thread."""
         super().__init__()
-        self.signals = WorkerSignals()
-        self.observer = GuiObserver(signals=self.signals)
 
     def init_engine(self) -> None:
         """Initialize the Mandala engine."""

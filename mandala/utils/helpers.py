@@ -2,23 +2,13 @@
 
 from __future__ import annotations
 
-from contextlib import suppress
 from filecmp import cmp
 from typing import TYPE_CHECKING
-
-from send2trash import send2trash
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from ..config.schemas import FilenameModel, FolderModel
-
-
-def trash_path(path: Path, *, condition: bool) -> None:
-    """Trash a path if the condition is met."""
-    if condition:
-        with suppress(Exception):
-            send2trash(path)
 
 
 def _calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:

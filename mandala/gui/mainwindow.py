@@ -33,6 +33,7 @@ class MandalaMainWindow(QMainWindow):
         """Initialize the main window."""
         super().__init__()
         self.setCentralWidget(self.ui)
+        self.ui.update_window_title.connect(self.update_window_title)
 
         logger.info("Initializing GUI")
         self.init_menubar()
@@ -74,15 +75,17 @@ class MandalaMainWindow(QMainWindow):
         """Initialize the toolbar."""
         toolbar = QToolBar("MandalaToolBar")
         toolbar.setObjectName("MandalaToolBar")
-        toolbar.addAction(self._actions.file.save)
-        toolbar.addAction(self._actions.file.save_as)
-        toolbar.addAction(self._actions.file.load)
-        toolbar.addAction(self._actions.file.autosave)
+        file_actions = self._actions.file
+        run_actions = self._actions.run
+        toolbar.addAction(file_actions.save)
+        toolbar.addAction(file_actions.save_as)
+        toolbar.addAction(file_actions.load)
+        toolbar.addAction(file_actions.autosave)
         toolbar.addSeparator()
-        toolbar.addAction(self._actions.run.start)
-        toolbar.addAction(self._actions.run.stop)
+        toolbar.addAction(run_actions.start)
+        toolbar.addAction(run_actions.stop)
         toolbar.addSeparator()
-        toolbar.addAction(self._actions.file.exit)
+        toolbar.addAction(file_actions.exit)
         self.addToolBar(toolbar)
 
     def init_statusbar(self) -> None:
@@ -97,7 +100,7 @@ class MandalaMainWindow(QMainWindow):
         self.restoreState(self.qsettings.value("state"))
         self.profiles.set_current(str(self.qsettings.value("profile", "")))
         self.profiles.open_profile(self)
-        self.update_window_title()
+        self.reset_window_title()
 
     @Slot()
     def save_profile(self) -> None:
@@ -113,7 +116,7 @@ class MandalaMainWindow(QMainWindow):
         if filename:
             self.profiles.set_current(filename)
             self.save_profile()
-            self.update_window_title()
+            self.reset_window_title()
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -124,11 +127,17 @@ class MandalaMainWindow(QMainWindow):
         if filename:
             self.profiles.set_current(filename)
             self.profiles.open_profile(self)
-            self.update_window_title()
+            self.reset_window_title()
 
-    def update_window_title(self) -> None:
+    @Slot()
+    def reset_window_title(self) -> None:
         """Update the window title based on the current profile."""
         self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
+
+    @Slot(str)
+    def update_window_title(self, title: str) -> None:
+        """Update the window title based on the current profile."""
+        self.setWindowTitle(title)
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""

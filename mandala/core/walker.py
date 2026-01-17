@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from ..utils.helpers import trash_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from random import Random
 
     from .quota import DiversityQuota
+    from .trash import TrashHandler
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -30,7 +32,7 @@ class FSEntry:
         """Create an FSEntry from a given Path."""
         if entry.is_file():
             return cls(Path(entry.path), is_file=True, is_dir=False, size=entry.stat().st_size)
-        return cls(Path(entry.path), is_file=False, is_dir=True, size=0)
+        return cls(Path(entry.path), is_file=False, is_dir=True, size=entry.stat().st_size)
 
 
 @dataclass(slots=True)
@@ -40,40 +42,54 @@ class RandomFSWalker:
     root: Path
     quota: DiversityQuota
     rng: Random
-    trash_empty_folders: bool = False
+    trash: TrashHandler
     cache: dict[Path, tuple[FSEntry, ...]] = field(default_factory=dict)
 
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
         while True:
-            if not (candidate := self.recursive_pick(self.root)):
+            candidate = self.descend_to_file()
+            if candidate is None:
                 break
             yield candidate
 
-    def recursive_pick(self, current: Path) -> FSEntry | None:
-        """Recursively descend directories finding a valid file."""
-        if not (entries := self._get_entries(current)):
-            self.quota.lock_folder(current)
-            trash_path(current, condition=self.trash_empty_folders)
-            return None
+    def descend_to_file(self) -> FSEntry | None:
+        """Descend directories finding a valid file using an explicit stack."""
+        stack: list[tuple[Path, tuple[FSEntry, ...], list[int], int]] = [(self.root, (), [], 0)]
 
-        available = tuple(e for e in entries if self.quota.is_available(e.path, is_file=e.is_file))
-        if not available:
-            self.quota.lock_folder(current)
-            return None
+        while stack:
+            path, available, indices, idx = stack[-1]
 
-        indices = list(range(len(available)))
-        self.rng.shuffle(indices)
+            if not available:
+                if not (entries := self._get_entries(path)):
+                    self.quota.lock_folder(path)
+                    self.trash.collect_empty_folder(path)
+                    stack.pop()
+                    continue
 
-        for i in indices:
-            entry = available[i]
+                available = tuple(e for e in entries if self.quota.is_available(e.path, is_file=e.is_file))
+                if not available:
+                    self.quota.lock_folder(path)
+                    stack.pop()
+                    continue
 
-            if entry.is_file:
-                self.quota.lock_file(entry.path)
-                return entry
+                indices = list(range(len(available)))
+                self.rng.shuffle(indices)
+                stack[-1] = (path, available, indices, 0)
+                continue
 
-            if entry.is_dir and (next_entry := self.recursive_pick(entry.path)):
-                return next_entry
+            if idx < len(indices):
+                entry = available[indices[idx]]
+                stack[-1] = (path, available, indices, idx + 1)
+
+                if entry.is_file:
+                    self.quota.lock_file(entry.path)
+                    return entry
+
+                if entry.is_dir:
+                    stack.append((entry.path, (), [], 0))
+            else:
+                stack.pop()
 
         return None
 

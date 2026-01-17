@@ -286,7 +286,7 @@ class TrashSettingsWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the trash settings widget."""
-        super().__init__(title, name, parent=parent, checkable=True, flat=True)
+        super().__init__(title, name, parent=parent, flat=True)
 
         self.chk_empty_folders = QCheckBox("Empty Folders")
         self.chk_empty_folders.setObjectName(f"{name}_empty_folders")
@@ -304,8 +304,6 @@ class TrashSettingsWidget(BaseGroupBox):
 
     def get_config(self) -> TrashModel:
         """Return clean data for the config."""
-        if not self.isChecked():
-            return TrashModel(empty_folder=False, source_file=False, invalid_file=False)
         return TrashModel(
             empty_folder=self.chk_empty_folders.isChecked(),
             source_file=self.chk_valid_files.isChecked(),
