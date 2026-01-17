@@ -111,7 +111,6 @@ class MandalaCentralGui(QWidget):
     def setup_timer(self) -> None:
         """Set up the timer for UI updates."""
         self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
-        self.timer.timeout.connect(self.ui_progress.update_stall_prog)
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
@@ -127,7 +126,6 @@ class MandalaCentralGui(QWidget):
             filesize=self.ui_filesize.get_config(),
             duration=self.ui_duration.get_config(),
             diversity=self.ui_weight.get_config(),
-            progress=self.ui_progress.get_config(),
             execution=self.ui_execution.get_config(),
         )
         return MandalaConfig(**model.__dict__)
@@ -150,13 +148,8 @@ class MandalaCentralGui(QWidget):
 
         self._toggle_ui(enabled=False)
 
-        stall_limit = config.progress.stall_time_limit
-        stall_max = int(stall_limit * 100)
-
         self.ui_progress.progbar_total.setValue(0)
         self.ui_progress.progbar_folder.setValue(0)
-        self.ui_progress.progbar_stall.setRange(0, stall_max)
-        self.ui_progress.progbar_stall.setValue(stall_max)
 
         self._window_title_before_start = self.window().windowTitle()
 
@@ -171,8 +164,6 @@ class MandalaCentralGui(QWidget):
 
         signals.count.connect(prog_ui.progbar_folder.setValue)
         signals.count.connect(self._update_title_progress)
-
-        signals.time.connect(prog_ui.reset_stall_prog)
 
         signals.finished.connect(self._on_finished)
         signals.finished.connect(self._reset_title)

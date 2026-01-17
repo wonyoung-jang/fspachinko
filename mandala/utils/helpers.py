@@ -60,7 +60,7 @@ def calc_dest_file_path(model: FilenameModel, chosen: Path, dest: Path, index: i
     return None
 
 
-def get_status_header(*, success: bool, stopped: bool, none_found: bool, timeout: bool, all_searched: bool) -> str:
+def get_status_header(*, success: bool, stopped: bool, none_found: bool, all_searched: bool) -> str:
     """Generate a status header based on the processing outcome."""
     prefix = "FINISHED (Unknown reason)"
     if success:
@@ -69,15 +69,11 @@ def get_status_header(*, success: bool, stopped: bool, none_found: bool, timeout
         prefix = "STOPPED"
     elif none_found:
         prefix = "NO FILES FOUND"
-        if timeout:
-            prefix += "| Reason - timed out"
-        elif all_searched:
+        if all_searched:
             prefix += "| Reason - all files searched"
         prefix += " | folder deleted"
     elif all_searched:
         prefix = "ALL FILES SEARCHED"
-    elif timeout:
-        prefix = "TIMED OUT"
     return prefix
 
 

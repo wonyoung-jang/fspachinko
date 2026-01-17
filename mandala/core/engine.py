@@ -30,19 +30,16 @@ class MandalaState:
 
     bytes_in_currdir: int = 0
     start_time_currdir: float = 0.0
-    start_time_file: float = 0.0
 
     def reset_for_folder(self) -> None:
         """Reset state variables for a new folder."""
         self.bytes_in_currdir = 0
         _start = perf_counter()
         self.start_time_currdir = _start
-        self.start_time_file = _start
 
     def update_success(self, size: int) -> None:
         """Update state on successful operation."""
         self.bytes_in_currdir += size
-        self.start_time_file = perf_counter()
 
 
 @dataclass(slots=True)
@@ -158,13 +155,9 @@ class MandalaEngine:
         folders = [create_dest_folder(self.config.folder, self.config.dest) for _ in range(self.config.folder.count)]
         yield from zip(counts, folders, strict=True)
 
-    def _is_stall_timeout(self) -> bool:
-        """Check if the process has timed out based on stall time."""
-        return (perf_counter() - self._state.start_time_file) > self.config.progress.stall_time_limit
-
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
-        return self._request_stop or self.quota.all_locked() or self._is_stall_timeout()
+        return self._request_stop or self.quota.all_locked()
 
     def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
         """Create and write log at the end of folder."""
@@ -176,7 +169,6 @@ class MandalaEngine:
             success=(count == target),
             stopped=self._request_stop,
             none_found=none_found,
-            timeout=self._is_stall_timeout(),
             all_searched=self.quota.all_locked(),
         )
         status = f"{prefix}: {copied}"
