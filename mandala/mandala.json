@@ -20,8 +20,7 @@
     },
     "trash": {
         "empty_folder": false,
-        "source_file": false,
-        "invalid_file": false
+        "source_file": false
     },
     "keyword": {
         "include": true,
@@ -44,14 +43,9 @@
         "maximum": 0.0
     },
     "diversity": {
-        "root_limit": 8,
         "leaf_limit": 4
     },
-    "progress": {
-        "stall_time_limit": 10.0
-    },
     "execution": {
-        "log_invalid": false,
         "dry_run": false
     }
 }

@@ -391,24 +391,17 @@ class DiversityFilterWidget(BaseGroupBox):
         """Initialize the range filter widget."""
         super().__init__(title, name, parent=parent, checkable=True, flat=True)
 
-        self.spin_root_limit = QSpinBox(minimum=0, maximum=1_000_000)
-        self.spin_root_limit.setObjectName(f"{name}_root_limit")
-
-        self.spin_leaf_limit = QSpinBox(minimum=0, maximum=1_000_000)
-        self.spin_leaf_limit.setObjectName(f"{name}_leaf_limit")
+        self.spin_max_per_folder = QSpinBox(minimum=0, maximum=1_000_000)
+        self.spin_max_per_folder.setObjectName(f"{name}_max_per_folder")
 
         layout = QFormLayout(self)
-        layout.addRow("Max per Root Folder", self.spin_root_limit)
-        layout.addRow("Max per Subfolder", self.spin_leaf_limit)
+        layout.addRow("Max files per folder", self.spin_max_per_folder)
 
     def get_config(self) -> DiversityModel:
         """Return clean data for the config."""
         if not self.isChecked():
-            return DiversityModel(root_limit=0, leaf_limit=0)
-        return DiversityModel(
-            root_limit=self.spin_root_limit.value(),
-            leaf_limit=self.spin_leaf_limit.value(),
-        )
+            return DiversityModel(max_per_folder=0)
+        return DiversityModel(max_per_folder=self.spin_max_per_folder.value())
 
 
 class ProgressWidget(QWidget):

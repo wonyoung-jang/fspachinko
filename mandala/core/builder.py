@@ -23,8 +23,7 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
     quota = DiversityQuota(
         root=config.root,
         unique_folders=config.folder.unique,
-        limit_root_folder=config.diversity.root_limit,
-        limit_leaf_folder=config.diversity.leaf_limit,
+        max_per_folder=config.diversity.max_per_folder,
     )
 
     trash = TrashHandler(

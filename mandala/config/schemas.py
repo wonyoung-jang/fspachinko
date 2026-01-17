@@ -57,8 +57,7 @@ class LimitMinMaxModel(BaseModel):
 class DiversityModel(BaseModel):
     """Model for diversity quota configuration."""
 
-    root_limit: int = 0
-    leaf_limit: int = 0
+    max_per_folder: int = 0
 
 
 class ExecutionModel(BaseModel):

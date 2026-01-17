@@ -15,8 +15,7 @@ class DiversityQuota:
     root: Path
 
     unique_folders: bool = False
-    limit_root_folder: int = 0
-    limit_leaf_folder: int = 0
+    max_per_folder: int = 0
 
     locked_files: set[Path] = field(default_factory=set)
     locked_folders: set[Path] = field(default_factory=set)
@@ -52,18 +51,9 @@ class DiversityQuota:
         self.lock_file(file_path)
 
         leaf_dir = file_path.parent
-        self.update_and_lock(leaf_dir, self.limit_leaf_folder)
-        logger.debug("Updating leaf: %s (%d)", leaf_dir, self.folder_counts[leaf_dir])
+        if self.max_per_folder > 0:
+            self.folder_counts[leaf_dir] += 1
+            if self.folder_counts[leaf_dir] >= self.max_per_folder:
+                self.lock_folder(leaf_dir)
 
-        if (parent := leaf_dir.parent) == self.root:
-            self.update_and_lock(parent, self.limit_root_folder)
-            logger.debug("Updating root: %s (%d)", parent, self.folder_counts[parent])
-
-    def update_and_lock(self, folder: Path, limit: int) -> None:
-        """Update folder count and lock if limit reached."""
-        if limit <= 0:
-            return
-
-        self.folder_counts[folder] += 1
-        if self.folder_counts[folder] >= limit:
-            self.lock_folder(folder)
+            logger.debug("Updating leaf: %s (%d)", leaf_dir, self.folder_counts[leaf_dir])
