@@ -36,7 +36,6 @@ class TrashModel(BaseModel):
 
     empty_folder: bool = False
     source_file: bool = False
-    invalid_file: bool = False
 
 
 class ListIncludeExcludeModel(BaseModel):
@@ -71,7 +70,6 @@ class ProgressModel(BaseModel):
 class ExecutionModel(BaseModel):
     """Model for execution configuration."""
 
-    log_invalid: bool = True
     dry_run: bool = False
 
 

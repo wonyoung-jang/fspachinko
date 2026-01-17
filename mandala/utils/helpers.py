@@ -104,7 +104,7 @@ def strtobool(val: str) -> bool:
     if clean_val in ("n", "no", "f", "false", "off", "0"):
         return False
 
-    msg = f"invalid truth value {val!r}"
+    msg = f"Invalid truth value {val!r}"
     raise ValueError(msg)
 
 

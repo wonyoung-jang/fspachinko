@@ -145,7 +145,7 @@ class MandalaCentralGui(QWidget):
         try:
             config = self.get_mandala_config()
         except ValueError:
-            self.ui_execution.textbrowser_log.append("Error: Invalid configuration")
+            self.ui_execution.textbrowser_log.append("Configuration error")
             return
 
         self._toggle_ui(enabled=False)

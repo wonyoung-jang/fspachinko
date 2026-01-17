@@ -294,20 +294,15 @@ class TrashSettingsWidget(BaseGroupBox):
         self.chk_valid_files = QCheckBox("Valid Files")
         self.chk_valid_files.setObjectName(f"{name}_valid_files")
 
-        self.chk_invalid_files = QCheckBox("Invalid Files")
-        self.chk_invalid_files.setObjectName(f"{name}_invalid_files")
-
         layout = QFormLayout(self)
         layout.addRow(self.chk_empty_folders)
         layout.addRow(self.chk_valid_files)
-        layout.addRow(self.chk_invalid_files)
 
     def get_config(self) -> TrashModel:
         """Return clean data for the config."""
         return TrashModel(
             empty_folder=self.chk_empty_folders.isChecked(),
             source_file=self.chk_valid_files.isChecked(),
-            invalid_file=self.chk_invalid_files.isChecked(),
         )
 
 
@@ -473,10 +468,6 @@ class ExecutionWidget(QWidget):
         super().__init__(parent=parent)
 
         # Log
-        self.chk_log_invalid = QCheckBox("Log Invalid")
-        self.chk_log_invalid.setObjectName("execution_log_invalid")
-        self.chk_log_invalid.setStatusTip("If checked, invalid files will be logged in the output log.")
-
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setFont("Consolas")
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
@@ -488,13 +479,11 @@ class ExecutionWidget(QWidget):
         self.chk_dry_run.setStatusTip("If checked, no files will actually be copied.")
 
         layout = QGridLayout(self)
-        layout.addWidget(self.chk_log_invalid, 0, 0)
-        layout.addWidget(self.chk_dry_run, 0, 1)
-        layout.addWidget(self.textbrowser_log, 1, 0, 1, 2)
+        layout.addWidget(self.chk_dry_run, 0, 0)
+        layout.addWidget(self.textbrowser_log, 1, 0)
 
     def get_config(self) -> ExecutionModel:
         """Return clean data for the config."""
         return ExecutionModel(
-            log_invalid=self.chk_log_invalid.isChecked(),
             dry_run=self.chk_dry_run.isChecked(),
         )

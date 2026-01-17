@@ -111,10 +111,6 @@ class MandalaEngine:
                 self.observer.on_count(copied)
                 self.observer.on_time()
                 self.trash.collect_source_file(path)
-            else:
-                if self.config.execution.log_invalid:
-                    self._report(msg=f"INVALID: {path.relative_to(self.config.root)}")
-                self.trash.collect_invalid_file(path)
 
         return copied
 

@@ -29,7 +29,6 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
 
     trash = TrashHandler(
         trash_source_files=config.trash.source_file,
-        trash_invalid_files=config.trash.invalid_file,
         trash_empty_folders=config.trash.empty_folder,
         dry_run=config.execution.dry_run,
     )
