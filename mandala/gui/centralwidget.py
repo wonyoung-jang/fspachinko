@@ -19,7 +19,7 @@ from .components import (
     DualListFilterWidget,
     ExecutionWidget,
     FileCountWidget,
-    FilenameSettingsWidget,
+    FilenameWidget,
     FolderCreatorWidget,
     PathSelectorWidget,
     ProgressWidget,
@@ -38,7 +38,7 @@ class MandalaCentralGui(QMdiArea):
     ui_dest: PathSelectorWidget = field(init=False)
     ui_filecount: FileCountWidget = field(init=False)
     ui_folders: FolderCreatorWidget = field(init=False)
-    ui_filenames: FilenameSettingsWidget = field(init=False)
+    ui_filename: FilenameWidget = field(init=False)
     ui_transfermode: TransferModeWidget = field(init=False)
     ui_keywords: DualListFilterWidget = field(init=False)
     ui_extensions: DualListFilterWidget = field(init=False)
@@ -63,7 +63,7 @@ class MandalaCentralGui(QMdiArea):
         self.ui_dest = PathSelectorWidget("Destination", "dest", items=[QDir.homePath()])
         self.ui_filecount = FileCountWidget()
         self.ui_folders = FolderCreatorWidget()
-        self.ui_filenames = FilenameSettingsWidget()
+        self.ui_filename = FilenameWidget()
         self.ui_transfermode = TransferModeWidget()
 
         # Init filter components
@@ -90,7 +90,7 @@ class MandalaCentralGui(QMdiArea):
         output_layout = QSplitter()
         output_layout.addWidget(self.ui_folders)
         output_layout.addWidget(self.ui_filecount)
-        output_layout.addWidget(self.ui_filenames)
+        output_layout.addWidget(self.ui_filename)
         output_layout.addWidget(self.ui_transfermode)
 
         layout.addWidget(output_layout)
@@ -113,7 +113,7 @@ class MandalaCentralGui(QMdiArea):
             dest=self.ui_dest.get_config(),
             filecount=self.ui_filecount.get_config(),
             folder=self.ui_folders.get_config(),
-            filename=self.ui_filenames.get_config(),
+            filename=self.ui_filename.get_config(),
             transfermode=self.ui_transfermode.get_config(),
             keyword=self.ui_keywords.get_config(),
             extension=self.ui_extensions.get_config(),
@@ -167,7 +167,7 @@ class MandalaCentralGui(QMdiArea):
     @Slot()
     def on_stop(self) -> None:
         """Stop the mandala process."""
-        if self.worker:
+        if hasattr(self, "worker") and self.worker.isRunning():
             self.worker.stop()
         self.ui_execution.textbrowser_log.append("Stop requested by user...")
 

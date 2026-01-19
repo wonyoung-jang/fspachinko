@@ -26,9 +26,7 @@ class FolderModel(BaseModel):
 class FilenameModel(BaseModel):
     """Model for file renaming."""
 
-    is_index: bool = False
-    is_rename: bool = False
-    rename_to: str = ""
+    template: str = "{original}"
 
 
 class TransferModeModel(BaseModel):

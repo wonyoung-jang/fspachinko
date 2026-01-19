@@ -118,11 +118,12 @@ class MandalaEngine:
 
     def _try_copy(self, chosen: Path, dest: Path, count: int) -> bool:
         """Attempt to copy a file and return success status."""
-        target = calc_dest_file_path(self.config.filename, chosen, dest, count)
+        chosen_rel = chosen.relative_to(self.config.root)
+
+        target = calc_dest_file_path(self.config.filename, chosen_rel, dest, count)
         if target is None:
             return False
 
-        chosen_rel = chosen.relative_to(self.config.root)
         target_rel = target.relative_to(self.config.dest)
         copy_path_str = f"{chosen_rel} -> {target_rel}"
 

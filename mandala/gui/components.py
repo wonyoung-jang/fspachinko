@@ -243,39 +243,37 @@ class FolderCreatorWidget(BaseGroupBox):
         )
 
 
-class FilenameSettingsWidget(BaseGroupBox):
-    """Handles logic for filename settings."""
+class FilenameWidget(BaseGroupBox):
+    """Handles logic for filename template settings."""
 
-    def __init__(self, title: str = "Filenames", name: str = "filename", parent: QWidget | None = None) -> None:
-        """Initialize the filename settings widget."""
+    def __init__(self, title: str = "Filename", name: str = "filename", parent: QWidget | None = None) -> None:
+        """Initialize the filename template settings widget."""
         super().__init__(title, name, parent=parent)
 
-        keep_filename = QRadioButton("Keep")
-        keep_filename.setChecked(True)
+        self.edit_template = QLineEdit("{original}")
+        self.edit_template.setObjectName(f"{name}_template")
+        self.edit_template.setPlaceholderText("Ex: {original}_{index}")
 
-        self.radio_index = QRadioButton("Index")
-        self.radio_index.setObjectName(f"{name}_index")
-
-        self.radio_rename = QRadioButton("Rename")
-        self.radio_rename.setObjectName(f"{name}_rename")
-        self.radio_rename.toggled.connect(lambda: self.lineedit_rename.setEnabled(self.radio_rename.isChecked()))
-
-        self.lineedit_rename = QLineEdit("New Name")
-        self.lineedit_rename.setObjectName(f"{name}_text")
-        self.lineedit_rename.setEnabled(False)
+        btn_layout = QVBoxLayout()
+        for lbl in ("{original}", "{index}", "{date}", "{time}", "{datetime}", "{parent}", "{parentstoroot}"):
+            btn = QPushButton(lbl, flat=True)
+            btn.clicked.connect(lambda _, tag=lbl: self.insert_tag(tag))
+            btn_layout.addWidget(btn)
 
         layout = QFormLayout(self)
-        layout.addRow(keep_filename)
-        layout.addRow(self.radio_index)
-        layout.addRow(self.radio_rename, self.lineedit_rename)
+        layout.addRow("Template:", self.edit_template)
+        layout.addRow("Tags:", btn_layout)
+
+    @Slot(str)
+    def insert_tag(self, tag: str) -> None:
+        """Insert a tag into the template at the cursor position."""
+        self.edit_template.insert(tag)
+        self.edit_template.setFocus()
 
     def get_config(self) -> FilenameModel:
         """Return clean data for the config."""
-        return FilenameModel(
-            is_index=self.radio_index.isChecked(),
-            is_rename=self.radio_rename.isChecked(),
-            rename_to=self.lineedit_rename.text(),
-        )
+        val = self.edit_template.text() or "{original}"
+        return FilenameModel(template=val)
 
 
 class TransferModeWidget(BaseGroupBox):

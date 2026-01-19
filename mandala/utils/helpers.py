@@ -2,13 +2,41 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from filecmp import cmp
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Self
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from ..config.schemas import FilenameModel, FolderModel
+
+
+class SafeDict(dict):
+    """A helper class for string formatting.
+
+    If a key is missing, it returns the key wrapped in braces
+    instead of raising a KeyError.
+    """
+
+    def __missing__(self, key: str) -> str:
+        """Return the key wrapped in braces if missing."""
+        return "{" + key + "}"
+
+
+@dataclass(slots=True)
+class DateTimeSingleton:
+    """Singleton for current date and time."""
+
+    now: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
+    instance: ClassVar[DateTimeSingleton]
+
+    def __new__(cls) -> Self:
+        """Ensure only one instance exists."""
+        if not hasattr(cls, "instance"):
+            cls.instance = super(DateTimeSingleton, cls).__new__(cls)
+        return cls.instance
 
 
 def _calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
@@ -38,22 +66,35 @@ def calc_dest_file_path(model: FilenameModel, chosen: Path, dest: Path, index: i
     """Calculate the destination file path based on naming conventions."""
     ext = chosen.suffix
     stem = chosen.stem
-    is_index = model.is_index
-    is_rename = model.is_rename
-    name = chosen.name
-    if is_index:
-        name = f"{index + 1}_{stem}{ext}"
-    elif is_rename:
-        name = f"{model.rename_to}_{index + 1}{ext}"
+
+    mapping = {
+        "original": stem,
+        "index": index + 1,
+        "date": datetime.now(tz=UTC).strftime("%Y-%m-%d"),
+        "time": datetime.now(tz=UTC).strftime("%H-%M-%S"),
+        "datetime": datetime.now(tz=UTC).strftime("%Y-%m-%d_%H-%M-%S"),
+        "parent": chosen.parent.name,
+        "parentstoroot": "_".join(chosen.parts[:-1]),
+    }
+    safe_map = SafeDict(mapping)
+
+    try:
+        new_stem = model.template.format_map(safe_map)
+    except (KeyError, ValueError):
+        new_stem = stem
+
+    invalid_chars = r'\/:*?"<>|'
+    new_stem = "".join(c for c in new_stem if c not in invalid_chars)
+    name = f"{new_stem}{ext}"
 
     target = dest / name
-    target_stem = target.stem
+
     if target.exists():
         if target.stat().st_size == chosen.stat().st_size:
-            if cmp(chosen, target) and not (is_rename or is_index):
+            if cmp(chosen, target, shallow=False):
                 return None
         else:
-            return _calc_unique_path_name(dest, target_stem, ext)
+            return _calc_unique_path_name(dest, target.stem, ext)
     else:
         return target
 
