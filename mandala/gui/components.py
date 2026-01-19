@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLineEdit,
+    QMenu,
     QProgressBar,
     QPushButton,
     QRadioButton,
@@ -254,15 +255,18 @@ class FilenameWidget(BaseGroupBox):
         self.edit_template.setObjectName(f"{name}_template")
         self.edit_template.setPlaceholderText("Ex: {original}_{index}")
 
-        btn_layout = QVBoxLayout()
+        self.template_button = QPushButton("Insert Tag", flat=True)
+        self.template_button.setStatusTip("Insert a tag into the template at the cursor position")
+        template_menu = QMenu("Tags", self)
+        template_menu.setObjectName(f"{name}_template_menu")
+        self.template_button.setMenu(template_menu)
         for lbl in ("{original}", "{index}", "{date}", "{time}", "{datetime}", "{parent}", "{parentstoroot}"):
-            btn = QPushButton(lbl, flat=True)
-            btn.clicked.connect(lambda _, tag=lbl: self.insert_tag(tag))
-            btn_layout.addWidget(btn)
+            action = template_menu.addAction(lbl)
+            action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
 
         layout = QFormLayout(self)
         layout.addRow("Template:", self.edit_template)
-        layout.addRow("Tags:", btn_layout)
+        layout.addRow("Filters", self.template_button)
 
     @Slot(str)
     def insert_tag(self, tag: str) -> None:
