@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from PySide6.QtCore import QDir, Qt, QTimer, Signal, Slot
-from PySide6.QtWidgets import QGroupBox, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtCore import QDir, Signal, Slot
+from PySide6.QtWidgets import QGroupBox, QMdiArea, QSplitter, QVBoxLayout, QWidget
 
 from mandala.utils.constants import SIZE_MAP
 
@@ -29,12 +29,11 @@ from .workers import RunMandalaWorker
 
 
 @dataclass(slots=True)
-class MandalaCentralGui(QWidget):
+class MandalaCentralGui(QMdiArea):
     """Main application window for Mandala."""
 
     update_window_title: ClassVar[Signal] = Signal(str)
     worker: RunMandalaWorker = field(init=False)
-    timer: QTimer = field(init=False)
     ui_root: PathSelectorWidget = field(init=False)
     ui_dest: PathSelectorWidget = field(init=False)
     ui_filecount: FileCountWidget = field(init=False)
@@ -56,7 +55,6 @@ class MandalaCentralGui(QWidget):
         self.setObjectName("MandalaCentralGui")
         self.setup_components()
         self.setup_layout()
-        self.setup_timer()
 
     def setup_components(self) -> None:
         """Set up the main UI components."""
@@ -107,10 +105,6 @@ class MandalaCentralGui(QWidget):
         layout.addWidget(filter_layout)
         layout.addWidget(self.ui_progress)
         layout.addWidget(self.ui_execution)
-
-    def setup_timer(self) -> None:
-        """Set up the timer for UI updates."""
-        self.timer = QTimer(singleShot=False, timerType=Qt.TimerType.PreciseTimer)
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
@@ -168,7 +162,6 @@ class MandalaCentralGui(QWidget):
         signals.finished.connect(self._on_finished)
         signals.finished.connect(self._reset_title)
 
-        self.timer.start(10)
         self.worker.start()
 
     @Slot()
@@ -181,7 +174,6 @@ class MandalaCentralGui(QWidget):
     @Slot()
     def _on_finished(self) -> None:
         """Handle worker finished signal."""
-        self.timer.stop()
         self._toggle_ui(enabled=True)
 
     @Slot(int)
