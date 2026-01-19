@@ -27,8 +27,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mandala.utils.helpers import get_multiplier
-
 from ..config.schemas import (
     DiversityModel,
     ExecutionModel,
@@ -39,7 +37,7 @@ from ..config.schemas import (
     ListIncludeExcludeModel,
     TransferModeModel,
 )
-from ..utils.helpers import convert_string_to_list
+from ..utils.helpers import convert_string_to_list, get_multiplier
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -57,7 +55,7 @@ class BaseGroupBox(QGroupBox):
         *,
         parent: QWidget | None = None,
         checkable: bool = False,
-        flat: bool = False,
+        flat: bool = True,
     ) -> None:
         """Initialize the base group box."""
         super().__init__(title=title, parent=parent)
@@ -71,7 +69,7 @@ class PathSelectorWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, items: Sequence[str], parent: QWidget | None = None) -> None:
         """Initialize the path selector widget."""
-        super().__init__(title, name, parent=parent, checkable=False, flat=True)
+        super().__init__(title, name, parent=parent)
         self.setAcceptDrops(True)
 
         self.combo = QComboBox()
@@ -144,9 +142,9 @@ class PathSelectorWidget(BaseGroupBox):
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str = "File Count", name: str = "filecount", parent: QWidget | None = None) -> None:
         """Initialize the file count widget."""
-        super().__init__(title, name, parent=parent, checkable=False, flat=True)
+        super().__init__(title, name, parent=parent)
 
         self.radio_fixed = QRadioButton("Fixed Count")
         self.radio_fixed.setChecked(True)
@@ -216,9 +214,9 @@ class FileCountWidget(BaseGroupBox):
 class FolderCreatorWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str = "Create Folders", name: str = "folder", parent: QWidget | None = None) -> None:
         """Initialize the create folders widget."""
-        super().__init__(title, name, parent=parent, checkable=True, flat=True)
+        super().__init__(title, name, parent=parent, checkable=True)
 
         self.spinbox_folder_count = QSpinBox(minimum=1, maximum=100_000)
         self.spinbox_folder_count.setObjectName(f"{name}_count")
@@ -248,9 +246,9 @@ class FolderCreatorWidget(BaseGroupBox):
 class FilenameSettingsWidget(BaseGroupBox):
     """Handles logic for filename settings."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str = "Filenames", name: str = "filename", parent: QWidget | None = None) -> None:
         """Initialize the filename settings widget."""
-        super().__init__(title, name, parent=parent, flat=True)
+        super().__init__(title, name, parent=parent)
 
         keep_filename = QRadioButton("Keep")
         keep_filename.setChecked(True)
@@ -283,9 +281,9 @@ class FilenameSettingsWidget(BaseGroupBox):
 class TransferModeWidget(BaseGroupBox):
     """Handles logic for mode settings."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str = "Transfer Mode", name: str = "transfermode", parent: QWidget | None = None) -> None:
         """Initialize the mode settings widget."""
-        super().__init__(title, name, parent=parent, flat=True)
+        super().__init__(title, name, parent=parent)
 
         self.chk_trash_empty_folders = QCheckBox("Trash empty folders")
         self.chk_trash_empty_folders.setObjectName(f"{name}_trash_empty_folders")
@@ -310,7 +308,7 @@ class DualListFilterWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the dual list widget."""
-        super().__init__(title, name, parent=parent, flat=True)
+        super().__init__(title, name, parent=parent)
 
         self.filter_edit = QLineEdit()
         self.filter_edit.setObjectName(f"{name}_text")
@@ -348,7 +346,7 @@ class DblRangeFilterWidget(BaseGroupBox):
         parent: QWidget | None = None,
     ) -> None:
         """Initialize the range filter widget."""
-        super().__init__(title, name, parent=parent, checkable=True, flat=True)
+        super().__init__(title, name, parent=parent, checkable=True)
 
         self.mapping = mapping
 
@@ -387,9 +385,9 @@ class DblRangeFilterWidget(BaseGroupBox):
 class DiversityFilterWidget(BaseGroupBox):
     """Handles logic for diversity range (root/leaf)."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str = "Diversity", name: str = "diversity", parent: QWidget | None = None) -> None:
         """Initialize the range filter widget."""
-        super().__init__(title, name, parent=parent, flat=True)
+        super().__init__(title, name, parent=parent)
 
         self.spin_max_per_folder = QSpinBox(minimum=0, maximum=1_000_000)
         self.spin_max_per_folder.setObjectName(f"{name}_max_per_folder")

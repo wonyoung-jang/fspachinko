@@ -61,10 +61,10 @@ class MandalaCentralGui(QMdiArea):
         # Init setup components
         self.ui_root = PathSelectorWidget("Root", "root", items=[QDir.rootPath()])
         self.ui_dest = PathSelectorWidget("Destination", "dest", items=[QDir.homePath()])
-        self.ui_filecount = FileCountWidget("File Count", "filecount")
-        self.ui_folders = FolderCreatorWidget("Create Folders", "folder")
-        self.ui_filenames = FilenameSettingsWidget("Filenames", "filename")
-        self.ui_transfermode = TransferModeWidget("Transfer Mode", "transfermode")
+        self.ui_filecount = FileCountWidget()
+        self.ui_folders = FolderCreatorWidget()
+        self.ui_filenames = FilenameSettingsWidget()
+        self.ui_transfermode = TransferModeWidget()
 
         # Init filter components
         self.ui_keywords = DualListFilterWidget("Keywords", "keyword")
@@ -75,7 +75,7 @@ class MandalaCentralGui(QMdiArea):
         self.ui_duration = DblRangeFilterWidget(
             "Duration", "duration", suffix_options=[s.value for s in TimeUnitEnum], mapping=TIME_MAP
         )
-        self.ui_diversity = DiversityFilterWidget("Diversity", "diversity")
+        self.ui_diversity = DiversityFilterWidget()
 
         # Init execution components
         self.ui_progress = ProgressWidget()
