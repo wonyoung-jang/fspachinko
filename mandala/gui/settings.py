@@ -19,15 +19,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..utils.constants import DEFAULT_PROFILE_DIR, SettingsEnum
+from ..utils.constants import DEFAULT_PROFILE_DIR, AppSettings
 from ..utils.helpers import strtobool
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-QCoreApplication.setOrganizationName(SettingsEnum.ORGANIZATION)
-QCoreApplication.setOrganizationDomain(SettingsEnum.DOMAIN)
-QCoreApplication.setApplicationName(SettingsEnum.APPLICATION)
+QCoreApplication.setOrganizationName(AppSettings.ORGANIZATION)
+QCoreApplication.setOrganizationDomain(AppSettings.DOMAIN)
+QCoreApplication.setApplicationName(AppSettings.APPLICATION)
 
 
 def get_widget_value(widget: QWidget) -> Any:

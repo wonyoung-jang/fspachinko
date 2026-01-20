@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-
-BYTE_TO_MEGABYTE = 9.53674316406 * 10 ** (-7)
-BYTE_TO_GIGABYTE = 9.31322575 * 10 ** (-10)
-
-BYTES_IN_BYTE = 1
-BYTES_IN_KILOBYTE = BYTES_IN_BYTE << 10
-BYTES_IN_MEGABYTE = BYTES_IN_BYTE << 20
-BYTES_IN_GIGABYTE = BYTES_IN_BYTE << 30
-
-SECONDS_IN_SECOND = 1
-SECONDS_IN_MINUTE = SECONDS_IN_SECOND * 60
-SECONDS_IN_HOUR = SECONDS_IN_MINUTE * 60
+from enum import IntEnum, StrEnum
 
 DEFAULT_JSON_CONFIG = "mandala/mandala.json"
 DEFAULT_PROFILE_DIR = ".profiles/"
 
-# NOWRAP = '<p style="white-space:pre">'
+
+class SecondsIn(IntEnum):
+    """Enumeration for seconds in units."""
+
+    SECOND = 1
+    MINUTE = 60
+    HOUR = 3600
+
+
+class BytesIn(IntEnum):
+    """Enumeration for bytes in units."""
+
+    BYTE = 1
+    KILOBYTE = 1 << 10
+    MEGABYTE = 1 << 20
+    GIGABYTE = 1 << 30
 
 
 class TransferMode(StrEnum):
@@ -31,7 +34,7 @@ class TransferMode(StrEnum):
     HARDLINK = "Hardlink"
 
 
-class SettingsEnum(StrEnum):
+class AppSettings(StrEnum):
     """Enumeration for different settings categories."""
 
     ORGANIZATION = "Wonyoung Jang"
@@ -39,7 +42,7 @@ class SettingsEnum(StrEnum):
     APPLICATION = "Mandala"
 
 
-class SizeUnitEnum(StrEnum):
+class SizeUnit(StrEnum):
     """Enumeration for size units."""
 
     BYTES = "B"
@@ -48,7 +51,7 @@ class SizeUnitEnum(StrEnum):
     GIGABYTES = "GB"
 
 
-class TimeUnitEnum(StrEnum):
+class TimeUnit(StrEnum):
     """Enumeration for time units."""
 
     SECONDS = "s"
@@ -57,14 +60,14 @@ class TimeUnitEnum(StrEnum):
 
 
 SIZE_MAP = {
-    SizeUnitEnum.BYTES: BYTES_IN_BYTE,
-    SizeUnitEnum.KILOBYTES: BYTES_IN_KILOBYTE,
-    SizeUnitEnum.MEGABYTES: BYTES_IN_MEGABYTE,
-    SizeUnitEnum.GIGABYTES: BYTES_IN_GIGABYTE,
+    SizeUnit.BYTES: BytesIn.BYTE,
+    SizeUnit.KILOBYTES: BytesIn.KILOBYTE,
+    SizeUnit.MEGABYTES: BytesIn.MEGABYTE,
+    SizeUnit.GIGABYTES: BytesIn.GIGABYTE,
 }
 
 TIME_MAP = {
-    TimeUnitEnum.SECONDS: SECONDS_IN_SECOND,
-    TimeUnitEnum.MINUTES: SECONDS_IN_MINUTE,
-    TimeUnitEnum.HOURS: SECONDS_IN_HOUR,
+    TimeUnit.SECONDS: SecondsIn.SECOND,
+    TimeUnit.MINUTES: SecondsIn.MINUTE,
+    TimeUnit.HOURS: SecondsIn.HOUR,
 }
