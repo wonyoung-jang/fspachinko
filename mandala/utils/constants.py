@@ -42,7 +42,7 @@ class AppSettings(StrEnum):
     APPLICATION = "Mandala"
 
 
-class SizeUnit(StrEnum):
+class ByteUnit(StrEnum):
     """Enumeration for size units."""
 
     BYTES = "B"
@@ -60,10 +60,10 @@ class TimeUnit(StrEnum):
 
 
 SIZE_MAP = {
-    SizeUnit.BYTES: BytesIn.BYTE,
-    SizeUnit.KILOBYTES: BytesIn.KILOBYTE,
-    SizeUnit.MEGABYTES: BytesIn.MEGABYTE,
-    SizeUnit.GIGABYTES: BytesIn.GIGABYTE,
+    ByteUnit.BYTES: BytesIn.BYTE,
+    ByteUnit.KILOBYTES: BytesIn.KILOBYTE,
+    ByteUnit.MEGABYTES: BytesIn.MEGABYTE,
+    ByteUnit.GIGABYTES: BytesIn.GIGABYTE,
 }
 
 TIME_MAP = {

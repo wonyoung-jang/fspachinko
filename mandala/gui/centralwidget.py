@@ -12,7 +12,7 @@ from mandala.utils.constants import SIZE_MAP
 
 from ..config.config import MandalaConfig
 from ..config.schemas import MandalaConfigModel
-from ..utils.constants import TIME_MAP, SizeUnit, TimeUnit
+from ..utils.constants import TIME_MAP, ByteUnit, TimeUnit
 from .components import (
     DblRangeFilterWidget,
     DiversityFilterWidget,
@@ -70,7 +70,7 @@ class MandalaCentralGui(QMdiArea):
         self.ui_keywords = DualListFilterWidget("Keywords", "keyword")
         self.ui_extensions = DualListFilterWidget("Extensions", "extension")
         self.ui_filesize = DblRangeFilterWidget(
-            "Size", "filesize", suffix_options=[s.value for s in SizeUnit], mapping=SIZE_MAP
+            "Size", "filesize", suffix_options=[s.value for s in ByteUnit], mapping=SIZE_MAP
         )
         self.ui_duration = DblRangeFilterWidget(
             "Duration", "duration", suffix_options=[s.value for s in TimeUnit], mapping=TIME_MAP

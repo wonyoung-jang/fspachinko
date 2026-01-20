@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..utils.constants import BytesIn, SizeUnit
+from ..utils.constants import BytesIn, ByteUnit
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -13,18 +13,18 @@ if TYPE_CHECKING:
     from .timestamp import DateTimeSingleton
 
 
-def convert_byte_to_size(num_bytes: int) -> str:
+def convert_byte_to_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
-    if num_bytes < BytesIn.KILOBYTE:
-        return f"{num_bytes} {SizeUnit.BYTES}"
+    if nbytes < BytesIn.KILOBYTE:
+        return f"{nbytes} {ByteUnit.BYTES}"
 
-    if num_bytes < BytesIn.MEGABYTE:
-        return f"{round(num_bytes / BytesIn.KILOBYTE, 2)} {SizeUnit.KILOBYTES}"
+    if nbytes < BytesIn.MEGABYTE:
+        return f"{round(nbytes / BytesIn.KILOBYTE, 2)} {ByteUnit.KILOBYTES}"
 
-    if num_bytes < BytesIn.GIGABYTE:
-        return f"{round(num_bytes / BytesIn.MEGABYTE, 2)} {SizeUnit.MEGABYTES}"
+    if nbytes < BytesIn.GIGABYTE:
+        return f"{round(nbytes / BytesIn.MEGABYTE, 2)} {ByteUnit.MEGABYTES}"
 
-    return f"{round(num_bytes / BytesIn.GIGABYTE, 2)} {SizeUnit.GIGABYTES}"
+    return f"{round(nbytes / BytesIn.GIGABYTE, 2)} {ByteUnit.GIGABYTES}"
 
 
 @dataclass(slots=True)
