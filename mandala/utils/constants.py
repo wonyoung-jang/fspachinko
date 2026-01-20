@@ -22,6 +22,15 @@ DEFAULT_PROFILE_DIR = ".profiles/"
 # NOWRAP = '<p style="white-space:pre">'
 
 
+class TransferMode(StrEnum):
+    """Enumeration for file transfer modes."""
+
+    COPY = "Copy"
+    MOVE = "Move"
+    SYMLINK = "Symlink"
+    HARDLINK = "Hardlink"
+
+
 class SettingsEnum(StrEnum):
     """Enumeration for different settings categories."""
 

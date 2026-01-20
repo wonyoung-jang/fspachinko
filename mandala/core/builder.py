@@ -5,6 +5,8 @@ from __future__ import annotations
 from random import Random
 from typing import TYPE_CHECKING
 
+from mandala.core.timestamp import DateTimeSingleton
+
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
@@ -19,7 +21,6 @@ if TYPE_CHECKING:
 def build_engine(config: MandalaConfig) -> MandalaEngine:
     """Build and return the Mandala engine based on the configuration."""
     validator = FileValidator(config)
-    reporter = ReportWriter(config)
     quota = DiversityQuota(
         root=config.root,
         unique_folders=config.folder.unique,
@@ -27,8 +28,7 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
     )
 
     trash = TrashHandler(
-        trash_source_files=config.transfermode.move_files,
-        trash_empty_folders=config.transfermode.trash_empty_folder,
+        empty_folders=config.transfermode.trash_empty_folder,
         dry_run=config.execution.dry_run,
     )
 
@@ -36,12 +36,9 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
     rng_seed = sys_rand.randint(0, 2**32 - 1)
     rng = Random(rng_seed)
 
-    walker = RandomFSWalker(
-        root=config.root,
-        rng=rng,
-        quota=quota,
-        trash=trash,
-    )
+    walker = RandomFSWalker(root=config.root, rng=rng, quota=quota, trash=trash)
+    timestamp = DateTimeSingleton()
+    reporter = ReportWriter(config, timestamp)
 
     return MandalaEngine(
         config=config,
@@ -51,4 +48,5 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
         quota=quota,
         trash=trash,
         walker=walker,
+        timestamp=timestamp,
     )

@@ -38,6 +38,7 @@ from ..config.schemas import (
     ListIncludeExcludeModel,
     TransferModeModel,
 )
+from ..utils.constants import TransferMode
 from ..utils.helpers import convert_string_to_list, get_multiplier
 
 if TYPE_CHECKING:
@@ -257,8 +258,10 @@ class FilenameWidget(BaseGroupBox):
 
         self.template_button = QPushButton("Insert Tag", flat=True)
         self.template_button.setStatusTip("Insert a tag into the template at the cursor position")
+
         template_menu = QMenu("Tags", self)
         template_menu.setObjectName(f"{name}_template_menu")
+
         self.template_button.setMenu(template_menu)
         for lbl in ("{original}", "{index}", "{date}", "{time}", "{datetime}", "{parent}", "{parentstoroot}"):
             action = template_menu.addAction(lbl)
@@ -287,21 +290,24 @@ class TransferModeWidget(BaseGroupBox):
         """Initialize the mode settings widget."""
         super().__init__(title, name, parent=parent)
 
+        # "Global" trashing option (more of a helpful bonus utility than anything)
         self.chk_trash_empty_folders = QCheckBox("Trash empty folders")
         self.chk_trash_empty_folders.setObjectName(f"{name}_trash_empty_folders")
 
-        self.chk_move_files = QCheckBox("Move files")
-        self.chk_move_files.setObjectName(f"{name}_move_files")
+        # Actual transfer mode options
+        self.combo_mode = QComboBox()
+        self.combo_mode.setObjectName(f"{name}_mode")
+        self.combo_mode.addItems(list(TransferMode))
 
         layout = QFormLayout(self)
         layout.addRow(self.chk_trash_empty_folders)
-        layout.addRow(self.chk_move_files)
+        layout.addRow("Mode:", self.combo_mode)
 
     def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
         return TransferModeModel(
             trash_empty_folder=self.chk_trash_empty_folders.isChecked(),
-            move_files=self.chk_move_files.isChecked(),
+            transfer_mode=TransferMode(self.combo_mode.currentText()),
         )
 
 
@@ -352,15 +358,15 @@ class DblRangeFilterWidget(BaseGroupBox):
 
         self.mapping = mapping
 
-        self.min_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
+        self.min_spin = QDoubleSpinBox(self, minimum=0, maximum=1_000_000)
         self.min_spin.setObjectName(f"{name}_minimum")
         self.min_spin.valueChanged.connect(self.validate_range)
 
-        self.max_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
+        self.max_spin = QDoubleSpinBox(self, minimum=0, maximum=1_000_000)
         self.max_spin.setObjectName(f"{name}_maximum")
         self.max_spin.valueChanged.connect(self.validate_range)
 
-        self.combo = QComboBox()
+        self.combo = QComboBox(self)
         self.combo.addItems(suffix_options)
         self.combo.setObjectName(f"{name}_unit")
 

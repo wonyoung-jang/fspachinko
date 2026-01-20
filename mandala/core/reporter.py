@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from ..utils.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGABYTE
@@ -12,6 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ..config.config import MandalaConfig
+    from .timestamp import DateTimeSingleton
 
 
 def convert_byte_to_size(bytes_in_curr_dir: int) -> str:
@@ -26,13 +26,14 @@ class ReportWriter:
     """ReportWriter class for Mandala."""
 
     config: MandalaConfig
+    timestamp: DateTimeSingleton
     buffer: list[str] = field(default_factory=list)
     report_path: Path = field(init=False)
 
     def reset_for_dest(self, dest: Path) -> None:
         """Initialize reporter for a new run."""
         self.buffer.clear()
-        self.report_path = dest / f"!{dest.name}_report.txt"
+        self.report_path = dest / f"!_report_{dest.name}.txt"
 
     def record_message(self, message: str) -> None:
         """Add a message to the buffer."""
@@ -48,7 +49,7 @@ class ReportWriter:
             "\n========================================================================\n"
             f"{status}\n"
             "========================================================================\n\n"
-            f"Date:             {datetime.now(tz=UTC).strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Date:             {self.timestamp.date_time}\n"
             f"Root:             {self.config.root}\n"
             f"Destination:      {dest}\n"
             f"Extensions:       {ext_str}\n"

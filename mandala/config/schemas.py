@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ..utils.constants import TransferMode
+
 
 class FilecountModel(BaseModel):
     """Model for file count configuration."""
@@ -33,7 +35,7 @@ class TransferModeModel(BaseModel):
     """Model for mode configuration."""
 
     trash_empty_folder: bool = False
-    move_files: bool = False
+    transfer_mode: TransferMode = TransferMode.COPY
 
 
 class ListIncludeExcludeModel(BaseModel):

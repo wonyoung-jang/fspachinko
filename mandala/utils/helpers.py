@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from filecmp import cmp
-from typing import TYPE_CHECKING, ClassVar, Self
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from ..config.schemas import FilenameModel, FolderModel
+    from ..core.timestamp import DateTimeSingleton
 
 
 class SafeDict(dict):
@@ -23,20 +22,6 @@ class SafeDict(dict):
     def __missing__(self, key: str) -> str:
         """Return the key wrapped in braces if missing."""
         return "{" + key + "}"
-
-
-@dataclass(slots=True)
-class DateTimeSingleton:
-    """Singleton for current date and time."""
-
-    now: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
-    instance: ClassVar[DateTimeSingleton]
-
-    def __new__(cls) -> Self:
-        """Ensure only one instance exists."""
-        if not hasattr(cls, "instance"):
-            cls.instance = super(DateTimeSingleton, cls).__new__(cls)
-        return cls.instance
 
 
 def _calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
@@ -62,7 +47,9 @@ def create_dest_folder(model: FolderModel, dest: Path) -> Path:
     return target
 
 
-def calc_dest_file_path(model: FilenameModel, chosen: Path, dest: Path, index: int) -> Path | None:
+def calc_dest_file_path(
+    model: FilenameModel, timestamp: DateTimeSingleton, chosen: Path, dest: Path, index: int
+) -> Path | None:
     """Calculate the destination file path based on naming conventions."""
     ext = chosen.suffix
     stem = chosen.stem
@@ -70,9 +57,9 @@ def calc_dest_file_path(model: FilenameModel, chosen: Path, dest: Path, index: i
     mapping = {
         "original": stem,
         "index": index + 1,
-        "date": datetime.now(tz=UTC).strftime("%Y-%m-%d"),
-        "time": datetime.now(tz=UTC).strftime("%H-%M-%S"),
-        "datetime": datetime.now(tz=UTC).strftime("%Y-%m-%d_%H-%M-%S"),
+        "date": timestamp.date,
+        "time": timestamp.time,
+        "datetime": timestamp.date_time,
         "parent": chosen.parent.name,
         "parentstoroot": "_".join(chosen.parts[:-1]),
     }

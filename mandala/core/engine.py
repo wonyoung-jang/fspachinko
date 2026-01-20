@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import shutil
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
+from ..utils.constants import TransferMode
 from ..utils.helpers import calc_dest_file_path, create_dest_folder, get_status_header
 
 if TYPE_CHECKING:
@@ -19,9 +21,13 @@ if TYPE_CHECKING:
     from ..utils.interfaces import MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
+    from .timestamp import DateTimeSingleton
     from .trash import TrashHandler
     from .validator import FileValidator
     from .walker import RandomFSWalker
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -53,6 +59,7 @@ class MandalaEngine:
     quota: DiversityQuota
     trash: TrashHandler
     walker: RandomFSWalker
+    timestamp: DateTimeSingleton
     observer: MandalaObserver = field(init=False)
     _state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
@@ -101,13 +108,12 @@ class MandalaEngine:
 
             path, size = candidate.path, candidate.size
 
-            if self.validator.is_valid(path, size) and self._try_copy(path, dest, copied):
+            if self.validator.is_valid(path, size) and self._copy_file_attempt(path, dest, copied):
                 copied += 1
                 self._state.update_success(size)
                 self.quota.register_success(path)
                 self.observer.on_count(copied)
                 self.observer.on_time()
-                self.trash.collect_source_file(path)
 
         return copied
 
@@ -116,25 +122,34 @@ class MandalaEngine:
         self.observer.on_count_total()
         self._finalize_folder(dest, copied, target)
 
-    def _try_copy(self, chosen: Path, dest: Path, count: int) -> bool:
+    def _copy_file_attempt(self, chosen: Path, dest: Path, count: int) -> bool:
         """Attempt to copy a file and return success status."""
         chosen_rel = chosen.relative_to(self.config.root)
 
-        target = calc_dest_file_path(self.config.filename, chosen_rel, dest, count)
+        target = calc_dest_file_path(self.config.filename, self.timestamp, chosen_rel, dest, count)
         if target is None:
             return False
 
-        target_rel = target.relative_to(self.config.dest)
+        target_rel = target.relative_to(dest)
         copy_path_str = f"{chosen_rel} -> {target_rel}"
 
         if self.config.execution.dry_run:
-            self._report(msg=f"DRY RUN: {count + 1}: {copy_path_str}")
+            self._report(msg=f"DRY: {count + 1}: {copy_path_str}")
             return True
 
         try:
-            shutil.copy2(chosen, target)
+            match self.config.transfermode.transfer_mode:
+                case TransferMode.COPY:
+                    chosen.copy(target, preserve_metadata=True)
+                case TransferMode.MOVE:
+                    chosen.move(target)
+                case TransferMode.SYMLINK:
+                    target.symlink_to(chosen)
+                case TransferMode.HARDLINK:
+                    target.hardlink_to(chosen)
         except (PermissionError, OSError):
-            self._report(msg=f"FAILED COPY: {copy_path_str}")
+            self._report(msg=f"FAILED: {copy_path_str}")
+            logger.exception("Failed to copy file: %s", copy_path_str)
             return False
         else:
             self._report(msg=f"{count + 1}: {copy_path_str}")
@@ -147,14 +162,14 @@ class MandalaEngine:
 
     def _generate_target_and_dest(self) -> Iterator[tuple[int, Path]]:
         """Prepare target file counts for each folder."""
-        counts = [
-            self.rng.randint(self.config.filecount.count_min_rand, self.config.filecount.count_max_rand)
-            if self.config.filecount.is_rand_count
-            else self.config.filecount.count
-            for _ in range(self.config.folder.count)
-        ]
-        folders = [create_dest_folder(self.config.folder, self.config.dest) for _ in range(self.config.folder.count)]
-        yield from zip(counts, folders, strict=True)
+        cfg = self.config
+        fc = cfg.filecount
+        fd = cfg.folder
+        for _ in range(fd.count):
+            yield (
+                self.rng.randint(fc.count_min_rand, fc.count_max_rand) if fc.is_rand_count else fc.count,
+                create_dest_folder(fd, cfg.dest),
+            )
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
