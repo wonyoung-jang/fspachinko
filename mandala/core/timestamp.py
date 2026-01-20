@@ -15,6 +15,7 @@ class DateTimeSingleton:
     date: str = field(init=False)
     time: str = field(init=False)
     date_time: str = field(init=False)
+    date_time_report_str: str = field(init=False)
     instance: ClassVar[DateTimeSingleton]
 
     def __new__(cls) -> Self:
@@ -33,3 +34,4 @@ class DateTimeSingleton:
         self.date = self.now.strftime("%Y-%m-%d")
         self.time = self.now.strftime("%H-%M-%S")
         self.date_time = f"{self.date}--{self.time}"
+        self.date_time_report_str = self.now.strftime("%Y-%m-%d %H:%M:%S")

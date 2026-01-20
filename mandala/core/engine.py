@@ -87,6 +87,7 @@ class MandalaEngine:
 
     def process_folder(self, target: int, dest: Path) -> None:
         """Run processing for a single folder."""
+        self.timestamp.refresh()
         self._prep_folder(target, dest)
         copied = self._copy_folder(target, dest)
         self._complete_folder(dest, copied, target)

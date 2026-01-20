@@ -36,9 +36,21 @@ def build_engine(config: MandalaConfig) -> MandalaEngine:
     rng_seed = sys_rand.randint(0, 2**32 - 1)
     rng = Random(rng_seed)
 
-    walker = RandomFSWalker(root=config.root, rng=rng, quota=quota, trash=trash)
+    walker = RandomFSWalker(
+        root=config.root,
+        rng=rng,
+        quota=quota,
+        trash=trash,
+    )
+
     timestamp = DateTimeSingleton()
-    reporter = ReportWriter(config, timestamp)
+
+    reporter = ReportWriter(
+        root=config.root,
+        exts_str=", ".join(config.extension.text) if config.extension.text else "ALL",
+        keys_str=", ".join(config.keyword.text) if config.keyword.text else "ALL",
+        timestamp=timestamp,
+    )
 
     return MandalaEngine(
         config=config,

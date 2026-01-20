@@ -10,7 +10,6 @@ from ..utils.constants import BYTE_TO_GIGABYTE, BYTE_TO_MEGABYTE, BYTES_IN_GIGAB
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.config import MandalaConfig
     from .timestamp import DateTimeSingleton
 
 
@@ -25,7 +24,9 @@ def convert_byte_to_size(bytes_in_curr_dir: int) -> str:
 class ReportWriter:
     """ReportWriter class for Mandala."""
 
-    config: MandalaConfig
+    root: Path
+    exts_str: str
+    keys_str: str
     timestamp: DateTimeSingleton
     buffer: list[str] = field(default_factory=list)
     report_path: Path = field(init=False)
@@ -41,19 +42,15 @@ class ReportWriter:
 
     def generate_report(self, dest: Path, status: str, runtime: float, size: int) -> str:
         """Generate the header report string."""
-        exts = self.config.extension.text
-        keys = self.config.keyword.text
-        ext_str = ", ".join(exts) if exts else "ALL"
-        kw_str = ", ".join(keys) if keys else "ALL"
         return (
             "\n========================================================================\n"
             f"{status}\n"
             "========================================================================\n\n"
-            f"Date:             {self.timestamp.date_time}\n"
-            f"Root:             {self.config.root}\n"
+            f"Date:             {self.timestamp.date_time_report_str}\n"
+            f"Root:             {self.root}\n"
             f"Destination:      {dest}\n"
-            f"Extensions:       {ext_str}\n"
-            f"Keywords:         {kw_str}\n"
+            f"Extensions:       {self.exts_str}\n"
+            f"Keywords:         {self.keys_str}\n"
             f"Total size:       {convert_byte_to_size(size)}\n"
             f"Total runtime:    {runtime}s\n"
             "------------------------------------------------------------------------\n"
