@@ -89,9 +89,9 @@ def strtobool(val: str) -> bool:
     raise ValueError(msg)
 
 
-def convert_string_to_list(string: str, sep: str = " ") -> tuple[str, ...]:
-    """Convert a space-separated string to a list."""
-    li = tuple(string.split(sep))
+def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
+    """Convert a comma-separated string to a list."""
+    li = tuple(s.strip() for s in string.split(sep))
     if len(li) == 1 and li[0] == "":
         return ()
     return li

@@ -25,6 +25,7 @@ from .components import (
     ProgressWidget,
     TransferModeWidget,
 )
+from .qthelpers import init_widget
 from .workers import RunMandalaWorker
 
 
@@ -52,7 +53,7 @@ class MandalaCentralGui(QMdiArea):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.setObjectName("MandalaCentralGui")
+        init_widget(self, "MandalaCentralGui")
         self.setup_components()
         self.setup_layout()
 

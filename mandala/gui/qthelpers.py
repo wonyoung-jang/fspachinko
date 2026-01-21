@@ -18,5 +18,9 @@ def init_widget(w: QWidget, name: str) -> None:
     """Initialize a widget with a given object name."""
     w.setObjectName(name)
 
-    tooltip = f"{get_classname(w)}: {name}"
-    w.setToolTip(tooltip)
+
+def set_widget_tips(w: QWidget, tip: str) -> None:
+    """Set the tooltip and status tip for a widget."""
+    status_tip = f"{tip} | ({get_classname(w)})"
+    w.setToolTip(tip)
+    w.setStatusTip(status_tip)
