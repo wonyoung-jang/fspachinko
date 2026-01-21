@@ -38,7 +38,7 @@ from ..config.schemas import (
     TransferModeModel,
 )
 from ..utils.constants import TransferMode
-from ..utils.helpers import convert_string_to_list, get_multiplier
+from ..utils.helpers import convert_string_to_list
 from .qthelpers import init_widget, set_widget_tips
 
 if TYPE_CHECKING:
@@ -145,7 +145,7 @@ class PathSelectorWidget(BaseGroupBox):
 
     def get_config(self) -> Path:
         """Return clean data for the config."""
-        return Path(self.combo.currentText()).resolve()
+        return Path(self.current_path()).resolve()
 
 
 class FileCountWidget(BaseGroupBox):
@@ -157,12 +157,10 @@ class FileCountWidget(BaseGroupBox):
 
         self.radio_fixed = QRadioButton("Fixed Count")
         self.radio_fixed.setChecked(True)
-        self.radio_fixed.toggled.connect(self.toggle_visibility)
         init_widget(self.radio_fixed, f"{name}_fixed_chk")
         set_widget_tips(self.radio_fixed, "Select fixed file count.")
 
         self.radio_rand = QRadioButton("Randomize")
-        self.radio_rand.toggled.connect(self.toggle_visibility)
         init_widget(self.radio_rand, f"{name}_rand_chk")
         set_widget_tips(self.radio_rand, "Select random file count.")
 
@@ -183,19 +181,23 @@ class FileCountWidget(BaseGroupBox):
         fixed_layout.addRow("Count", self.spin_fixed)
 
         self.spin_min_rand = QSpinBox(minimum=1, maximum=1_000_000_000)
-        self.spin_min_rand.valueChanged.connect(self.update_minimum)
         init_widget(self.spin_min_rand, f"{name}_rand_min")
         set_widget_tips(self.spin_min_rand, "Minimum random file count.")
 
         self.spin_max_rand = QSpinBox(minimum=2, maximum=1_000_000_000)
-        self.spin_max_rand.valueChanged.connect(self.update_maximum)
         init_widget(self.spin_max_rand, f"{name}_rand_max")
         set_widget_tips(self.spin_max_rand, "Maximum random file count.")
+
+        self.spin_min_rand.valueChanged.connect(self.spin_max_rand.setMinimum)
+        self.spin_max_rand.valueChanged.connect(self.spin_min_rand.setMaximum)
 
         self.rand_widget = QWidget()
         self.rand_widget.setVisible(False)
         init_widget(self.rand_widget, f"{name}_rand_widget")
         set_widget_tips(self.rand_widget, "Random file count settings.")
+
+        self.radio_fixed.toggled.connect(self.fixed_widget.setVisible)
+        self.radio_rand.toggled.connect(self.rand_widget.setVisible)
 
         rand_layout = QFormLayout(self.rand_widget)
         rand_layout.addRow("Min", self.spin_min_rand)
@@ -205,23 +207,6 @@ class FileCountWidget(BaseGroupBox):
         layout.addWidget(mode_widget)
         layout.addWidget(self.fixed_widget)
         layout.addWidget(self.rand_widget)
-
-    @Slot()
-    def toggle_visibility(self) -> None:
-        """Toggle visibility of random/fixed widgets."""
-        is_rand = self.radio_rand.isChecked()
-        self.rand_widget.setVisible(is_rand)
-        self.fixed_widget.setVisible(not is_rand)
-
-    @Slot(int)
-    def update_minimum(self, min_val: int) -> None:
-        """Update the minimum random file count."""
-        self.spin_max_rand.setMinimum(min_val)
-
-    @Slot(int)
-    def update_maximum(self, max_val: int) -> None:
-        """Update the maximum random file count."""
-        self.spin_min_rand.setMaximum(max_val)
 
     def get_config(self) -> FilecountModel:
         """Return clean data for the config."""
@@ -407,14 +392,15 @@ class DblRangeFilterWidget(BaseGroupBox):
         self.mapping = mapping
 
         self.min_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
-        self.min_spin.valueChanged.connect(self.update_minimum)
         init_widget(self.min_spin, f"{name}_minimum")
         set_widget_tips(self.min_spin, f"Minimum value for the {name} filter.")
 
         self.max_spin = QDoubleSpinBox(minimum=0, maximum=1_000_000)
-        self.max_spin.valueChanged.connect(self.update_maximum)
         init_widget(self.max_spin, f"{name}_maximum")
         set_widget_tips(self.max_spin, f"Maximum value for the {name} filter.")
+
+        self.min_spin.valueChanged.connect(self.max_spin.setMinimum)
+        self.max_spin.valueChanged.connect(self.min_spin.setMaximum)
 
         self.combo = QComboBox()
         self.combo.addItems(suffix_options)
@@ -426,19 +412,9 @@ class DblRangeFilterWidget(BaseGroupBox):
         layout.addRow("Max", self.max_spin)
         layout.addRow(self.combo)
 
-    @Slot(int)
-    def update_minimum(self, min_val: int) -> None:
-        """Update the minimum random file count."""
-        self.max_spin.setMinimum(min_val)
-
-    @Slot(int)
-    def update_maximum(self, max_val: int) -> None:
-        """Update the maximum random file count."""
-        self.min_spin.setMaximum(max_val)
-
     def get_config(self) -> LimitMinMaxModel:
         """Return clean data for the config."""
-        mult = get_multiplier(self.combo.currentText(), self.mapping)
+        mult = self.mapping.get(self.combo.currentText(), 1)
         minimum, maximum = self.min_spin.value() * mult, self.max_spin.value() * mult
         return LimitMinMaxModel(limit=self.isChecked(), minimum=minimum, maximum=maximum)
 

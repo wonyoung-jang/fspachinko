@@ -49,11 +49,6 @@ def get_status_header(*, success: bool, stopped: bool, none_found: bool, all_sea
     return prefix
 
 
-def get_multiplier(unit: str, mapping: dict[str, int]) -> int:
-    """Get the multiplier for a given unit from the provided map."""
-    return mapping.get(unit, 1)
-
-
 def strtobool(val: str) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
 
