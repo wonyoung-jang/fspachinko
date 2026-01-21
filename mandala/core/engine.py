@@ -10,14 +10,14 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from ..utils.constants import TransferMode
-from ..utils.helpers import calc_dest_file_path, create_dest_folder, get_status_header
+from ..utils.helpers import get_status_header
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
     from random import Random
 
-    from ..config.config import MandalaConfig
+    from ..config.config import Filecount, Filename, Folder
     from ..utils.interfaces import MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
@@ -52,7 +52,9 @@ class MandalaState:
 class MandalaEngine:
     """Core engine class for Mandala."""
 
-    config: MandalaConfig
+    root: Path
+    dry_run: bool
+    transfer_mode: TransferMode
     validator: FileValidator
     reporter: ReportWriter
     rng: Random
@@ -60,6 +62,9 @@ class MandalaEngine:
     trash: TrashHandler
     walker: RandomFSWalker
     timestamp: DateTimeSingleton
+    filecount: Filecount
+    filename: Filename
+    folder: Folder
     observer: MandalaObserver = field(init=False)
     _state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
@@ -74,7 +79,7 @@ class MandalaEngine:
 
     def start(self) -> None:
         """Run the main file copying process."""
-        self.observer.on_progress_total(self.config.folder.count)
+        self.observer.on_progress_total(self.folder.count)
 
         for target, dest in self._generate_target_and_dest():
             if self._request_stop:
@@ -125,21 +130,21 @@ class MandalaEngine:
 
     def _copy_file_attempt(self, chosen: Path, dest: Path, count: int) -> bool:
         """Attempt to copy a file and return success status."""
-        chosen_rel = chosen.relative_to(self.config.root)
+        chosen_rel = chosen.relative_to(self.root)
 
-        target = calc_dest_file_path(self.config.filename, self.timestamp, chosen_rel, dest, count)
+        target = self.filename.calc_dest_target(chosen_rel, dest, count)
         if target is None:
             return False
 
         target_rel = target.relative_to(dest)
         copy_path_str = f"{chosen_rel} -> {target_rel}"
 
-        if self.config.execution.dry_run:
+        if self.dry_run:
             self._report(msg=f"DRY: {count + 1}: {copy_path_str}")
             return True
 
         try:
-            match self.config.transfermode.transfer_mode:
+            match self.transfer_mode:
                 case TransferMode.COPY:
                     chosen.copy(target, preserve_metadata=True)
                 case TransferMode.MOVE:
@@ -163,14 +168,8 @@ class MandalaEngine:
 
     def _generate_target_and_dest(self) -> Iterator[tuple[int, Path]]:
         """Prepare target file counts for each folder."""
-        cfg = self.config
-        fc = cfg.filecount
-        fd = cfg.folder
-        for _ in range(fd.count):
-            yield (
-                self.rng.randint(fc.count_min_rand, fc.count_max_rand) if fc.is_rand_count else fc.count,
-                create_dest_folder(fd, cfg.dest),
-            )
+        for _ in range(self.folder.count):
+            yield self.filecount.get_count(), self.folder.create_dest_folder()
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
@@ -180,7 +179,7 @@ class MandalaEngine:
         """Create and write log at the end of folder."""
         runtime = round(perf_counter() - self._state.start_time_currdir, 2)
         copied = f"{count}/{target} files copied"
-        create_folders = self.config.folder.create
+        create_folders = self.folder.create
         none_found = count == 0 and create_folders
         prefix = get_status_header(
             success=(count == target),

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from filecmp import cmp
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.schemas import FilenameModel, FolderModel
-    from ..core.timestamp import DateTimeSingleton
+    from ..config.schemas import FolderModel
 
 
 class SafeDict(dict):
@@ -45,47 +43,6 @@ def create_dest_folder(model: FolderModel, dest: Path) -> Path:
     target = _calc_unique_path_name(dest, name)
     target.mkdir(parents=False)
     return target
-
-
-def calc_dest_file_path(
-    model: FilenameModel, timestamp: DateTimeSingleton, chosen: Path, dest: Path, index: int
-) -> Path | None:
-    """Calculate the destination file path based on naming conventions."""
-    ext = chosen.suffix
-    stem = chosen.stem
-
-    mapping = {
-        "original": stem,
-        "index": index + 1,
-        "date": timestamp.date,
-        "time": timestamp.time,
-        "datetime": timestamp.date_time,
-        "parent": chosen.parent.name,
-        "parentstoroot": "_".join(chosen.parts[:-1]),
-    }
-    safe_map = SafeDict(mapping)
-
-    try:
-        new_stem = model.template.format_map(safe_map)
-    except (KeyError, ValueError):
-        new_stem = stem
-
-    invalid_chars = r'\/:*?"<>|'
-    new_stem = "".join(c for c in new_stem if c not in invalid_chars)
-    name = f"{new_stem}{ext}"
-
-    target = dest / name
-
-    if target.exists():
-        if target.stat().st_size == chosen.stat().st_size:
-            if cmp(chosen, target, shallow=False):
-                return None
-        else:
-            return _calc_unique_path_name(dest, target.stem, ext)
-    else:
-        return target
-
-    return None
 
 
 def get_status_header(*, success: bool, stopped: bool, none_found: bool, all_searched: bool) -> str:

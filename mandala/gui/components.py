@@ -207,9 +207,9 @@ class FileCountWidget(BaseGroupBox):
         """Return clean data for the config."""
         return FilecountModel(
             count=self.spin_fixed.value(),
-            is_rand_count=self.radio_rand.isChecked(),
-            count_min_rand=self.spin_min_rand.value(),
-            count_max_rand=self.spin_max_rand.value(),
+            is_rand=self.radio_rand.isChecked(),
+            min_rand=self.spin_min_rand.value(),
+            max_rand=self.spin_max_rand.value(),
         )
 
 

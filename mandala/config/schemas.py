@@ -11,9 +11,9 @@ class FilecountModel(BaseModel):
     """Model for file count configuration."""
 
     count: int = 0
-    is_rand_count: bool = False
-    count_min_rand: int = 0
-    count_max_rand: int = 0
+    is_rand: bool = False
+    min_rand: int = 0
+    max_rand: int = 0
 
 
 class FolderModel(BaseModel):
