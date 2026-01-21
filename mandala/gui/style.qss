@@ -1,0 +1,33 @@
+/* Qt Style Sheet for Mandala GUI */
+
+/* ------------------------------------------------------------------------ */
+/* QGroupBox */
+QGroupBox {
+  background-color: #141318;
+  border-radius: 4px;
+  padding: 28px 12px 12px;
+  line-height: 12px;
+}
+QGroupBox::title {
+  color: #e6dff9;
+  subcontrol-origin: margin;
+  subcontrol-position: top left;
+  padding: 4px 16px;
+  background-color: #484458;
+}
+
+/* ------------------------------------------------------------------------ */
+/* QProgressBar */
+QProgressBar {
+    background-color: #0f0d13;
+    color: #e7deff;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    text-align: center;
+}
+QProgressBar::chunk {
+    background-color: #493e76;
+    border-radius: 4px;
+    margin: 0.5px;
+    width: 10px;
+}

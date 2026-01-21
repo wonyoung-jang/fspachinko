@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import os
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import QUrl, Slot
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -40,11 +41,14 @@ from ..config.schemas import (
 )
 from ..utils.constants import TransferMode
 from ..utils.helpers import convert_string_to_list, get_multiplier
+from .qthelpers import init_widget
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
+
+logger = logging.getLogger(__name__)
 
 
 class BaseGroupBox(QGroupBox):
@@ -57,13 +61,11 @@ class BaseGroupBox(QGroupBox):
         *,
         parent: QWidget | None = None,
         checkable: bool = False,
-        flat: bool = True,
     ) -> None:
         """Initialize the base group box."""
         super().__init__(title=title, parent=parent)
-        self.setObjectName(name)
+        init_widget(self, name)
         self.setCheckable(checkable)
-        self.setFlat(flat)
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -75,20 +77,20 @@ class PathSelectorWidget(BaseGroupBox):
         self.setAcceptDrops(True)
 
         self.combo = QComboBox()
+        init_widget(self.combo, f"{name}_combo")
         self.combo.addItems(items)
-        self.combo.setObjectName(f"{name}_combo")
 
         title = self.title().casefold()
 
-        btn_browse = QPushButton("Browse", flat=True)
+        btn_browse = QPushButton("Browse")
         btn_browse.setStatusTip(f"Browse for {title} folder")
         btn_browse.clicked.connect(self.browse)
 
-        btn_delete = QPushButton("Delete", flat=True)
+        btn_delete = QPushButton("Delete")
         btn_delete.setStatusTip(f"Delete current {title} entry")
         btn_delete.clicked.connect(self.delete_curr_item)
 
-        btn_open = QPushButton("Open", flat=True)
+        btn_open = QPushButton("Open")
         btn_open.setStatusTip(f"Open current {title} folder in file explorer")
         btn_open.clicked.connect(self.open)
 
@@ -130,7 +132,10 @@ class PathSelectorWidget(BaseGroupBox):
     @Slot()
     def open(self) -> None:
         """Open the currently selected path in file explorer."""
-        os.startfile(self.current_path())
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self.current_path()))
+        except Exception:
+            logger.exception("Failed to open path in file explorer")
 
     def current_path(self) -> str:
         """Return the currently selected path."""
@@ -149,12 +154,12 @@ class FileCountWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.radio_fixed = QRadioButton("Fixed Count")
+        init_widget(self.radio_fixed, f"{name}_fixed_chk")
         self.radio_fixed.setChecked(True)
-        self.radio_fixed.setObjectName(f"{name}_fixed_chk")
         self.radio_fixed.toggled.connect(self.toggle_visibility)
 
         self.radio_rand = QRadioButton("Randomize")
-        self.radio_rand.setObjectName(f"{name}_rand_chk")
+        init_widget(self.radio_rand, f"{name}_rand_chk")
         self.radio_rand.toggled.connect(self.toggle_visibility)
 
         mode_widget = QWidget()
@@ -163,19 +168,19 @@ class FileCountWidget(BaseGroupBox):
         mode_layout.addWidget(self.radio_rand)
 
         self.spin_fixed = QSpinBox(minimum=1, maximum=1_000_000_000)
-        self.spin_fixed.setObjectName(f"{name}_fixed_val")
+        init_widget(self.spin_fixed, f"{name}_fixed_val")
 
         self.fixed_widget = QWidget()
         fixed_layout = QFormLayout(self.fixed_widget)
         fixed_layout.addRow("Count", self.spin_fixed)
 
         self.spin_min_rand = QSpinBox(minimum=1, maximum=1_000_000_000)
-        self.spin_min_rand.setObjectName(f"{name}_rand_min")
-        self.spin_min_rand.editingFinished.connect(self.validate_rand_file_count)
+        init_widget(self.spin_min_rand, f"{name}_rand_min")
+        self.spin_min_rand.valueChanged.connect(self.update_minimum)
 
         self.spin_max_rand = QSpinBox(minimum=2, maximum=1_000_000_000)
-        self.spin_max_rand.setObjectName(f"{name}_rand_max")
-        self.spin_max_rand.editingFinished.connect(self.validate_rand_file_count)
+        init_widget(self.spin_max_rand, f"{name}_rand_max")
+        self.spin_max_rand.valueChanged.connect(self.update_maximum)
 
         self.rand_widget = QWidget()
         self.rand_widget.setVisible(False)
@@ -195,13 +200,15 @@ class FileCountWidget(BaseGroupBox):
         self.rand_widget.setVisible(is_rand)
         self.fixed_widget.setVisible(not is_rand)
 
-    @Slot()
-    def validate_rand_file_count(self) -> None:
-        """Switch the file count low and high values."""
-        lo, hi = self.spin_min_rand.value(), self.spin_max_rand.value()
-        if lo > hi:
-            self.spin_min_rand.setValue(hi)
-            self.spin_max_rand.setValue(lo)
+    @Slot(int)
+    def update_minimum(self, min_val: int) -> None:
+        """Update the minimum random file count."""
+        self.spin_max_rand.setMinimum(min_val)
+
+    @Slot(int)
+    def update_maximum(self, max_val: int) -> None:
+        """Update the maximum random file count."""
+        self.spin_min_rand.setMaximum(max_val)
 
     def get_config(self) -> FilecountModel:
         """Return clean data for the config."""
@@ -221,13 +228,13 @@ class FolderCreatorWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent, checkable=True)
 
         self.spinbox_folder_count = QSpinBox(minimum=1, maximum=100_000)
-        self.spinbox_folder_count.setObjectName(f"{name}_count")
+        init_widget(self.spinbox_folder_count, f"{name}_count")
 
         self.lineedit_folder_name = QLineEdit("mandala_output")
-        self.lineedit_folder_name.setObjectName(f"{name}_name")
+        init_widget(self.lineedit_folder_name, f"{name}_name")
 
         self.chk_unique_folders = QCheckBox("Make Unique")
-        self.chk_unique_folders.setObjectName(f"{name}_unique")
+        init_widget(self.chk_unique_folders, f"{name}_unique")
         self.chk_unique_folders.setChecked(True)
 
         layout = QFormLayout(self)
@@ -253,14 +260,14 @@ class FilenameWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.edit_template = QLineEdit("{original}")
-        self.edit_template.setObjectName(f"{name}_template")
+        init_widget(self.edit_template, f"{name}_template")
         self.edit_template.setPlaceholderText("Ex: {original}_{index}")
 
-        self.template_button = QPushButton("Insert Tag", flat=True)
+        self.template_button = QPushButton("Insert Tag")
         self.template_button.setStatusTip("Insert a tag into the template at the cursor position")
 
         template_menu = QMenu("Tags", self)
-        template_menu.setObjectName(f"{name}_template_menu")
+        init_widget(template_menu, f"{name}_template_menu")
 
         self.template_button.setMenu(template_menu)
         for lbl in ("{original}", "{index}", "{date}", "{time}", "{datetime}", "{parent}", "{parentstoroot}"):
@@ -292,11 +299,11 @@ class TransferModeWidget(BaseGroupBox):
 
         # "Global" trashing option (more of a helpful bonus utility than anything)
         self.chk_trash_empty_folders = QCheckBox("Trash empty folders")
-        self.chk_trash_empty_folders.setObjectName(f"{name}_trash_empty_folders")
+        init_widget(self.chk_trash_empty_folders, f"{name}_trash_empty_folders")
 
         # Actual transfer mode options
         self.combo_mode = QComboBox()
-        self.combo_mode.setObjectName(f"{name}_mode")
+        init_widget(self.combo_mode, f"{name}_mode")
         self.combo_mode.addItems(list(TransferMode))
 
         layout = QFormLayout(self)
@@ -319,14 +326,14 @@ class DualListFilterWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.filter_edit = QLineEdit()
-        self.filter_edit.setObjectName(f"{name}_text")
+        init_widget(self.filter_edit, f"{name}_text")
 
         self.filter_include_radio = QRadioButton("Include")
+        init_widget(self.filter_include_radio, f"{name}_include")
         self.filter_include_radio.setChecked(True)
-        self.filter_include_radio.setObjectName(f"{name}_include")
 
         self.filter_exclude_radio = QRadioButton("Exclude")
-        self.filter_exclude_radio.setObjectName(f"{name}_exclude")
+        init_widget(self.filter_exclude_radio, f"{name}_exclude")
 
         hbox = QHBoxLayout(self)
         hbox.addWidget(self.filter_edit)
@@ -359,29 +366,31 @@ class DblRangeFilterWidget(BaseGroupBox):
         self.mapping = mapping
 
         self.min_spin = QDoubleSpinBox(self, minimum=0, maximum=1_000_000)
-        self.min_spin.setObjectName(f"{name}_minimum")
-        self.min_spin.valueChanged.connect(self.validate_range)
+        init_widget(self.min_spin, f"{name}_minimum")
+        self.min_spin.valueChanged.connect(self.update_minimum)
 
         self.max_spin = QDoubleSpinBox(self, minimum=0, maximum=1_000_000)
-        self.max_spin.setObjectName(f"{name}_maximum")
-        self.max_spin.valueChanged.connect(self.validate_range)
+        init_widget(self.max_spin, f"{name}_maximum")
+        self.max_spin.valueChanged.connect(self.update_maximum)
 
         self.combo = QComboBox(self)
+        init_widget(self.combo, f"{name}_unit")
         self.combo.addItems(suffix_options)
-        self.combo.setObjectName(f"{name}_unit")
 
         layout = QFormLayout(self)
         layout.addRow("Min", self.min_spin)
         layout.addRow("Max", self.max_spin)
         layout.addRow(self.combo)
 
-    @Slot()
-    def validate_range(self) -> None:
-        """Auto-corrects if Min > Max."""
-        lo, hi = self.min_spin.value(), self.max_spin.value()
-        if lo > hi:
-            self.min_spin.setValue(hi)
-            self.max_spin.setValue(lo)
+    @Slot(int)
+    def update_minimum(self, min_val: int) -> None:
+        """Update the minimum random file count."""
+        self.max_spin.setMinimum(min_val)
+
+    @Slot(int)
+    def update_maximum(self, max_val: int) -> None:
+        """Update the maximum random file count."""
+        self.min_spin.setMaximum(max_val)
 
     def get_config(self) -> LimitMinMaxModel:
         """Return clean data for the config."""
@@ -398,7 +407,7 @@ class DiversityFilterWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.spin_max_per_folder = QSpinBox(minimum=0, maximum=1_000_000)
-        self.spin_max_per_folder.setObjectName(f"{name}_max_per_folder")
+        init_widget(self.spin_max_per_folder, f"{name}_max_per_folder")
 
         layout = QFormLayout(self)
         layout.addRow("Max files per folder", self.spin_max_per_folder)
@@ -440,13 +449,13 @@ class ExecutionWidget(QWidget):
 
         # Log
         self.textbrowser_log = QTextBrowser()
-        self.textbrowser_log.setFont("Consolas")
+        init_widget(self.textbrowser_log, "execution_log")
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         self.textbrowser_log.setStatusTip("Log for output messages")
 
         # Dry Run
         self.chk_dry_run = QCheckBox("Dry Run")
-        self.chk_dry_run.setObjectName("execution_dry_run")
+        init_widget(self.chk_dry_run, "execution_dry_run")
         self.chk_dry_run.setStatusTip("If checked, no files will actually be copied.")
 
         layout = QGridLayout(self)
