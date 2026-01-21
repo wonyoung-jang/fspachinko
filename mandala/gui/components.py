@@ -31,7 +31,6 @@ from PySide6.QtWidgets import (
 
 from ..config.schemas import (
     DiversityModel,
-    ExecutionModel,
     FilecountModel,
     FilenameModel,
     FolderModel,
@@ -328,7 +327,6 @@ class TransferModeWidget(BaseGroupBox):
         """Initialize the mode settings widget."""
         super().__init__(title, name, parent=parent)
 
-        # "Global" trashing option (more of a helpful bonus utility than anything)
         self.chk_trash_empty_folders = QCheckBox("Trash empty folders")
         init_widget(self.chk_trash_empty_folders, f"{name}_trash_empty_folders")
         set_widget_tips(
@@ -341,15 +339,21 @@ class TransferModeWidget(BaseGroupBox):
         init_widget(self.combo_mode, f"{name}_mode")
         set_widget_tips(self.combo_mode, "Select the transfer mode to use.")
 
+        self.chk_dry_run = QCheckBox("Dry Run")
+        init_widget(self.chk_dry_run, "execution_dry_run")
+        set_widget_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
+
         layout = QFormLayout(self)
-        layout.addRow(self.chk_trash_empty_folders)
         layout.addRow("Mode:", self.combo_mode)
+        layout.addRow(self.chk_trash_empty_folders)
+        layout.addRow(self.chk_dry_run)
 
     def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
         return TransferModeModel(
             trash_empty_folder=self.chk_trash_empty_folders.isChecked(),
             transfer_mode=TransferMode(self.combo_mode.currentText()),
+            dry_run=self.chk_dry_run.isChecked(),
         )
 
 
@@ -496,16 +500,5 @@ class ExecutionWidget(QWidget):
         set_widget_tips(self.textbrowser_log, "Log for output messages.")
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
-        self.chk_dry_run = QCheckBox("Dry Run")
-        init_widget(self.chk_dry_run, "execution_dry_run")
-        set_widget_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
-
         layout = QGridLayout(self)
-        layout.addWidget(self.chk_dry_run, 0, 0)
         layout.addWidget(self.textbrowser_log, 1, 0)
-
-    def get_config(self) -> ExecutionModel:
-        """Return clean data for the config."""
-        return ExecutionModel(
-            dry_run=self.chk_dry_run.isChecked(),
-        )

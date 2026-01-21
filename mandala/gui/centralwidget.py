@@ -121,7 +121,6 @@ class MandalaCentralGui(QMdiArea):
             filesize=self.ui_filesize.get_config(),
             duration=self.ui_duration.get_config(),
             diversity=self.ui_diversity.get_config(),
-            execution=self.ui_execution.get_config(),
         )
         return MandalaConfig(**model.__dict__)
 

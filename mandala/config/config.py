@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from ..utils.helpers import SafeDict, _calc_unique_path_name
 from .schemas import (
     DiversityModel,
-    ExecutionModel,
     FilecountModel,
     FilenameModel,
     FolderModel,
@@ -178,7 +177,6 @@ class MandalaConfig:
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
     diversity: DiversityModel
-    execution: ExecutionModel
 
     @classmethod
     def from_json(cls, path: Path) -> MandalaConfig:

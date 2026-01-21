@@ -36,6 +36,7 @@ class TransferModeModel(BaseModel):
 
     trash_empty_folder: bool = False
     transfer_mode: TransferMode = TransferMode.COPY
+    dry_run: bool = False
 
 
 class ListIncludeExcludeModel(BaseModel):
@@ -60,12 +61,6 @@ class DiversityModel(BaseModel):
     max_per_folder: int = 0
 
 
-class ExecutionModel(BaseModel):
-    """Model for execution configuration."""
-
-    dry_run: bool = False
-
-
 class MandalaConfigModel(BaseModel):
     """Model for Mandala configuration."""
 
@@ -80,4 +75,3 @@ class MandalaConfigModel(BaseModel):
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
     diversity: DiversityModel
-    execution: ExecutionModel

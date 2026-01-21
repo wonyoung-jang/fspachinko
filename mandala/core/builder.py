@@ -77,7 +77,7 @@ def build_engine(cfg: MandalaConfig) -> MandalaEngine:
 
     trash = TrashHandler(
         empty_folders=cfg.transfermode.trash_empty_folder,
-        dry_run=cfg.execution.dry_run,
+        dry_run=cfg.transfermode.dry_run,
     )
 
     walker = RandomFSWalker(
@@ -111,7 +111,7 @@ def build_engine(cfg: MandalaConfig) -> MandalaEngine:
 
     return MandalaEngine(
         root=cfg.root,
-        dry_run=cfg.execution.dry_run,
+        dry_run=cfg.transfermode.dry_run,
         transfer_mode=cfg.transfermode.transfer_mode,
         validator=validator,
         reporter=reporter,
