@@ -17,10 +17,10 @@ from .components import (
     DblRangeFilterWidget,
     DiversityFilterWidget,
     DualListFilterWidget,
-    ExecutionWidget,
     FileCountWidget,
     FilenameWidget,
     FolderCreatorWidget,
+    LoggingWidget,
     PathSelectorWidget,
     ProgressWidget,
     TransferModeWidget,
@@ -47,7 +47,7 @@ class MandalaCentralGui(QMdiArea):
     ui_duration: DblRangeFilterWidget = field(init=False)
     ui_diversity: DiversityFilterWidget = field(init=False)
     ui_progress: ProgressWidget = field(init=False)
-    ui_execution: ExecutionWidget = field(init=False)
+    ui_logging: LoggingWidget = field(init=False)
     _window_title_before_start: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -80,7 +80,7 @@ class MandalaCentralGui(QMdiArea):
 
         # Init execution components
         self.ui_progress = ProgressWidget()
-        self.ui_execution = ExecutionWidget()
+        self.ui_logging = LoggingWidget()
 
     def setup_layout(self) -> None:
         """Set up the main UI layouts."""
@@ -105,7 +105,7 @@ class MandalaCentralGui(QMdiArea):
 
         layout.addWidget(filter_layout)
         layout.addWidget(self.ui_progress)
-        layout.addWidget(self.ui_execution)
+        layout.addWidget(self.ui_logging)
 
     def get_mandala_config(self) -> MandalaConfig:
         """Get the current configuration as a MandalaConfig dataclass."""
@@ -124,7 +124,6 @@ class MandalaCentralGui(QMdiArea):
         )
         return MandalaConfig(**model.__dict__)
 
-    @Slot(bool)
     def _toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
         for child in self.findChildren(QWidget):
@@ -137,7 +136,7 @@ class MandalaCentralGui(QMdiArea):
         try:
             config = self.get_mandala_config()
         except ValueError:
-            self.ui_execution.textbrowser_log.append("Configuration error")
+            self.ui_logging.textbrowser_log.append("Configuration error")
             return
 
         self._toggle_ui(enabled=False)
@@ -149,18 +148,16 @@ class MandalaCentralGui(QMdiArea):
 
         self.worker = RunMandalaWorker(config=config)
 
-        signals = self.worker.observer.signals
-        prog_ui = self.ui_progress
-        signals.progress_total.connect(prog_ui.progbar_total.setMaximum)
-        signals.count_total.connect(prog_ui.update_total_prog)
-        signals.progress.connect(prog_ui.progbar_folder.setMaximum)
-        signals.log.connect(self.ui_execution.textbrowser_log.append)
+        self.worker.observer.signals.progress_total.connect(self.ui_progress.progbar_total.setMaximum)
+        self.worker.observer.signals.count_total.connect(self.ui_progress.update_total_prog)
+        self.worker.observer.signals.progress.connect(self.ui_progress.progbar_folder.setMaximum)
+        self.worker.observer.signals.log.connect(self.ui_logging.textbrowser_log.append)
 
-        signals.count.connect(prog_ui.progbar_folder.setValue)
-        signals.count.connect(self._update_title_progress)
+        self.worker.observer.signals.count.connect(self.ui_progress.progbar_folder.setValue)
+        self.worker.observer.signals.count.connect(self._update_title_progress)
 
-        signals.finished.connect(self._on_finished)
-        signals.finished.connect(self._reset_title)
+        self.worker.observer.signals.finished.connect(self._on_finished)
+        self.worker.observer.signals.finished.connect(self._reset_title)
 
         self.worker.start()
 
@@ -169,7 +166,7 @@ class MandalaCentralGui(QMdiArea):
         """Stop the mandala process."""
         if hasattr(self, "worker") and self.worker.isRunning():
             self.worker.stop()
-        self.ui_execution.textbrowser_log.append("Stop requested by user...")
+        self.ui_logging.textbrowser_log.append("Stop requested by user...")
 
     @Slot()
     def _on_finished(self) -> None:

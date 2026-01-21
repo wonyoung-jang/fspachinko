@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLineEdit,
@@ -340,7 +339,7 @@ class TransferModeWidget(BaseGroupBox):
         set_widget_tips(self.combo_mode, "Select the transfer mode to use.")
 
         self.chk_dry_run = QCheckBox("Dry Run")
-        init_widget(self.chk_dry_run, "execution_dry_run")
+        init_widget(self.chk_dry_run, f"{name}_dry_run")
         set_widget_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
 
         layout = QFormLayout(self)
@@ -488,17 +487,17 @@ class ProgressWidget(QWidget):
         self.progbar_total.setValue(self.progbar_total.value() + 1)
 
 
-class ExecutionWidget(QWidget):
-    """Logging and execution widget."""
+class LoggingWidget(QWidget):
+    """Logging widget."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        """Initialize the execution widget."""
+        """Initialize the logging widget."""
         super().__init__(parent=parent)
 
         self.textbrowser_log = QTextBrowser()
-        init_widget(self.textbrowser_log, "execution_log")
-        set_widget_tips(self.textbrowser_log, "Log for output messages.")
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        init_widget(self.textbrowser_log, "logging_log")
+        set_widget_tips(self.textbrowser_log, "Log for output messages.")
 
-        layout = QGridLayout(self)
-        layout.addWidget(self.textbrowser_log, 1, 0)
+        layout = QHBoxLayout(self)
+        layout.addWidget(self.textbrowser_log)
