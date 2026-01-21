@@ -5,6 +5,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .walker import FSEntry
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,10 @@ class DiversityQuota:
     def lock_folder(self, folder_path: Path) -> None:
         """Mark a folder as locked without registering a success."""
         self.locked_folders.add(folder_path)
+
+    def get_available_entries(self, entries: tuple[FSEntry, ...]) -> tuple[FSEntry, ...]:
+        """Filter entries to only those that are available."""
+        return tuple(e for e in entries if self.is_available(e.path, is_file=e.is_file))
 
     def is_available(self, path: Path, *, is_file: bool) -> bool:
         """Check if a file or folder is eligible for selection."""

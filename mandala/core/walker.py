@@ -30,9 +30,9 @@ class FSEntry:
     @classmethod
     def from_scandir(cls, entry: os.DirEntry) -> FSEntry:
         """Create an FSEntry from a given Path."""
-        if entry.is_file():
-            return cls(Path(entry.path), is_file=True, is_dir=False, size=entry.stat().st_size)
-        return cls(Path(entry.path), is_file=False, is_dir=True, size=entry.stat().st_size)
+        is_file = entry.is_file()
+        size = entry.stat().st_size
+        return cls(Path(entry.path), is_file=is_file, is_dir=not is_file, size=size)
 
 
 @dataclass(slots=True)
@@ -67,7 +67,7 @@ class RandomFSWalker:
                     stack.pop()
                     continue
 
-                available = tuple(e for e in entries if self.quota.is_available(e.path, is_file=e.is_file))
+                available = self.quota.get_available_entries(entries)
                 if not available:
                     self.quota.lock_folder(path)
                     stack.pop()
@@ -99,8 +99,7 @@ class RandomFSWalker:
             return self.cache[current]
 
         try:
-            with os.scandir(current) as it:
-                self.cache[current] = tuple(FSEntry.from_scandir(e) for e in it)
+            self.cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
         except (PermissionError, OSError):
             self.cache[current] = ()
 

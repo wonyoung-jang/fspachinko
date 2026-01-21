@@ -6,7 +6,7 @@ from pathlib import Path
 
 from cyclopts import App
 
-from ..config.config import MandalaConfig
+from ..config.schemas import MandalaConfigModel
 from ..core.builder import build_engine
 from ..utils.constants import DEFAULT_JSON_CONFIG
 from ..utils.interfaces import MandalaObserver
@@ -53,7 +53,7 @@ def run_cli(json_path: str = "") -> None:
         json_path = DEFAULT_JSON_CONFIG
 
     observer = ConsoleObserver()
-    config = MandalaConfig.from_json(Path(json_path))
+    config = MandalaConfigModel.model_validate_json(Path(json_path).read_text(encoding="utf-8"))
     engine = build_engine(config)
     engine.set_observer(observer)
     engine.start()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import ffmpeg
@@ -35,6 +35,7 @@ class FileValidator:
     extensions: ListIncludeExclude
     filesize: MinMax
     duration: MinMax
+    _duration_cache: dict[str, float] = field(default_factory=dict)
 
     def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -47,5 +48,6 @@ class FileValidator:
         if not self.keywords.is_matched(path.stem):
             return False
 
-        duration = _get_duration(path)
+        path_str = str(path)
+        duration = self._duration_cache.setdefault(path_str, _get_duration(path))
         return self.duration.is_within(duration)

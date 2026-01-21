@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.schemas import FolderModel
-
 
 class SafeDict(dict):
     """A helper class for string formatting.
@@ -22,7 +20,7 @@ class SafeDict(dict):
         return "{" + key + "}"
 
 
-def _calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
+def calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
     """Calculate a unique path name in the destination."""
     target = dest / f"{stem_or_name}{ext}"
 
@@ -31,17 +29,6 @@ def _calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path
         target = dest / f"{stem_or_name} ({x}){ext}"
         x += 1
 
-    return target
-
-
-def create_dest_folder(model: FolderModel, dest: Path) -> Path:
-    """Create the destination folder based on configuration."""
-    if not model.create:
-        return dest
-
-    name = model.name
-    target = _calc_unique_path_name(dest, name)
-    target.mkdir(parents=False)
     return target
 
 

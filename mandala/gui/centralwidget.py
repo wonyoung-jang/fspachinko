@@ -8,11 +8,8 @@ from typing import ClassVar
 from PySide6.QtCore import QDir, Signal, Slot
 from PySide6.QtWidgets import QGroupBox, QMdiArea, QSplitter, QVBoxLayout, QWidget
 
-from mandala.utils.constants import SIZE_MAP
-
-from ..config.config import MandalaConfig
 from ..config.schemas import MandalaConfigModel
-from ..utils.constants import TIME_MAP, ByteUnit, TimeUnit
+from ..utils.constants import SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
 from .components import (
     DblRangeFilterWidget,
     DiversityFilterWidget,
@@ -107,9 +104,9 @@ class MandalaCentralGui(QMdiArea):
         layout.addWidget(self.ui_progress)
         layout.addWidget(self.ui_logging)
 
-    def get_mandala_config(self) -> MandalaConfig:
+    def get_mandala_config(self) -> MandalaConfigModel:
         """Get the current configuration as a MandalaConfig dataclass."""
-        model = MandalaConfigModel(
+        return MandalaConfigModel(
             root=self.ui_root.get_config(),
             dest=self.ui_dest.get_config(),
             filecount=self.ui_filecount.get_config(),
@@ -122,7 +119,6 @@ class MandalaCentralGui(QMdiArea):
             duration=self.ui_duration.get_config(),
             diversity=self.ui_diversity.get_config(),
         )
-        return MandalaConfig(**model.__dict__)
 
     def _toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""

@@ -1,4 +1,4 @@
-"""Mandala configuration dataclass."""
+"""Mandala configuration dataclasses."""
 
 from __future__ import annotations
 
@@ -7,17 +7,7 @@ from dataclasses import dataclass
 from filecmp import cmp
 from typing import TYPE_CHECKING
 
-from ..utils.helpers import SafeDict, _calc_unique_path_name
-from .schemas import (
-    DiversityModel,
-    FilecountModel,
-    FilenameModel,
-    FolderModel,
-    LimitMinMaxModel,
-    ListIncludeExcludeModel,
-    MandalaConfigModel,
-    TransferModeModel,
-)
+from ..utils.helpers import SafeDict, calc_unique_path_name
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -79,10 +69,10 @@ class Filename:
 
         if target.exists():
             if target.stat().st_size == chosen.stat().st_size:
-                if cmp(chosen, target, shallow=False):
+                if cmp(chosen, target, shallow=True) and cmp(chosen, target, shallow=False):
                     return None
             else:
-                return _calc_unique_path_name(dest, target.stem, ext)
+                return calc_unique_path_name(dest, target.stem, ext)
         else:
             return target
 
@@ -105,7 +95,7 @@ class Folder:
             return self.dest
 
         name = self.name
-        target = _calc_unique_path_name(self.dest, name)
+        target = calc_unique_path_name(self.dest, name)
         target.mkdir(parents=False)
         return target
 
@@ -160,26 +150,3 @@ class ListIncludeExclude:
             return False
 
         return True
-
-
-@dataclass(slots=True)
-class MandalaConfig:
-    """Dataclass for Mandala configuration."""
-
-    root: Path
-    dest: Path
-    filecount: FilecountModel
-    folder: FolderModel
-    filename: FilenameModel
-    transfermode: TransferModeModel
-    keyword: ListIncludeExcludeModel
-    extension: ListIncludeExcludeModel
-    filesize: LimitMinMaxModel
-    duration: LimitMinMaxModel
-    diversity: DiversityModel
-
-    @classmethod
-    def from_json(cls, path: Path) -> MandalaConfig:
-        """Load configuration from a JSON file."""
-        model = MandalaConfigModel.model_validate_json(path.read_text())
-        return MandalaConfig(**model.__dict__)

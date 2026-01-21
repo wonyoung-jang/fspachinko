@@ -11,7 +11,7 @@ from ..core.builder import build_engine
 from ..utils.interfaces import MandalaObserver
 
 if TYPE_CHECKING:
-    from ..config.config import MandalaConfig
+    from ..config.schemas import MandalaConfigModel
     from ..core.engine import MandalaEngine
 
 
@@ -66,7 +66,7 @@ class GuiObserver(MandalaObserver):
 class RunMandalaWorker(QThread):
     """Worker thread for running Mandala."""
 
-    config: MandalaConfig
+    config: MandalaConfigModel
     engine: MandalaEngine = field(init=False)
     observer: GuiObserver = field(default_factory=GuiObserver)
 
