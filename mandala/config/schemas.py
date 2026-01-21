@@ -35,8 +35,8 @@ class TransferModeModel(BaseModel):
     """Model for mode configuration."""
 
     trash_empty_folder: bool = False
-    transfer_mode: TransferMode = TransferMode.COPY
-    dry_run: bool = False
+    transfer_mode: TransferMode = TransferMode.SYMLINK
+    dry_run: bool = True
 
 
 class ListIncludeExcludeModel(BaseModel):

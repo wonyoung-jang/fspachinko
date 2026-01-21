@@ -3,9 +3,9 @@
     "dest": "output/",
     "filecount": {
         "count": 12,
-        "is_rand_count": false,
-        "count_min_rand": 1,
-        "count_max_rand": 12
+        "is_rand": false,
+        "min_rand": 1,
+        "max_rand": 12
     },
     "folder": {
         "create": true,
@@ -14,13 +14,12 @@
         "count": 2
     },
     "filename": {
-        "is_index": false,
-        "is_rename": false,
-        "rename_to": ""
+        "template": "{original"
     },
-    "trash": {
-        "empty_folder": false,
-        "source_file": false
+    "transfermode": {
+        "trash_empty_folder": false,
+        "transfer_mode": "Symlink",
+        "dry_run": true
     },
     "keyword": {
         "include": true,
@@ -43,9 +42,6 @@
         "maximum": 0.0
     },
     "diversity": {
-        "leaf_limit": 4
-    },
-    "execution": {
-        "dry_run": false
+        "max_per_folder": 0
     }
 }
