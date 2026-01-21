@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from filecmp import cmp
 from typing import TYPE_CHECKING
 
@@ -39,44 +39,56 @@ class Filename:
 
     template: str
     timestamp: DateTimeSingleton
+    _mapping: SafeDict = field(default_factory=SafeDict)
+    _invalid_chars: str = r'\/:*?"<>|'
+
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        self.init_mapping()
+
+    def init_mapping(self) -> None:
+        """Initialize the mapping dictionary with timestamp values."""
+        self._mapping.update(
+            {
+                "date": self.timestamp.date,
+                "time": self.timestamp.time,
+                "datetime": self.timestamp.date_time,
+            }
+        )
+
+    def get_target(self, chosen: Path, dest: Path, index: int) -> Path:
+        """Prepare the target file path based on naming conventions."""
+        original_stem = chosen.stem
+
+        self._mapping.update(
+            {
+                "original": original_stem,
+                "index": index + 1,
+                "parent": chosen.parent.name,
+                "parentstoroot": "_".join(chosen.parts[:-1]),
+            }
+        )
+
+        try:
+            new_stem = self.template.format_map(self._mapping)
+        except (KeyError, ValueError):
+            new_stem = original_stem
+
+        new_stem = "".join(c for c in new_stem if c not in self._invalid_chars)
+        name = f"{new_stem}{chosen.suffix}"
+
+        return dest / name
 
     def calc_dest_target(self, chosen: Path, dest: Path, index: int) -> Path | None:
         """Calculate the destination file path based on naming conventions."""
-        ext = chosen.suffix
-        stem = chosen.stem
-
-        mapping = {
-            "original": stem,
-            "index": index + 1,
-            "date": self.timestamp.date,
-            "time": self.timestamp.time,
-            "datetime": self.timestamp.date_time,
-            "parent": chosen.parent.name,
-            "parentstoroot": "_".join(chosen.parts[:-1]),
-        }
-        safe_map = SafeDict(mapping)
-
-        try:
-            new_stem = self.template.format_map(safe_map)
-        except (KeyError, ValueError):
-            new_stem = stem
-
-        invalid_chars = r'\/:*?"<>|'
-        new_stem = "".join(c for c in new_stem if c not in invalid_chars)
-        name = f"{new_stem}{ext}"
-
-        target = dest / name
-
+        target = self.get_target(chosen, dest, index)
         if target.exists():
-            if target.stat().st_size == chosen.stat().st_size:
-                if cmp(chosen, target, shallow=True) and cmp(chosen, target, shallow=False):
-                    return None
-            else:
-                return calc_unique_path_name(dest, target.stem, ext)
-        else:
-            return target
-
-        return None
+            if cmp(chosen, target, shallow=True):
+                return None
+            if cmp(chosen, target, shallow=False):
+                return None
+            return calc_unique_path_name(dest, target.stem, target.suffix)
+        return target
 
 
 @dataclass(slots=True)

@@ -88,11 +88,6 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
 
     timestamp = DateTimeSingleton()
 
-    filename = Filename(
-        template=m.filename.template,
-        timestamp=timestamp,
-    )
-
     reporter = ReportWriter(
         root=m.root,
         exts_str=extensions.as_string,
@@ -100,6 +95,10 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         timestamp=timestamp,
     )
 
+    filename = Filename(
+        template=m.filename.template,
+        timestamp=timestamp,
+    )
     folder = Folder(
         create=m.folder.create,
         unique=m.folder.unique,
@@ -114,7 +113,6 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         transfer_mode=m.transfermode.transfer_mode,
         validator=validator,
         reporter=reporter,
-        rng=rng,
         quota=quota,
         trash=trash,
         walker=walker,

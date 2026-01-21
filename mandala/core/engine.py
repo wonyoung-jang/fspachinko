@@ -15,7 +15,6 @@ from ..utils.helpers import get_status_header
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
-    from random import Random
 
     from ..config.config import Filecount, Filename, Folder
     from ..utils.interfaces import MandalaObserver
@@ -57,7 +56,6 @@ class MandalaEngine:
     transfer_mode: TransferMode
     validator: FileValidator
     reporter: ReportWriter
-    rng: Random
     quota: DiversityQuota
     trash: TrashHandler
     walker: RandomFSWalker
