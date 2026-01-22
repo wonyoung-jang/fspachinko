@@ -312,13 +312,6 @@ class TransferModeWidget(BaseGroupBox):
         """Initialize the mode settings widget."""
         super().__init__(title, name, parent=parent)
 
-        self.chk_trash_empty_folders = QCheckBox("Trash empty folders")
-        init_widget(self.chk_trash_empty_folders, f"{name}_trash_empty_folders")
-        set_widget_tips(
-            self.chk_trash_empty_folders,
-            "If checked, input folders that are empty will be moved to the trash.",
-        )
-
         self.combo_mode = QComboBox()
         available_modes = get_available_transfer_modes()
         self.combo_mode.addItems([m.value for m in available_modes])
@@ -331,13 +324,11 @@ class TransferModeWidget(BaseGroupBox):
 
         layout = QFormLayout(self)
         layout.addRow("Mode:", self.combo_mode)
-        layout.addRow(self.chk_trash_empty_folders)
         layout.addRow(self.chk_dry_run)
 
     def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
         return TransferModeModel(
-            trash_empty_folder_enabled=self.chk_trash_empty_folders.isChecked(),
             transfer_mode=TransferMode(self.combo_mode.currentText()),
             dry_run_enabled=self.chk_dry_run.isChecked(),
         )

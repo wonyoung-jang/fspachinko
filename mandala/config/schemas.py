@@ -35,7 +35,6 @@ class TransferModeModel(BaseModel):
     """Model for mode configuration."""
 
     transfer_mode: TransferMode = TransferMode.SYMLINK
-    trash_empty_folder_enabled: bool = False
     dry_run_enabled: bool = True
 
 

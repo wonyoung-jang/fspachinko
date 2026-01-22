@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from .reporter import ReportWriter
     from .timestamp import DateTimeProvider
     from .transfer import Transfer
-    from .trash import TrashHandler
     from .validator import FileValidator
     from .walker import RandomFSWalker
 
@@ -56,7 +55,6 @@ class MandalaEngine:
     validator: FileValidator
     reporter: ReportWriter
     quota: DiversityQuota
-    trash: TrashHandler
     walker: RandomFSWalker
     timestamp: DateTimeProvider
     filecount: Filecount
@@ -85,18 +83,17 @@ class MandalaEngine:
 
             self.process_folder(target, dest)
 
-        self.trash.execute_trash()
         self.observer.on_finished()
 
     def process_folder(self, target: int, dest: Path) -> None:
         """Run processing for a single folder."""
-        self.timestamp.refresh()
         self._prep_folder(target, dest)
         copied = self._copy_folder(target, dest)
         self._complete_folder(dest, copied, target)
 
     def _prep_folder(self, target: int, dest: Path) -> None:
         """Prepare state for processing a new folder."""
+        self.timestamp.refresh()
         self.reporter.reset_for_dest(dest)
         self.observer.on_progress(target)
         self.quota.prepare_for_batch()
@@ -169,7 +166,7 @@ class MandalaEngine:
         """Create and write log at the end of folder."""
         runtime = round(perf_counter() - self._state.start_time_currdir, 2)
         copied = f"{count}/{target} files copied"
-        create_folders = self.folder.create
+        create_folders = self.folder.create_enabled
         none_found = count == 0 and create_folders
         prefix = get_status_header(
             success=(count == target),

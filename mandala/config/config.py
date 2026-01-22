@@ -21,15 +21,15 @@ class Filecount:
     """Dataclass for file count configuration."""
 
     count: int
-    is_rand: bool
-    min_rand: int
-    max_rand: int
+    rand_enabled: bool
+    rand_min: int
+    rand_max: int
     rng: Random
 
     def get_count(self) -> int:
         """Get the file count based on configuration."""
-        if self.is_rand:
-            return self.rng.randint(self.min_rand, self.max_rand)
+        if self.rand_enabled:
+            return self.rng.randint(self.rand_min, self.rand_max)
         return self.count
 
 
@@ -95,15 +95,14 @@ class Filename:
 class Folder:
     """Dataclass for folder creation configuration."""
 
-    create: bool
-    unique: bool
+    create_enabled: bool
     name: str
     count: int
     dest: Path
 
     def create_dest_folder(self) -> Path:
         """Create the destination folder based on configuration."""
-        if not self.create:
+        if not self.create_enabled:
             return self.dest
 
         name = self.name
@@ -116,13 +115,13 @@ class Folder:
 class MinMax:
     """Dataclass for min-max limit configuration."""
 
-    limit: bool
+    enabled: bool
     minimum: float
     maximum: float
 
     def is_within(self, value: float) -> bool:
         """Check if a value is within the min-max range."""
-        if not self.limit:
+        if not self.enabled:
             return True
         return self.minimum <= value <= self.maximum
 
@@ -131,8 +130,8 @@ class MinMax:
 class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
 
-    include: bool
-    exclude: bool
+    include_enabled: bool
+    exclude_enabled: bool
     text: tuple[str, ...]
     re_fmt: str
     as_string: str = ""
@@ -155,10 +154,10 @@ class ListIncludeExclude:
         if not self.patterns:
             return True
 
-        if self.include:
+        if self.include_enabled:
             if not any(p.search(part) for p in self.patterns):
                 return False
-        elif self.exclude and any(p.search(part) for p in self.patterns):
+        elif self.exclude_enabled and any(p.search(part) for p in self.patterns):
             return False
 
         return True

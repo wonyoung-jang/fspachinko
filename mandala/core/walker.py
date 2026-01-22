@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,7 +14,6 @@ if TYPE_CHECKING:
     from random import Random
 
     from .quota import DiversityQuota
-    from .trash import TrashHandler
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class RandomFSWalker:
     root: Path
     quota: DiversityQuota
     rng: Random
-    trash: TrashHandler
-    cache: dict[Path, tuple[FSEntry, ...] | None] = field(default_factory=dict)
+    cache: OrderedDict[Path, tuple[FSEntry, ...]] = field(default_factory=OrderedDict)
+    _cache_limit: int = 100
 
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
@@ -61,19 +61,11 @@ class RandomFSWalker:
             if idx >= len(available):
                 entries = self._get_entries(path)
 
-                # Directory is inaccessible, lock, do not trash
-                if entries is None:
-                    self.quota.lock_folder(path)
-                    continue
-
-                # Directory is empty, trash if configured
-                if len(entries) == 0:
-                    self.quota.lock_folder(path)
-                    self.trash.collect_empty_folder(path)
-                    continue
-
-                # No available entries, lock
-                if not (available := self.quota.get_available(entries)):
+                # Conditions to lock folder:
+                # - Directory is inaccessible
+                # - Directory is empty
+                # - No available entries
+                if not entries or not (available := self.quota.get_available(entries)):
                     self.quota.lock_folder(path)
                     continue
 
@@ -99,15 +91,17 @@ class RandomFSWalker:
 
         return None
 
-    def _get_entries(self, current: Path) -> tuple[FSEntry, ...] | None:
+    def _get_entries(self, current: Path) -> tuple[FSEntry, ...]:
         """Retrieve and cache directory entries for a given path."""
         if current in self.cache:
             return self.cache[current]
 
         try:
             self.cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
+            if len(self.cache) > self._cache_limit:
+                self.cache.popitem(last=False)
         except (PermissionError, OSError):
             logger.debug("Failed to access directory: %s", current)
-            self.cache[current] = None
+            self.cache[current] = ()
 
         return self.cache[current]
