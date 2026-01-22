@@ -10,7 +10,7 @@ from ..utils.constants import BytesIn, ByteUnit
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .timestamp import DateTimeSingleton
+    from .timestamp import DateTimeProvider
 
 
 def convert_byte_to_size(nbytes: int) -> str:
@@ -34,7 +34,7 @@ class ReportWriter:
     root: Path
     exts_str: str
     keys_str: str
-    timestamp: DateTimeSingleton
+    timestamp: DateTimeProvider
     buffer: list[str] = field(default_factory=list)
     report_path: Path = field(init=False)
 

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
-    from ..core.timestamp import DateTimeSingleton
+    from ..core.timestamp import DateTimeProvider
 
 
 @dataclass(slots=True)
@@ -38,7 +38,7 @@ class Filename:
     """Dataclass for file renaming."""
 
     template: str
-    timestamp: DateTimeSingleton
+    timestamp: DateTimeProvider
     _mapping: SafeDict = field(default_factory=SafeDict)
     _invalid_chars: str = r'\/:*?"<>|'
 

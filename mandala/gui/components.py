@@ -37,6 +37,7 @@ from ..config.schemas import (
     ListIncludeExcludeModel,
     TransferModeModel,
 )
+from ..core.transfer import get_available_transfer_modes
 from ..utils.constants import TransferMode
 from ..utils.helpers import convert_string_to_list
 from .qthelpers import init_widget, set_widget_tips
@@ -319,7 +320,8 @@ class TransferModeWidget(BaseGroupBox):
         )
 
         self.combo_mode = QComboBox()
-        self.combo_mode.addItems(list(TransferMode))
+        available_modes = get_available_transfer_modes()
+        self.combo_mode.addItems([m.value for m in available_modes])
         init_widget(self.combo_mode, f"{name}_mode")
         set_widget_tips(self.combo_mode, "Select the transfer mode to use.")
 

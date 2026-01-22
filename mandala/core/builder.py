@@ -11,7 +11,7 @@ from ..config.config import Filecount, Filename, Folder, ListIncludeExclude, Min
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
-from .timestamp import DateTimeSingleton
+from .timestamp import DateTimeProvider
 from .trash import TrashHandler
 from .validator import FileValidator
 from .walker import RandomFSWalker
@@ -88,7 +88,7 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         trash=trash,
     )
 
-    timestamp = DateTimeSingleton()
+    timestamp = DateTimeProvider()
 
     reporter = ReportWriter(
         root=m.root,
