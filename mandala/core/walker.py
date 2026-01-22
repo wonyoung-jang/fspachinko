@@ -44,6 +44,22 @@ class RandomFSWalker:
     rng: Random
     trash: TrashHandler
     cache: dict[Path, tuple[FSEntry, ...]] = field(default_factory=dict)
+    stack: list[tuple[Path, tuple[FSEntry, ...], list[int], int]] = field(default_factory=list)
+    root_item: tuple[Path, tuple[FSEntry, ...], list[int], int] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        self.initialize_root_item()
+        self.stack.append(self.root_item)
+
+    def initialize_root_item(self) -> None:
+        """Initialize the root directory in the stack."""
+        entries = self._get_entries(self.root)
+        available = self.quota.get_available_entries(entries)
+        indices = list(range(len(available)))
+        if len(indices) > 1:
+            self.rng.shuffle(indices)
+        self.root_item = (self.root, available, indices, 0)
 
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
@@ -55,41 +71,40 @@ class RandomFSWalker:
 
     def descend_to_file(self) -> FSEntry | None:
         """Descend directories finding a valid file using an explicit stack."""
-        stack: list[tuple[Path, tuple[FSEntry, ...], list[int], int]] = [(self.root, (), [], 0)]
+        self.stack.append(self.root_item)
 
-        while stack:
-            path, available, indices, idx = stack[-1]
+        while self.stack:
+            path, available, indices, idx = self.stack.pop()
 
             if not available:
                 if not (entries := self._get_entries(path)):
                     self.quota.lock_folder(path)
                     self.trash.collect_empty_folder(path)
-                    stack.pop()
                     continue
 
-                available = self.quota.get_available_entries(entries)
-                if not available:
+                if not (new_available := self.quota.get_available_entries(entries)):
                     self.quota.lock_folder(path)
-                    stack.pop()
                     continue
 
-                indices = list(range(len(available)))
-                self.rng.shuffle(indices)
-                stack[-1] = (path, available, indices, 0)
+                indices = list(range(len(new_available)))
+                if len(indices) > 1:
+                    self.rng.shuffle(indices)
+
+                self.stack.append((path, new_available, indices, 0))
                 continue
 
-            if idx < len(indices):
-                entry = available[indices[idx]]
-                stack[-1] = (path, available, indices, idx + 1)
+            if idx >= len(indices):
+                continue
 
-                if entry.is_file:
-                    self.quota.lock_file(entry.path)
-                    return entry
+            entry = available[indices[idx]]
+            self.stack.append((path, available, indices, idx + 1))
 
-                if entry.is_dir:
-                    stack.append((entry.path, (), [], 0))
-            else:
-                stack.pop()
+            if entry.is_dir:
+                self.stack.append((entry.path, (), [], 0))
+                continue
+
+            if entry.is_file:
+                return entry
 
         return None
 
