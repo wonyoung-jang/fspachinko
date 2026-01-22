@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from filecmp import cmp
 from typing import TYPE_CHECKING
 
+from ..utils.constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKeys
 from ..utils.helpers import SafeDict, calc_unique_path_name
 
 if TYPE_CHECKING:
@@ -39,8 +40,8 @@ class Filename:
 
     template: str
     timestamp: DateTimeProvider
-    _mapping: SafeDict = field(default_factory=SafeDict)
-    _invalid_chars: str = r'\/:*?"<>|'
+    _k: FilenameTemplateMapKeys = field(default_factory=lambda: FilenameTemplateMapKeys)
+    _map: SafeDict = field(default_factory=SafeDict)
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
@@ -48,11 +49,11 @@ class Filename:
 
     def init_mapping(self) -> None:
         """Initialize the mapping dictionary with timestamp values."""
-        self._mapping.update(
+        self._map.update(
             {
-                "date": self.timestamp.date,
-                "time": self.timestamp.time,
-                "datetime": self.timestamp.date_time,
+                self._k.DATE: self.timestamp.date,
+                self._k.TIME: self.timestamp.time,
+                self._k.DATETIME: self.timestamp.date_time,
             }
         )
 
@@ -60,24 +61,22 @@ class Filename:
         """Prepare the target file path based on naming conventions."""
         original_stem = chosen.stem
 
-        self._mapping.update(
+        self._map.update(
             {
-                "original": original_stem,
-                "index": index + 1,
-                "parent": chosen.parent.name,
-                "parentstoroot": "_".join(chosen.parts[:-1]),
+                self._k.ORIGINAL: original_stem,
+                self._k.INDEX: index + 1,
+                self._k.PARENT: chosen.parent.name,
+                self._k.PARENTS_TO_ROOT: "_".join(chosen.parts[:-1]),
             }
         )
 
         try:
-            new_stem = self.template.format_map(self._mapping)
+            stem = self.template.format_map(self._map)
         except (KeyError, ValueError):
-            new_stem = original_stem
+            stem = original_stem
 
-        new_stem = "".join(c for c in new_stem if c not in self._invalid_chars)
-        name = f"{new_stem}{chosen.suffix}"
-
-        return dest / name
+        new_stem = "".join(c for c in stem if c not in INVALID_FILENAME_CHARS)
+        return dest / f"{new_stem}{chosen.suffix}"
 
     def calc_dest_target(self, chosen: Path, dest: Path, index: int) -> Path | None:
         """Calculate the destination file path based on naming conventions."""

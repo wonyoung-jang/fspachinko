@@ -38,7 +38,7 @@ from ..config.schemas import (
     TransferModeModel,
 )
 from ..core.transfer import get_available_transfer_modes
-from ..utils.constants import TransferMode
+from ..utils.constants import FilenameTemplate, TransferMode
 from ..utils.helpers import convert_string_to_list
 from .qthelpers import init_widget, set_widget_tips
 
@@ -285,7 +285,7 @@ class FilenameWidget(BaseGroupBox):
         init_widget(self.template_button, f"{name}_template_button")
         set_widget_tips(self.template_button, "Insert a tag into the template at the cursor position.")
 
-        for lbl in ("{original}", "{index}", "{date}", "{time}", "{datetime}", "{parent}", "{parentstoroot}"):
+        for lbl in FilenameTemplate:
             action = self.template_menu.addAction(lbl)
             action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
 

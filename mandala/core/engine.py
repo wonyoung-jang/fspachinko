@@ -166,8 +166,7 @@ class MandalaEngine:
         """Create and write log at the end of folder."""
         runtime = round(perf_counter() - self._state.start_time_currdir, 2)
         copied = f"{count}/{target} files copied"
-        create_folders = self.folder.create_enabled
-        none_found = count == 0 and create_folders
+        none_found = count == 0 and self.folder.create_enabled
         prefix = get_status_header(
             success=(count == target),
             stopped=self._request_stop,

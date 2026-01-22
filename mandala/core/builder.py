@@ -101,8 +101,6 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         dest=m.dest,
     )
 
-    transfer_strategy = fetch_transfer_strategy(m.transfermode.transfer_mode)
-
     return MandalaEngine(
         root=m.root,
         dry_run=m.transfermode.dry_run_enabled,
@@ -114,5 +112,5 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         filecount=filecount,
         filename=filename,
         folder=folder,
-        transfer=transfer_strategy,
+        transfer=fetch_transfer_strategy(m.transfermode.transfer_mode),
     )

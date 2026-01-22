@@ -71,3 +71,29 @@ TIME_MAP = {
     TimeUnit.MINUTES: SecondsIn.MINUTE,
     TimeUnit.HOURS: SecondsIn.HOUR,
 }
+
+INVALID_FILENAME_CHARS = r'\/:*?"<>|'
+
+
+class FilenameTemplate(StrEnum):
+    """Enumeration for filename templates."""
+
+    ORIGINAL = "{original}"
+    INDEX = "{index}"
+    DATE = "{date}"
+    TIME = "{time}"
+    DATETIME = "{datetime}"
+    PARENT = "{parent}"
+    PARENTS_TO_ROOT = "{parentstoroot}"
+
+
+class FilenameTemplateMapKeys(StrEnum):
+    """Enumeration for filename templates."""
+
+    ORIGINAL = "original"
+    INDEX = "index"
+    DATE = "date"
+    TIME = "time"
+    DATETIME = "datetime"
+    PARENT = "parent"
+    PARENTS_TO_ROOT = "parentstoroot"
