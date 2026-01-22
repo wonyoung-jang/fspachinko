@@ -33,32 +33,32 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
 
     filecount = Filecount(
         count=m.filecount.count,
-        is_rand=m.filecount.is_rand,
-        min_rand=m.filecount.min_rand,
-        max_rand=m.filecount.max_rand,
+        is_rand=m.filecount.rand_enabled,
+        min_rand=m.filecount.rand_min,
+        max_rand=m.filecount.rand_max,
         rng=rng,
     )
 
     # Build FileValidator
     keywords = ListIncludeExclude(
-        include=m.keyword.include,
-        exclude=m.keyword.exclude,
+        include=m.keyword.include_enabled,
+        exclude=m.keyword.exclude_enabled,
         text=m.keyword.text,
         re_fmt=r"(.*){}(.*)",
     )
     extensions = ListIncludeExclude(
-        include=m.extension.include,
-        exclude=m.extension.exclude,
+        include=m.extension.include_enabled,
+        exclude=m.extension.exclude_enabled,
         text=m.extension.text,
         re_fmt=r".{}$",
     )
     filesize = MinMax(
-        limit=m.filesize.limit,
+        limit=m.filesize.enabled,
         minimum=m.filesize.minimum,
         maximum=m.filesize.maximum,
     )
     duration = MinMax(
-        limit=m.duration.limit,
+        limit=m.duration.enabled,
         minimum=m.duration.minimum,
         maximum=m.duration.maximum,
     )
@@ -72,13 +72,13 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
     # Build other components
     quota = DiversityQuota(
         root=m.root,
-        unique_folders=m.folder.unique,
+        unique_folders=m.folder.unique_enabled,
         max_per_folder=m.diversity.max_per_folder,
     )
 
     trash = TrashHandler(
-        empty_folders=m.transfermode.trash_empty_folder,
-        dry_run=m.transfermode.dry_run,
+        empty_folders=m.transfermode.trash_empty_folder_enabled,
+        dry_run=m.transfermode.dry_run_enabled,
     )
 
     walker = RandomFSWalker(
@@ -102,8 +102,8 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         timestamp=timestamp,
     )
     folder = Folder(
-        create=m.folder.create,
-        unique=m.folder.unique,
+        create=m.folder.create_enabled,
+        unique=m.folder.unique_enabled,
         name=m.folder.name,
         count=m.folder.count,
         dest=m.dest,
@@ -113,7 +113,7 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
 
     return MandalaEngine(
         root=m.root,
-        dry_run=m.transfermode.dry_run,
+        dry_run=m.transfermode.dry_run_enabled,
         validator=validator,
         reporter=reporter,
         quota=quota,

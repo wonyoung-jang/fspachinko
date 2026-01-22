@@ -11,16 +11,16 @@ class FilecountModel(BaseModel):
     """Model for file count configuration."""
 
     count: int = 0
-    is_rand: bool = False
-    min_rand: int = 0
-    max_rand: int = 0
+    rand_enabled: bool = False
+    rand_min: int = 0
+    rand_max: int = 0
 
 
 class FolderModel(BaseModel):
     """Model for folder creation configuration."""
 
-    create: bool = False
-    unique: bool = True
+    create_enabled: bool = False
+    unique_enabled: bool = True
     name: str = ""
     count: int = 1
 
@@ -34,23 +34,23 @@ class FilenameModel(BaseModel):
 class TransferModeModel(BaseModel):
     """Model for mode configuration."""
 
-    trash_empty_folder: bool = False
     transfer_mode: TransferMode = TransferMode.SYMLINK
-    dry_run: bool = True
+    trash_empty_folder_enabled: bool = False
+    dry_run_enabled: bool = True
 
 
 class ListIncludeExcludeModel(BaseModel):
     """Model for list filtering."""
 
-    include: bool = False
-    exclude: bool = False
+    include_enabled: bool = False
+    exclude_enabled: bool = False
     text: tuple[str, ...] = ()
 
 
 class LimitMinMaxModel(BaseModel):
     """Model for size filter."""
 
-    limit: bool = False
+    enabled: bool = False
     minimum: float = 0.0
     maximum: float = 0.0
 

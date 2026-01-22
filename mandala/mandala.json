@@ -3,13 +3,13 @@
     "dest": "output/",
     "filecount": {
         "count": 12,
-        "is_rand": false,
-        "min_rand": 1,
-        "max_rand": 12
+        "rand_enabled": false,
+        "rand_min": 1,
+        "rand_max": 12
     },
     "folder": {
-        "create": true,
-        "unique": true,
+        "create_enabled": true,
+        "unique_enabled": true,
         "name": "test_folder_output",
         "count": 2
     },
@@ -17,27 +17,27 @@
         "template": "{original"
     },
     "transfermode": {
-        "trash_empty_folder": false,
         "transfer_mode": "Symlink",
-        "dry_run": true
+        "trash_empty_folder_enabled": false,
+        "dry_run_enabled": true
     },
     "keyword": {
-        "include": true,
-        "exclude": false,
+        "include_enabled": true,
+        "exclude_enabled": false,
         "text": []
     },
     "extension": {
-        "include": true,
-        "exclude": false,
+        "include_enabled": true,
+        "exclude_enabled": false,
         "text": ["wav"]
     },
     "filesize": {
-        "limit": false,
+        "enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "duration": {
-        "limit": false,
+        "enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },

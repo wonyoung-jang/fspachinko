@@ -213,9 +213,9 @@ class FileCountWidget(BaseGroupBox):
         """Return clean data for the config."""
         return FilecountModel(
             count=self.spin_fixed.value(),
-            is_rand=self.radio_rand.isChecked(),
-            min_rand=self.spin_min_rand.value(),
-            max_rand=self.spin_max_rand.value(),
+            rand_enabled=self.radio_rand.isChecked(),
+            rand_min=self.spin_min_rand.value(),
+            rand_max=self.spin_max_rand.value(),
         )
 
 
@@ -251,8 +251,8 @@ class FolderCreatorWidget(BaseGroupBox):
     def get_config(self) -> FolderModel:
         """Return clean data for the config."""
         return FolderModel(
-            create=self.isChecked(),
-            unique=self.chk_unique_folders.isChecked(),
+            create_enabled=self.isChecked(),
+            unique_enabled=self.chk_unique_folders.isChecked(),
             name=self.lineedit_folder_name.text(),
             count=self.spinbox_folder_count.value() if self.isChecked() else 1,
         )
@@ -337,9 +337,9 @@ class TransferModeWidget(BaseGroupBox):
     def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
         return TransferModeModel(
-            trash_empty_folder=self.chk_trash_empty_folders.isChecked(),
+            trash_empty_folder_enabled=self.chk_trash_empty_folders.isChecked(),
             transfer_mode=TransferMode(self.combo_mode.currentText()),
-            dry_run=self.chk_dry_run.isChecked(),
+            dry_run_enabled=self.chk_dry_run.isChecked(),
         )
 
 
@@ -371,8 +371,8 @@ class DualListFilterWidget(BaseGroupBox):
     def get_config(self) -> ListIncludeExcludeModel:
         """Return clean data for the config."""
         return ListIncludeExcludeModel(
-            include=self.filter_include_radio.isChecked(),
-            exclude=self.filter_exclude_radio.isChecked(),
+            include_enabled=self.filter_include_radio.isChecked(),
+            exclude_enabled=self.filter_exclude_radio.isChecked(),
             text=convert_string_to_list(self.filter_edit.text()),
         )
 
@@ -418,7 +418,7 @@ class DblRangeFilterWidget(BaseGroupBox):
         """Return clean data for the config."""
         mult = self.mapping.get(self.combo.currentText(), 1)
         minimum, maximum = self.min_spin.value() * mult, self.max_spin.value() * mult
-        return LimitMinMaxModel(limit=self.isChecked(), minimum=minimum, maximum=maximum)
+        return LimitMinMaxModel(enabled=self.isChecked(), minimum=minimum, maximum=maximum)
 
 
 class DiversityFilterWidget(BaseGroupBox):
