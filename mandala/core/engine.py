@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..utils.constants import TransferMode
 from ..utils.helpers import get_status_header
 
 if TYPE_CHECKING:
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
     from .quota import DiversityQuota
     from .reporter import ReportWriter
     from .timestamp import DateTimeSingleton
+    from .transfer import Transfer
     from .trash import TrashHandler
     from .validator import FileValidator
     from .walker import RandomFSWalker
@@ -53,7 +53,6 @@ class MandalaEngine:
 
     root: Path
     dry_run: bool
-    transfer_mode: TransferMode
     validator: FileValidator
     reporter: ReportWriter
     quota: DiversityQuota
@@ -63,6 +62,7 @@ class MandalaEngine:
     filecount: Filecount
     filename: Filename
     folder: Folder
+    transfer: Transfer
     observer: MandalaObserver = field(init=False)
     _state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
@@ -142,15 +142,7 @@ class MandalaEngine:
             return True
 
         try:
-            match self.transfer_mode:
-                case TransferMode.COPY:
-                    chosen.copy(target, preserve_metadata=True)
-                case TransferMode.MOVE:
-                    chosen.move(target)
-                case TransferMode.SYMLINK:
-                    target.symlink_to(chosen)
-                case TransferMode.HARDLINK:
-                    target.hardlink_to(chosen)
+            self.transfer.transfer(chosen, target)
         except (PermissionError, OSError):
             self._report(msg=f"FAILED: {copy_path_str}")
             logger.exception("Failed to copy file: %s", copy_path_str)

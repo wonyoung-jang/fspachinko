@@ -31,8 +31,9 @@ class FSEntry:
     def from_scandir(cls, entry: os.DirEntry, *, follow_symlinks: bool = False) -> FSEntry:
         """Create an FSEntry from a given Path."""
         is_file = entry.is_file(follow_symlinks=follow_symlinks)
+        is_dir = entry.is_dir(follow_symlinks=follow_symlinks)
         size = entry.stat(follow_symlinks=follow_symlinks).st_size
-        return cls(Path(entry.path), is_file=is_file, is_dir=not is_file, size=size)
+        return cls(Path(entry.path), is_file=is_file, is_dir=is_dir, size=size)
 
 
 @dataclass(slots=True)
