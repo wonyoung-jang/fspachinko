@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..utils.interfaces import MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
-    from .timestamp import DateTimeSingleton
+    from .timestamp import DateTimeProvider
     from .transfer import Transfer
     from .trash import TrashHandler
     from .validator import FileValidator
@@ -58,7 +58,7 @@ class MandalaEngine:
     quota: DiversityQuota
     trash: TrashHandler
     walker: RandomFSWalker
-    timestamp: DateTimeSingleton
+    timestamp: DateTimeProvider
     filecount: Filecount
     filename: Filename
     folder: Folder
