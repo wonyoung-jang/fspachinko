@@ -111,7 +111,6 @@ class MandalaEngine:
                 break
 
             path, size = candidate.path, candidate.size
-            self.quota.lock_file(path)
 
             if self.validator.is_valid(path, size) and self._copy_file_attempt(path, dest, copied):
                 copied += 1
