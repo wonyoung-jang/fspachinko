@@ -28,10 +28,10 @@ class FSEntry:
     size: int
 
     @classmethod
-    def from_scandir(cls, entry: os.DirEntry) -> FSEntry:
+    def from_scandir(cls, entry: os.DirEntry, *, follow_symlinks: bool = False) -> FSEntry:
         """Create an FSEntry from a given Path."""
-        is_file = entry.is_file()
-        size = entry.stat().st_size
+        is_file = entry.is_file(follow_symlinks=follow_symlinks)
+        size = entry.stat(follow_symlinks=follow_symlinks).st_size
         return cls(Path(entry.path), is_file=is_file, is_dir=not is_file, size=size)
 
 
@@ -43,72 +43,61 @@ class RandomFSWalker:
     quota: DiversityQuota
     rng: Random
     trash: TrashHandler
-    cache: dict[Path, tuple[FSEntry, ...]] = field(default_factory=dict)
-    stack: list[tuple[Path, tuple[FSEntry, ...], list[int], int]] = field(default_factory=list)
-    root_item: tuple[Path, tuple[FSEntry, ...], list[int], int] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        self.initialize_root_item()
-        self.stack.append(self.root_item)
-
-    def initialize_root_item(self) -> None:
-        """Initialize the root directory in the stack."""
-        entries = self._get_entries(self.root)
-        available = self.quota.get_available_entries(entries)
-        indices = list(range(len(available)))
-        if len(indices) > 1:
-            self.rng.shuffle(indices)
-        self.root_item = (self.root, available, indices, 0)
+    cache: dict[Path, tuple[FSEntry, ...] | None] = field(default_factory=dict)
 
     def generate_candidates(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
-        while True:
-            candidate = self.descend_to_file()
-            if candidate is None:
-                break
+        while (candidate := self.descend_to_file()) is not None:
             yield candidate
 
     def descend_to_file(self) -> FSEntry | None:
         """Descend directories finding a valid file using an explicit stack."""
-        self.stack.append(self.root_item)
+        stack: list[tuple[Path, list[FSEntry], int]] = [(self.root, [], 0)]
 
-        while self.stack:
-            path, available, indices, idx = self.stack.pop()
+        while stack:
+            path, available, idx = stack.pop()
 
-            if not available:
-                if not (entries := self._get_entries(path)):
+            if idx >= len(available):
+                entries = self._get_entries(path)
+
+                # Directory is inaccessible, lock, do not trash
+                if entries is None:
+                    self.quota.lock_folder(path)
+                    continue
+
+                # Directory is empty, trash if configured
+                if len(entries) == 0:
                     self.quota.lock_folder(path)
                     self.trash.collect_empty_folder(path)
                     continue
 
-                if not (new_available := self.quota.get_available_entries(entries)):
+                # No available entries, lock
+                if not (available := self.quota.get_available(entries)):
                     self.quota.lock_folder(path)
                     continue
 
-                indices = list(range(len(new_available)))
-                if len(indices) > 1:
-                    self.rng.shuffle(indices)
+                # Shuffle available entries
+                if len(available) > 1:
+                    self.rng.shuffle(available)
+                idx = 0
 
-                self.stack.append((path, new_available, indices, 0))
-                continue
+            entry = available[idx]
 
-            if idx >= len(indices):
-                continue
+            # Only push the next index if there are more entries
+            if idx + 1 < len(available):
+                stack.append((path, available, idx + 1))
 
-            entry = available[indices[idx]]
-            self.stack.append((path, available, indices, idx + 1))
-
-            if entry.is_dir:
-                self.stack.append((entry.path, (), [], 0))
-                continue
-
+            # Process the current entry
             if entry.is_file:
                 return entry
 
+            # It's a directory, descend into
+            if entry.is_dir:
+                stack.append((entry.path, [], 0))
+
         return None
 
-    def _get_entries(self, current: Path) -> tuple[FSEntry, ...]:
+    def _get_entries(self, current: Path) -> tuple[FSEntry, ...] | None:
         """Retrieve and cache directory entries for a given path."""
         if current in self.cache:
             return self.cache[current]
@@ -116,6 +105,7 @@ class RandomFSWalker:
         try:
             self.cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
         except (PermissionError, OSError):
-            self.cache[current] = ()
+            logger.debug("Failed to access directory: %s", current)
+            self.cache[current] = None
 
         return self.cache[current]
