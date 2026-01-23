@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from cyclopts import App
 
+from ..config.loggers import initialize_logging
 from ..config.schemas import MandalaConfigModel
 from ..core import build_engine
 from ..utils.constants import DEFAULT_JSON_CONFIG
 from ..utils.interfaces import MandalaObserver
 
+logger = logging.getLogger(__name__)
 app = App(
     help="Mandala - Random file copier.",
 )
@@ -60,10 +63,14 @@ def run_cli(json_path: str = "") -> None:
 
 
 @app.default
-def main(json_path: str = "") -> None:
+def run(json_path: str = "") -> None:
     """Run the Mandala CLI."""
     run_cli(json_path)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Enter Mandala CLI."""
+    initialize_logging()
+    logger.info("Start: Mandala GUI")
+
     app()
