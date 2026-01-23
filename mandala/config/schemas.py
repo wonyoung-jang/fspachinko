@@ -1,13 +1,10 @@
 """Pydantic schemas for Mandala configuration."""
 
-from typing import TYPE_CHECKING
+from pathlib import Path  # noqa: TC003
 
 from pydantic import BaseModel
 
 from ..utils.constants import TransferMode
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FilecountModel(BaseModel):
@@ -63,6 +60,12 @@ class DiversityModel(BaseModel):
     max_per_folder: int = 0
 
 
+class WalkerModel(BaseModel):
+    """Model for filesystem walker configuration."""
+
+    follow_symlinks: bool = False
+
+
 class MandalaConfigModel(BaseModel):
     """Model for Mandala configuration."""
 
@@ -77,3 +80,4 @@ class MandalaConfigModel(BaseModel):
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
     diversity: DiversityModel
+    walker: WalkerModel

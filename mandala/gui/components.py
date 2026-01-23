@@ -34,6 +34,7 @@ from ..config.schemas import (
     LimitMinMaxModel,
     ListIncludeExcludeModel,
     TransferModeModel,
+    WalkerModel,
 )
 from ..core import get_available_transfer_modes
 from ..utils.constants import ByteUnit, FilenameTemplate, TimeUnit, TransferMode
@@ -474,3 +475,24 @@ class LoggingWidget(QWidget):
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.textbrowser_log)
+
+
+class WalkerWidget(BaseGroupBox):
+    """Handles logic for filesystem walker settings."""
+
+    def __init__(self, title: str = "Filesystem Walker", name: str = "walker", parent: QWidget | None = None) -> None:
+        """Initialize the filesystem walker settings widget."""
+        super().__init__(title, name, parent=parent)
+
+        self.chk_follow_symlinks = QCheckBox("Follow Symlinks")
+        init_widget(self.chk_follow_symlinks, f"{name}_follow_symlinks")
+        set_widget_tips(self.chk_follow_symlinks, "If checked, symbolic links will be followed during file traversal.")
+
+        layout = QFormLayout(self)
+        layout.addRow(self.chk_follow_symlinks)
+
+    def get_config(self) -> WalkerModel:
+        """Return clean data for the config."""
+        return WalkerModel(
+            follow_symlinks=self.chk_follow_symlinks.isChecked(),
+        )

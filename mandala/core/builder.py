@@ -77,6 +77,7 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         root=m.root,
         rng=rng,
         quota=quota,
+        follow_symlinks=m.walker.follow_symlinks,
     )
 
     timestamp = DateTimeProvider()

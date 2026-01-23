@@ -25,15 +25,19 @@ class FSEntry:
     path: Path
     is_file: bool
     is_dir: bool
+    is_symlink: bool
     size: int
 
     @classmethod
-    def from_scandir(cls, entry: os.DirEntry, *, follow_symlinks: bool = False) -> FSEntry:
+    def from_scandir(cls, entry: os.DirEntry) -> FSEntry:
         """Create an FSEntry from a given Path."""
-        is_file = entry.is_file(follow_symlinks=follow_symlinks)
-        is_dir = entry.is_dir(follow_symlinks=follow_symlinks)
-        size = entry.stat(follow_symlinks=follow_symlinks).st_size
-        return cls(Path(entry.path), is_file=is_file, is_dir=is_dir, size=size)
+        return cls(
+            Path(entry.path),
+            is_file=entry.is_file(),
+            is_dir=entry.is_dir(),
+            is_symlink=entry.is_symlink(),
+            size=entry.stat().st_size,
+        )
 
 
 @dataclass(slots=True)
@@ -43,8 +47,10 @@ class RandomFSWalker:
     root: Path
     quota: DiversityQuota
     rng: Random
-    cache: OrderedDict[Path, tuple[FSEntry, ...]] = field(default_factory=OrderedDict)
+    follow_symlinks: bool
+
     _cache_limit: int = WALKER_CACHE_LIMIT
+    _cache: OrderedDict[Path, tuple[FSEntry, ...]] = field(default_factory=OrderedDict)
     _stack: list[tuple[Path, list[FSEntry], int]] = field(default_factory=list)
 
     def walk(self) -> Iterator[FSEntry]:
@@ -81,28 +87,38 @@ class RandomFSWalker:
             if idx + 1 < len(available):
                 self._stack.append((path, available, idx + 1))
 
-            # Process the current entry
+            # If it's a file, return it
             if entry.is_file:
+                # Skip symlinks if not following them
+                if not self.follow_symlinks and entry.is_symlink:
+                    self.quota.lock_file(entry.path)
+                    continue
+
                 self.quota.lock_file(entry.path)
                 return entry
 
             # It's a directory, descend into
             if entry.is_dir:
+                # Skip symlinks if not following them
+                if not self.follow_symlinks and entry.is_symlink:
+                    self.quota.lock_folder(entry.path)
+                    continue
+
                 self._stack.append((entry.path, [], 0))
 
         return None
 
     def _get_entries(self, current: Path) -> tuple[FSEntry, ...]:
         """Retrieve and cache directory entries for a given path."""
-        if current in self.cache:
-            return self.cache[current]
+        if current in self._cache:
+            return self._cache[current]
 
         try:
-            self.cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
-            if len(self.cache) > self._cache_limit:
-                self.cache.popitem(last=False)
+            self._cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
+            if len(self._cache) > self._cache_limit:
+                self._cache.popitem(last=False)
         except (PermissionError, OSError):
             logger.debug("Failed to access directory: %s", current)
-            self.cache[current] = ()
+            self._cache[current] = ()
 
-        return self.cache[current]
+        return self._cache[current]

@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from PySide6.QtCore import QDir, Signal, Slot
-from PySide6.QtWidgets import QGroupBox, QMdiArea, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QGroupBox, QMdiArea, QVBoxLayout, QWidget
+
+from dist._gui._internal.mandala.gui.components import QHBoxLayout
 
 from ..config.schemas import MandalaConfigModel
 from ..utils.constants import PERCENTAGE_100, SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
@@ -19,6 +21,7 @@ from .components import (
     PathSelectorWidget,
     ProgressWidget,
     TransferModeWidget,
+    WalkerWidget,
 )
 from .qthelpers import init_widget
 from .workers import RunMandalaWorker
@@ -43,6 +46,7 @@ class MandalaCentralGui(QMdiArea):
     ui_diversity: DiversityFilterWidget = field(init=False)
     ui_progress: ProgressWidget = field(init=False)
     ui_logging: LoggingWidget = field(init=False)
+    ui_walker: WalkerWidget = field(init=False)
     _window_title_before_start: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -68,6 +72,7 @@ class MandalaCentralGui(QMdiArea):
         self.ui_filesize = DblRangeFilterWidget("Size", "filesize", items=tuple(ByteUnit), mapping=SIZE_MAP)
         self.ui_duration = DblRangeFilterWidget("Duration", "duration", items=tuple(TimeUnit), mapping=TIME_MAP)
         self.ui_diversity = DiversityFilterWidget()
+        self.ui_walker = WalkerWidget()
 
         # Init execution components
         self.ui_progress = ProgressWidget()
@@ -79,22 +84,23 @@ class MandalaCentralGui(QMdiArea):
         layout.addWidget(self.ui_root)
         layout.addWidget(self.ui_dest)
 
-        output_layout = QSplitter()
+        output_layout = QHBoxLayout()
         output_layout.addWidget(self.ui_folders)
         output_layout.addWidget(self.ui_filecount)
         output_layout.addWidget(self.ui_filename)
         output_layout.addWidget(self.ui_transfermode)
 
-        layout.addWidget(output_layout)
+        layout.addLayout(output_layout)
         layout.addWidget(self.ui_keywords)
         layout.addWidget(self.ui_extensions)
 
-        filter_layout = QSplitter()
+        filter_layout = QHBoxLayout()
         filter_layout.addWidget(self.ui_filesize)
         filter_layout.addWidget(self.ui_duration)
         filter_layout.addWidget(self.ui_diversity)
+        filter_layout.addWidget(self.ui_walker)
 
-        layout.addWidget(filter_layout)
+        layout.addLayout(filter_layout)
         layout.addWidget(self.ui_progress)
         layout.addWidget(self.ui_logging)
 
@@ -112,6 +118,7 @@ class MandalaCentralGui(QMdiArea):
             filesize=self.ui_filesize.get_config(),
             duration=self.ui_duration.get_config(),
             diversity=self.ui_diversity.get_config(),
+            walker=self.ui_walker.get_config(),
         )
 
     def _toggle_ui(self, *, enabled: bool) -> None:
