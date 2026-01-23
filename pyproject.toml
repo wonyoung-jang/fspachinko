@@ -8,13 +8,14 @@ dependencies = [
     "cyclopts>=4.4.5",
     "ffmpeg-python>=0.2.0",
     "pydantic>=2.12.5",
+    "pyinstaller>=6.18.0",
     "pyside6>=6.10.1",
 ]
 
 [project.scripts]
-mandala = "mandala.gui.runner:main"
-mandala-gui = "mandala.gui.runner:main"
-mandala-cli = "mandala.cli.cli:app"
+mandala = "mandala._gui:main"
+mandala-gui = "mandala._gui:main"
+mandala-cli = "mandala._cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9.1,<0.10.0"]
@@ -34,3 +35,4 @@ verbose = false
 dev = [
     "line-profiler>=5.0.0",
 ]
+packaging = []
