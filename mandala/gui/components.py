@@ -38,7 +38,7 @@ from ..config.schemas import (
     TransferModeModel,
 )
 from ..core import get_available_transfer_modes
-from ..utils.constants import FilenameTemplate, TransferMode
+from ..utils.constants import ByteUnit, FilenameTemplate, TimeUnit, TransferMode
 from ..utils.helpers import convert_string_to_list
 from .qthelpers import init_widget, set_widget_tips
 
@@ -381,8 +381,8 @@ class DblRangeFilterWidget(BaseGroupBox):
         self,
         title: str,
         name: str,
-        suffix_options: Sequence[str],
-        mapping: dict[str, int],
+        items: Sequence[str | ByteUnit | TimeUnit],
+        mapping: dict[str | ByteUnit | TimeUnit, int],
         parent: QWidget | None = None,
     ) -> None:
         """Initialize the range filter widget."""
@@ -402,7 +402,7 @@ class DblRangeFilterWidget(BaseGroupBox):
         self.max_spin.valueChanged.connect(self.min_spin.setMaximum)
 
         self.combo = QComboBox()
-        self.combo.addItems(suffix_options)
+        self.combo.addItems(items)
         init_widget(self.combo, f"{name}_unit")
         set_widget_tips(self.combo, f"Unit multiplier for the {name} filter.")
 

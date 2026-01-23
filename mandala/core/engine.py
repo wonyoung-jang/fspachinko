@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 from ..utils.helpers import get_status_header
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from pathlib import Path
 
     from ..config.config import Filecount, Filename, Folder
@@ -79,7 +78,10 @@ class MandalaEngine:
         """Run the main file copying process."""
         self.observer.on_progress_total(self.folder.count)
 
-        for target, dest in self._generate_target_and_dest():
+        for _ in range(self.folder.count):
+            target = self.filecount.get_count()
+            dest = self.folder.create_dest_folder()
+
             if self._request_stop:
                 break
 
@@ -103,14 +105,14 @@ class MandalaEngine:
 
     def _transfer_folder(self, target: int, dest: Path) -> None:
         """Process a single folder for file copying."""
-        for candidate in self.walker.walk():
+        for entry in self.walker.walk():
             if self._is_stop_condition():
                 break
 
-            if candidate is None or self._state.count >= target:
+            if entry is None or self._state.count >= target:
                 break
 
-            path, size = candidate.path, candidate.size
+            path, size = entry.path, entry.size
 
             if not self.validator.is_valid(path, size):
                 continue
@@ -128,19 +130,19 @@ class MandalaEngine:
         count = self._state.count
         chosen_rel = chosen.relative_to(self.root)
 
-        target = self.filename.calc_dest_target(chosen_rel, dest, count)
-        if target is None:
+        new_target_file = self.filename.calc_dest_target(chosen_rel, dest, count)
+        if new_target_file is None:
             return False
 
-        target_rel = target.relative_to(dest)
-        copy_path_str = f"{chosen_rel} -> {target_rel}"
+        new_target_file_rel = new_target_file.relative_to(dest)
+        copy_path_str = f"{chosen_rel} -> {new_target_file_rel}"
 
         if self.dry_run:
             self._report(msg=f"DRY: {count + 1}: {copy_path_str}")
             return True
 
         try:
-            self.transfer.transfer(chosen, target)
+            self.transfer.transfer(chosen, new_target_file)
         except (PermissionError, OSError):
             self._report(msg=f"FAILED: {copy_path_str}")
             logger.exception("Failed to copy file: %s", copy_path_str)
@@ -153,11 +155,6 @@ class MandalaEngine:
         """Report and log a message."""
         self.reporter.record_message(msg)
         self.observer.on_log(msg)
-
-    def _generate_target_and_dest(self) -> Iterator[tuple[int, Path]]:
-        """Prepare target file counts for each folder."""
-        for _ in range(self.folder.count):
-            yield self.filecount.get_count(), self.folder.create_dest_folder()
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
@@ -179,12 +176,10 @@ class MandalaEngine:
         )
 
         report = self.reporter.generate_report(
-            dest=dest,
             status=f"{status_prefix}: {count}/{target} files copied",
             runtime=round(perf_counter() - self._state.starttime, 2),
             size=self._state.size,
         )
-
         self._report(report)
         self.reporter.save()
 

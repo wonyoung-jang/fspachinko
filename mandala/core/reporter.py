@@ -37,17 +37,19 @@ class ReportWriter:
     timestamp: DateTimeProvider
     buffer: list[str] = field(default_factory=list)
     report_path: Path = field(init=False)
+    _dest: Path = field(init=False)
 
     def reset_for_dest(self, dest: Path) -> None:
         """Initialize reporter for a new run."""
         self.buffer.clear()
         self.report_path = dest / f"!_report_{dest.name}.txt"
+        self._dest = dest
 
     def record_message(self, message: str) -> None:
         """Add a message to the buffer."""
         self.buffer.append(f"{message}\n")
 
-    def generate_report(self, dest: Path, status: str, runtime: float, size: int) -> str:
+    def generate_report(self, status: str, runtime: float, size: int) -> str:
         """Generate the header report string."""
         return (
             "\n========================================================================\n"
@@ -55,7 +57,7 @@ class ReportWriter:
             "========================================================================\n\n"
             f"Date:             {self.timestamp.date_time_report_str}\n"
             f"Root:             {self.root}\n"
-            f"Destination:      {dest}\n"
+            f"Destination:      {self._dest}\n"
             f"Extensions:       {self.exts_str}\n"
             f"Keywords:         {self.keys_str}\n"
             f"Total size:       {convert_byte_to_size(size)}\n"

@@ -67,12 +67,8 @@ class MandalaCentralGui(QMdiArea):
         # Init filter components
         self.ui_keywords = DualListFilterWidget("Keywords", "keyword")
         self.ui_extensions = DualListFilterWidget("Extensions", "extension")
-        self.ui_filesize = DblRangeFilterWidget(
-            "Size", "filesize", suffix_options=[s.value for s in ByteUnit], mapping=SIZE_MAP
-        )
-        self.ui_duration = DblRangeFilterWidget(
-            "Duration", "duration", suffix_options=[s.value for s in TimeUnit], mapping=TIME_MAP
-        )
+        self.ui_filesize = DblRangeFilterWidget("Size", "filesize", items=tuple(ByteUnit), mapping=SIZE_MAP)
+        self.ui_duration = DblRangeFilterWidget("Duration", "duration", items=tuple(TimeUnit), mapping=TIME_MAP)
         self.ui_diversity = DiversityFilterWidget()
 
         # Init execution components
