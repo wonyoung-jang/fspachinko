@@ -1,10 +1,13 @@
 """Pydantic schemas for Mandala configuration."""
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from ..utils.constants import TransferMode
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FilecountModel(BaseModel):

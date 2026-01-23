@@ -1,7 +1,5 @@
 """Logging configuration for Mandala."""
 
-from __future__ import annotations
-
 import json
 import logging.config
 from pathlib import Path

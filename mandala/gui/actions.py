@@ -1,7 +1,5 @@
 """Actions module for QActions."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
 from PySide6.QtGui import QAction, QKeySequence

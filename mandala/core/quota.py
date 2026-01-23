@@ -2,11 +2,14 @@
 
 import logging
 from collections import Counter
-from collections.abc import Iterable
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from .walker import FSEntry
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
+    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 

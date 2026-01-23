@@ -1,7 +1,5 @@
 """Constants for mandala."""
 
-from __future__ import annotations
-
 from enum import IntEnum, StrEnum
 
 DEFAULT_JSON_CONFIG = "mandala/mandala.json"
