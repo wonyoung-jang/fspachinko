@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..utils.constants import WALKER_CACHE_LIMIT
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from random import Random
@@ -44,19 +46,20 @@ class RandomFSWalker:
     quota: DiversityQuota
     rng: Random
     cache: OrderedDict[Path, tuple[FSEntry, ...]] = field(default_factory=OrderedDict)
-    _cache_limit: int = 100
+    _cache_limit: int = WALKER_CACHE_LIMIT
+    _stack: list[tuple[Path, list[FSEntry], int]] = field(default_factory=list)
 
-    def generate_candidates(self) -> Iterator[FSEntry]:
+    def walk(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
-        while (candidate := self.descend_to_file()) is not None:
+        while (candidate := self._descend()) is not None:
             yield candidate
 
-    def descend_to_file(self) -> FSEntry | None:
+    def _descend(self) -> FSEntry | None:
         """Descend directories finding a valid file using an explicit stack."""
-        stack: list[tuple[Path, list[FSEntry], int]] = [(self.root, [], 0)]
+        self._stack.append((self.root, [], 0))
 
-        while stack:
-            path, available, idx = stack.pop()
+        while self._stack:
+            path, available, idx = self._stack.pop()
 
             if idx >= len(available):
                 entries = self._get_entries(path)
@@ -78,7 +81,7 @@ class RandomFSWalker:
 
             # Only push the next index if there are more entries
             if idx + 1 < len(available):
-                stack.append((path, available, idx + 1))
+                self._stack.append((path, available, idx + 1))
 
             # Process the current entry
             if entry.is_file:
@@ -87,7 +90,7 @@ class RandomFSWalker:
 
             # It's a directory, descend into
             if entry.is_dir:
-                stack.append((entry.path, [], 0))
+                self._stack.append((entry.path, [], 0))
 
         return None
 

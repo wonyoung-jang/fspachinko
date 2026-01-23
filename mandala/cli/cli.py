@@ -7,7 +7,7 @@ from pathlib import Path
 from cyclopts import App
 
 from ..config.schemas import MandalaConfigModel
-from ..core.builder import build_engine
+from ..core import build_engine
 from ..utils.constants import DEFAULT_JSON_CONFIG
 from ..utils.interfaces import MandalaObserver
 

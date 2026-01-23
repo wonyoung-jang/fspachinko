@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import UnsupportedOperation
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from ..utils.constants import TransferMode
+from ..utils.constants import FileError, TransferMode
 
 
 def get_available_transfer_modes() -> tuple[TransferMode, ...]:
@@ -23,7 +23,7 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
 
     # SYMLINK availability
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             test_src = tmp_path / "test_src"
             test_dst = tmp_path / "test_symlink"
@@ -37,7 +37,7 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
 
     # HARDLINK availability
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             test_src = tmp_path / "test_src"
             test_dst = tmp_path / "test_hardlink"
@@ -52,7 +52,7 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
     return tuple(available)
 
 
-def fetch_transfer_strategy(mode: str) -> Transfer:
+def fetch_transfer_strategy(mode: TransferMode) -> Transfer:
     """Return the appropriate transfer strategy instance.
 
     Falls back to SYMLINK if the requested mode is not available.
@@ -121,8 +121,7 @@ class Hardlink(Transfer):
         try:
             dst.hardlink_to(src)
         except OSError as e:
-            # Cross-filesystem error
-            if e.winerror == 17 or e.errno == 18:
+            if e.winerror == FileError.WINDOWS_CROSS_DRIVE_ERROR or e.errno == FileError.UNIX_CROSS_FILESYSTEM_ERROR:
                 dst.symlink_to(src)
             else:
                 raise

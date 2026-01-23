@@ -64,7 +64,7 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
         case QDoubleSpinBox():
             widget.setValue(float(val))
         case QCheckBox() | QRadioButton() | QGroupBox():
-            state = strtobool(val) if isinstance(val, str) else bool(val)
+            state = strtobool(val=val)
             widget.setChecked(state)
         case _:
             return

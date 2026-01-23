@@ -9,7 +9,7 @@ from PySide6.QtCore import QDir, Signal, Slot
 from PySide6.QtWidgets import QGroupBox, QMdiArea, QSplitter, QVBoxLayout, QWidget
 
 from ..config.schemas import MandalaConfigModel
-from ..utils.constants import SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
+from ..utils.constants import PERCENTAGE_100, SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
 from .components import (
     DblRangeFilterWidget,
     DiversityFilterWidget,
@@ -173,8 +173,8 @@ class MandalaCentralGui(QMdiArea):
     def _update_title_progress(self, val: int) -> None:
         curr_title = self._window_title_before_start
         max_files = self.ui_progress.progbar_folder.maximum()
-        if max_files > 0:
-            pct = int((val / max_files) * 100)
+        if max_files:
+            pct = int((val / max_files) * PERCENTAGE_100)
             self.update_window_title.emit(f"[{pct}%] {curr_title}")
         else:
             self.update_window_title.emit(f"[{val} files] {curr_title}")

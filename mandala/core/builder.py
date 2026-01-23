@@ -5,13 +5,13 @@ from __future__ import annotations
 from random import Random
 from typing import TYPE_CHECKING
 
-from mandala.core.transfer import fetch_transfer_strategy
-
 from ..config.config import Filecount, Filename, Folder, ListIncludeExclude, MinMax
+from ..utils.constants import RNG_RANGE
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
 from .timestamp import DateTimeProvider
+from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
 from .walker import RandomFSWalker
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 def _build_rng() -> Random:
     """Build and return a Random instance with a system-generated seed."""
     sys_rand = Random()
-    rng_seed = sys_rand.randint(0, 2**32 - 1)
+    rng_seed = sys_rand.randint(*RNG_RANGE)
     return Random(rng_seed)
 
 

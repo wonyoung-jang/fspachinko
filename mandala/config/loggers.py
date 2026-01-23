@@ -15,5 +15,5 @@ def initialize_logging(path: Path | None = None) -> None:
         path = LOGGING_CONFIG_PATH
 
     with path.open("r", encoding="utf-8") as f:
-        logging_config_dict = json.load(f)
-        logging.config.dictConfig(logging_config_dict)
+        cfg_dict = json.load(f)
+        logging.config.dictConfig(cfg_dict)

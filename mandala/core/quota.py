@@ -1,7 +1,7 @@
 """Quota and State management."""
 
 import logging
-from collections import defaultdict
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,7 +22,7 @@ class DiversityQuota:
 
     locked_files: set[Path] = field(default_factory=set)
     locked_folders: set[Path] = field(default_factory=set)
-    folder_counts: dict[Path, int] = field(default_factory=lambda: defaultdict(int))
+    folder_counts: Counter[Path] = field(default_factory=Counter)
 
     def prepare_for_batch(self) -> None:
         """Reset batch-specific counters, optionally keeping file history."""
@@ -55,8 +55,6 @@ class DiversityQuota:
 
     def register_success(self, file_path: Path) -> None:
         """Record a successful copy and apply locking rules."""
-        self.lock_file(file_path)
-
         leaf_dir = file_path.parent
         if self.max_per_folder > 0:
             self.folder_counts[leaf_dir] += 1

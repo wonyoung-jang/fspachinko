@@ -7,6 +7,17 @@ from enum import IntEnum, StrEnum
 DEFAULT_JSON_CONFIG = "mandala/mandala.json"
 DEFAULT_PROFILE_DIR = ".profiles/"
 
+WALKER_CACHE_LIMIT = 1000
+PERCENTAGE_100 = 100.0
+RNG_RANGE = (0, 2**32 - 1)
+
+
+class FileError(IntEnum):
+    """Enumeration for file error codes."""
+
+    WINDOWS_CROSS_DRIVE_ERROR = 17
+    UNIX_CROSS_FILESYSTEM_ERROR = 18
+
 
 class SecondsIn(IntEnum):
     """Enumeration for seconds in units."""

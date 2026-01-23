@@ -32,18 +32,20 @@ logger = logging.getLogger(__name__)
 class MandalaState:
     """Dataclass for Mandala state."""
 
-    bytes_in_currdir: int = 0
-    start_time_currdir: float = 0.0
+    count: int = 0
+    size: int = 0
+    starttime: float = 0.0
 
     def reset_for_folder(self) -> None:
         """Reset state variables for a new folder."""
-        self.bytes_in_currdir = 0
-        _start = perf_counter()
-        self.start_time_currdir = _start
+        self.count = 0
+        self.size = 0
+        self.starttime = perf_counter()
 
-    def update_success(self, size: int) -> None:
+    def update_folder(self, size: int) -> None:
         """Update state on successful operation."""
-        self.bytes_in_currdir += size
+        self.count += 1
+        self.size += size
 
 
 @dataclass(slots=True)
@@ -87,11 +89,11 @@ class MandalaEngine:
 
     def process_folder(self, target: int, dest: Path) -> None:
         """Run processing for a single folder."""
-        self._prep_folder(target, dest)
-        copied = self._copy_folder(target, dest)
-        self._complete_folder(dest, copied, target)
+        self._prepare_folder(target, dest)
+        self._transfer_folder(target, dest)
+        self._finalize_folder(target, dest)
 
-    def _prep_folder(self, target: int, dest: Path) -> None:
+    def _prepare_folder(self, target: int, dest: Path) -> None:
         """Prepare state for processing a new folder."""
         self.timestamp.refresh()
         self.reporter.reset_for_dest(dest)
@@ -99,32 +101,31 @@ class MandalaEngine:
         self.quota.prepare_for_batch()
         self._state.reset_for_folder()
 
-    def _copy_folder(self, target: int, dest: Path) -> int:
+    def _transfer_folder(self, target: int, dest: Path) -> None:
         """Process a single folder for file copying."""
-        copied = 0
+        for candidate in self.walker.walk():
+            if self._is_stop_condition():
+                break
 
-        for candidate in self.walker.generate_candidates():
-            if self._is_stop_condition() or candidate is None or copied >= target:
+            if candidate is None or self._state.count >= target:
                 break
 
             path, size = candidate.path, candidate.size
 
-            if self.validator.is_valid(path, size) and self._copy_file_attempt(path, dest, copied):
-                copied += 1
-                self._state.update_success(size)
-                self.quota.register_success(path)
-                self.observer.on_count(copied)
-                self.observer.on_time()
+            if not self.validator.is_valid(path, size):
+                continue
 
-        return copied
+            if not self._transfer_file(path, dest):
+                continue
 
-    def _complete_folder(self, dest: Path, copied: int, target: int) -> None:
-        """Post-process actions after folder processing."""
-        self.observer.on_count_total()
-        self._finalize_folder(dest, copied, target)
+            self._state.update_folder(size)
+            self.quota.register_success(path)
+            self.observer.on_count(self._state.count)
+            self.observer.on_time()
 
-    def _copy_file_attempt(self, chosen: Path, dest: Path, count: int) -> bool:
+    def _transfer_file(self, chosen: Path, dest: Path) -> bool:
         """Attempt to copy a file and return success status."""
+        count = self._state.count
         chosen_rel = chosen.relative_to(self.root)
 
         target = self.filename.calc_dest_target(chosen_rel, dest, count)
@@ -162,20 +163,28 @@ class MandalaEngine:
         """Check if the process should stop based on conditions."""
         return self._request_stop or self.quota.all_locked()
 
-    def _finalize_folder(self, dest: Path, count: int, target: int) -> None:
+    def _finalize_folder(self, target: int, dest: Path) -> None:
         """Create and write log at the end of folder."""
-        runtime = round(perf_counter() - self._state.start_time_currdir, 2)
-        copied = f"{count}/{target} files copied"
+        count = self._state.count
+
+        self.observer.on_count_total()
+
         none_found = count == 0 and self.folder.create_enabled
-        prefix = get_status_header(
+
+        status_prefix = get_status_header(
             success=(count == target),
             stopped=self._request_stop,
             none_found=none_found,
             all_searched=self.quota.all_locked(),
         )
-        status = f"{prefix}: {copied}"
 
-        report = self.reporter.generate_report(dest, status, runtime, self._state.bytes_in_currdir)
+        report = self.reporter.generate_report(
+            dest=dest,
+            status=f"{status_prefix}: {count}/{target} files copied",
+            runtime=round(perf_counter() - self._state.starttime, 2),
+            size=self._state.size,
+        )
+
         self._report(report)
         self.reporter.save()
 

@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from ..core.builder import build_engine
+from ..core import build_engine
 from ..utils.interfaces import MandalaObserver
 
 if TYPE_CHECKING:
     from ..config.schemas import MandalaConfigModel
-    from ..core.engine import MandalaEngine
+    from ..core import MandalaEngine
 
 
 class WorkerSignals(QObject):

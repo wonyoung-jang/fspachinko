@@ -37,7 +37,7 @@ from ..config.schemas import (
     ListIncludeExcludeModel,
     TransferModeModel,
 )
-from ..core.transfer import get_available_transfer_modes
+from ..core import get_available_transfer_modes
 from ..utils.constants import FilenameTemplate, TransferMode
 from ..utils.helpers import convert_string_to_list
 from .qthelpers import init_widget, set_widget_tips
@@ -65,6 +65,7 @@ class BaseGroupBox(QGroupBox):
         super().__init__(title=title, parent=parent)
         init_widget(self, name)
         self.setCheckable(checkable)
+        self.setFlat(True)
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -265,33 +266,38 @@ class FilenameWidget(BaseGroupBox):
         """Initialize the filename template settings widget."""
         super().__init__(title, name, parent=parent)
 
-        self.edit_template = QLineEdit("{original}")
-        self.edit_template.setPlaceholderText("Ex: {original}_{index}")
+        self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}")
         init_widget(self.edit_template, f"{name}_template")
         set_widget_tips(
             self.edit_template,
             "Template for renaming files. Use the 'Insert Tag' button to add tags.",
         )
 
-        self.template_button = QPushButton("Insert Tag")
-        init_widget(self.template_button, f"{name}_template_button")
-        set_widget_tips(self.template_button, "Insert a tag into the template at the cursor position.")
+        self.btn_template = QPushButton("Insert Tag")
+        init_widget(self.btn_template, f"{name}_template_button")
+        set_widget_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
 
-        self.template_menu = QMenu("Tags", self)
-        init_widget(self.template_menu, f"{name}_template_menu")
-        set_widget_tips(self.template_menu, "Select a tag to insert into the filename template.")
+        self.menu_template = QMenu("Tags", self)
+        init_widget(self.menu_template, f"{name}_template_menu")
+        set_widget_tips(self.menu_template, "Select a tag to insert into the filename template.")
 
-        self.template_button.setMenu(self.template_menu)
-        init_widget(self.template_button, f"{name}_template_button")
-        set_widget_tips(self.template_button, "Insert a tag into the template at the cursor position.")
+        self.btn_template.setMenu(self.menu_template)
+        init_widget(self.btn_template, f"{name}_template_button")
+        set_widget_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
 
         for lbl in FilenameTemplate:
-            action = self.template_menu.addAction(lbl)
+            action = self.menu_template.addAction(lbl)
             action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
+
+        self.btn_clear = QPushButton("Clear")
+        self.btn_clear.clicked.connect(lambda: self.edit_template.clear())
+        init_widget(self.btn_clear, f"{name}_clear_button")
+        set_widget_tips(self.btn_clear, "Clear the filename template.")
 
         layout = QFormLayout(self)
         layout.addRow("Template:", self.edit_template)
-        layout.addRow("Filters", self.template_button)
+        layout.addRow("Filters", self.btn_template)
+        layout.addRow(self.btn_clear)
 
     @Slot(str)
     def insert_tag(self, tag: str) -> None:
@@ -314,7 +320,7 @@ class TransferModeWidget(BaseGroupBox):
 
         self.combo_mode = QComboBox()
         available_modes = get_available_transfer_modes()
-        self.combo_mode.addItems([m.value for m in available_modes])
+        self.combo_mode.addItems(available_modes)
         init_widget(self.combo_mode, f"{name}_mode")
         set_widget_tips(self.combo_mode, "Select the transfer mode to use.")
 

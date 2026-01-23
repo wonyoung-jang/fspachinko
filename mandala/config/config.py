@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
-    from ..core.timestamp import DateTimeProvider
+    from ..core import DateTimeProvider
 
 
 @dataclass(slots=True)
@@ -40,7 +40,6 @@ class Filename:
 
     template: str
     timestamp: DateTimeProvider
-    _k: FilenameTemplateMapKeys = field(default_factory=lambda: FilenameTemplateMapKeys)
     _map: SafeDict = field(default_factory=SafeDict)
 
     def __post_init__(self) -> None:
@@ -51,9 +50,9 @@ class Filename:
         """Initialize the mapping dictionary with timestamp values."""
         self._map.update(
             {
-                self._k.DATE: self.timestamp.date,
-                self._k.TIME: self.timestamp.time,
-                self._k.DATETIME: self.timestamp.date_time,
+                FilenameTemplateMapKeys.DATE: self.timestamp.date,
+                FilenameTemplateMapKeys.TIME: self.timestamp.time,
+                FilenameTemplateMapKeys.DATETIME: self.timestamp.date_time,
             }
         )
 
@@ -63,10 +62,10 @@ class Filename:
 
         self._map.update(
             {
-                self._k.ORIGINAL: original_stem,
-                self._k.INDEX: index + 1,
-                self._k.PARENT: chosen.parent.name,
-                self._k.PARENTS_TO_ROOT: "_".join(chosen.parts[:-1]),
+                FilenameTemplateMapKeys.ORIGINAL: original_stem,
+                FilenameTemplateMapKeys.INDEX: index + 1,
+                FilenameTemplateMapKeys.PARENT: chosen.parent.name,
+                FilenameTemplateMapKeys.PARENTS_TO_ROOT: "_".join(chosen.parts[:-1]),
             }
         )
 
@@ -82,9 +81,7 @@ class Filename:
         """Calculate the destination file path based on naming conventions."""
         target = self.get_target(chosen, dest, index)
         if target.exists():
-            if cmp(chosen, target, shallow=True):
-                return None
-            if cmp(chosen, target, shallow=False):
+            if cmp(chosen, target, shallow=True) and cmp(chosen, target, shallow=False):
                 return None
             return calc_unique_path_name(dest, target.stem, target.suffix)
         return target
@@ -104,8 +101,7 @@ class Folder:
         if not self.create_enabled:
             return self.dest
 
-        name = self.name
-        target = calc_unique_path_name(self.dest, name)
+        target = calc_unique_path_name(self.dest, self.name)
         target.mkdir(parents=False)
         return target
 

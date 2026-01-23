@@ -34,22 +34,25 @@ def calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
 
 def get_status_header(*, success: bool, stopped: bool, none_found: bool, all_searched: bool) -> str:
     """Generate a status header based on the processing outcome."""
-    prefix = "FINISHED (Unknown reason)"
     if success:
-        prefix = "SUCCESS"
-    elif stopped:
-        prefix = "STOPPED"
-    elif none_found:
-        prefix = "NO FILES FOUND"
-        if all_searched:
-            prefix += "| Reason - all files searched"
-        prefix += " | folder deleted"
-    elif all_searched:
-        prefix = "ALL FILES SEARCHED"
-    return prefix
+        return "SUCCESS"
+
+    if stopped:
+        return "STOPPED"
+
+    if none_found and all_searched:
+        return "NO FILES FOUND | ALL FILES SEARCHED | folder deleted"
+
+    if none_found:
+        return "NO FILES FOUND | folder deleted"
+
+    if all_searched:
+        return "ALL FILES SEARCHED"
+
+    return "FINISHED (Unknown reason)"
 
 
-def strtobool(val: str) -> bool:
+def strtobool(*, val: str | int | bool) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
 
     Replaces distutils.util.strtobool function (deprecated in Python 3.10).
@@ -59,12 +62,15 @@ def strtobool(val: str) -> bool:
 
     Raises ValueError if val is anything else.
     """
-    clean_val = str(val).casefold()
+    if isinstance(val, bool):
+        return val
 
-    if clean_val in ("y", "yes", "t", "true", "on", "1"):
+    val_str = str(val).casefold()
+
+    if val_str in {"y", "yes", "t", "true", "on", "1"}:
         return True
 
-    if clean_val in ("n", "no", "f", "false", "off", "0"):
+    if val_str in {"n", "no", "f", "false", "off", "0"}:
         return False
 
     msg = f"Invalid truth value {val!r}"
@@ -73,6 +79,9 @@ def strtobool(val: str) -> bool:
 
 def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
     """Convert a comma-separated string to a list."""
+    if not string:
+        return ()
+
     li = tuple(s.strip() for s in string.split(sep))
     if len(li) == 1 and li[0] == "":
         return ()
