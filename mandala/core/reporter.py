@@ -3,12 +3,12 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..utils.constants import BytesIn, ByteUnit
+from ..utils import BytesIn, ByteUnit
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .timestamp import DateTimeProvider
+    from ..utils import DateTimeProvider
 
 
 def convert_byte_to_size(nbytes: int) -> str:

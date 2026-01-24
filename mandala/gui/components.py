@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..config.schemas import (
+from ..config import (
     DiversityModel,
     FilecountModel,
     FilenameModel,
@@ -37,8 +37,7 @@ from ..config.schemas import (
     WalkerModel,
 )
 from ..core import get_available_transfer_modes
-from ..utils.constants import ByteUnit, FilenameTemplate, TimeUnit, TransferMode
-from ..utils.helpers import convert_string_to_list
+from ..utils import ByteUnit, FilenameTemplate, TimeUnit, TransferMode, convert_string_to_list
 from .qthelpers import init_widget, set_widget_tips
 
 if TYPE_CHECKING:
@@ -472,10 +471,12 @@ class LoggingWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the logging widget."""
         super().__init__(parent=parent)
+        name = "logging"
+        init_widget(self, name)
 
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-        init_widget(self.textbrowser_log, "logging_log")
+        init_widget(self.textbrowser_log, f"{name}_log")
         set_widget_tips(self.textbrowser_log, "Log for output messages.")
 
         layout = QHBoxLayout(self)

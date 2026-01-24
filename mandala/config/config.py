@@ -5,14 +5,13 @@ from dataclasses import dataclass, field
 from filecmp import cmp
 from typing import TYPE_CHECKING
 
-from ..utils.constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKeys
-from ..utils.helpers import SafeDict, calc_unique_path_name
+from ..utils import INVALID_FILENAME_CHARS, FilenameTemplateMapKeys, SafeDict, calc_unique_path_name
 
 if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
-    from ..core import DateTimeProvider
+    from ..utils import DateTimeProvider
 
 
 @dataclass(slots=True)

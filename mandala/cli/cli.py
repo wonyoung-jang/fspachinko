@@ -5,11 +5,9 @@ from pathlib import Path
 
 from cyclopts import App
 
-from ..config.loggers import initialize_logging
-from ..config.schemas import MandalaConfigModel
+from ..config import MandalaConfigModel
 from ..core import build_engine
-from ..utils.constants import DEFAULT_JSON_CONFIG
-from ..utils.interfaces import MandalaObserver
+from ..utils import DEFAULT_JSON_CONFIG, MandalaObserver, initialize_logging
 
 logger = logging.getLogger(__name__)
 app = App(

@@ -5,8 +5,9 @@ from pathlib import Path
 
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
+from qt_material import apply_stylesheet
 
-from ..config.loggers import initialize_logging
+from ..utils import initialize_logging
 from .mainwindow import MandalaMainWindow
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ def main() -> None:
 
     app = QApplication()
     app.setWindowIcon(QIcon(window_icon))
+    apply_stylesheet(app, theme="dark_purple.xml")
     w = MandalaMainWindow()
     w.show()
     app.exec()

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..utils.constants import WALKER_CACHE_LIMIT
+from ..utils import WALKER_CACHE_LIMIT
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

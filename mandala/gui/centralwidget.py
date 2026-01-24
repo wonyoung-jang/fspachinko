@@ -4,12 +4,10 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from PySide6.QtCore import QDir, Signal, Slot
-from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
-from dist._gui._internal.mandala.gui.components import QHBoxLayout
-
-from ..config.schemas import MandalaConfigModel
-from ..utils.constants import PERCENTAGE_100, SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
+from ..config import MandalaConfigModel
+from ..utils import PERCENTAGE_100, SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
 from .components import (
     DblRangeFilterWidget,
     DiversityFilterWidget,
@@ -122,11 +120,12 @@ class MandalaCentralGui(QWidget):
             walker=self.ui_walker.get_config(),
         )
 
-    def _toggle_ui(self, *, enabled: bool) -> None:
+    def toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
         for child in self.findChildren(QWidget):
-            if isinstance(child, QGroupBox):
-                child.setEnabled(enabled)
+            if child.objectName() in {"logging"}:
+                continue
+            child.setEnabled(enabled)
 
     @Slot()
     def on_start(self) -> None:
@@ -139,7 +138,7 @@ class MandalaCentralGui(QWidget):
 
         self.ui_progress.reset()
         self._window_title_before_start = self.window().windowTitle()
-        self._toggle_ui(enabled=False)
+        self.toggle_ui(enabled=False)
 
         self.thread = MandalaThread(MandalaWorker.from_config(config, WorkerSignals()))
         self.setup_thread_signals()
@@ -153,7 +152,7 @@ class MandalaCentralGui(QWidget):
         signals.progress.connect(self.ui_progress.progbar_folder.setMaximum)
         signals.log.connect(self.ui_logging.textbrowser_log.append)
         signals.count.connect(self.ui_progress.progbar_folder.setValue)
-        signals.count.connect(self._update_title_progress)
+        signals.count.connect(self.update_title_progress)
         signals.finished.connect(self.on_finished)
 
     @Slot()
@@ -166,11 +165,12 @@ class MandalaCentralGui(QWidget):
     @Slot()
     def on_finished(self) -> None:
         """Handle worker finished signal."""
-        self._toggle_ui(enabled=True)
-        self._reset_title()
+        self.toggle_ui(enabled=True)
+        self.reset_title()
 
     @Slot(int)
-    def _update_title_progress(self, val: int) -> None:
+    def update_title_progress(self, val: int) -> None:
+        """Update window title with progress percentage."""
         curr_title = self._window_title_before_start
         max_files = self.ui_progress.progbar_folder.maximum()
         if max_files:
@@ -180,5 +180,6 @@ class MandalaCentralGui(QWidget):
             self.update_window_title.emit(f"[{val} files] {curr_title}")
 
     @Slot()
-    def _reset_title(self) -> None:
+    def reset_title(self) -> None:
+        """Reset window title to original."""
         self.update_window_title.emit(self._window_title_before_start)

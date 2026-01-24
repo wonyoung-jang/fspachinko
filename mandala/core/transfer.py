@@ -6,7 +6,7 @@ from io import UnsupportedOperation
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from ..utils.constants import FileError, TransferMode
+from ..utils import FileError, TransferMode
 
 
 def get_available_transfer_modes() -> tuple[TransferMode, ...]:

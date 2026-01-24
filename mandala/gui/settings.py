@@ -17,8 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..utils.constants import DEFAULT_PROFILE_DIR, AppSettings
-from ..utils.helpers import strtobool
+from ..utils import DEFAULT_PROFILE_DIR, AppSettings, strtobool
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

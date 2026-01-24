@@ -4,7 +4,7 @@ from pathlib import Path  # noqa: TC003
 
 from pydantic import BaseModel
 
-from ..utils.constants import TransferMode
+from ..utils import TransferMode
 
 
 class FilecountModel(BaseModel):

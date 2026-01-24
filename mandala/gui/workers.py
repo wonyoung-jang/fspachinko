@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 from ..core import build_engine
-from ..utils.interfaces import MandalaObserver
+from ..utils import MandalaObserver
 
 if TYPE_CHECKING:
-    from ..config.schemas import MandalaConfigModel
+    from ..config import MandalaConfigModel
     from ..core import MandalaEngine
 
 

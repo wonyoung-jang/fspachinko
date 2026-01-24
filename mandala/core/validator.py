@@ -8,7 +8,7 @@ import ffmpeg
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.config import ListIncludeExclude, MinMax
+    from ..config import ListIncludeExclude, MinMax
 
 
 def _get_duration(path: Path) -> float:

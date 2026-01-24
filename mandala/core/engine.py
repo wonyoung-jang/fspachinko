@@ -7,16 +7,15 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..utils.helpers import get_status_header
+from ..utils import get_status_header
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..config.config import Filecount, Filename, Folder
-    from ..utils.interfaces import MandalaObserver
+    from ..config import Filecount, Filename, Folder
+    from ..utils import DateTimeProvider, MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
-    from .timestamp import DateTimeProvider
     from .transfer import Transfer
     from .validator import FileValidator
     from .walker import RandomFSWalker
