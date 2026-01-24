@@ -31,16 +31,28 @@ class MandalaMainWindow(QMainWindow):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.setCentralWidget(self.ui)
-        self.ui.update_window_title.connect(self.update_window_title)
 
-        logger.info("Initializing GUI")
+        logger.debug("Initializing GUI")
+        self.setCentralWidget(self.ui)
+        self.init_connections()
         self.init_menubar()
         self.init_toolbar()
         self.init_statusbar()
 
-        logger.info("Loading settings")
+        logger.debug("Loading settings")
         self.init_settings()
+
+    def init_connections(self) -> None:
+        """Initialize connections."""
+        self.ui.update_window_title.connect(self.update_window_title)
+
+        self._actions.file.save.triggered.connect(self.save_profile)
+        self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
+        self._actions.file.load.triggered.connect(self.open_profile_dialog)
+        self._actions.file.exit.triggered.connect(self.close)
+
+        self._actions.run.start.triggered.connect(self.ui.on_start)
+        self._actions.run.stop.triggered.connect(self.ui.on_stop)
 
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
@@ -49,48 +61,43 @@ class MandalaMainWindow(QMainWindow):
 
         file_menu = menubar.addMenu("&File")
         init_widget(file_menu, "MandalaFileMenu")
-        file_actions = self._actions.file
-        file_menu.addAction(file_actions.save)
-        file_menu.addAction(file_actions.save_as)
-        file_menu.addAction(file_actions.load)
+
+        file_menu.addAction(self._actions.file.save)
+        file_menu.addAction(self._actions.file.save_as)
+        file_menu.addAction(self._actions.file.load)
         file_menu.addSeparator()
-        file_menu.addAction(file_actions.autosave)
+        file_menu.addAction(self._actions.file.autosave)
         file_menu.addSeparator()
-        file_menu.addAction(file_actions.exit)
-        file_actions.save.triggered.connect(self.save_profile)
-        file_actions.save_as.triggered.connect(self.save_profile_as_dialog)
-        file_actions.load.triggered.connect(self.open_profile_dialog)
-        file_actions.exit.triggered.connect(self.close)
+        file_menu.addAction(self._actions.file.exit)
 
         run_menu = menubar.addMenu("&Run")
         init_widget(run_menu, "MandalaRunMenu")
-        run_actions = self._actions.run
-        run_menu.addAction(run_actions.start)
-        run_menu.addAction(run_actions.stop)
-        run_actions.start.triggered.connect(self.ui.on_start)
-        run_actions.stop.triggered.connect(self.ui.on_stop)
+
+        run_menu.addAction(self._actions.run.start)
+        run_menu.addAction(self._actions.run.stop)
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
         toolbar = QToolBar("MandalaToolBar")
         init_widget(toolbar, "MandalaToolBar")
-        file_actions = self._actions.file
-        run_actions = self._actions.run
-        toolbar.addAction(file_actions.save)
-        toolbar.addAction(file_actions.save_as)
-        toolbar.addAction(file_actions.load)
-        toolbar.addAction(file_actions.autosave)
+
+        toolbar.addAction(self._actions.file.save)
+        toolbar.addAction(self._actions.file.save_as)
+        toolbar.addAction(self._actions.file.load)
+        toolbar.addAction(self._actions.file.autosave)
         toolbar.addSeparator()
-        toolbar.addAction(run_actions.start)
-        toolbar.addAction(run_actions.stop)
+        toolbar.addAction(self._actions.run.start)
+        toolbar.addAction(self._actions.run.stop)
         toolbar.addSeparator()
-        toolbar.addAction(file_actions.exit)
+        toolbar.addAction(self._actions.file.exit)
+
         self.addToolBar(toolbar)
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
         statusbar = QStatusBar(self, sizeGripEnabled=True)
         init_widget(statusbar, "MandalaStatusBar")
+
         self.setStatusBar(statusbar)
 
     def init_settings(self) -> None:

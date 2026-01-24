@@ -1,9 +1,9 @@
 """Workers for mandala GUI."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 from ..core import build_engine
 from ..utils.interfaces import MandalaObserver
@@ -29,7 +29,7 @@ class WorkerSignals(QObject):
 class GuiObserver(MandalaObserver):
     """Qt signal observer implementation for Mandala."""
 
-    signals: WorkerSignals = field(default_factory=WorkerSignals)
+    signals: WorkerSignals
 
     def on_progress_total(self, maximum: int) -> None:
         """Emit total progress signal."""
@@ -61,27 +61,44 @@ class GuiObserver(MandalaObserver):
 
 
 @dataclass(slots=True)
-class RunMandalaWorker(QThread):
+class MandalaWorker:
+    """Worker for running Mandala."""
+
+    signals: WorkerSignals
+    engine: MandalaEngine
+
+    @classmethod
+    def from_config(cls, config: MandalaConfigModel, signals: WorkerSignals) -> MandalaWorker:
+        """Post-initialization tasks."""
+        observer = GuiObserver(signals)
+        engine = build_engine(config)
+        engine.set_observer(observer)
+        return cls(signals, engine)
+
+    def request_run(self) -> None:
+        """Run the Mandala process."""
+        self.engine.start()
+
+    def request_stop(self) -> None:
+        """Stop the Mandala process."""
+        self.engine.request_stop()
+
+
+@dataclass(slots=True)
+class MandalaThread(QThread):
     """Worker thread for running Mandala."""
 
-    config: MandalaConfigModel
-    engine: MandalaEngine = field(init=False)
-    observer: GuiObserver = field(default_factory=GuiObserver)
+    worker: MandalaWorker
 
     def __post_init__(self) -> None:
         """Initialize the worker thread."""
         super().__init__()
 
-    def init_engine(self) -> None:
-        """Initialize the Mandala engine."""
-        self.engine = build_engine(self.config)
-        self.engine.set_observer(self.observer)
-
+    @Slot()
     def run(self) -> None:
         """Run the Mandala process."""
-        self.init_engine()
-        self.engine.start()
+        self.worker.request_run()
 
     def stop(self) -> None:
         """Stop the Mandala process."""
-        self.engine.request_stop()
+        self.worker.request_stop()

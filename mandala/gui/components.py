@@ -460,6 +460,11 @@ class ProgressWidget(QWidget):
         """Update the total progress bar."""
         self.progbar_total.setValue(self.progbar_total.value() + 1)
 
+    def reset(self) -> None:
+        """Reset progress bars."""
+        self.progbar_total.setValue(0)
+        self.progbar_folder.setValue(0)
+
 
 class LoggingWidget(QWidget):
     """Logging widget."""
@@ -493,6 +498,4 @@ class WalkerWidget(BaseGroupBox):
 
     def get_config(self) -> WalkerModel:
         """Return clean data for the config."""
-        return WalkerModel(
-            follow_symlinks=self.chk_follow_symlinks.isChecked(),
-        )
+        return WalkerModel(follow_symlinks=self.chk_follow_symlinks.isChecked())
