@@ -1,8 +1,12 @@
 """Actions module for QActions."""
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QIcon, QKeySequence
+
+basedir = Path(__file__).parent.parent.parent
+close_icon_path = str(basedir / "icons" / "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
 
 
 @dataclass(slots=True)
@@ -39,7 +43,8 @@ class FileActions:
             statusTip="Automatically save the profile on exit",
         )
         self.exit = QAction(
-            "&Exit",
+            icon=QIcon(close_icon_path),
+            text="&Exit",
             statusTip="Exit the application (Ctrl+W)",
             shortcut=QKeySequence.fromString("Ctrl+W"),
         )

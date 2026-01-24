@@ -6,6 +6,8 @@ from typing import ClassVar
 from PySide6.QtCore import QDir, Signal, Slot
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
+from mandala.gui.settings import QGroupBox
+
 from ..config import MandalaConfigModel
 from ..utils import PERCENTAGE_100, SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
 from .components import (
@@ -123,9 +125,8 @@ class MandalaCentralGui(QWidget):
     def toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
         for child in self.findChildren(QWidget):
-            if child.objectName() in {"logging"}:
-                continue
-            child.setEnabled(enabled)
+            if isinstance(child, QGroupBox):
+                child.setEnabled(enabled)
 
     @Slot()
     def on_start(self) -> None:
