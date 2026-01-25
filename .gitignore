@@ -123,6 +123,5 @@ venv.bak/
 *.lprof
 output/
 *.txt
-*.md
 mandala_profiles/
 mandala_output/

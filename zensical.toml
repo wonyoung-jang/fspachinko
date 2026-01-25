@@ -45,6 +45,7 @@ Copyright &copy; 2026 Wonyoung Jang
 #
 # Read more: https://zensical.org/docs/setup/navigation/
 nav = [
+    { "Home" = "index.md" },
     { "Usage" = "usage.md" },
     { "Architecture" = "architecture.md" },
     { "Development" = "development.md" },
