@@ -80,6 +80,7 @@ class MandalaEngine:
             dest = self.folder.create_dest_folder()
 
             if self._request_stop:
+                self._report("Process stopped by user request.")
                 break
 
             self.process_folder(target, dest)

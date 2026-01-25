@@ -44,8 +44,6 @@ class MandalaMainWindow(QMainWindow):
 
     def init_connections(self) -> None:
         """Initialize connections."""
-        self.ui.update_window_title.connect(self.update_window_title)
-
         self._actions.file.save.triggered.connect(self.save_profile)
         self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
         self._actions.file.load.triggered.connect(self.open_profile_dialog)
@@ -139,11 +137,6 @@ class MandalaMainWindow(QMainWindow):
     def reset_window_title(self) -> None:
         """Update the window title based on the current profile."""
         self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
-
-    @Slot(str)
-    def update_window_title(self, title: str) -> None:
-        """Update the window title based on the current profile."""
-        self.setWindowTitle(title)
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""
