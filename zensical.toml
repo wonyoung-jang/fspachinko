@@ -351,11 +351,9 @@ members_order = "source"
 summary = true
 # Docstrings
 docstring_style = "google"
-docstring_section_style = "list"
 merge_init_into_class = true
 # Signatures
 line_length = 88
 modernize_annotations = true
 show_signature_annotations = true
 show_signature_type_parameters= true
-separate_signature = true
