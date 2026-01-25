@@ -39,10 +39,10 @@ def get_status_header(*, success: bool, stopped: bool, none_found: bool, all_sea
         return "STOPPED"
 
     if none_found and all_searched:
-        return "NO FILES FOUND | ALL FILES SEARCHED | folder deleted"
+        return "NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED"
 
     if none_found:
-        return "NO FILES FOUND | folder deleted"
+        return "NO FILES FOUND | FOLDER DELETED"
 
     if all_searched:
         return "ALL FILES SEARCHED"

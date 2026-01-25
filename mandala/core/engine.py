@@ -159,27 +159,26 @@ class MandalaEngine:
 
     def _finalize_folder(self, target: int, dest: Path) -> None:
         """Create and write log at the end of folder."""
-        count = self._state.count
-
         self.observer.on_count_total()
-
-        none_found = count == 0 and self.folder.create_enabled
-
+        none_found = self._state.count == 0 and self.folder.create_enabled
         status_prefix = get_status_header(
-            success=(count == target),
+            success=(self._state.count == target),
             stopped=self._request_stop,
             none_found=none_found,
             all_searched=self.quota.all_locked(),
         )
-
         report = self.reporter.generate_report(
-            status=f"{status_prefix}: {count}/{target} files copied",
+            status=f"{status_prefix}: {self._state.count}/{target} files copied",
             runtime=round(perf_counter() - self._state.starttime, 2),
             size=self._state.size,
         )
         self._report(report)
         self.reporter.save()
+        self._remove_folder_if_empty(dest, none_found=none_found)
 
-        if none_found:
-            with contextlib.suppress(OSError):
-                shutil.rmtree(dest)
+    def _remove_folder_if_empty(self, dest: Path, *, none_found: bool) -> None:
+        """Remove the destination folder if it is empty."""
+        if not none_found:
+            return
+        with contextlib.suppress(OSError):
+            shutil.rmtree(dest)

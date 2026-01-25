@@ -7,7 +7,7 @@ from cyclopts import App
 
 from ..config import MandalaConfigModel
 from ..core import build_engine
-from ..utils import DEFAULT_JSON_CONFIG, MandalaObserver, initialize_logging
+from ..utils import DEFAULT_MANDALA_CONFIG_JSON, MandalaObserver, initialize_logging
 
 logger = logging.getLogger(__name__)
 app = App(
@@ -46,13 +46,13 @@ class ConsoleObserver(MandalaObserver):
         print(f"on_count: {count}")
 
 
-def run_cli(json_path: str = "") -> None:
+def run_cli(config: str = "") -> None:
     """Run the Mandala CLI application."""
-    if not json_path:
-        json_path = DEFAULT_JSON_CONFIG
+    if not config:
+        config = DEFAULT_MANDALA_CONFIG_JSON
 
     observer = ConsoleObserver()
-    config = MandalaConfigModel.model_validate_json(Path(json_path).read_text(encoding="utf-8"))
+    config = MandalaConfigModel.model_validate_json(Path(config).read_text(encoding="utf-8"))
     engine = build_engine(config)
     engine.set_observer(observer)
     engine.start()
@@ -68,5 +68,4 @@ def main() -> None:
     """Enter Mandala CLI."""
     initialize_logging()
     logger.info("Start: Mandala GUI")
-
     app()

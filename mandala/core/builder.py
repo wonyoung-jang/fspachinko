@@ -4,7 +4,7 @@ from random import Random
 from typing import TYPE_CHECKING
 
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax
-from ..utils import RNG_RANGE, DateTimeProvider
+from ..utils import DateTimeProvider
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
@@ -18,9 +18,7 @@ if TYPE_CHECKING:
 
 def _build_rng() -> Random:
     """Build and return a Random instance with a system-generated seed."""
-    sys_rand = Random()
-    rng_seed = sys_rand.randint(*RNG_RANGE)
-    return Random(rng_seed)
+    return Random()
 
 
 def build_engine(m: MandalaConfigModel) -> MandalaEngine:

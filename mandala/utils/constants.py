@@ -1,13 +1,25 @@
 """Constants for mandala."""
 
 from enum import IntEnum, StrEnum
+from pathlib import Path
 
-DEFAULT_JSON_CONFIG = "mandala/mandala.json"
-DEFAULT_PROFILE_DIR = ".profiles/"
+import mandala
+
+PKG_FILE = Path(mandala.__file__ if mandala.__file__ else "")
+PKG_DIR = PKG_FILE.parent
+PROJECT_DIR = PKG_DIR.parent
+
+DEFAULT_LOGGING_CONFIG_JSON = PKG_DIR / "logging.json"
+DEFAULT_MANDALA_CONFIG_JSON = PKG_DIR / "mandala.json"
+
+PROFILES_DIR = PROJECT_DIR / ".profiles/"
+PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+
+ICONS_DIR = PROJECT_DIR / "icons/"
+WINDOW_ICON = ICONS_DIR / "windowIcon.png"
 
 WALKER_CACHE_LIMIT = 1000
 PERCENTAGE_100 = 100.0
-RNG_RANGE = (0, 2**32 - 1)
 
 
 class FileError(IntEnum):

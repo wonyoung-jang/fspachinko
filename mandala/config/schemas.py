@@ -69,8 +69,8 @@ class WalkerModel(BaseModel):
 class MandalaConfigModel(BaseModel):
     """Model for Mandala configuration."""
 
-    root: Path
-    dest: Path
+    root: str | Path
+    dest: str | Path
     filecount: FilecountModel
     folder: FolderModel
     filename: FilenameModel

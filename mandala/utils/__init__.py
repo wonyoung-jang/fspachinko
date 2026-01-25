@@ -1,14 +1,15 @@
 """Utilities package for mandala."""
 
 from .constants import (
-    DEFAULT_JSON_CONFIG,
-    DEFAULT_PROFILE_DIR,
+    DEFAULT_LOGGING_CONFIG_JSON,
+    DEFAULT_MANDALA_CONFIG_JSON,
     INVALID_FILENAME_CHARS,
     PERCENTAGE_100,
-    RNG_RANGE,
+    PROFILES_DIR,
     SIZE_MAP,
     TIME_MAP,
     WALKER_CACHE_LIMIT,
+    WINDOW_ICON,
     AppSettings,
     BytesIn,
     ByteUnit,
@@ -24,14 +25,15 @@ from .loggers import initialize_logging
 from .timestamp import DateTimeProvider
 
 __all__ = [
-    "DEFAULT_JSON_CONFIG",
-    "DEFAULT_PROFILE_DIR",
+    "DEFAULT_LOGGING_CONFIG_JSON",
+    "DEFAULT_MANDALA_CONFIG_JSON",
     "INVALID_FILENAME_CHARS",
     "PERCENTAGE_100",
-    "RNG_RANGE",
+    "PROFILES_DIR",
     "SIZE_MAP",
     "TIME_MAP",
     "WALKER_CACHE_LIMIT",
+    "WINDOW_ICON",
     "AppSettings",
     "ByteUnit",
     "BytesIn",

@@ -1,8 +1,7 @@
 """Settings handling for Mandala GUI."""
 
 import json
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QCoreApplication
@@ -17,10 +16,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..utils import DEFAULT_PROFILE_DIR, AppSettings, strtobool
+from ..utils import PROFILES_DIR, AppSettings, strtobool
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
 QCoreApplication.setOrganizationName(AppSettings.ORGANIZATION)
 QCoreApplication.setOrganizationDomain(AppSettings.DOMAIN)
@@ -71,13 +71,8 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
 class ProfileManager:
     """Class for managing GUI profiles."""
 
-    profile_dir: Path = field(init=False)
+    profile_dir: Path = PROFILES_DIR
     current_profile: str = ""
-
-    def __post_init__(self) -> None:
-        """Initialize profile directory."""
-        self.profile_dir = Path(DEFAULT_PROFILE_DIR)
-        self.profile_dir.mkdir(parents=True, exist_ok=True)
 
     def set_current(self, profile: str) -> None:
         """Set the current profile name."""
