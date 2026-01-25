@@ -18,11 +18,16 @@ jobs:
     steps:
       - uses: actions/configure-pages@v5
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: 3.x
-      - run: pip install zensical
-      - run: pip install mkdocstrings-python
+          version: "latest"
+  
+      - name: Sync dependencies
+        run: |
+          uv sync --no-dev --group docs
+      
       - run: zensical build --clean
       - uses: actions/upload-pages-artifact@v4
         with:
