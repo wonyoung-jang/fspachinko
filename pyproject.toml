@@ -36,3 +36,7 @@ verbose = false
 dev = [
     "line-profiler>=5.0.0",
 ]
+docs = [
+    "mkdocstrings-python>=2.0.1",
+    "zensical>=0.0.19",
+]

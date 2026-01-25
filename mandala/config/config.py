@@ -3,6 +3,7 @@
 import re
 from dataclasses import dataclass, field
 from filecmp import cmp
+from functools import cache
 from typing import TYPE_CHECKING
 
 from ..utils import INVALID_FILENAME_CHARS, FilenameTemplateMapKeys, SafeDict, calc_unique_path_name
@@ -118,6 +119,15 @@ class MinMax:
         return self.minimum <= value <= self.maximum
 
 
+@cache
+def compile_re(re_fmt: str, text: str) -> re.Pattern:
+    """Compile a regex pattern.
+
+    Cached to avoid recompilation of the same pattern.
+    """
+    return re.compile(re_fmt.format(re.escape(text)), re.IGNORECASE)
+
+
 @dataclass(slots=True)
 class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
@@ -126,30 +136,24 @@ class ListIncludeExclude:
     exclude_enabled: bool
     text: tuple[str, ...]
     re_fmt: str
-    as_string: str = ""
+    as_string: str = "ALL"
     patterns: tuple[re.Pattern, ...] = ()
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
-        self._compile_patterns()
-        self.as_string = ", ".join(self.text) if self.text else "ALL"
+        self.initialize()
 
-    def _compile_patterns(self) -> None:
+    def initialize(self) -> None:
         """Compile regex patterns based on the text list."""
-        if not self.text:
-            self.patterns = ()
-        else:
-            self.patterns = tuple(re.compile(self.re_fmt.format(i), re.IGNORECASE) for i in self.text)
+        if self.text:
+            self.as_string = ", ".join(self.text)
+            self.patterns = tuple(compile_re(self.re_fmt, i) for i in self.text)
 
     def is_matched(self, part: str) -> bool:
         """Check if a file name part matches the cached regexes."""
         if not self.patterns:
             return True
 
-        if self.include_enabled:
-            if not any(p.search(part) for p in self.patterns):
-                return False
-        elif self.exclude_enabled and any(p.search(part) for p in self.patterns):
-            return False
-
-        return True
+        if self.exclude_enabled:
+            return any(p.search(part) for p in self.patterns)
+        return any(p.search(part) for p in self.patterns)

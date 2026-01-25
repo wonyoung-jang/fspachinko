@@ -94,7 +94,7 @@ TIME_MAP = {
     TimeUnit.HOURS: SecondsIn.HOUR,
 }
 
-INVALID_FILENAME_CHARS = r'\/:*?"<>|'
+INVALID_FILENAME_CHARS = set(r'\/:*?"<>|')
 
 
 class FilenameTemplate(StrEnum):

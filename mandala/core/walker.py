@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, unsafe_hash=True)
 class FSEntry:
     """Represents a file system entry (file or directory)."""
 
@@ -60,23 +60,21 @@ class RandomFSWalker:
 
     def _descend(self) -> FSEntry | None:
         """Descend directories finding a valid file using an explicit stack."""
-        self._stack.append((self.root, [], 0))
+        _stack: list[tuple[Path, list[FSEntry], int]] = [(self.root, [], 0)]
 
-        while self._stack:
-            path, available, idx = self._stack.pop()
+        while _stack:
+            path, available, idx = _stack.pop()
+
+            if not self.quota.is_available(path, is_file=False):
+                self.quota.lock_folder(path)
+                continue
 
             if idx >= len(available):
                 entries = self._get_entries(path)
-
-                # Conditions to lock folder:
-                # - Directory is inaccessible
-                # - Directory is empty
-                # - No available entries
                 if not entries or not (available := self.quota.get_available(entries)):
                     self.quota.lock_folder(path)
                     continue
 
-                # Shuffle available entries
                 if len(available) > 1:
                     self.rng.shuffle(available)
                 idx = 0
@@ -85,7 +83,7 @@ class RandomFSWalker:
 
             # Only push the next index if there are more entries
             if idx + 1 < len(available):
-                self._stack.append((path, available, idx + 1))
+                _stack.append((path, available, idx + 1))
 
             # If it's a file, return it
             if entry.is_file:
@@ -104,7 +102,7 @@ class RandomFSWalker:
                     self.quota.lock_folder(entry.path)
                     continue
 
-                self._stack.append((entry.path, [], 0))
+                _stack.append((entry.path, [], 0))
 
         return None
 
@@ -115,10 +113,11 @@ class RandomFSWalker:
 
         try:
             self._cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
-            if len(self._cache) > self._cache_limit:
-                self._cache.popitem(last=False)
         except (PermissionError, OSError):
             logger.debug("Failed to access directory: %s", current)
             self._cache[current] = ()
+
+        if len(self._cache) > self._cache_limit:
+            self._cache.popitem(last=False)
 
         return self._cache[current]
