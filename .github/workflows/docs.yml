@@ -29,7 +29,7 @@ jobs:
           uv sync --group docs
       
       - name: Build documentation site
-        run: zensical build --clean
+        run: uv run zensical build --clean
 
       - uses: actions/upload-pages-artifact@v4
         with:
