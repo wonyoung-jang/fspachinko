@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout
 
-from ..config.schemas import MandalaConfigModel
+from ..config import MandalaConfigModel
 from .components import (
     DblRangeFilterWidget,
     DestPathSelectorWidget,

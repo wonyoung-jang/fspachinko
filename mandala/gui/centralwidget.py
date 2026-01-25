@@ -2,18 +2,15 @@
 
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
 from ..utils import PERCENTAGE_100
+from .components import ProgressBinder
 from .qthelpers import set_widget_name
 from .uibuilder import UIBuilder
 from .workers import MandalaThread, MandalaWorker, WorkerSignals
-
-if TYPE_CHECKING:
-    from .components import LoggingWidget, ProgressWidget
 
 logger = logging.getLogger(__name__)
 
@@ -76,33 +73,3 @@ class MandalaCentralGui(QWidget):
         for child in self.findChildren(QWidget):
             if isinstance(child, QGroupBox):
                 child.setEnabled(enabled)
-
-
-@dataclass(slots=True)
-class ProgressBinder(QObject):
-    """Class for binding progress widgets."""
-
-    progress: ProgressWidget
-    logging: LoggingWidget
-
-    count: ClassVar[Signal] = Signal(int)
-    finished: ClassVar[Signal] = Signal()
-
-    def __post_init__(self) -> None:
-        """Initialize the ProgressBinder."""
-        super().__init__()
-
-    def bind(self, signals: WorkerSignals) -> None:
-        """Bind worker signals to progress widget."""
-        signals.progress_total.connect(self.progress.progbar_total.setMaximum)
-        signals.count_total.connect(self.progress.update_total_prog)
-        signals.progress.connect(self.progress.progbar_folder.setMaximum)
-        signals.log.connect(self.logging.textbrowser_log.append)
-        signals.count.connect(self.on_count)
-        signals.finished.connect(self.finished.emit)
-
-    @Slot(int)
-    def on_count(self, count: int) -> None:
-        """Handle folder progress count update."""
-        self.progress.progbar_folder.setValue(count)
-        self.count.emit(count)

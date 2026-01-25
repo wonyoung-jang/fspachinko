@@ -3,26 +3,12 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..utils import BytesIn, ByteUnit
+from ..utils import convert_byte_to_size
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from ..utils import DateTimeProvider
-
-
-def convert_byte_to_size(nbytes: int) -> str:
-    """Convert bytes to human readable string."""
-    if nbytes < BytesIn.KILOBYTE:
-        return f"{nbytes} {ByteUnit.BYTES}"
-
-    if nbytes < BytesIn.MEGABYTE:
-        return f"{round(nbytes / BytesIn.KILOBYTE, 2)} {ByteUnit.KILOBYTES}"
-
-    if nbytes < BytesIn.GIGABYTE:
-        return f"{round(nbytes / BytesIn.MEGABYTE, 2)} {ByteUnit.MEGABYTES}"
-
-    return f"{round(nbytes / BytesIn.GIGABYTE, 2)} {ByteUnit.GIGABYTES}"
 
 
 @dataclass(slots=True)

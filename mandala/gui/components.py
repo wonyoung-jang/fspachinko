@@ -1,10 +1,11 @@
 """GUI components in PySide6 for mandala."""
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from PySide6.QtCore import QDir, QUrl, Slot
+from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -44,6 +45,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
+
+    from .workers import WorkerSignals
 
 logger = logging.getLogger(__name__)
 
@@ -544,3 +547,33 @@ class WalkerWidget(BaseGroupBox):
     def get_config(self) -> WalkerModel:
         """Return clean data for the config."""
         return WalkerModel(follow_symlinks=self.chk_follow_symlinks.isChecked())
+
+
+@dataclass(slots=True)
+class ProgressBinder(QObject):
+    """Class for binding progress widgets."""
+
+    progress: ProgressWidget
+    logging: LoggingWidget
+
+    count: ClassVar[Signal] = Signal(int)
+    finished: ClassVar[Signal] = Signal()
+
+    def __post_init__(self) -> None:
+        """Initialize the ProgressBinder."""
+        super().__init__()
+
+    def bind(self, signals: WorkerSignals) -> None:
+        """Bind worker signals to progress widget."""
+        signals.progress_total.connect(self.progress.progbar_total.setMaximum)
+        signals.count_total.connect(self.progress.update_total_prog)
+        signals.progress.connect(self.progress.progbar_folder.setMaximum)
+        signals.log.connect(self.logging.textbrowser_log.append)
+        signals.count.connect(self.on_count)
+        signals.finished.connect(self.finished.emit)
+
+    @Slot(int)
+    def on_count(self, count: int) -> None:
+        """Handle folder progress count update."""
+        self.progress.progbar_folder.setValue(count)
+        self.count.emit(count)

@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from .constants import BytesIn, ByteUnit
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -84,3 +86,17 @@ def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
     if len(li) == 1 and li[0] == "":
         return ()
     return li
+
+
+def convert_byte_to_size(nbytes: int) -> str:
+    """Convert bytes to human readable string."""
+    if nbytes < BytesIn.KILOBYTE:
+        return f"{nbytes} {ByteUnit.BYTES}"
+
+    if nbytes < BytesIn.MEGABYTE:
+        return f"{round(nbytes / BytesIn.KILOBYTE, 2)} {ByteUnit.KILOBYTES}"
+
+    if nbytes < BytesIn.GIGABYTE:
+        return f"{round(nbytes / BytesIn.MEGABYTE, 2)} {ByteUnit.MEGABYTES}"
+
+    return f"{round(nbytes / BytesIn.GIGABYTE, 2)} {ByteUnit.GIGABYTES}"
