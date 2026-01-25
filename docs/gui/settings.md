@@ -1,0 +1,3 @@
+# Settings
+
+::: mandala.gui.settings

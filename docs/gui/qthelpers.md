@@ -1,6 +1,3 @@
-# Qt Helpers
-
-Utility functions for Qt/PySide6 development.
+# GUI Helpers
 
 ::: mandala.gui.qthelpers
-    handler: python

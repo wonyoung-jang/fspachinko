@@ -28,7 +28,15 @@ QCoreApplication.setApplicationName(AppSettings.APPLICATION)
 
 
 def get_widget_value(widget: QWidget) -> Any:
-    """Retrieve the value of a widget based on its type."""
+    """Retrieve the value of a widget based on its type.
+
+    Args:
+        widget (QWidget): The widget to retrieve the value from.
+
+    Returns:
+        Any: The value of the widget, or None if not applicable.
+
+    """
     match widget:
         case QLineEdit():
             return widget.text()

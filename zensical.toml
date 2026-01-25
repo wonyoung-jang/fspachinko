@@ -51,7 +51,7 @@ nav = [
     { "Development" = "development.md" },
     { "Core" = [
         "core/builder.md",
-        "core/core.md",
+        "core/engine.md",
         "core/quota.md",
         "core/reporter.md",
         "core/transfer.md",
@@ -68,6 +68,7 @@ nav = [
         "gui/components.md",
         "gui/mainwindow.md",
         "gui/qthelpers.md",
+        "gui/settings.md",
         "gui/uibuilder.md",
         "gui/workers.md",
     ] },
@@ -341,6 +342,20 @@ inventories = ["https://docs.python.org/3/objects.inv"]
 paths = ["mandala"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
-docstring_style = "google"
-inherited_members = true
+# General
 show_source = false
+# Headings
+# Members
+inherited_members = true
+members_order = "source"
+summary = true
+# Docstrings
+docstring_style = "google"
+docstring_section_style = "list"
+merge_init_into_class = true
+# Signatures
+line_length = 88
+modernize_annotations = true
+show_signature_annotations = true
+show_signature_type_parameters= true
+separate_signature = true

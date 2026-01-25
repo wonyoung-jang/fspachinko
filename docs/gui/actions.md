@@ -1,6 +1,3 @@
-# Qt Actions
-
-Qt actions for menu items and toolbar buttons.
+# Actions
 
 ::: mandala.gui.actions
-    handler: python
