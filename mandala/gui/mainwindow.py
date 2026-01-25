@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
 from .actions import MandalaActions
 from .centralwidget import MandalaCentralGui
-from .qthelpers import init_widget
+from .qthelpers import set_widget_name
 from .settings import ProfileManager
 
 if TYPE_CHECKING:
@@ -57,10 +57,10 @@ class MandalaMainWindow(QMainWindow):
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
         menubar = self.menuBar()
-        init_widget(menubar, "MandalaMenuBar")
+        set_widget_name(menubar, "MandalaMenuBar")
 
         file_menu = menubar.addMenu("&File")
-        init_widget(file_menu, "MandalaFileMenu")
+        set_widget_name(file_menu, "MandalaFileMenu")
 
         file_menu.addAction(self._actions.file.save)
         file_menu.addAction(self._actions.file.save_as)
@@ -71,7 +71,7 @@ class MandalaMainWindow(QMainWindow):
         file_menu.addAction(self._actions.file.exit)
 
         run_menu = menubar.addMenu("&Run")
-        init_widget(run_menu, "MandalaRunMenu")
+        set_widget_name(run_menu, "MandalaRunMenu")
 
         run_menu.addAction(self._actions.run.start)
         run_menu.addAction(self._actions.run.stop)
@@ -79,7 +79,7 @@ class MandalaMainWindow(QMainWindow):
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
         toolbar = QToolBar("MandalaToolBar")
-        init_widget(toolbar, "MandalaToolBar")
+        set_widget_name(toolbar, "MandalaToolBar")
 
         toolbar.addAction(self._actions.file.save)
         toolbar.addAction(self._actions.file.save_as)
@@ -96,7 +96,7 @@ class MandalaMainWindow(QMainWindow):
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
         statusbar = QStatusBar(self, sizeGripEnabled=True)
-        init_widget(statusbar, "MandalaStatusBar")
+        set_widget_name(statusbar, "MandalaStatusBar")
 
         self.setStatusBar(statusbar)
 

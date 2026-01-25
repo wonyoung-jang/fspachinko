@@ -3,27 +3,33 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from PySide6.QtCore import QDir, Signal, Slot
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from mandala.gui.settings import QGroupBox
 
 from ..config import MandalaConfigModel
-from ..utils import PERCENTAGE_100, SIZE_MAP, TIME_MAP, ByteUnit, TimeUnit
+from ..utils import PERCENTAGE_100
 from .components import (
     DblRangeFilterWidget,
+    DestPathSelectorWidget,
     DiversityFilterWidget,
     DualListFilterWidget,
+    DurationFilterWidget,
+    ExtensionsFilterWidget,
     FileCountWidget,
     FilenameWidget,
     FolderCreatorWidget,
+    KeywordsFilterWidget,
     LoggingWidget,
     PathSelectorWidget,
     ProgressWidget,
+    RootPathSelectorWidget,
+    SizeFilterWidget,
     TransferModeWidget,
     WalkerWidget,
 )
-from .qthelpers import init_widget
+from .qthelpers import set_widget_name
 from .workers import MandalaThread, MandalaWorker, WorkerSignals
 
 
@@ -32,20 +38,24 @@ class MandalaCentralGui(QWidget):
     """Main application window for Mandala."""
 
     thread: MandalaThread = field(init=False)
-    ui_root: PathSelectorWidget = field(init=False)
-    ui_dest: PathSelectorWidget = field(init=False)
-    ui_filecount: FileCountWidget = field(init=False)
-    ui_folders: FolderCreatorWidget = field(init=False)
-    ui_filename: FilenameWidget = field(init=False)
-    ui_transfermode: TransferModeWidget = field(init=False)
-    ui_keywords: DualListFilterWidget = field(init=False)
-    ui_extensions: DualListFilterWidget = field(init=False)
-    ui_filesize: DblRangeFilterWidget = field(init=False)
-    ui_duration: DblRangeFilterWidget = field(init=False)
-    ui_diversity: DiversityFilterWidget = field(init=False)
-    ui_progress: ProgressWidget = field(init=False)
-    ui_logging: LoggingWidget = field(init=False)
-    ui_walker: WalkerWidget = field(init=False)
+
+    ui_root: PathSelectorWidget = field(default_factory=RootPathSelectorWidget)
+    ui_dest: PathSelectorWidget = field(default_factory=DestPathSelectorWidget)
+    ui_filecount: FileCountWidget = field(default_factory=FileCountWidget)
+    ui_folders: FolderCreatorWidget = field(default_factory=FolderCreatorWidget)
+    ui_filename: FilenameWidget = field(default_factory=FilenameWidget)
+    ui_transfermode: TransferModeWidget = field(default_factory=TransferModeWidget)
+
+    ui_keywords: DualListFilterWidget = field(default_factory=KeywordsFilterWidget)
+    ui_extensions: DualListFilterWidget = field(default_factory=ExtensionsFilterWidget)
+    ui_filesize: DblRangeFilterWidget = field(default_factory=SizeFilterWidget)
+    ui_duration: DblRangeFilterWidget = field(default_factory=DurationFilterWidget)
+    ui_diversity: DiversityFilterWidget = field(default_factory=DiversityFilterWidget)
+    ui_walker: WalkerWidget = field(default_factory=WalkerWidget)
+
+    ui_progress: ProgressWidget = field(default_factory=ProgressWidget)
+    ui_logging: LoggingWidget = field(default_factory=LoggingWidget)
+
     _window_title_before_start: str = field(init=False)
 
     update_window_title: ClassVar[Signal] = Signal(str)
@@ -53,31 +63,8 @@ class MandalaCentralGui(QWidget):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        init_widget(self, "MandalaCentralGui")
-        self.init_components()
+        set_widget_name(self, "MandalaCentralGui")
         self.init_layout()
-
-    def init_components(self) -> None:
-        """Set up the main UI components."""
-        # Init setup components
-        self.ui_root = PathSelectorWidget("Root", "root", items=[QDir.rootPath()])
-        self.ui_dest = PathSelectorWidget("Destination", "dest", items=[QDir.homePath()])
-        self.ui_filecount = FileCountWidget()
-        self.ui_folders = FolderCreatorWidget()
-        self.ui_filename = FilenameWidget()
-        self.ui_transfermode = TransferModeWidget()
-
-        # Init filter components
-        self.ui_keywords = DualListFilterWidget("Keywords", "keyword")
-        self.ui_extensions = DualListFilterWidget("Extensions", "extension")
-        self.ui_filesize = DblRangeFilterWidget("Size", "filesize", items=tuple(ByteUnit), mapping=SIZE_MAP)
-        self.ui_duration = DblRangeFilterWidget("Duration", "duration", items=tuple(TimeUnit), mapping=TIME_MAP)
-        self.ui_diversity = DiversityFilterWidget()
-        self.ui_walker = WalkerWidget()
-
-        # Init execution components
-        self.ui_progress = ProgressWidget()
-        self.ui_logging = LoggingWidget()
 
     def init_layout(self) -> None:
         """Set up the main UI layouts."""

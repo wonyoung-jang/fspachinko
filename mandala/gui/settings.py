@@ -1,7 +1,8 @@
 """Settings handling for Mandala GUI."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QCoreApplication
@@ -20,7 +21,6 @@ from ..utils import PROFILES_DIR, AppSettings, strtobool
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 QCoreApplication.setOrganizationName(AppSettings.ORGANIZATION)
 QCoreApplication.setOrganizationDomain(AppSettings.DOMAIN)
@@ -67,31 +67,32 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
             return
 
 
+def _iter_valid_widgets(w: QWidget) -> Iterator[tuple[str, QWidget]]:
+    """Iterate over valid child widgets."""
+    for child in w.findChildren(QWidget):
+        if (key := child.objectName()) and not key.startswith("qt_"):
+            yield key, child
+
+
 @dataclass(slots=True)
 class ProfileManager:
     """Class for managing GUI profiles."""
 
     profile_dir: Path = PROFILES_DIR
-    current_profile: str = ""
+    current_profile: Path = field(init=False)
 
     def set_current(self, profile: str) -> None:
         """Set the current profile name."""
-        self.current_profile = profile
+        self.current_profile = Path(profile)
 
     def _get_profile_path(self) -> Path:
         """Get the full path for a given profile name."""
-        return self.profile_dir / f"{self.current_profile}"
-
-    def _iter_valid_widgets(self, parent: QWidget) -> Iterator[tuple[str, QWidget]]:
-        """Iterate over valid child widgets."""
-        for child in parent.findChildren(QWidget):
-            if (key := child.objectName()) and not key.startswith("qt_"):
-                yield key, child
+        return self.profile_dir / self.current_profile
 
     def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
         data = {}
-        for key, child in self._iter_valid_widgets(parent):
+        for key, child in _iter_valid_widgets(parent):
             if (val := get_widget_value(child)) is not None:
                 data[key] = val
 
@@ -113,7 +114,7 @@ class ProfileManager:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
-        for key, child in self._iter_valid_widgets(parent):
+        for key, child in _iter_valid_widgets(parent):
             if isinstance(child, QComboBox) and (items := data.get(f"{key}_items")) and isinstance(items, list | tuple):
                 child.clear()
                 child.addItems([str(i) for i in items])

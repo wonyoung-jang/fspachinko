@@ -1,6 +1,6 @@
 {
     "root": "C:/",
-    "dest": "output/",
+    "dest": "mandala_outputs/",
     "filecount": {
         "count": 12,
         "rand_enabled": false,

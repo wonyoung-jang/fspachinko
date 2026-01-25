@@ -46,13 +46,13 @@ class ConsoleObserver(MandalaObserver):
         print(f"on_count: {count}")
 
 
-def run_cli(config: str = "") -> None:
+def run_cli(config_json: str | Path = "") -> None:
     """Run the Mandala CLI application."""
-    if not config:
-        config = DEFAULT_MANDALA_CONFIG_JSON
+    if not config_json:
+        config_json = DEFAULT_MANDALA_CONFIG_JSON
 
     observer = ConsoleObserver()
-    config = MandalaConfigModel.model_validate_json(Path(config).read_text(encoding="utf-8"))
+    config = MandalaConfigModel.model_validate_json(Path(config_json).read_text(encoding="utf-8"))
     engine = build_engine(config)
     engine.set_observer(observer)
     engine.start()

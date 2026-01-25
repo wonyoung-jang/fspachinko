@@ -12,7 +12,7 @@ def get_classname(obj: QObject) -> str:
     return str(obj.metaObject().className())
 
 
-def init_widget(w: QWidget, name: str) -> None:
+def set_widget_name(w: QWidget, name: str) -> None:
     """Initialize a widget with a given object name."""
     w.setObjectName(name)
 

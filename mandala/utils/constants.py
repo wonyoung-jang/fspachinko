@@ -9,13 +9,14 @@ PKG_FILE = Path(mandala.__file__ if mandala.__file__ else "")
 PKG_DIR = PKG_FILE.parent
 PROJECT_DIR = PKG_DIR.parent
 
-DEFAULT_LOGGING_CONFIG_JSON = PKG_DIR / "logging.json"
-DEFAULT_MANDALA_CONFIG_JSON = PKG_DIR / "mandala.json"
-
-PROFILES_DIR = PROJECT_DIR / ".profiles/"
+ICONS_DIR = PROJECT_DIR / "icons/"
+CONFIG_DIR = PROJECT_DIR / "mandala_config/"
+PROFILES_DIR = PROJECT_DIR / "mandala_profiles/"
 PROFILES_DIR.mkdir(parents=True, exist_ok=True)
 
-ICONS_DIR = PROJECT_DIR / "icons/"
+DEFAULT_LOGGING_CONFIG_JSON = CONFIG_DIR / "logging.json"
+DEFAULT_MANDALA_CONFIG_JSON = CONFIG_DIR / "mandala.json"
+
 WINDOW_ICON = ICONS_DIR / "windowIcon.png"
 
 WALKER_CACHE_LIMIT = 1000

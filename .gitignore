@@ -121,7 +121,8 @@ venv.bak/
 ..playground/
 *.prof
 *.lprof
-.profiles/
 output/
 *.txt
 *.md
+mandala_profiles/
+mandala_output/
