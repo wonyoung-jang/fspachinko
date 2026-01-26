@@ -4,7 +4,7 @@ import json
 import logging.config
 from typing import TYPE_CHECKING
 
-from .constants import DEFAULT_LOGGING_CONFIG_JSON
+from .paths import Paths
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 def initialize_logging(path: Path | None = None) -> None:
     """Initialize logging for the application."""
     if path is None:
-        path = DEFAULT_LOGGING_CONFIG_JSON
+        path = Paths.config("logging.json")
 
     with path.open("r", encoding="utf-8") as f:
         cfg_dict = json.load(f)

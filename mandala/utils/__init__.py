@@ -1,21 +1,18 @@
 """Utilities package for mandala."""
 
 from .constants import (
-    DEFAULT_LOGGING_CONFIG_JSON,
-    DEFAULT_MANDALA_CONFIG_JSON,
     INVALID_FILENAME_CHARS,
     PERCENTAGE_100,
-    PROFILES_DIR,
     SIZE_MAP,
     TIME_MAP,
     WALKER_CACHE_LIMIT,
-    WINDOW_ICON,
     AppSettings,
     BytesIn,
     ByteUnit,
     FileError,
     FilenameTemplate,
     FilenameTemplateMapKeys,
+    IconFilename,
     TimeUnit,
     TransferMode,
 )
@@ -29,18 +26,15 @@ from .helpers import (
 )
 from .interfaces import MandalaObserver
 from .loggers import initialize_logging
+from .paths import Paths
 from .timestamp import DateTimeProvider
 
 __all__ = [
-    "DEFAULT_LOGGING_CONFIG_JSON",
-    "DEFAULT_MANDALA_CONFIG_JSON",
     "INVALID_FILENAME_CHARS",
     "PERCENTAGE_100",
-    "PROFILES_DIR",
     "SIZE_MAP",
     "TIME_MAP",
     "WALKER_CACHE_LIMIT",
-    "WINDOW_ICON",
     "AppSettings",
     "ByteUnit",
     "BytesIn",
@@ -48,7 +42,9 @@ __all__ = [
     "FileError",
     "FilenameTemplate",
     "FilenameTemplateMapKeys",
+    "IconFilename",
     "MandalaObserver",
+    "Paths",
     "SafeDict",
     "TimeUnit",
     "TransferMode",

@@ -6,11 +6,10 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
-from ..utils import WINDOW_ICON, initialize_logging
+from ..utils import IconFilename, Paths, initialize_logging
 from .mainwindow import MandalaMainWindow
 
 logger = logging.getLogger(__name__)
-
 
 try:  # Windows only for taskbar icon
     from ctypes import windll
@@ -27,7 +26,7 @@ def main() -> None:
     logger.info("Start: Mandala GUI")
 
     app = QApplication()
-    app.setWindowIcon(QIcon(str(WINDOW_ICON)))
+    app.setWindowIcon(QIcon(str(Paths.icon(IconFilename.WINDOW))))
     apply_stylesheet(app, theme="dark_purple.xml", extra={"density_scale": "-2"})
     w = MandalaMainWindow()
     w.show()

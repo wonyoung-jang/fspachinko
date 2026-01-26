@@ -1,24 +1,13 @@
 """Constants for mandala."""
 
 from enum import IntEnum, StrEnum
-from pathlib import Path
 
-import mandala
+from .paths import Paths
 
-PKG_FILE = Path(mandala.__file__ if mandala.__file__ else "")
-PKG_DIR = PKG_FILE.parent
-PROJECT_DIR = PKG_DIR.parent
+# Ensure necessary directories exist
+Paths.profiles.mkdir(parents=True, exist_ok=True)
 
-ICONS_DIR = PROJECT_DIR / "icons/"
-CONFIG_DIR = PROJECT_DIR / "mandala_config/"
-PROFILES_DIR = PROJECT_DIR / "mandala_profiles/"
-PROFILES_DIR.mkdir(parents=True, exist_ok=True)
-
-DEFAULT_LOGGING_CONFIG_JSON = CONFIG_DIR / "logging.json"
-DEFAULT_MANDALA_CONFIG_JSON = CONFIG_DIR / "mandala.json"
-
-WINDOW_ICON = ICONS_DIR / "windowIcon.png"
-
+# General constants
 WALKER_CACHE_LIMIT = 1000
 PERCENTAGE_100 = 100.0
 
@@ -119,3 +108,19 @@ class FilenameTemplateMapKeys(StrEnum):
     DATETIME = "datetime"
     PARENT = "parent"
     PARENTS_TO_ROOT = "parentstoroot"
+
+
+class IconFilename(StrEnum):
+    """Enumeration for icon filenames."""
+
+    WINDOW = "windowIcon.png"
+    SAVE = "save_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    SAVE_AS = "save_as_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    OPEN = "file_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    AUTOSAVE = "sync_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    START = "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    STOP = "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    CLOSE = "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    BROWSE = "add_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    OPEN_DIR = "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    REMOVE = "remove_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"

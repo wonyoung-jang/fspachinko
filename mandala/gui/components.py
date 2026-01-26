@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QSpinBox,
-    QStyle,
     QTextBrowser,
     QTextEdit,
     QVBoxLayout,
@@ -40,7 +39,17 @@ from ..config import (
     WalkerModel,
 )
 from ..core import get_available_transfer_modes
-from ..utils import SIZE_MAP, TIME_MAP, ByteUnit, FilenameTemplate, TimeUnit, TransferMode, convert_string_to_list
+from ..utils import (
+    SIZE_MAP,
+    TIME_MAP,
+    ByteUnit,
+    FilenameTemplate,
+    IconFilename,
+    Paths,
+    TimeUnit,
+    TransferMode,
+    convert_string_to_list,
+)
 from .qthelpers import set_qt_name, set_qt_tips
 
 if TYPE_CHECKING:
@@ -85,9 +94,9 @@ class PathSelectorWidget(BaseGroupBox):
         set_qt_name(self.combo, f"{name}_combo")
         set_qt_tips(self.combo, f"Select or enter a path for {title_lower}.")
 
-        icon_browse = self.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon)
-        icon_open = self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon)
-        icon_delete = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogDiscardButton)
+        icon_browse = QIcon(str(Paths.icon(IconFilename.BROWSE)))
+        icon_open = QIcon(str(Paths.icon(IconFilename.OPEN_DIR)))
+        icon_delete = QIcon(str(Paths.icon(IconFilename.REMOVE)))
 
         self.btn_browse = QPushButton()
         self.btn_browse.setIcon(icon_browse)

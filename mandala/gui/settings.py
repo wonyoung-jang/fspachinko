@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..utils import PROFILES_DIR, AppSettings, strtobool
+from ..utils import AppSettings, Paths, strtobool
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -86,7 +86,7 @@ def _iter_valid_widgets(w: QWidget) -> Iterator[tuple[str, QWidget]]:
 class ProfileManager:
     """Class for managing GUI profiles."""
 
-    profile_dir: Path = PROFILES_DIR
+    profile_dir: Path = Paths.profiles
     current_profile: Path = field(init=False)
 
     def set_current(self, profile: str) -> None:

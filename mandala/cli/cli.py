@@ -7,7 +7,7 @@ from cyclopts import App
 
 from ..config import MandalaConfigModel
 from ..core import build_engine
-from ..utils import DEFAULT_MANDALA_CONFIG_JSON, MandalaObserver, initialize_logging
+from ..utils import MandalaObserver, Paths, initialize_logging
 
 logger = logging.getLogger(__name__)
 app = App(
@@ -28,7 +28,7 @@ class ConsoleObserver(MandalaObserver):
 
     def on_progress(self, maximum: int) -> None:
         """Handle starting folder progress."""
-        logger.info("Starting folder progress: %d file(s)", maximum)
+        logger.info("Starting folder: %d file(s)", maximum)
 
     def on_finished(self) -> None:
         """Handle finishing process."""
@@ -43,16 +43,17 @@ class ConsoleObserver(MandalaObserver):
 
     def on_count(self, count: int) -> None:
         """Handle folder progress count update."""
-        logger.info("Count: %d", count)
 
 
 def run_cli(config_json: str | Path = "") -> None:
     """Run the Mandala CLI application."""
     if not config_json:
-        config_json = DEFAULT_MANDALA_CONFIG_JSON
+        config_json = Paths.config("mandala.json")
+    if isinstance(config_json, str):
+        config_json = Path(config_json)
 
     observer = ConsoleObserver()
-    config = MandalaConfigModel.model_validate_json(Path(config_json).read_text(encoding="utf-8"))
+    config = MandalaConfigModel.model_validate_json(config_json.read_text(encoding="utf-8"))
     engine = build_engine(config)
     engine.set_observer(observer)
     engine.start()

@@ -2,18 +2,18 @@
 
 from dataclasses import dataclass, field
 
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QIcon
 
-from ..utils.constants import ICONS_DIR
+from ..utils import IconFilename, Paths
 from .components import set_qt_tips
 
-save_icon = str(ICONS_DIR / "save_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
-save_as_icon = str(ICONS_DIR / "save_as_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
-open_icon = str(ICONS_DIR / "file_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
-autosave_icon = str(ICONS_DIR / "sync_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
-start_icon = str(ICONS_DIR / "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
-stop_icon = str(ICONS_DIR / "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
-close_icon = str(ICONS_DIR / "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg")
+i_save = QIcon(str(Paths.icon(IconFilename.SAVE)))
+i_save_as = QIcon(str(Paths.icon(IconFilename.SAVE_AS)))
+i_open = QIcon(str(Paths.icon(IconFilename.OPEN)))
+i_autosave = QIcon(str(Paths.icon(IconFilename.AUTOSAVE)))
+i_start = QIcon(str(Paths.icon(IconFilename.START)))
+i_stop = QIcon(str(Paths.icon(IconFilename.STOP)))
+i_close = QIcon(str(Paths.icon(IconFilename.CLOSE)))
 
 
 @dataclass(slots=True)
@@ -28,21 +28,23 @@ class FileActions:
 
     def __post_init__(self) -> None:
         """Initialize the main actions."""
-        self.save = QAction(icon=QIcon(save_icon), text="&Save Profile", shortcut=QKeySequence.fromString("Ctrl+S"))
+        self.save = QAction(icon=i_save, text="&Save Profile")
+        self.save.setShortcut("Ctrl+S")
         set_qt_tips(self.save, "Save current GUI profile (Ctrl+S)")
 
-        self.save_as = QAction(
-            icon=QIcon(save_as_icon), text="Save Profile &As", shortcut=QKeySequence.fromString("Ctrl+Shift+S")
-        )
+        self.save_as = QAction(icon=i_save_as, text="Save Profile &As")
+        self.save_as.setShortcut("Ctrl+Shift+S")
         set_qt_tips(self.save_as, "Save current GUI profile as ... (Ctrl+Shift+S)")
 
-        self.load = QAction(icon=QIcon(open_icon), text="&Load Profile", shortcut=QKeySequence.fromString("Ctrl+O"))
+        self.load = QAction(icon=i_open, text="&Load Profile")
+        self.load.setShortcut("Ctrl+O")
         set_qt_tips(self.load, "Load GUI profile (Ctrl+O)")
 
-        self.autosave = QAction(icon=QIcon(autosave_icon), text="A&utosave Profile", checkable=True, checked=True)
+        self.autosave = QAction(icon=i_autosave, text="A&utosave Profile", checkable=True, checked=True)
         set_qt_tips(self.autosave, "Automatically save profile on exit")
 
-        self.exit = QAction(icon=QIcon(close_icon), text="&Exit", shortcut=QKeySequence.fromString("Ctrl+W"))
+        self.exit = QAction(icon=i_close, text="&Exit")
+        self.exit.setShortcut("Ctrl+W")
         set_qt_tips(self.exit, "Exit application (Ctrl+W)")
 
 
@@ -55,10 +57,12 @@ class RunActions:
 
     def __post_init__(self) -> None:
         """Initialize the main actions."""
-        self.start = QAction(icon=QIcon(start_icon), text="&Start", shortcut=QKeySequence.fromString("Ctrl+R"))
+        self.start = QAction(icon=i_start, text="&Start")
+        self.start.setShortcut("Ctrl+R")
         set_qt_tips(self.start, "Start (Ctrl+R)")
 
-        self.stop = QAction(icon=QIcon(stop_icon), text="S&top", shortcut=QKeySequence.fromString("ESC"))
+        self.stop = QAction(icon=i_stop, text="S&top")
+        self.stop.setShortcut("ESC")
         set_qt_tips(self.stop, "Stop (ESC)")
 
 
