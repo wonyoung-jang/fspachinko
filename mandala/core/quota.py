@@ -48,13 +48,15 @@ class DiversityQuota:
 
     def get_available(self, entries: Iterable[FSEntry]) -> list[FSEntry]:
         """Filter entries to only those that are available."""
-        return [e for e in entries if self.is_available(e.path, is_file=e.is_file)]
+        return [e for e in entries if self.is_available(e)]
 
-    def is_available(self, path: Path, *, is_file: bool) -> bool:
+    def is_available(self, e: FSEntry) -> bool:
         """Check if a file or folder is eligible for selection."""
-        if is_file:
-            return path not in self.locked_files
-        return path not in self.locked_folders
+        if e.is_file:
+            return e.path not in self.locked_files
+        if e.is_dir:
+            return e.path not in self.locked_folders
+        return False
 
     def register_success(self, file_path: Path) -> None:
         """Record a successful copy and apply locking rules."""

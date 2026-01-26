@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QGroupBox, QWidget
 
 from ..utils import PERCENTAGE_100
 from .components import ProgressBinder
-from .qthelpers import set_widget_name
+from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
 from .workers import MandalaThread, MandalaWorker, WorkerSignals
 
@@ -27,7 +27,7 @@ class MandalaCentralGui(QWidget):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        set_widget_name(self, "MandalaCentralGui")
+        set_qt_name(self, "MandalaCentralGui")
         layout = self.ui.build_layout()
         self.setLayout(layout)
         self.progress_binder = ProgressBinder(self.ui.progress, self.ui.logging)

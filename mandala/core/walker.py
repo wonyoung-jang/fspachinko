@@ -65,13 +65,12 @@ class RandomFSWalker:
         while _stack:
             path, available, idx = _stack.pop()
 
-            if not self.quota.is_available(path, is_file=False):
-                self.quota.lock_folder(path)
-                continue
-
             if idx >= len(available):
-                entries = self._get_entries(path)
-                if not entries or not (available := self.quota.get_available(entries)):
+                if not (entries := self._get_entries(path)):
+                    self.quota.lock_folder(path)
+                    continue
+
+                if not (available := self.quota.get_available(entries)):
                     self.quota.lock_folder(path)
                     continue
 

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
 from .actions import MandalaActions
 from .centralwidget import MandalaCentralGui
-from .qthelpers import set_widget_name
+from .qthelpers import set_qt_name
 from .settings import ProfileManager
 
 if TYPE_CHECKING:
@@ -38,8 +38,6 @@ class MandalaMainWindow(QMainWindow):
         self.init_menubar()
         self.init_toolbar()
         self.init_statusbar()
-
-        logger.debug("Loading settings")
         self.init_settings()
 
     def init_connections(self) -> None:
@@ -55,10 +53,10 @@ class MandalaMainWindow(QMainWindow):
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
         menubar = self.menuBar()
-        set_widget_name(menubar, "MandalaMenuBar")
+        set_qt_name(menubar, "MandalaMenuBar")
 
         file_menu = menubar.addMenu("&File")
-        set_widget_name(file_menu, "MandalaFileMenu")
+        set_qt_name(file_menu, "MandalaFileMenu")
 
         file_menu.addAction(self._actions.file.save)
         file_menu.addAction(self._actions.file.save_as)
@@ -69,7 +67,7 @@ class MandalaMainWindow(QMainWindow):
         file_menu.addAction(self._actions.file.exit)
 
         run_menu = menubar.addMenu("&Run")
-        set_widget_name(run_menu, "MandalaRunMenu")
+        set_qt_name(run_menu, "MandalaRunMenu")
 
         run_menu.addAction(self._actions.run.start)
         run_menu.addAction(self._actions.run.stop)
@@ -77,7 +75,7 @@ class MandalaMainWindow(QMainWindow):
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
         toolbar = QToolBar("MandalaToolBar")
-        set_widget_name(toolbar, "MandalaToolBar")
+        set_qt_name(toolbar, "MandalaToolBar")
 
         toolbar.addAction(self._actions.file.save)
         toolbar.addAction(self._actions.file.save_as)
@@ -94,7 +92,7 @@ class MandalaMainWindow(QMainWindow):
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
         statusbar = QStatusBar(self, sizeGripEnabled=True)
-        set_widget_name(statusbar, "MandalaStatusBar")
+        set_qt_name(statusbar, "MandalaStatusBar")
 
         self.setStatusBar(statusbar)
 

@@ -39,7 +39,7 @@ from ..config import (
 )
 from ..core import get_available_transfer_modes
 from ..utils import SIZE_MAP, TIME_MAP, ByteUnit, FilenameTemplate, TimeUnit, TransferMode, convert_string_to_list
-from .qthelpers import set_widget_name, set_widget_tips
+from .qthelpers import set_qt_name, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -64,7 +64,7 @@ class BaseGroupBox(QGroupBox):
     ) -> None:
         """Initialize the base group box."""
         super().__init__(title=title, parent=parent)
-        set_widget_name(self, name)
+        set_qt_name(self, name)
         self.setCheckable(checkable)
         self.setFlat(True)
 
@@ -81,23 +81,23 @@ class PathSelectorWidget(BaseGroupBox):
 
         self.combo = QComboBox()
         self.combo.addItems(items)
-        set_widget_name(self.combo, f"{name}_combo")
-        set_widget_tips(self.combo, f"Select or enter a path for {title}.")
+        set_qt_name(self.combo, f"{name}_combo")
+        set_qt_tips(self.combo, f"Select or enter a path for {title}.")
 
         self.btn_browse = QPushButton("Browse")
         self.btn_browse.clicked.connect(self.browse)
-        set_widget_name(self.btn_browse, f"{name}_browse_btn")
-        set_widget_tips(self.btn_browse, f"Browse for {title} folder.")
+        set_qt_name(self.btn_browse, f"{name}_browse_btn")
+        set_qt_tips(self.btn_browse, f"Browse for {title} folder.")
 
         self.btn_delete = QPushButton("Delete")
         self.btn_delete.clicked.connect(self.delete_curr_item)
-        set_widget_name(self.btn_delete, f"{name}_delete_btn")
-        set_widget_tips(self.btn_delete, f"Delete current {title} entry.")
+        set_qt_name(self.btn_delete, f"{name}_delete_btn")
+        set_qt_tips(self.btn_delete, f"Delete current {title} entry.")
 
         self.btn_open = QPushButton("Open")
         self.btn_open.clicked.connect(self.open)
-        set_widget_name(self.btn_open, f"{name}_open_btn")
-        set_widget_tips(self.btn_open, f"Open current {title} folder in file explorer.")
+        set_qt_name(self.btn_open, f"{name}_open_btn")
+        set_qt_tips(self.btn_open, f"Open current {title} folder in file explorer.")
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.combo, stretch=1)
@@ -172,12 +172,12 @@ class FileCountWidget(BaseGroupBox):
 
         self.radio_fixed = QRadioButton("Fixed Count")
         self.radio_fixed.setChecked(True)
-        set_widget_name(self.radio_fixed, f"{name}_fixed_chk")
-        set_widget_tips(self.radio_fixed, "Select fixed file count.")
+        set_qt_name(self.radio_fixed, f"{name}_fixed_chk")
+        set_qt_tips(self.radio_fixed, "Select fixed file count.")
 
         self.radio_rand = QRadioButton("Randomize")
-        set_widget_name(self.radio_rand, f"{name}_rand_chk")
-        set_widget_tips(self.radio_rand, "Select random file count.")
+        set_qt_name(self.radio_rand, f"{name}_rand_chk")
+        set_qt_tips(self.radio_rand, "Select random file count.")
 
         mode_widget = QWidget()
         mode_layout = QHBoxLayout(mode_widget)
@@ -185,31 +185,31 @@ class FileCountWidget(BaseGroupBox):
         mode_layout.addWidget(self.radio_rand)
 
         self.spin_fixed = QSpinBox(minimum=1, maximum=1_000_000_000)
-        set_widget_name(self.spin_fixed, f"{name}_fixed_val")
-        set_widget_tips(self.spin_fixed, "Number of files to copy.")
+        set_qt_name(self.spin_fixed, f"{name}_fixed_val")
+        set_qt_tips(self.spin_fixed, "Number of files to copy.")
 
         self.fixed_widget = QWidget()
-        set_widget_name(self.fixed_widget, f"{name}_fixed_widget")
-        set_widget_tips(self.fixed_widget, "Fixed file count settings.")
+        set_qt_name(self.fixed_widget, f"{name}_fixed_widget")
+        set_qt_tips(self.fixed_widget, "Fixed file count settings.")
 
         fixed_layout = QFormLayout(self.fixed_widget)
         fixed_layout.addRow("Count", self.spin_fixed)
 
         self.spin_min_rand = QSpinBox(minimum=1, maximum=1_000_000_000)
-        set_widget_name(self.spin_min_rand, f"{name}_rand_min")
-        set_widget_tips(self.spin_min_rand, "Minimum random file count.")
+        set_qt_name(self.spin_min_rand, f"{name}_rand_min")
+        set_qt_tips(self.spin_min_rand, "Minimum random file count.")
 
         self.spin_max_rand = QSpinBox(minimum=2, maximum=1_000_000_000)
-        set_widget_name(self.spin_max_rand, f"{name}_rand_max")
-        set_widget_tips(self.spin_max_rand, "Maximum random file count.")
+        set_qt_name(self.spin_max_rand, f"{name}_rand_max")
+        set_qt_tips(self.spin_max_rand, "Maximum random file count.")
 
         self.spin_min_rand.valueChanged.connect(self.spin_max_rand.setMinimum)
         self.spin_max_rand.valueChanged.connect(self.spin_min_rand.setMaximum)
 
         self.rand_widget = QWidget()
         self.rand_widget.setVisible(False)
-        set_widget_name(self.rand_widget, f"{name}_rand_widget")
-        set_widget_tips(self.rand_widget, "Random file count settings.")
+        set_qt_name(self.rand_widget, f"{name}_rand_widget")
+        set_qt_tips(self.rand_widget, "Random file count settings.")
 
         self.radio_fixed.toggled.connect(self.fixed_widget.setVisible)
         self.radio_rand.toggled.connect(self.rand_widget.setVisible)
@@ -241,18 +241,18 @@ class FolderCreatorWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent, checkable=True)
 
         self.spinbox_folder_count = QSpinBox(minimum=1, maximum=100_000)
-        set_widget_name(self.spinbox_folder_count, f"{name}_count")
-        set_widget_tips(self.spinbox_folder_count, "Number of folders to create.")
+        set_qt_name(self.spinbox_folder_count, f"{name}_count")
+        set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
 
         self.lineedit_folder_name = QLineEdit()
         self.lineedit_folder_name.setPlaceholderText("Ex: Random_Files")
-        set_widget_name(self.lineedit_folder_name, f"{name}_name")
-        set_widget_tips(self.lineedit_folder_name, "Template for naming created folders.")
+        set_qt_name(self.lineedit_folder_name, f"{name}_name")
+        set_qt_tips(self.lineedit_folder_name, "Template for naming created folders.")
 
         self.chk_unique_folders = QCheckBox("Make Unique")
         self.chk_unique_folders.setChecked(True)
-        set_widget_name(self.chk_unique_folders, f"{name}_unique")
-        set_widget_tips(
+        set_qt_name(self.chk_unique_folders, f"{name}_unique")
+        set_qt_tips(
             self.chk_unique_folders,
             "If checked, created folder names will have a unique suffix to avoid name collisions.",
         )
@@ -280,23 +280,23 @@ class FilenameWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}")
-        set_widget_name(self.edit_template, f"{name}_template")
-        set_widget_tips(
+        set_qt_name(self.edit_template, f"{name}_template")
+        set_qt_tips(
             self.edit_template,
             "Template for renaming files. Use the 'Insert Tag' button to add tags.",
         )
 
         self.btn_template = QPushButton("Insert Tag")
-        set_widget_name(self.btn_template, f"{name}_template_button")
-        set_widget_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
+        set_qt_name(self.btn_template, f"{name}_template_button")
+        set_qt_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
 
         self.menu_template = QMenu("Tags", self)
-        set_widget_name(self.menu_template, f"{name}_template_menu")
-        set_widget_tips(self.menu_template, "Select a tag to insert into the filename template.")
+        set_qt_name(self.menu_template, f"{name}_template_menu")
+        set_qt_tips(self.menu_template, "Select a tag to insert into the filename template.")
 
         self.btn_template.setMenu(self.menu_template)
-        set_widget_name(self.btn_template, f"{name}_template_button")
-        set_widget_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
+        set_qt_name(self.btn_template, f"{name}_template_button")
+        set_qt_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
 
         for lbl in FilenameTemplate:
             action = self.menu_template.addAction(lbl)
@@ -304,8 +304,8 @@ class FilenameWidget(BaseGroupBox):
 
         self.btn_clear = QPushButton("Clear")
         self.btn_clear.clicked.connect(lambda: self.edit_template.clear())
-        set_widget_name(self.btn_clear, f"{name}_clear_button")
-        set_widget_tips(self.btn_clear, "Clear the filename template.")
+        set_qt_name(self.btn_clear, f"{name}_clear_button")
+        set_qt_tips(self.btn_clear, "Clear the filename template.")
 
         layout = QFormLayout(self)
         layout.addRow("Template:", self.edit_template)
@@ -334,12 +334,12 @@ class TransferModeWidget(BaseGroupBox):
         self.combo_mode = QComboBox()
         available_modes = get_available_transfer_modes()
         self.combo_mode.addItems(available_modes)
-        set_widget_name(self.combo_mode, f"{name}_mode")
-        set_widget_tips(self.combo_mode, "Select the transfer mode to use.")
+        set_qt_name(self.combo_mode, f"{name}_mode")
+        set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
 
         self.chk_dry_run = QCheckBox("Dry Run")
-        set_widget_name(self.chk_dry_run, f"{name}_dry_run")
-        set_widget_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
+        set_qt_name(self.chk_dry_run, f"{name}_dry_run")
+        set_qt_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
 
         layout = QFormLayout(self)
         layout.addRow("Mode:", self.combo_mode)
@@ -361,17 +361,17 @@ class DualListFilterWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.filter_edit = QLineEdit()
-        set_widget_name(self.filter_edit, f"{name}_text")
-        set_widget_tips(self.filter_edit, f"Enter {title.lower()} separated by commas.")
+        set_qt_name(self.filter_edit, f"{name}_text")
+        set_qt_tips(self.filter_edit, f"Enter {title.lower()} separated by commas.")
 
         self.filter_include_radio = QRadioButton("Include")
         self.filter_include_radio.setChecked(True)
-        set_widget_name(self.filter_include_radio, f"{name}_include")
-        set_widget_tips(self.filter_include_radio, f"Include only items matching the {title.lower()} filter.")
+        set_qt_name(self.filter_include_radio, f"{name}_include")
+        set_qt_tips(self.filter_include_radio, f"Include only items matching the {title.lower()} filter.")
 
         self.filter_exclude_radio = QRadioButton("Exclude")
-        set_widget_name(self.filter_exclude_radio, f"{name}_exclude")
-        set_widget_tips(self.filter_exclude_radio, f"Exclude items matching the {title.lower()} filter.")
+        set_qt_name(self.filter_exclude_radio, f"{name}_exclude")
+        set_qt_tips(self.filter_exclude_radio, f"Exclude items matching the {title.lower()} filter.")
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.filter_edit)
@@ -420,20 +420,20 @@ class DblRangeFilterWidget(BaseGroupBox):
         self.mapping = mapping
 
         self.min_spin = QDoubleSpinBox()
-        set_widget_name(self.min_spin, f"{name}_minimum")
-        set_widget_tips(self.min_spin, f"Minimum value for the {name} filter.")
+        set_qt_name(self.min_spin, f"{name}_minimum")
+        set_qt_tips(self.min_spin, f"Minimum value for the {name} filter.")
 
         self.max_spin = QDoubleSpinBox()
-        set_widget_name(self.max_spin, f"{name}_maximum")
-        set_widget_tips(self.max_spin, f"Maximum value for the {name} filter.")
+        set_qt_name(self.max_spin, f"{name}_maximum")
+        set_qt_tips(self.max_spin, f"Maximum value for the {name} filter.")
 
         self.min_spin.valueChanged.connect(self.max_spin.setMinimum)
         self.max_spin.valueChanged.connect(self.min_spin.setMaximum)
 
         self.combo = QComboBox()
         self.combo.addItems(items)
-        set_widget_name(self.combo, f"{name}_unit")
-        set_widget_tips(self.combo, f"Unit multiplier for the {name} filter.")
+        set_qt_name(self.combo, f"{name}_unit")
+        set_qt_tips(self.combo, f"Unit multiplier for the {name} filter.")
 
         layout = QFormLayout(self)
         layout.addRow("Min", self.min_spin)
@@ -471,8 +471,8 @@ class DiversityFilterWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.spin_max_per_folder = QSpinBox(minimum=0, maximum=1_000_000)
-        set_widget_name(self.spin_max_per_folder, f"{name}_max_per_folder")
-        set_widget_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
+        set_qt_name(self.spin_max_per_folder, f"{name}_max_per_folder")
+        set_qt_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
 
         layout = QFormLayout(self)
         layout.addRow("Max files per folder", self.spin_max_per_folder)
@@ -490,12 +490,12 @@ class ProgressWidget(QWidget):
         super().__init__(parent=parent)
 
         self.progbar_total = QProgressBar(value=0, textVisible=True)
-        set_widget_name(self.progbar_total, "progress_total")
-        set_widget_tips(self.progbar_total, "Total progress bar, max is set at number of output folders.")
+        set_qt_name(self.progbar_total, "progress_total")
+        set_qt_tips(self.progbar_total, "Total progress bar, max is set at number of output folders.")
 
         self.progbar_folder = QProgressBar(value=0, textVisible=True)
-        set_widget_name(self.progbar_folder, "progress_folder")
-        set_widget_tips(self.progbar_folder, "Current folder progress bar, max is set at number of files to copy.")
+        set_qt_name(self.progbar_folder, "progress_folder")
+        set_qt_tips(self.progbar_folder, "Current folder progress bar, max is set at number of files to copy.")
 
         layout = QFormLayout(self)
         layout.addRow("Total:", self.progbar_total)
@@ -519,12 +519,12 @@ class LoggingWidget(QWidget):
         """Initialize the logging widget."""
         super().__init__(parent=parent)
         name = "logging"
-        set_widget_name(self, name)
+        set_qt_name(self, name)
 
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-        set_widget_name(self.textbrowser_log, f"{name}_log")
-        set_widget_tips(self.textbrowser_log, "Log for output messages.")
+        set_qt_name(self.textbrowser_log, f"{name}_log")
+        set_qt_tips(self.textbrowser_log, "Log for output messages.")
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.textbrowser_log)
@@ -538,8 +538,8 @@ class WalkerWidget(BaseGroupBox):
         super().__init__(title, name, parent=parent)
 
         self.chk_follow_symlinks = QCheckBox("Follow Symlinks")
-        set_widget_name(self.chk_follow_symlinks, f"{name}_follow_symlinks")
-        set_widget_tips(self.chk_follow_symlinks, "If checked, symbolic links will be followed during file traversal.")
+        set_qt_name(self.chk_follow_symlinks, f"{name}_follow_symlinks")
+        set_qt_tips(self.chk_follow_symlinks, "If checked, symbolic links will be followed during file traversal.")
 
         layout = QFormLayout(self)
         layout.addRow(self.chk_follow_symlinks)
