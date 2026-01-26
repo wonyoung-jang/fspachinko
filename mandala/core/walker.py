@@ -2,6 +2,7 @@
 
 import logging
 import os
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,7 +42,16 @@ class FSEntry:
 
 
 @dataclass(slots=True)
-class RandomFSWalker:
+class FSWalker(ABC):
+    """Abstract file system walker."""
+
+    @abstractmethod
+    def walk(self) -> Iterator[FSEntry]:
+        """Generate candidates for a given directory."""
+
+
+@dataclass(slots=True)
+class RandomFSWalker(FSWalker):
     """Navigates the file system randomly based on Quota rules."""
 
     root: Path

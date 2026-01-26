@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 @dataclass(slots=True)
 class DateTimeProvider:
-    """Singleton for current date and time."""
+    """Provider for current date and time."""
 
     now: datetime = field(init=False)
     date: str = field(init=False)
@@ -15,7 +15,7 @@ class DateTimeProvider:
     date_time_report_str: str = field(init=False)
 
     def __post_init__(self) -> None:
-        """Initialize formatted date and time strings."""
+        """Initialize."""
         self.refresh()
 
     def refresh(self) -> None:

@@ -10,15 +10,15 @@ from typing import TYPE_CHECKING
 from ..utils import get_status_header
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from ..config import Filecount, Filename, Folder
     from ..utils import DateTimeProvider, MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
-    from .transfer import Transfer
     from .validator import FileValidator
-    from .walker import RandomFSWalker
+    from .walker import FSWalker
 
 
 logger = logging.getLogger(__name__)
@@ -53,12 +53,12 @@ class MandalaEngine:
     validator: FileValidator
     reporter: ReportWriter
     quota: DiversityQuota
-    walker: RandomFSWalker
+    walker: FSWalker
     timestamp: DateTimeProvider
     filecount: Filecount
     filename: Filename
     folder: Folder
-    transfer: Transfer
+    transfer: Callable
     observer: MandalaObserver = field(init=False)
     _state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
@@ -140,7 +140,7 @@ class MandalaEngine:
             return True
 
         try:
-            self.transfer.transfer(chosen, new_target_file)
+            self.transfer(chosen, new_target_file)
         except (PermissionError, OSError):
             self._report(msg=f"FAILED: {copy_path_str}")
             logger.exception("Failed to copy file: %s", copy_path_str)
