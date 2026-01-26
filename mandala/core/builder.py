@@ -3,7 +3,7 @@
 from random import Random
 from typing import TYPE_CHECKING
 
-from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax
+from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
 from ..utils import DateTimeProvider
 from .engine import MandalaEngine
 from .quota import DiversityQuota
@@ -97,6 +97,16 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         dest=m.dest,
     )
 
+    folder_size_limit = SizeLimit(
+        enabled=m.folder_size_limit.enabled,
+        size_limit=m.folder_size_limit.size_limit,
+    )
+
+    total_size_limit = SizeLimit(
+        enabled=m.total_size_limit.enabled,
+        size_limit=m.total_size_limit.size_limit,
+    )
+
     return MandalaEngine(
         root=m.root,
         dry_run=m.options.dry_run_enabled,
@@ -109,4 +119,6 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         filename=filename,
         folder=folder,
         transfer=fetch_transfer_strategy(m.transfermode.transfer_mode),
+        folder_size_limit=folder_size_limit,
+        total_size_limit=total_size_limit,
     )

@@ -14,6 +14,7 @@ from .components import (
     FileCountWidget,
     FilenameWidget,
     FolderCreatorWidget,
+    FolderSizeLimitWidget,
     KeywordsFilterWidget,
     LoggingWidget,
     OptionsWidget,
@@ -21,6 +22,8 @@ from .components import (
     ProgressWidget,
     RootPathSelectorWidget,
     SizeFilterWidget,
+    SizeLimitWidget,
+    TotalSizeLimitWidget,
     TransferModeWidget,
 )
 
@@ -39,9 +42,11 @@ class UIBuilder:
     extensions: DualListFilterWidget = field(default_factory=ExtensionsFilterWidget)
     filesize: DblRangeFilterWidget = field(default_factory=SizeFilterWidget)
     duration: DblRangeFilterWidget = field(default_factory=DurationFilterWidget)
+    folder_size_limit: SizeLimitWidget = field(default_factory=FolderSizeLimitWidget)
+    total_size_limit: SizeLimitWidget = field(default_factory=TotalSizeLimitWidget)
+    options: OptionsWidget = field(default_factory=OptionsWidget)
     progress: ProgressWidget = field(default_factory=ProgressWidget)
     logging: LoggingWidget = field(default_factory=LoggingWidget)
-    options: OptionsWidget = field(default_factory=OptionsWidget)
 
     def build_layout(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
@@ -81,8 +86,12 @@ class UIBuilder:
         filter_layout.addWidget(self.filesize, 1, 0)
         filter_layout.addWidget(self.duration, 1, 1)
 
-        # Row 2: Options
-        filter_layout.addWidget(self.options, 2, 0, 1, 2)
+        # Row 2: Size Limits
+        filter_layout.addWidget(self.folder_size_limit, 2, 0)
+        filter_layout.addWidget(self.total_size_limit, 2, 1)
+
+        # Row 3: Options
+        filter_layout.addWidget(self.options, 3, 0, 1, 2)
 
         tab_filters.setLayout(filter_layout)
         tabs.addTab(tab_filters, "Filters && Rules")
@@ -113,5 +122,7 @@ class UIBuilder:
             extension=self.extensions.get_config(),
             filesize=self.filesize.get_config(),
             duration=self.duration.get_config(),
+            folder_size_limit=self.folder_size_limit.get_config(),
+            total_size_limit=self.total_size_limit.get_config(),
             options=self.options.get_config(),
         )

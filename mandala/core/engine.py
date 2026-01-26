@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from ..config import Filecount, Filename, Folder
+    from ..config import Filecount, Filename, Folder, SizeLimit
     from ..utils import DateTimeProvider, MandalaObserver
     from .quota import DiversityQuota
     from .reporter import ReportWriter
@@ -29,19 +29,21 @@ class MandalaState:
     """Dataclass for Mandala state."""
 
     count: int = 0
-    size: int = 0
     starttime: float = 0.0
+    curr_size: int = 0
+    total_size: int = 0
 
     def reset_for_folder(self) -> None:
         """Reset state variables for a new folder."""
         self.count = 0
-        self.size = 0
+        self.curr_size = 0
         self.starttime = perf_counter()
 
     def update_folder(self, size: int) -> None:
         """Update state on successful operation."""
         self.count += 1
-        self.size += size
+        self.curr_size += size
+        self.total_size += size
 
 
 @dataclass(slots=True)
@@ -59,6 +61,8 @@ class MandalaEngine:
     filename: Filename
     folder: Folder
     transfer: Callable
+    folder_size_limit: SizeLimit
+    total_size_limit: SizeLimit
     observer: MandalaObserver = field(init=False)
     _state: MandalaState = field(default_factory=MandalaState)
     _request_stop: bool = False
@@ -115,6 +119,16 @@ class MandalaEngine:
             if not self.validator.is_valid(path, size):
                 continue
 
+            # Check if adding this file would exceed folder size limit
+            if self.folder_size_limit.is_exceeded(self._state.curr_size + size):
+                self._report(msg=f"Folder size limit reached ({self.folder_size_limit.size_limit}B)")
+                break
+
+            # Check if adding this file would exceed total size limit
+            if self.total_size_limit.is_exceeded(self._state.total_size + size):
+                self._report(msg=f"Total size limit reached ({self.total_size_limit.size_limit}B)")
+                return
+
             if not self._transfer_file(path, dest):
                 continue
 
@@ -156,7 +170,8 @@ class MandalaEngine:
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
-        return self._request_stop or self.quota.all_locked()
+        total_limit_exceeded = self.total_size_limit.is_exceeded(self._state.total_size)
+        return self._request_stop or self.quota.all_locked() or total_limit_exceeded
 
     def _finalize_folder(self, target: int, dest: Path) -> None:
         """Create and write log at the end of folder."""
@@ -171,7 +186,7 @@ class MandalaEngine:
         report = self.reporter.generate_report(
             status=f"{status_prefix}: {self._state.count}/{target} files copied",
             runtime=round(perf_counter() - self._state.starttime, 2),
-            size=self._state.size,
+            size=self._state.curr_size,
         )
         self._report(report)
         self.reporter.save()

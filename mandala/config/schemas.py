@@ -53,6 +53,13 @@ class LimitMinMaxModel(BaseModel):
     maximum: float = 0.0
 
 
+class SizeLimitModel(BaseModel):
+    """Model for output folder size limits."""
+
+    enabled: bool = False
+    size_limit: float = 0.0
+
+
 class OptionsModel(BaseModel):
     """Model for additional options."""
 
@@ -74,4 +81,6 @@ class MandalaConfigModel(BaseModel):
     extension: ListIncludeExcludeModel
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
+    folder_size_limit: SizeLimitModel
+    total_size_limit: SizeLimitModel
     options: OptionsModel

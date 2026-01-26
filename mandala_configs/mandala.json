@@ -40,6 +40,14 @@
         "minimum": 0.0,
         "maximum": 0.0
     },
+    "folder_size_limit": {
+        "enabled": true,
+        "size_limit": 500.0
+    },
+    "total_size_limit": {
+        "enabled": false,
+        "size_limit": 500.0
+    },
     "options": {
         "max_per_folder": 3,
         "follow_symlinks": false,

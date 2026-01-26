@@ -6,6 +6,7 @@ from .config import (
     Folder,
     ListIncludeExclude,
     MinMax,
+    SizeLimit,
 )
 from .schemas import (
     FilecountModel,
@@ -14,6 +15,8 @@ from .schemas import (
     LimitMinMaxModel,
     ListIncludeExcludeModel,
     MandalaConfigModel,
+    OptionsModel,
+    SizeLimitModel,
     TransferModeModel,
 )
 
@@ -29,5 +32,8 @@ __all__ = [
     "ListIncludeExcludeModel",
     "MandalaConfigModel",
     "MinMax",
+    "OptionsModel",
+    "SizeLimit",
+    "SizeLimitModel",
     "TransferModeModel",
 ]

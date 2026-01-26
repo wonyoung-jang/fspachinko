@@ -119,6 +119,20 @@ class MinMax:
         return self.minimum <= value <= self.maximum
 
 
+@dataclass(slots=True)
+class SizeLimit:
+    """Dataclass for output folder size limits."""
+
+    enabled: bool
+    size_limit: float
+
+    def is_exceeded(self, size: int) -> bool:
+        """Check if the size limit is exceeded."""
+        if not self.enabled:
+            return False
+        return size > self.size_limit
+
+
 @cache
 def compile_re(re_fmt: str, text: str) -> re.Pattern:
     """Compile a regex pattern.

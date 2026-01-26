@@ -34,9 +34,10 @@ from ..config import (
     FolderModel,
     LimitMinMaxModel,
     ListIncludeExcludeModel,
+    OptionsModel,
+    SizeLimitModel,
     TransferModeModel,
 )
-from ..config.schemas import OptionsModel
 from ..core import get_available_transfer_modes
 from ..utils import (
     SIZE_MAP,
@@ -447,6 +448,59 @@ class DurationFilterWidget(DblRangeFilterWidget):
         super().__init__("Duration", "duration", tuple(TimeUnit), TIME_MAP)
 
 
+class SizeLimitWidget(BaseGroupBox):
+    """Handles logic for output folder size limit."""
+
+    def __init__(
+        self,
+        title: str,
+        name: str,
+        items: Sequence[str | ByteUnit | TimeUnit],
+        mapping: dict[str | ByteUnit | TimeUnit, int],
+        parent: QWidget | None = None,
+    ) -> None:
+        """Initialize the size limit widget."""
+        super().__init__(title, name, parent=parent, checkable=True)
+
+        self.mapping = mapping
+
+        self.size_spin = QDoubleSpinBox(prefix="Size: ")
+        self.size_spin.setSpecialValueText("Unlimited")
+        set_qt_name(self.size_spin, f"{name}_size")
+        set_qt_tips(self.size_spin, f"{title} value for the size limit.")
+
+        self.combo = QComboBox()
+        self.combo.addItems(items)
+        set_qt_name(self.combo, f"{name}_unit")
+        set_qt_tips(self.combo, f"Unit multiplier for the {title} filter.")
+
+        layout = QHBoxLayout(self)
+        layout.addWidget(self.size_spin)
+        layout.addWidget(self.combo)
+
+    def get_config(self) -> SizeLimitModel:
+        """Return clean data for the config."""
+        mult = self.mapping.get(self.combo.currentText(), 1)
+        size_limit = self.size_spin.value() * mult
+        return SizeLimitModel(enabled=self.isChecked(), size_limit=size_limit)
+
+
+class FolderSizeLimitWidget(SizeLimitWidget):
+    """Handles logic for per-folder size limit."""
+
+    def __init__(self) -> None:
+        """Initialize the folder size limit widget."""
+        super().__init__("Max Folder Size", "folder_size_limit", tuple(ByteUnit), SIZE_MAP)
+
+
+class TotalSizeLimitWidget(SizeLimitWidget):
+    """Handles logic for total size limit across all folders."""
+
+    def __init__(self) -> None:
+        """Initialize the total size limit widget."""
+        super().__init__("Max Total Size", "total_size_limit", tuple(ByteUnit), SIZE_MAP)
+
+
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
@@ -454,11 +508,11 @@ class ProgressWidget(QWidget):
         """Initialize the execution widget."""
         super().__init__(parent=parent)
 
-        self.progbar_total = QProgressBar(value=0, textVisible=True)
+        self.progbar_total = QProgressBar(textVisible=True)
         set_qt_name(self.progbar_total, "progress_total")
         set_qt_tips(self.progbar_total, "Total progress bar, max is set at number of output folders.")
 
-        self.progbar_folder = QProgressBar(value=0, textVisible=True)
+        self.progbar_folder = QProgressBar(textVisible=True)
         set_qt_name(self.progbar_folder, "progress_folder")
         set_qt_tips(self.progbar_folder, "Current folder progress bar, max is set at number of files to copy.")
 
