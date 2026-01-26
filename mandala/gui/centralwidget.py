@@ -70,6 +70,5 @@ class MandalaCentralGui(QWidget):
 
     def toggle_ui(self, *, enabled: bool) -> None:
         """Lock or unlock UI elements."""
-        for child in self.findChildren(QWidget):
-            if isinstance(child, QGroupBox):
-                child.setEnabled(enabled)
+        for child in self.findChildren(QGroupBox):
+            child.setEnabled(enabled)

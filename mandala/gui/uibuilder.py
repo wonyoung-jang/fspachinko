@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout
+from PySide6.QtWidgets import QGridLayout, QSizePolicy, QTabWidget, QVBoxLayout, QWidget
 
 from ..config import MandalaConfigModel
 from .components import (
@@ -47,30 +47,61 @@ class UIBuilder:
 
     def build_layout(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
-        layout = QVBoxLayout()
-        layout.addWidget(self.root)
-        layout.addWidget(self.dest)
+        # 1. Path Selection Section (Top)
+        path_layout = QVBoxLayout()
+        path_layout.addWidget(self.root)
+        path_layout.addWidget(self.dest)
+        path_layout.setSpacing(5)
 
-        output_l = QHBoxLayout()
-        output_l.addWidget(self.folders)
-        output_l.addWidget(self.filecount)
-        output_l.addWidget(self.filename)
-        output_l.addWidget(self.transfermode)
+        # 2. Main Configuration Tabs
+        tabs = QTabWidget()
 
-        layout.addLayout(output_l)
-        layout.addWidget(self.keywords)
-        layout.addWidget(self.extensions)
+        # --- Tab 1: Output Settings ---
+        tab_output = QWidget()
+        output_layout = QGridLayout(tab_output)
 
-        filter_l = QHBoxLayout()
-        filter_l.addWidget(self.filesize)
-        filter_l.addWidget(self.duration)
-        filter_l.addWidget(self.diversity)
-        filter_l.addWidget(self.walker)
+        # Column 0: Transfer Configs
+        output_layout.addWidget(self.filecount, 0, 0)
+        output_layout.addWidget(self.transfermode, 1, 0)
 
-        layout.addLayout(filter_l)
-        layout.addWidget(self.progress)
-        layout.addWidget(self.logging)
-        return layout
+        # Column 1: Organization
+        output_layout.addWidget(self.folders, 0, 1)
+        output_layout.addWidget(self.filename, 1, 1)
+
+        tab_output.setLayout(output_layout)
+        tabs.addTab(tab_output, "Output Settings")
+
+        # --- Tab 2: Filters ---
+        tab_filters = QWidget()
+        filter_layout = QGridLayout(tab_filters)
+
+        # Row 0: Text based filters
+        filter_layout.addWidget(self.keywords, 0, 0)
+        filter_layout.addWidget(self.extensions, 0, 1)
+
+        # Row 1: Numeric filters
+        filter_layout.addWidget(self.filesize, 1, 0)
+        filter_layout.addWidget(self.duration, 1, 1)
+
+        # Row 2: Advanced/Misc
+        filter_layout.addWidget(self.diversity, 2, 0)
+        filter_layout.addWidget(self.walker, 2, 1)
+
+        tab_filters.setLayout(filter_layout)
+        tabs.addTab(tab_filters, "Filters && Rules")
+
+        # 3. Assemble Main Layout
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(path_layout)
+        main_layout.addWidget(tabs)
+
+        # Spacer to prevent logs from eating all space
+        self.logging.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
+        main_layout.addWidget(self.logging, stretch=1)
+
+        main_layout.addWidget(self.progress)
+
+        return main_layout
 
     def get_config(self) -> MandalaConfigModel:
         """Get the current configuration from all widgets."""

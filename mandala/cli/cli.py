@@ -20,30 +20,30 @@ class ConsoleObserver(MandalaObserver):
 
     def on_progress_total(self, maximum: int) -> None:
         """Handle starting total progress."""
-        print(f"Starting total progress: {maximum} folder(s)")
+        logger.info("Starting total progress: %d folder(s)", maximum)
 
     def on_count_total(self) -> None:
         """Handle total progress count update."""
-        print("Total progress updated.")
+        logger.info("Total progress updated.")
 
     def on_progress(self, maximum: int) -> None:
         """Handle starting folder progress."""
-        print(f"Starting folder progress: {maximum} file(s)")
+        logger.info("Starting folder progress: %d file(s)", maximum)
 
     def on_finished(self) -> None:
         """Handle finishing process."""
-        print("Processing finished.")
+        logger.info("Processing finished.")
 
     def on_log(self, msg: str) -> None:
         """Handle log message."""
-        print(f"on_log: {msg}")
+        logger.info("%s", msg)
 
     def on_time(self) -> None:
         """Handle time update."""
 
     def on_count(self, count: int) -> None:
         """Handle folder progress count update."""
-        print(f"on_count: {count}")
+        logger.info("Count: %d", count)
 
 
 def run_cli(config_json: str | Path = "") -> None:

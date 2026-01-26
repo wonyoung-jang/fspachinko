@@ -68,14 +68,6 @@ class MandalaEngine:
     # ... more fields
 ```
 
-### Strategy Pattern
-Transfer modes (copy, move, symlink, hardlink) implement a common protocol:
-
-```python
-class TransferStrategy(Protocol):
-    def execute(self, src: Path, dst: Path) -> None: ...
-```
-
 ### State Management
 - `DiversityQuota`: Tracks locked files/folders for uniqueness
 - `MandalaState`: Accumulates bytes and timing per folder
