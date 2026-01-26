@@ -8,7 +8,6 @@ from ..config import MandalaConfigModel
 from .components import (
     DblRangeFilterWidget,
     DestPathSelectorWidget,
-    DiversityFilterWidget,
     DualListFilterWidget,
     DurationFilterWidget,
     ExtensionsFilterWidget,
@@ -17,12 +16,12 @@ from .components import (
     FolderCreatorWidget,
     KeywordsFilterWidget,
     LoggingWidget,
+    OptionsWidget,
     PathSelectorWidget,
     ProgressWidget,
     RootPathSelectorWidget,
     SizeFilterWidget,
     TransferModeWidget,
-    WalkerWidget,
 )
 
 
@@ -40,10 +39,9 @@ class UIBuilder:
     extensions: DualListFilterWidget = field(default_factory=ExtensionsFilterWidget)
     filesize: DblRangeFilterWidget = field(default_factory=SizeFilterWidget)
     duration: DblRangeFilterWidget = field(default_factory=DurationFilterWidget)
-    diversity: DiversityFilterWidget = field(default_factory=DiversityFilterWidget)
     progress: ProgressWidget = field(default_factory=ProgressWidget)
     logging: LoggingWidget = field(default_factory=LoggingWidget)
-    walker: WalkerWidget = field(default_factory=WalkerWidget)
+    options: OptionsWidget = field(default_factory=OptionsWidget)
 
     def build_layout(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
@@ -83,9 +81,8 @@ class UIBuilder:
         filter_layout.addWidget(self.filesize, 1, 0)
         filter_layout.addWidget(self.duration, 1, 1)
 
-        # Row 2: Advanced/Misc
-        filter_layout.addWidget(self.diversity, 2, 0)
-        filter_layout.addWidget(self.walker, 2, 1)
+        # Row 2: Options
+        filter_layout.addWidget(self.options, 2, 0, 1, 2)
 
         tab_filters.setLayout(filter_layout)
         tabs.addTab(tab_filters, "Filters && Rules")
@@ -116,6 +113,5 @@ class UIBuilder:
             extension=self.extensions.get_config(),
             filesize=self.filesize.get_config(),
             duration=self.duration.get_config(),
-            diversity=self.diversity.get_config(),
-            walker=self.walker.get_config(),
+            options=self.options.get_config(),
         )

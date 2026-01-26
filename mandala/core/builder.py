@@ -67,14 +67,14 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
     quota = DiversityQuota(
         root=m.root,
         unique_folders=m.folder.unique_enabled,
-        max_per_folder=m.diversity.max_per_folder,
+        max_per_folder=m.options.max_per_folder,
     )
 
     walker = RandomFSWalker(
         root=m.root,
         rng=rng,
         quota=quota,
-        follow_symlinks=m.walker.follow_symlinks,
+        follow_symlinks=m.options.follow_symlinks,
     )
 
     timestamp = DateTimeProvider()
@@ -99,7 +99,7 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
 
     return MandalaEngine(
         root=m.root,
-        dry_run=m.transfermode.dry_run_enabled,
+        dry_run=m.options.dry_run_enabled,
         validator=validator,
         reporter=reporter,
         quota=quota,

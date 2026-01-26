@@ -18,8 +18,7 @@
     },
     "transfermode": {
         "transfer_mode": "Symlink",
-        "trash_empty_folder_enabled": false,
-        "dry_run_enabled": true
+        "trash_empty_folder_enabled": false
     },
     "keyword": {
         "include_enabled": true,
@@ -41,10 +40,9 @@
         "minimum": 0.0,
         "maximum": 0.0
     },
-    "diversity": {
-        "max_per_folder": 3
-    },
-    "walker": {
-        "follow_symlinks": false
+    "options": {
+        "max_per_folder": 3,
+        "follow_symlinks": false,
+        "dry_run_enabled": true
     }
 }

@@ -35,7 +35,6 @@ class TransferModeModel(BaseModel):
     """Model for mode configuration."""
 
     transfer_mode: TransferMode = TransferMode.SYMLINK
-    dry_run_enabled: bool = True
 
 
 class ListIncludeExcludeModel(BaseModel):
@@ -54,16 +53,12 @@ class LimitMinMaxModel(BaseModel):
     maximum: float = 0.0
 
 
-class DiversityModel(BaseModel):
-    """Model for diversity quota configuration."""
+class OptionsModel(BaseModel):
+    """Model for additional options."""
 
     max_per_folder: int = 0
-
-
-class WalkerModel(BaseModel):
-    """Model for filesystem walker configuration."""
-
     follow_symlinks: bool = False
+    dry_run_enabled: bool = True
 
 
 class MandalaConfigModel(BaseModel):
@@ -79,5 +74,4 @@ class MandalaConfigModel(BaseModel):
     extension: ListIncludeExcludeModel
     filesize: LimitMinMaxModel
     duration: LimitMinMaxModel
-    diversity: DiversityModel
-    walker: WalkerModel
+    options: OptionsModel

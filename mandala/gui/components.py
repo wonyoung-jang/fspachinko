@@ -29,15 +29,14 @@ from PySide6.QtWidgets import (
 )
 
 from ..config import (
-    DiversityModel,
     FilecountModel,
     FilenameModel,
     FolderModel,
     LimitMinMaxModel,
     ListIncludeExcludeModel,
     TransferModeModel,
-    WalkerModel,
 )
+from ..config.schemas import OptionsModel
 from ..core import get_available_transfer_modes
 from ..utils import (
     SIZE_MAP,
@@ -330,20 +329,12 @@ class TransferModeWidget(BaseGroupBox):
         set_qt_name(self.combo_mode, f"{name}_mode")
         set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
 
-        self.chk_dry_run = QCheckBox("Dry run (simulation)")
-        set_qt_name(self.chk_dry_run, f"{name}_dry_run")
-        set_qt_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
-
         layout = QVBoxLayout(self)
         layout.addWidget(self.combo_mode)
-        layout.addWidget(self.chk_dry_run)
 
     def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
-        return TransferModeModel(
-            transfer_mode=TransferMode(self.combo_mode.currentText()),
-            dry_run_enabled=self.chk_dry_run.isChecked(),
-        )
+        return TransferModeModel(transfer_mode=TransferMode(self.combo_mode.currentText()))
 
 
 class DualListFilterWidget(BaseGroupBox):
@@ -456,26 +447,6 @@ class DurationFilterWidget(DblRangeFilterWidget):
         super().__init__("Duration", "duration", tuple(TimeUnit), TIME_MAP)
 
 
-class DiversityFilterWidget(BaseGroupBox):
-    """Handles logic for diversity range (root/leaf)."""
-
-    def __init__(self, title: str = "Diversity", name: str = "diversity", parent: QWidget | None = None) -> None:
-        """Initialize the range filter widget."""
-        super().__init__(title, name, parent=parent)
-
-        self.spin_max_per_folder = QSpinBox()
-        self.spin_max_per_folder.setSpecialValueText("Unlimited")
-        set_qt_name(self.spin_max_per_folder, f"{name}_max_per_folder")
-        set_qt_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
-
-        layout = QFormLayout(self)
-        layout.addRow("Max from one folder", self.spin_max_per_folder)
-
-    def get_config(self) -> DiversityModel:
-        """Return clean data for the config."""
-        return DiversityModel(max_per_folder=self.spin_max_per_folder.value())
-
-
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
@@ -523,23 +494,38 @@ class LoggingWidget(QWidget):
         layout.addWidget(self.textbrowser_log)
 
 
-class WalkerWidget(BaseGroupBox):
-    """Handles logic for filesystem walker settings."""
+class OptionsWidget(BaseGroupBox):
+    """Handles logic for miscellaneous options."""
 
-    def __init__(self, title: str = "Filesystem Walker", name: str = "walker", parent: QWidget | None = None) -> None:
-        """Initialize the filesystem walker settings widget."""
+    def __init__(self, title: str = "Options", name: str = "options", parent: QWidget | None = None) -> None:
+        """Initialize the options widget."""
         super().__init__(title, name, parent=parent)
 
-        self.chk_follow_symlinks = QCheckBox("Follow Symlinks")
+        self.spin_max_per_folder = QSpinBox()
+        self.spin_max_per_folder.setSpecialValueText("Unlimited")
+        set_qt_name(self.spin_max_per_folder, f"{name}_max_per_folder")
+        set_qt_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
+
+        self.chk_follow_symlinks = QCheckBox()
         set_qt_name(self.chk_follow_symlinks, f"{name}_follow_symlinks")
         set_qt_tips(self.chk_follow_symlinks, "If checked, symbolic links will be followed during file traversal.")
 
-        layout = QFormLayout(self)
-        layout.addRow(self.chk_follow_symlinks)
+        self.chk_dry_run = QCheckBox()
+        set_qt_name(self.chk_dry_run, f"{name}_dry_run")
+        set_qt_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
 
-    def get_config(self) -> WalkerModel:
+        layout = QFormLayout(self)
+        layout.addRow("Max from one folder", self.spin_max_per_folder)
+        layout.addRow("Follow symbolic links", self.chk_follow_symlinks)
+        layout.addRow("Dry run (simulation)", self.chk_dry_run)
+
+    def get_config(self) -> OptionsModel:
         """Return clean data for the config."""
-        return WalkerModel(follow_symlinks=self.chk_follow_symlinks.isChecked())
+        return OptionsModel(
+            max_per_folder=self.spin_max_per_folder.value(),
+            follow_symlinks=self.chk_follow_symlinks.isChecked(),
+            dry_run_enabled=self.chk_dry_run.isChecked(),
+        )
 
 
 @dataclass(slots=True)

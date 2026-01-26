@@ -8,7 +8,6 @@ from .config import (
     MinMax,
 )
 from .schemas import (
-    DiversityModel,
     FilecountModel,
     FilenameModel,
     FolderModel,
@@ -16,11 +15,9 @@ from .schemas import (
     ListIncludeExcludeModel,
     MandalaConfigModel,
     TransferModeModel,
-    WalkerModel,
 )
 
 __all__ = [
-    "DiversityModel",
     "Filecount",
     "FilecountModel",
     "Filename",
@@ -33,5 +30,4 @@ __all__ = [
     "MandalaConfigModel",
     "MinMax",
     "TransferModeModel",
-    "WalkerModel",
 ]
