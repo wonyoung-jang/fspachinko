@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
-class MandalaState:
+class FolderStats:
     """Dataclass for Mandala state."""
 
     count: int = 0
@@ -64,8 +64,8 @@ class MandalaEngine:
     folder_size_limit: SizeLimit
     total_size_limit: SizeLimit
     observer: MandalaObserver = field(init=False)
-    _state: MandalaState = field(default_factory=MandalaState)
-    _request_stop: bool = False
+    folderstats: FolderStats = field(default_factory=FolderStats)
+    stop_requested: bool = False
 
     def set_observer(self, observer: MandalaObserver) -> None:
         """Set the observer for the engine."""
@@ -73,7 +73,7 @@ class MandalaEngine:
 
     def request_stop(self) -> None:
         """Request to stop the engine."""
-        self._request_stop = True
+        self.stop_requested = True
 
     def start(self) -> None:
         """Run the main file copying process."""
@@ -83,7 +83,7 @@ class MandalaEngine:
             target = self.filecount.get_count()
             dest = self.folder.create_dest_folder()
 
-            if self._request_stop:
+            if self.stop_requested:
                 self._report("Process stopped by user request.")
                 break
 
@@ -103,7 +103,7 @@ class MandalaEngine:
         self.reporter.reset_for_dest(dest)
         self.observer.on_progress(target)
         self.quota.prepare_for_batch()
-        self._state.reset_for_folder()
+        self.folderstats.reset_for_folder()
 
     def _transfer_folder(self, target: int, dest: Path) -> None:
         """Process a single folder for file copying."""
@@ -111,7 +111,7 @@ class MandalaEngine:
             if self._is_stop_condition():
                 break
 
-            if entry is None or self._state.count >= target:
+            if entry is None or self.folderstats.count >= target:
                 break
 
             path, size = entry.path, entry.size
@@ -120,26 +120,26 @@ class MandalaEngine:
                 continue
 
             # Check if adding this file would exceed folder size limit
-            if self.folder_size_limit.is_exceeded(self._state.curr_size + size):
+            if self.folder_size_limit.is_exceeded(self.folderstats.curr_size + size):
                 self._report(msg=f"Folder size limit reached ({self.folder_size_limit.size_limit}B)")
                 break
 
             # Check if adding this file would exceed total size limit
-            if self.total_size_limit.is_exceeded(self._state.total_size + size):
+            if self.total_size_limit.is_exceeded(self.folderstats.total_size + size):
                 self._report(msg=f"Total size limit reached ({self.total_size_limit.size_limit}B)")
                 return
 
             if not self._transfer_file(path, dest):
                 continue
 
-            self._state.update_folder(size)
+            self.folderstats.update_folder(size)
             self.quota.register_success(path)
-            self.observer.on_count(self._state.count)
+            self.observer.on_count(self.folderstats.count)
             self.observer.on_time()
 
     def _transfer_file(self, chosen: Path, dest: Path) -> bool:
         """Attempt to copy a file and return success status."""
-        count = self._state.count
+        count = self.folderstats.count
         chosen_rel = chosen.relative_to(self.root)
 
         new_target_file = self.filename.calc_dest_target(chosen_rel, dest, count)
@@ -170,23 +170,23 @@ class MandalaEngine:
 
     def _is_stop_condition(self) -> bool:
         """Check if the process should stop based on conditions."""
-        total_limit_exceeded = self.total_size_limit.is_exceeded(self._state.total_size)
-        return self._request_stop or self.quota.all_locked() or total_limit_exceeded
+        total_limit_exceeded = self.total_size_limit.is_exceeded(self.folderstats.total_size)
+        return self.stop_requested or self.quota.all_locked() or total_limit_exceeded
 
     def _finalize_folder(self, target: int, dest: Path) -> None:
         """Create and write log at the end of folder."""
         self.observer.on_count_total()
-        none_found = self._state.count == 0 and self.folder.create_enabled
+        none_found = self.folderstats.count == 0 and self.folder.create_enabled
         status_prefix = get_status_header(
-            success=(self._state.count == target),
-            stopped=self._request_stop,
+            success=(self.folderstats.count == target),
+            stopped=self.stop_requested,
             none_found=none_found,
             all_searched=self.quota.all_locked(),
         )
         report = self.reporter.generate_report(
-            status=f"{status_prefix}: {self._state.count}/{target} files copied",
-            runtime=round(perf_counter() - self._state.starttime, 2),
-            size=self._state.curr_size,
+            status=f"{status_prefix}: {self.folderstats.count}/{target} files copied",
+            runtime=round(perf_counter() - self.folderstats.starttime, 2),
+            size=self.folderstats.curr_size,
         )
         self._report(report)
         self.reporter.save()

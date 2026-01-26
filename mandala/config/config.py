@@ -128,7 +128,7 @@ class SizeLimit:
 
     def is_exceeded(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
-        if not self.enabled:
+        if not self.enabled or self.size_limit <= 0:
             return False
         return size > self.size_limit
 
