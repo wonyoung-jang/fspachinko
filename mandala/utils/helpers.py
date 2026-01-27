@@ -1,5 +1,7 @@
 """Utility functions for mandala."""
 
+import contextlib
+import shutil
 from typing import TYPE_CHECKING
 
 from .constants import BytesIn, ByteUnit
@@ -80,3 +82,9 @@ def convert_byte_to_size(nbytes: int) -> str:
         return f"{round(nbytes / BytesIn.MEGABYTE, 2)} {ByteUnit.MEGABYTES}"
 
     return f"{round(nbytes / BytesIn.GIGABYTE, 2)} {ByteUnit.GIGABYTES}"
+
+
+def remove_directory(path: Path) -> None:
+    """Remove a directory and its contents."""
+    with contextlib.suppress(OSError):
+        shutil.rmtree(path)

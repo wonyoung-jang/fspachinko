@@ -3,12 +3,10 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..utils import convert_byte_to_size
+from ..utils import convert_byte_to_size, date_time_report_str
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from ..utils import DateTimeProvider
 
 
 @dataclass(slots=True)
@@ -18,7 +16,6 @@ class ReportWriter:
     root: Path
     exts_str: str
     keys_str: str
-    timestamp: DateTimeProvider
     buffer: list[str] = field(default_factory=list)
     report_path: Path = field(init=False)
     _dest: Path = field(init=False)
@@ -38,7 +35,7 @@ class ReportWriter:
         return (
             f"\n{status}"
             "\n------------------------------------------------------------------------\n"
-            f"Date:             {self.timestamp.date_time_report_str}\n"
+            f"Date:             {date_time_report_str}\n"
             f"Root:             {self.root}\n"
             f"Destination:      {self._dest}\n"
             f"Extensions:       {self.exts_str}\n"

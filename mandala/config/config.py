@@ -6,13 +6,19 @@ from filecmp import cmp
 from functools import cache
 from typing import TYPE_CHECKING
 
-from ..utils import INVALID_FILENAME_CHARS, FilenameTemplateMapKeys, SafeDict, calc_unique_path_name
+from ..utils import (
+    INVALID_FILENAME_CHARS,
+    FilenameTemplateMapKeys,
+    SafeDict,
+    calc_unique_path_name,
+    date,
+    date_time,
+    time,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
-
-    from ..utils import DateTimeProvider
 
 
 @dataclass(slots=True)
@@ -37,22 +43,7 @@ class Filename:
     """Dataclass for file renaming."""
 
     template: str
-    timestamp: DateTimeProvider
     _map: SafeDict = field(default_factory=SafeDict)
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        self.init_mapping()
-
-    def init_mapping(self) -> None:
-        """Initialize the mapping dictionary with timestamp values."""
-        self._map.update(
-            {
-                FilenameTemplateMapKeys.DATE: self.timestamp.date,
-                FilenameTemplateMapKeys.TIME: self.timestamp.time,
-                FilenameTemplateMapKeys.DATETIME: self.timestamp.date_time,
-            }
-        )
 
     def get_target(self, chosen: Path, dest: Path, index: int) -> Path:
         """Prepare the target file path based on naming conventions."""
@@ -60,6 +51,9 @@ class Filename:
 
         self._map.update(
             {
+                FilenameTemplateMapKeys.DATE: date,
+                FilenameTemplateMapKeys.TIME: time,
+                FilenameTemplateMapKeys.DATETIME: date_time,
                 FilenameTemplateMapKeys.ORIGINAL: original_stem,
                 FilenameTemplateMapKeys.INDEX: index + 1,
                 FilenameTemplateMapKeys.PARENT: chosen.parent.name,

@@ -4,11 +4,10 @@ from random import Random
 from typing import TYPE_CHECKING
 
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
-from ..utils import DateTimeProvider
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
-from .state import MandalaEngineStateContext
+from .state import MandalaEngineContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
 from .walker import RandomFSWalker
@@ -17,14 +16,9 @@ if TYPE_CHECKING:
     from ..config import MandalaConfigModel
 
 
-def _build_rng() -> Random:
-    """Build and return a Random instance with a system-generated seed."""
-    return Random()
-
-
 def build_engine(m: MandalaConfigModel) -> MandalaEngine:
     """Build and return the Mandala engine based on the configuration."""
-    rng = _build_rng()
+    rng = Random()
 
     filecount = Filecount(
         count=m.filecount.count,
@@ -78,18 +72,14 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         follow_symlinks=m.options.follow_symlinks,
     )
 
-    timestamp = DateTimeProvider()
-
     reporter = ReportWriter(
         root=m.root,
         exts_str=extensions.as_string,
         keys_str=keywords.as_string,
-        timestamp=timestamp,
     )
 
     filename = Filename(
         template=m.filename.template,
-        timestamp=timestamp,
     )
     folder = Folder(
         create_enabled=m.folder.create_enabled,
@@ -107,22 +97,21 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         size_limit=m.total_size_limit.size_limit,
     )
 
-    context = MandalaEngineStateContext(
+    context = MandalaEngineContext(
         folder=folder,
         quota=quota,
         folder_size_limit=folder_size_limit,
         total_size_limit=total_size_limit,
-        timestamp=timestamp,
+        reporter=reporter,
         dry_run=m.options.dry_run_enabled,
     )
 
     return MandalaEngine(
         root=m.root,
-        validator=validator,
-        reporter=reporter,
-        walker=walker,
-        filecount=filecount,
-        filename=filename,
-        transfer_fn=fetch_transfer_strategy(m.transfermode.transfer_mode),
+        walk=walker.walk,
+        is_valid=validator.is_valid,
+        get_filecount=filecount.get_count,
+        get_filename=filename.calc_dest_target,
+        transfer_file=fetch_transfer_strategy(m.transfermode.transfer_mode),
         _ctx=context,
     )

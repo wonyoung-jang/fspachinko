@@ -6,13 +6,14 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
+from ..utils import refresh, remove_directory
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from mandala.config import Folder, SizeLimit
-    from mandala.utils import DateTimeProvider
-
+    from ..config import Folder, SizeLimit
     from .quota import DiversityQuota
+    from .reporter import ReportWriter
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +41,14 @@ class FolderStats:
 
 
 @dataclass(slots=True)
-class EngineStateContext(ABC):
+class EngineContext(ABC):
     """Abstract base class for engine state context."""
 
     folder: Folder
     quota: DiversityQuota
     folder_size_limit: SizeLimit
     total_size_limit: SizeLimit
-    timestamp: DateTimeProvider
+    reporter: ReportWriter
     dry_run: bool
     stop_requested: bool = False
     folderstats: FolderStats = field(default_factory=FolderStats)
@@ -76,7 +77,7 @@ class EngineStateContext(ABC):
         """Check if no files were found in the current folder."""
 
     @abstractmethod
-    def prepare(self) -> None:
+    def prepare(self, dest: Path) -> None:
         """Prepare the context for a new folder processing."""
 
     @abstractmethod
@@ -95,9 +96,13 @@ class EngineStateContext(ABC):
     def set_transferred(self, copy_path_str: str) -> None:
         """Set the state to successful file transfer."""
 
+    @abstractmethod
+    def finalize(self, target: int, dest: Path) -> str:
+        """Finalize the context after processing."""
+
 
 @dataclass(slots=True)
-class MandalaEngineStateContext(EngineStateContext):
+class MandalaEngineContext(EngineContext):
     """Abstract base class for engine state context."""
 
     def should_stop(self, target: int) -> bool:
@@ -158,11 +163,12 @@ class MandalaEngineStateContext(EngineStateContext):
 
         return False
 
-    def prepare(self) -> None:
+    def prepare(self, dest: Path) -> None:
         """Prepare the context for a new folder processing."""
-        self.timestamp.refresh()
+        refresh()
         self.folderstats.reset_for_folder()
         self.quota.prepare_for_batch()
+        self.reporter.reset_for_dest(dest)
 
     def update_on_success(self, path: Path, size: int) -> None:
         """Update context on successful file operation."""
@@ -184,6 +190,21 @@ class MandalaEngineStateContext(EngineStateContext):
         """Set the state to successful file transfer."""
         self.state = TransferSuccessState(message=copy_path_str)
 
+    def finalize(self, target: int, dest: Path) -> str:
+        """Finalize the context after processing."""
+        none_found = self.is_none_found()
+        report = self.reporter.generate_report(
+            status=f"{self.state.prefix}: {self.folderstats.count}/{target} files copied",
+            runtime=round(perf_counter() - self.folderstats.starttime, 2),
+            size=self.folderstats.curr_size,
+        )
+        self.reporter.save()
+
+        if none_found:
+            remove_directory(dest)
+
+        return report
+
 
 @dataclass(slots=True)
 class EngineState:
@@ -191,14 +212,14 @@ class EngineState:
 
     prefix: str = ""
     message: str = ""
-    _context: EngineStateContext | None = None
+    _context: EngineContext | None = None
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
-        logger.info("Engine state changed to: %s", self.__class__.__name__)
+        logger.debug("Change state to: %s", self.__class__.__name__)
 
     @property
-    def context(self) -> EngineStateContext:
+    def context(self) -> EngineContext:
         """Get the engine state context."""
         if self._context is None:
             msg = "Engine state context is not set."
@@ -206,7 +227,7 @@ class EngineState:
         return self._context
 
     @context.setter
-    def context(self, new_context: EngineStateContext) -> None:
+    def context(self, new_context: EngineContext) -> None:
         """Set a new engine state context."""
         self._context = new_context
 
