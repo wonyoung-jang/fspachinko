@@ -14,10 +14,6 @@ class DateTimeProvider:
     date_time: str = field(init=False)
     date_time_report_str: str = field(init=False)
 
-    def __post_init__(self) -> None:
-        """Initialize."""
-        self.refresh()
-
     def refresh(self) -> None:
         """Refresh the current date and time."""
         self._now = datetime.now(tz=UTC)
@@ -28,6 +24,7 @@ class DateTimeProvider:
 
 
 _dtp = DateTimeProvider()
+_dtp.refresh()
 refresh = _dtp.refresh
 date_time_report_str = _dtp.date_time_report_str
 date = _dtp.date

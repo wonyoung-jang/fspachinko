@@ -4,8 +4,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from line_profiler import profile
-
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from pathlib import Path
@@ -49,7 +47,6 @@ class MandalaEngine:
 
         self._obs.on_finished()
 
-    @profile
     def process_folder(self) -> None:
         """Run processing for a single folder."""
         target = self.get_filecount()
