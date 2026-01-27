@@ -37,15 +37,15 @@ class FileValidator:
 
     def is_valid(self, path: Path, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not self.filesize.is_within(size):
+        if not self.filesize.is_valid(size):
             return False
 
-        if not self.extensions.is_matched(path.suffix):
+        if not self.extensions.is_valid(path.suffix):
             return False
 
-        if not self.keywords.is_matched(path.stem):
+        if not self.keywords.is_valid(path.stem):
             return False
 
         path_str = str(path)
         duration = self._duration_cache.setdefault(path_str, _get_duration(path))
-        return self.duration.is_within(duration)
+        return self.duration.is_valid(duration)

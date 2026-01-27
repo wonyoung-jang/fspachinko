@@ -64,7 +64,7 @@ class Filename:
         """Create Filename from configuration model."""
         return cls(template=m.template)
 
-    def get_target(self, chosen: Path, dest: Path, index: int) -> Path:
+    def _get_target(self, chosen: Path, dest: Path, index: int) -> Path:
         """Prepare the target file path based on naming conventions."""
         original_stem = chosen.stem
 
@@ -90,7 +90,7 @@ class Filename:
 
     def calc_dest_target(self, chosen: Path, dest: Path, index: int) -> Path | None:
         """Calculate the destination file path based on naming conventions."""
-        target = self.get_target(chosen, dest, index)
+        target = self._get_target(chosen, dest, index)
         if target.exists():
             if cmp(chosen, target, shallow=True) and cmp(chosen, target, shallow=False):
                 return None
@@ -135,7 +135,7 @@ class MinMax:
         """Create MinMax from configuration model."""
         return cls(enabled=m.enabled, minimum=m.minimum, maximum=m.maximum)
 
-    def is_within(self, value: float) -> bool:
+    def is_valid(self, value: float) -> bool:
         """Check if a value is within the min-max range."""
         if not self.enabled:
             return True
@@ -154,7 +154,7 @@ class SizeLimit:
         """Create SizeLimit from configuration model."""
         return cls(enabled=m.enabled, size_limit=m.size_limit)
 
-    def is_exceeded(self, size: int) -> bool:
+    def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
         if not self.enabled or self.size_limit <= 0:
             return False
@@ -183,7 +183,7 @@ class ListIncludeExclude:
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
-        self.initialize()
+        self._precompile()
 
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
@@ -192,13 +192,13 @@ class ListIncludeExclude:
             include_enabled=m.include_enabled, exclude_enabled=m.exclude_enabled, text=tuple(m.text), re_fmt=re_fmt
         )
 
-    def initialize(self) -> None:
+    def _precompile(self) -> None:
         """Compile regex patterns based on the text list."""
         if self.text:
             self.as_string = ", ".join(self.text)
             self.patterns = tuple(compile_re(self.re_fmt, i) for i in self.text)
 
-    def is_matched(self, part: str) -> bool:
+    def is_valid(self, part: str) -> bool:
         """Check if a file name part matches the cached regexes."""
         if not self.patterns:
             return True

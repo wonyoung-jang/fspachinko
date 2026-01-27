@@ -19,26 +19,56 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True, unsafe_hash=True)
+@dataclass(slots=True)
 class FSEntry:
     """Represents a file system entry (file or directory)."""
 
-    path: Path
-    is_file: bool
-    is_dir: bool
-    is_symlink: bool
-    size: int
+    _entry: os.DirEntry
+    _path: Path | None = None
+    _is_file: bool | None = None
+    _is_dir: bool | None = None
+    _is_symlink: bool | None = None
+    _size: int | None = None
 
-    @classmethod
-    def from_scandir(cls, entry: os.DirEntry) -> FSEntry:
-        """Create an FSEntry from a given Path."""
-        return cls(
-            Path(entry.path),
-            is_file=entry.is_file(),
-            is_dir=entry.is_dir(),
-            is_symlink=entry.is_symlink(),
-            size=entry.stat().st_size,
-        )
+    @property
+    def path(self) -> Path:
+        """Get the Path object for this entry."""
+        if self._path is not None:
+            return self._path
+        self._path = Path(self._entry.path)
+        return self._path
+
+    @property
+    def is_file(self) -> bool:
+        """Check if the entry is a file."""
+        if self._is_file is not None:
+            return self._is_file
+        self._is_file = self._entry.is_file()
+        return self._is_file
+
+    @property
+    def is_dir(self) -> bool:
+        """Check if the entry is a directory."""
+        if self._is_dir is not None:
+            return self._is_dir
+        self._is_dir = self._entry.is_dir()
+        return self._is_dir
+
+    @property
+    def is_symlink(self) -> bool:
+        """Check if the entry is a symlink."""
+        if self._is_symlink is not None:
+            return self._is_symlink
+        self._is_symlink = self._entry.is_symlink()
+        return self._is_symlink
+
+    @property
+    def size(self) -> int:
+        """Get the size of the entry."""
+        if self._size is not None:
+            return self._size
+        self._size = self._entry.stat().st_size
+        return self._size
 
 
 @dataclass(slots=True)
@@ -121,7 +151,7 @@ class RandomFSWalker(FSWalker):
             return self._cache[current]
 
         try:
-            self._cache[current] = tuple(FSEntry.from_scandir(e) for e in os.scandir(current))
+            self._cache[current] = tuple(FSEntry(e) for e in os.scandir(current))
         except (PermissionError, OSError):
             logger.debug("Failed to access directory: %s", current)
             self._cache[current] = ()

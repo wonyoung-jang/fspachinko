@@ -128,14 +128,14 @@ class MandalaEngineContext(EngineContext):
             )
             return True
 
-        if self.folder_size_limit.is_exceeded(self.folderstats.curr_size):
+        if self.folder_size_limit.is_valid(self.folderstats.curr_size):
             self.state = FolderSizeLimitState(
                 prefix="FOLDER SIZE LIMIT REACHED",
                 message=f"{(self.folderstats.curr_size)} B / {(self.folder_size_limit.size_limit)} B",
             )
             return True
 
-        if self.total_size_limit.is_exceeded(self.folderstats.total_size):
+        if self.total_size_limit.is_valid(self.folderstats.total_size):
             self.state = TotalSizeLimitState(
                 prefix="TOTAL SIZE LIMIT REACHED",
                 message=f"{(self.folderstats.total_size)} B / {(self.total_size_limit.size_limit)} B",
