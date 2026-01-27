@@ -8,6 +8,7 @@ from ..utils import DateTimeProvider
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
+from .state import MandalaEngineStateContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
 from .walker import RandomFSWalker
@@ -101,24 +102,27 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
         enabled=m.folder_size_limit.enabled,
         size_limit=m.folder_size_limit.size_limit,
     )
-
     total_size_limit = SizeLimit(
         enabled=m.total_size_limit.enabled,
         size_limit=m.total_size_limit.size_limit,
     )
 
-    return MandalaEngine(
-        root=m.root,
-        dry_run=m.options.dry_run_enabled,
-        validator=validator,
-        reporter=reporter,
-        quota=quota,
-        walker=walker,
-        timestamp=timestamp,
-        filecount=filecount,
-        filename=filename,
+    context = MandalaEngineStateContext(
         folder=folder,
-        transfer=fetch_transfer_strategy(m.transfermode.transfer_mode),
+        quota=quota,
         folder_size_limit=folder_size_limit,
         total_size_limit=total_size_limit,
+        timestamp=timestamp,
+        dry_run=m.options.dry_run_enabled,
+    )
+
+    return MandalaEngine(
+        root=m.root,
+        validator=validator,
+        reporter=reporter,
+        walker=walker,
+        filecount=filecount,
+        filename=filename,
+        transfer_fn=fetch_transfer_strategy(m.transfermode.transfer_mode),
+        _ctx=context,
     )
