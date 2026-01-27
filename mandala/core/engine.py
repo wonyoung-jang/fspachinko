@@ -5,12 +5,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
     from pathlib import Path
 
+    from ..config import Filecount, Filename
     from ..utils import MandalaObserver
     from .state import EngineContext
-    from .walker import FSEntry
+    from .validator import FileValidator
+    from .walker import FSWalker
 
 
 logger = logging.getLogger(__name__)
@@ -21,10 +23,10 @@ class MandalaEngine:
     """Core engine class for Mandala."""
 
     root: Path
-    walk: Callable[[], Iterator[FSEntry]]
-    is_valid: Callable
-    get_filecount: Callable
-    get_filename: Callable
+    walker: FSWalker
+    validator: FileValidator
+    filecount: Filecount
+    filename: Filename
     transfer_file: Callable
     _ctx: EngineContext
     _obs: MandalaObserver = field(init=False)
@@ -49,7 +51,7 @@ class MandalaEngine:
 
     def process_folder(self) -> None:
         """Run processing for a single folder."""
-        target = self.get_filecount()
+        target = self.filecount.get_count()
         dest = self._ctx.folder.create_dest_folder()
 
         self._obs.on_progress(target)
@@ -66,13 +68,13 @@ class MandalaEngine:
             self.report_state()
             return
 
-        for entry in self.walk():
+        for entry in self.walker.walk():
             if self._ctx.should_stop(target):
                 self.report_state()
                 return
 
             path, size = entry.path, entry.size
-            if not self.is_valid(path, size):
+            if not self.validator.is_valid(path, size):
                 continue
 
             if not self._transfer_file(path, dest):
@@ -86,7 +88,7 @@ class MandalaEngine:
         """Attempt to copy a file and return success status."""
         count = self._ctx.folderstats.count
         chosen_rel = chosen.relative_to(self.root)
-        chosen_new = self.get_filename(chosen_rel, dest, count)
+        chosen_new = self.filename.calc_dest_target(chosen_rel, dest, count)
         if chosen_new is None:
             return False
 

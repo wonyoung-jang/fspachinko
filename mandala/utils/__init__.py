@@ -13,6 +13,7 @@ from .constants import (
     FilenameTemplate,
     FilenameTemplateMapKeys,
     IconFilename,
+    ReStrFmt,
     TimeUnit,
     TransferMode,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "IconFilename",
     "MandalaObserver",
     "Paths",
+    "ReStrFmt",
     "SafeDict",
     "TimeUnit",
     "TransferMode",

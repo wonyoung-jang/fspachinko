@@ -20,6 +20,15 @@ if TYPE_CHECKING:
     from pathlib import Path
     from random import Random
 
+    from .schemas import (
+        FilecountModel,
+        FilenameModel,
+        FolderModel,
+        ListIncludeExcludeModel,
+        MinMaxModel,
+        SizeLimitModel,
+    )
+
 
 @dataclass(slots=True)
 class Filecount:
@@ -30,6 +39,11 @@ class Filecount:
     rand_min: int
     rand_max: int
     rng: Random
+
+    @classmethod
+    def from_model(cls, m: FilecountModel, rng: Random) -> Filecount:
+        """Create Filecount from configuration model."""
+        return cls(count=m.count, rand_enabled=m.rand_enabled, rand_min=m.rand_min, rand_max=m.rand_max, rng=rng)
 
     def get_count(self) -> int:
         """Get the file count based on configuration."""
@@ -44,6 +58,11 @@ class Filename:
 
     template: str
     _map: SafeDict = field(default_factory=SafeDict)
+
+    @classmethod
+    def from_model(cls, m: FilenameModel) -> Filename:
+        """Create Filename from configuration model."""
+        return cls(template=m.template)
 
     def get_target(self, chosen: Path, dest: Path, index: int) -> Path:
         """Prepare the target file path based on naming conventions."""
@@ -88,6 +107,11 @@ class Folder:
     count: int
     dest: Path
 
+    @classmethod
+    def from_model(cls, m: FolderModel, dest: Path) -> Folder:
+        """Create Folder from configuration model."""
+        return cls(create_enabled=m.create_enabled, name=m.name, count=m.count, dest=dest)
+
     def create_dest_folder(self) -> Path:
         """Create the destination folder based on configuration."""
         if not self.create_enabled:
@@ -106,6 +130,11 @@ class MinMax:
     minimum: float
     maximum: float
 
+    @classmethod
+    def from_model(cls, m: MinMaxModel) -> MinMax:
+        """Create MinMax from configuration model."""
+        return cls(enabled=m.enabled, minimum=m.minimum, maximum=m.maximum)
+
     def is_within(self, value: float) -> bool:
         """Check if a value is within the min-max range."""
         if not self.enabled:
@@ -119,6 +148,11 @@ class SizeLimit:
 
     enabled: bool
     size_limit: float
+
+    @classmethod
+    def from_model(cls, m: SizeLimitModel) -> SizeLimit:
+        """Create SizeLimit from configuration model."""
+        return cls(enabled=m.enabled, size_limit=m.size_limit)
 
     def is_exceeded(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
@@ -150,6 +184,13 @@ class ListIncludeExclude:
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
         self.initialize()
+
+    @classmethod
+    def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
+        """Create ListIncludeExclude from configuration model."""
+        return cls(
+            include_enabled=m.include_enabled, exclude_enabled=m.exclude_enabled, text=tuple(m.text), re_fmt=re_fmt
+        )
 
     def initialize(self) -> None:
         """Compile regex patterns based on the text list."""

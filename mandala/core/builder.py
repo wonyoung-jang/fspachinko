@@ -4,6 +4,7 @@ from random import Random
 from typing import TYPE_CHECKING
 
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
+from ..utils import ReStrFmt
 from .engine import MandalaEngine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
@@ -18,100 +19,49 @@ if TYPE_CHECKING:
 
 def build_engine(m: MandalaConfigModel) -> MandalaEngine:
     """Build and return the Mandala engine based on the configuration."""
-    rng = Random()
-
-    filecount = Filecount(
-        count=m.filecount.count,
-        rand_enabled=m.filecount.rand_enabled,
-        rand_min=m.filecount.rand_min,
-        rand_max=m.filecount.rand_max,
-        rng=rng,
-    )
-
     # Build FileValidator
-    keywords = ListIncludeExclude(
-        include_enabled=m.keyword.include_enabled,
-        exclude_enabled=m.keyword.exclude_enabled,
-        text=m.keyword.text,
-        re_fmt=r"(.*){}(.*)",
-    )
-    extensions = ListIncludeExclude(
-        include_enabled=m.extension.include_enabled,
-        exclude_enabled=m.extension.exclude_enabled,
-        text=m.extension.text,
-        re_fmt=r".{}$",
-    )
-    filesize = MinMax(
-        enabled=m.filesize.enabled,
-        minimum=m.filesize.minimum,
-        maximum=m.filesize.maximum,
-    )
-    duration = MinMax(
-        enabled=m.duration.enabled,
-        minimum=m.duration.minimum,
-        maximum=m.duration.maximum,
-    )
     validator = FileValidator(
-        keywords=keywords,
-        extensions=extensions,
-        filesize=filesize,
-        duration=duration,
+        keywords=ListIncludeExclude.from_model(m.keyword, re_fmt=ReStrFmt.KEYWORD),
+        extensions=ListIncludeExclude.from_model(m.extension, re_fmt=ReStrFmt.EXTENSION),
+        filesize=MinMax.from_model(m.filesize),
+        duration=MinMax.from_model(m.duration),
     )
 
     # Build other components
+    root = m.root
+    options = m.options
+    rng = Random()
     quota = DiversityQuota(
-        root=m.root,
+        root=root,
         unique_folders=m.folder.unique_enabled,
-        max_per_folder=m.options.max_per_folder,
+        max_per_folder=options.max_per_folder,
     )
-
     walker = RandomFSWalker(
-        root=m.root,
+        root=root,
         rng=rng,
         quota=quota,
-        follow_symlinks=m.options.follow_symlinks,
-    )
-
-    reporter = ReportWriter(
-        root=m.root,
-        exts_str=extensions.as_string,
-        keys_str=keywords.as_string,
-    )
-
-    filename = Filename(
-        template=m.filename.template,
-    )
-    folder = Folder(
-        create_enabled=m.folder.create_enabled,
-        name=m.folder.name,
-        count=m.folder.count,
-        dest=m.dest,
-    )
-
-    folder_size_limit = SizeLimit(
-        enabled=m.folder_size_limit.enabled,
-        size_limit=m.folder_size_limit.size_limit,
-    )
-    total_size_limit = SizeLimit(
-        enabled=m.total_size_limit.enabled,
-        size_limit=m.total_size_limit.size_limit,
+        follow_symlinks=options.follow_symlinks,
     )
 
     context = MandalaEngineContext(
-        folder=folder,
+        folder=Folder.from_model(m.folder, dest=m.dest),
         quota=quota,
-        folder_size_limit=folder_size_limit,
-        total_size_limit=total_size_limit,
-        reporter=reporter,
-        dry_run=m.options.dry_run_enabled,
+        folder_size_limit=SizeLimit.from_model(m.folder_size_limit),
+        total_size_limit=SizeLimit.from_model(m.total_size_limit),
+        reporter=ReportWriter(
+            root=root,
+            exts_str=validator.extensions.as_string,
+            keys_str=validator.keywords.as_string,
+        ),
+        dry_run=options.dry_run_enabled,
     )
 
     return MandalaEngine(
-        root=m.root,
-        walk=walker.walk,
-        is_valid=validator.is_valid,
-        get_filecount=filecount.get_count,
-        get_filename=filename.calc_dest_target,
+        root=root,
+        walker=walker,
+        validator=validator,
+        filecount=Filecount.from_model(m.filecount, rng=rng),
+        filename=Filename.from_model(m.filename),
         transfer_file=fetch_transfer_strategy(m.transfermode.transfer_mode),
         _ctx=context,
     )

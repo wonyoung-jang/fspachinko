@@ -10,6 +10,14 @@ Paths.profiles.mkdir(parents=True, exist_ok=True)
 # General constants
 WALKER_CACHE_LIMIT = 1000
 PERCENTAGE_100 = 100.0
+INVALID_FILENAME_CHARS = set(r'\/:*?"<>|')
+
+
+class ReStrFmt(StrEnum):
+    """Enumeration for regex string formats."""
+
+    KEYWORD = r"(.*){}(.*)"
+    EXTENSION = r".{}$"
 
 
 class FileError(IntEnum):
@@ -82,8 +90,6 @@ TIME_MAP = {
     TimeUnit.MINUTES: SecondsIn.MINUTE,
     TimeUnit.HOURS: SecondsIn.HOUR,
 }
-
-INVALID_FILENAME_CHARS = set(r'\/:*?"<>|')
 
 
 class FilenameTemplate(StrEnum):

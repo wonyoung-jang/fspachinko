@@ -45,7 +45,7 @@ class ListIncludeExcludeModel(BaseModel):
     text: tuple[str, ...] = ()
 
 
-class LimitMinMaxModel(BaseModel):
+class MinMaxModel(BaseModel):
     """Model for size filter."""
 
     enabled: bool = False
@@ -79,8 +79,8 @@ class MandalaConfigModel(BaseModel):
     transfermode: TransferModeModel
     keyword: ListIncludeExcludeModel
     extension: ListIncludeExcludeModel
-    filesize: LimitMinMaxModel
-    duration: LimitMinMaxModel
+    filesize: MinMaxModel
+    duration: MinMaxModel
     folder_size_limit: SizeLimitModel
     total_size_limit: SizeLimitModel
     options: OptionsModel

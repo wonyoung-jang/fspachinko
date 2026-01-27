@@ -32,8 +32,8 @@ from ..config import (
     FilecountModel,
     FilenameModel,
     FolderModel,
-    LimitMinMaxModel,
     ListIncludeExcludeModel,
+    MinMaxModel,
     OptionsModel,
     SizeLimitModel,
     TransferModeModel,
@@ -425,11 +425,11 @@ class DblRangeFilterWidget(BaseGroupBox):
         layout.addWidget(self.max_spin)
         layout.addWidget(self.combo)
 
-    def get_config(self) -> LimitMinMaxModel:
+    def get_config(self) -> MinMaxModel:
         """Return clean data for the config."""
         mult = self.mapping.get(self.combo.currentText(), 1)
         minimum, maximum = self.min_spin.value() * mult, self.max_spin.value() * mult
-        return LimitMinMaxModel(enabled=self.isChecked(), minimum=minimum, maximum=maximum)
+        return MinMaxModel(enabled=self.isChecked(), minimum=minimum, maximum=maximum)
 
 
 class SizeFilterWidget(DblRangeFilterWidget):
