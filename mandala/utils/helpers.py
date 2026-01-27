@@ -32,26 +32,6 @@ def calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
     return target
 
 
-def get_status_header(*, success: bool, stopped: bool, none_found: bool, all_searched: bool) -> str:
-    """Generate a status header based on the processing outcome."""
-    if success:
-        return "SUCCESS"
-
-    if stopped:
-        return "STOPPED"
-
-    if none_found and all_searched:
-        return "NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED"
-
-    if none_found:
-        return "NO FILES FOUND | FOLDER DELETED"
-
-    if all_searched:
-        return "ALL FILES SEARCHED"
-
-    return "FINISHED (Unknown reason)"
-
-
 def strtobool(*, val: str | int | bool) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
 

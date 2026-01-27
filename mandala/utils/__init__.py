@@ -21,7 +21,6 @@ from .helpers import (
     calc_unique_path_name,
     convert_byte_to_size,
     convert_string_to_list,
-    get_status_header,
     strtobool,
 )
 from .interfaces import MandalaObserver
@@ -51,7 +50,6 @@ __all__ = [
     "calc_unique_path_name",
     "convert_byte_to_size",
     "convert_string_to_list",
-    "get_status_header",
     "initialize_logging",
     "strtobool",
 ]
