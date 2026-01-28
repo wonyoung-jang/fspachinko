@@ -6,7 +6,7 @@ from cyclopts import App
 
 from ..config import MandalaConfigModel
 from ..core import build_engine
-from ..utils import MandalaObserver, Paths, initialize_logging
+from ..utils import DefaultPath, MandalaObserver, Paths, initialize_logging
 
 logger = logging.getLogger(__name__)
 app = App(
@@ -47,7 +47,7 @@ class ConsoleObserver(MandalaObserver):
 def run_cli(path: str = "") -> None:
     """Run the Mandala CLI application."""
     if not path:
-        path = Paths.config("mandala.json")
+        path = Paths.config(DefaultPath.CONFIG)
 
     try:
         with open(path, encoding="utf-8") as f:

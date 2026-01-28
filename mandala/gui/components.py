@@ -117,11 +117,10 @@ class PathSelectorWidget(BaseGroupBox):
         set_qt_tips(self.btn_delete, f"Delete current {title_lower} entry.")
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.combo, stretch=1)
         layout.addWidget(self.btn_browse)
-        layout.addWidget(self.btn_open)
         layout.addWidget(self.btn_delete)
+        layout.addWidget(self.btn_open)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
         """Handle drag enter event for folder paths."""

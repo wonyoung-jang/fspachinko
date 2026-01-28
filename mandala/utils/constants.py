@@ -12,6 +12,15 @@ os.makedirs(Paths.profiles, exist_ok=True)
 WALKER_CACHE_LIMIT = 1000
 PERCENTAGE_100 = 100.0
 INVALID_FILENAME_CHARS = set(r'\/:*?"<>|')
+TRUE_STRS = {"y", "yes", "t", "true", "on", "1"}
+FALSE_STRS = {"n", "no", "f", "false", "off", "0"}
+
+
+class DefaultPath(StrEnum):
+    """Enumeration for default configuration filenames."""
+
+    CONFIG = "mandala.json"
+    LOGGING = "logging.json"
 
 
 class ReStrFmt(StrEnum):

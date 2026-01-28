@@ -95,7 +95,7 @@ class ProfileManager:
 
     def _get_profile_path(self) -> str:
         """Get the full path for a given profile name."""
-        return os.path.join(self.profile_dir, self.current_profile)
+        return Paths.profile(self.current_profile)
 
     def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""

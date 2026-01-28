@@ -2,7 +2,9 @@
 
 from dataclasses import dataclass, field
 
-from PySide6.QtWidgets import QGridLayout, QSizePolicy, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QGridLayout, QTabWidget, QVBoxLayout, QWidget
+
+from dist._gui._internal.mandala.gui.centralwidget import QHBoxLayout
 
 from ..config import MandalaConfigModel
 from .components import (
@@ -51,10 +53,10 @@ class UIBuilder:
     def build_layout(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
         # 1. Path Selection Section (Top)
-        path_layout = QVBoxLayout()
+        paths = QWidget()
+        path_layout = QVBoxLayout(paths)
         path_layout.addWidget(self.root)
         path_layout.addWidget(self.dest)
-        path_layout.setSpacing(5)
 
         # 2. Main Configuration Tabs
         tabs = QTabWidget()
@@ -71,7 +73,6 @@ class UIBuilder:
         output_layout.addWidget(self.folders, 0, 1)
         output_layout.addWidget(self.filename, 1, 1)
 
-        tab_output.setLayout(output_layout)
         tabs.addTab(tab_output, "Output Settings")
 
         # --- Tab 2: Filters ---
@@ -90,23 +91,21 @@ class UIBuilder:
         filter_layout.addWidget(self.folder_size_limit, 2, 0)
         filter_layout.addWidget(self.total_size_limit, 2, 1)
 
-        # Row 3: Options
-        filter_layout.addWidget(self.options, 3, 0, 1, 2)
-
-        tab_filters.setLayout(filter_layout)
         tabs.addTab(tab_filters, "Filters && Rules")
+
+        # --- Tab 3: Options ---
+        options_widget = QWidget()
+        options_layout = QHBoxLayout(options_widget)
+        options_layout.addWidget(self.options)
+
+        tabs.addTab(options_widget, "Options")
 
         # 3. Assemble Main Layout
         main_layout = QVBoxLayout()
-        main_layout.addLayout(path_layout)
+        main_layout.addWidget(paths)
         main_layout.addWidget(tabs)
-
-        # Spacer to prevent logs from eating all space
-        self.logging.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
-        main_layout.addWidget(self.logging, stretch=1)
-
+        main_layout.addWidget(self.logging)
         main_layout.addWidget(self.progress)
-
         return main_layout
 
     def get_config(self) -> MandalaConfigModel:

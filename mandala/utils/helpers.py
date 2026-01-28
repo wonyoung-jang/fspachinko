@@ -4,7 +4,7 @@ import contextlib
 import os
 import shutil
 
-from .constants import BytesIn, ByteUnit
+from .constants import FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
 
 
 class SafeDict(dict):
@@ -46,10 +46,10 @@ def strtobool(*, val: str | int | bool) -> bool:
 
     val_str = str(val).casefold()
 
-    if val_str in {"y", "yes", "t", "true", "on", "1"}:
+    if val_str in TRUE_STRS:
         return True
 
-    if val_str in {"n", "no", "f", "false", "off", "0"}:
+    if val_str in FALSE_STRS:
         return False
 
     msg = f"Invalid truth value {val!r}"

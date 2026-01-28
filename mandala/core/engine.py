@@ -43,22 +43,17 @@ class MandalaEngine:
         """Run the main file copying process."""
         folder_count = self._ctx.folder.count
         self._obs.on_progress_total(folder_count)
-
         for _ in range(folder_count):
             self.process_folder()
-
         self._obs.on_finished()
 
     def process_folder(self) -> None:
         """Run processing for a single folder."""
         target = self.filecount.get_count()
         dest = self._ctx.folder.create_dest_folder()
-
         self._obs.on_progress(target)
         self._ctx.prepare(dest)
-
         self._transfer_folder(target, dest)
-
         self._obs.on_count_total()
         self.report(self._ctx.finalize(target, dest))
 

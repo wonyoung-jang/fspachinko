@@ -26,3 +26,8 @@ class Paths:
     def config(cls, path: str) -> str:
         """Get the full path to a config file."""
         return os.path.join(cls.configs, path)
+
+    @classmethod
+    def profile(cls, path: str) -> str:
+        """Get the full path to a profile file."""
+        return os.path.join(cls.profiles, path)
