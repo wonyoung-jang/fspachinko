@@ -2,7 +2,7 @@
 icon: lucide/code
 ---
 
-# Development Guide
+# Development
 
 Contributing to Mandala development.
 
