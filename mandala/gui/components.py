@@ -1,8 +1,8 @@
 """GUI components in PySide6 for mandala."""
 
 import logging
+import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
@@ -94,9 +94,9 @@ class PathSelectorWidget(BaseGroupBox):
         set_qt_name(self.combo, f"{name}_combo")
         set_qt_tips(self.combo, f"Select or enter a path for {title_lower}.")
 
-        icon_browse = QIcon(str(Paths.icon(IconFilename.BROWSE)))
-        icon_open = QIcon(str(Paths.icon(IconFilename.OPEN_DIR)))
-        icon_delete = QIcon(str(Paths.icon(IconFilename.REMOVE)))
+        icon_browse = QIcon(Paths.icon(IconFilename.BROWSE))
+        icon_open = QIcon(Paths.icon(IconFilename.OPEN_DIR))
+        icon_delete = QIcon(Paths.icon(IconFilename.REMOVE))
 
         self.btn_browse = QPushButton()
         self.btn_browse.setIcon(icon_browse)
@@ -132,7 +132,7 @@ class PathSelectorWidget(BaseGroupBox):
         """Handle drop event for folder paths."""
         for url in event.mimeData().urls():
             path = url.toLocalFile()
-            if Path(path).is_dir():
+            if os.path.isdir(path):
                 if self.combo.findText(path) == -1:
                     self.combo.addItem(path)
                 self.combo.setCurrentText(path)
@@ -160,9 +160,9 @@ class PathSelectorWidget(BaseGroupBox):
         except Exception:
             logger.exception("Failed to open path")
 
-    def get_config(self) -> Path:
+    def get_config(self) -> str:
         """Return clean data for the config."""
-        return Path(self.combo.currentText()).resolve()
+        return os.path.realpath(self.combo.currentText())
 
 
 class RootPathSelectorWidget(PathSelectorWidget):

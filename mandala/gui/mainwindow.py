@@ -1,8 +1,8 @@
 """Main module for Mandala."""
 
 import logging
+import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Slot
@@ -134,7 +134,8 @@ class MandalaMainWindow(QMainWindow):
     @Slot()
     def reset_window_title(self) -> None:
         """Update the window title based on the current profile."""
-        self.setWindowTitle(f"{Path(self.profiles.current_profile).stem} - Mandala: Copy random files")
+        stem, _ = os.path.splitext(os.path.basename(self.profiles.current_profile))
+        self.setWindowTitle(f"{stem} - Mandala: Copy random files")
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""

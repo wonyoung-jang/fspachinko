@@ -1,13 +1,10 @@
 """Utility functions for mandala."""
 
 import contextlib
+import os
 import shutil
-from typing import TYPE_CHECKING
 
 from .constants import BytesIn, ByteUnit
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class SafeDict(dict):
@@ -22,13 +19,13 @@ class SafeDict(dict):
         return "{" + key + "}"
 
 
-def calc_unique_path_name(dest: Path, stem_or_name: str, ext: str = "") -> Path:
+def calc_unique_path_name(dest: str, stem_or_name: str, ext: str = "") -> str:
     """Calculate a unique path name in the destination."""
-    target = dest / f"{stem_or_name}{ext}"
+    target = os.path.join(dest, f"{stem_or_name}{ext}")
 
     x = 2
-    while target.exists():
-        target = dest / f"{stem_or_name} ({x}){ext}"
+    while os.path.exists(target):
+        target = os.path.join(dest, f"{stem_or_name} ({x}){ext}")
         x += 1
 
     return target
@@ -84,7 +81,7 @@ def convert_byte_to_size(nbytes: int) -> str:
     return f"{round(nbytes / BytesIn.GIGABYTE, 2)} {ByteUnit.GIGABYTES}"
 
 
-def remove_directory(path: Path) -> None:
+def remove_directory(path: str) -> None:
     """Remove a directory and its contents."""
     with contextlib.suppress(OSError):
         shutil.rmtree(path)

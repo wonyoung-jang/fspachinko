@@ -1,27 +1,26 @@
 """Config validation functions for Mandala."""
 
+import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import ffmpeg
+from ffmpeg import Error as FFmpegError
+from ffmpeg import probe as ffprobe
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from ..config import ListIncludeExclude, MinMax
 
 
-def _get_duration(path: Path) -> float:
+def _get_duration(path: str) -> float:
     """Get the duration of a media file."""
     try:
-        probe = ffmpeg.probe(
-            filename=str(path),
-            cmd="ffprobe",
+        probe = ffprobe(
+            filename=path,
             select_streams="v:0",
             show_entries="format=duration",
         )
         return float(probe["format"]["duration"])
-    except (ValueError, KeyError, ffmpeg.Error):
+    except (ValueError, KeyError, FFmpegError):
         return 0.0
 
 
@@ -35,17 +34,19 @@ class FileValidator:
     duration: MinMax
     _duration_cache: dict[str, float] = field(default_factory=dict)
 
-    def is_valid(self, path: Path, size: int) -> bool:
+    def is_valid(self, path: str, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
         if not self.filesize.is_valid(size):
             return False
 
-        if not self.extensions.is_valid(path.suffix):
+        name = os.path.basename(path)
+        stem, ext = os.path.splitext(name)
+
+        if not self.extensions.is_valid(ext):
             return False
 
-        if not self.keywords.is_valid(path.stem):
+        if not self.keywords.is_valid(stem):
             return False
 
-        path_str = str(path)
-        duration = self._duration_cache.setdefault(path_str, _get_duration(path))
+        duration = self._duration_cache.setdefault(path, _get_duration(path))
         return self.duration.is_valid(duration)

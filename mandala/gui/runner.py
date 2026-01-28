@@ -26,7 +26,7 @@ def main() -> None:
     logger.info("Start: Mandala GUI")
 
     app = QApplication()
-    app.setWindowIcon(QIcon(str(Paths.icon(IconFilename.WINDOW))))
+    app.setWindowIcon(QIcon(Paths.icon(IconFilename.WINDOW)))
     apply_stylesheet(app, theme="dark_purple.xml", extra={"density_scale": "-2"})
     w = MandalaMainWindow()
     w.show()

@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from ..utils import refresh, remove_directory
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from ..config import Folder, SizeLimit
     from .quota import DiversityQuota
     from .reporter import ReportWriter
@@ -77,11 +75,11 @@ class EngineContext(ABC):
         """Check if no files were found in the current folder."""
 
     @abstractmethod
-    def prepare(self, dest: Path) -> None:
+    def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
 
     @abstractmethod
-    def update_on_success(self, path: Path, size: int) -> None:
+    def update_on_success(self, path: str, size: int) -> None:
         """Update context on successful file operation."""
 
     @abstractmethod
@@ -97,7 +95,7 @@ class EngineContext(ABC):
         """Set the state to successful file transfer."""
 
     @abstractmethod
-    def finalize(self, target: int, dest: Path) -> str:
+    def finalize(self, target: int, dest: str) -> str:
         """Finalize the context after processing."""
 
 
@@ -109,35 +107,35 @@ class MandalaEngineContext(EngineContext):
         """Check and update state before file validation."""
         if self.stop_requested:
             self.state = UserStoppedState(
-                prefix="USER STOPPED",
+                status="USER STOPPED",
                 message="Stopped by user request",
             )
             return True
 
         if self.folderstats.count >= target:
             self.state = SuccessState(
-                prefix="SUCCESS",
+                status="SUCCESS",
                 message=f"Copied {self.folderstats.count}/{target} files",
             )
             return True
 
         if self.quota.all_locked():
             self.state = AllSearched(
-                prefix="ALL FILES SEARCHED",
+                status="ALL FILES SEARCHED",
                 message="All files locked by diversity quota",
             )
             return True
 
         if self.folder_size_limit.is_valid(self.folderstats.curr_size):
             self.state = FolderSizeLimitState(
-                prefix="FOLDER SIZE LIMIT REACHED",
+                status="FOLDER SIZE LIMIT REACHED",
                 message=f"{(self.folderstats.curr_size)} B / {(self.folder_size_limit.size_limit)} B",
             )
             return True
 
         if self.total_size_limit.is_valid(self.folderstats.total_size):
             self.state = TotalSizeLimitState(
-                prefix="TOTAL SIZE LIMIT REACHED",
+                status="TOTAL SIZE LIMIT REACHED",
                 message=f"{(self.folderstats.total_size)} B / {(self.total_size_limit.size_limit)} B",
             )
             return True
@@ -150,27 +148,27 @@ class MandalaEngineContext(EngineContext):
         if none_found:
             if self.quota.all_locked():
                 self.state = NoFilesFoundAllSearchedState(
-                    prefix="NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED",
+                    status="NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED",
                     message="No files found and all files locked by diversity quota",
                 )
                 return True
 
             self.state = NoFilesFoundState(
-                prefix="NO FILES FOUND | FOLDER DELETED",
+                status="NO FILES FOUND | FOLDER DELETED",
                 message="No files found in the folder",
             )
             return True
 
         return False
 
-    def prepare(self, dest: Path) -> None:
+    def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
         refresh()
         self.folderstats.reset_for_folder()
         self.quota.prepare_for_batch()
         self.reporter.reset_for_dest(dest)
 
-    def update_on_success(self, path: Path, size: int) -> None:
+    def update_on_success(self, path: str, size: int) -> None:
         """Update context on successful file operation."""
         self.folderstats.update_folder(size)
         self.quota.register_success(path)
@@ -190,11 +188,11 @@ class MandalaEngineContext(EngineContext):
         """Set the state to successful file transfer."""
         self.state = TransferSuccessState(message=copy_path_str)
 
-    def finalize(self, target: int, dest: Path) -> str:
+    def finalize(self, target: int, dest: str) -> str:
         """Finalize the context after processing."""
         none_found = self.is_none_found()
         report = self.reporter.generate_report(
-            status=f"{self.state.prefix}: {self.folderstats.count}/{target} files copied",
+            status=f"{self.state.status}: {self.folderstats.count}/{target} files copied",
             runtime=round(perf_counter() - self.folderstats.starttime, 2),
             size=self.folderstats.curr_size,
         )
@@ -210,7 +208,7 @@ class MandalaEngineContext(EngineContext):
 class EngineState:
     """Abstract base class for engine states."""
 
-    prefix: str = ""
+    status: str = ""
     message: str = ""
     _context: EngineContext | None = None
 

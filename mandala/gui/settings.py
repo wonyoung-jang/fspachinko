@@ -1,8 +1,8 @@
 """Settings handling for Mandala GUI."""
 
 import json
+import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QCoreApplication
@@ -86,16 +86,16 @@ def _iter_valid_widgets(w: QWidget) -> Iterator[tuple[str, QWidget]]:
 class ProfileManager:
     """Class for managing GUI profiles."""
 
-    profile_dir: Path = Paths.profiles
-    current_profile: Path = field(init=False)
+    profile_dir: str = Paths.profiles
+    current_profile: str = field(init=False)
 
     def set_current(self, profile: str) -> None:
         """Set the current profile name."""
-        self.current_profile = Path(profile)
+        self.current_profile = profile
 
-    def _get_profile_path(self) -> Path:
+    def _get_profile_path(self) -> str:
         """Get the full path for a given profile name."""
-        return self.profile_dir / self.current_profile
+        return os.path.join(self.profile_dir, self.current_profile)
 
     def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
@@ -109,17 +109,17 @@ class ProfileManager:
                     data[f"{key}_items"] = items
 
         path = self._get_profile_path()
-        with path.open("w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
     def open_profile(self, parent: QWidget) -> None:
         """Recursively load settings for all child widgets."""
         path = self._get_profile_path()
-        if not (path.exists() and path.is_file()):
+        if not (os.path.exists(path) and os.path.isfile(path)):
             return
 
         data = {}
-        with path.open("r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         for key, child in _iter_valid_widgets(parent):

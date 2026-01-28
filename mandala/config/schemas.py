@@ -1,7 +1,5 @@
 """Pydantic schemas for Mandala configuration."""
 
-from pathlib import Path  # noqa: TC003
-
 from pydantic import BaseModel
 
 from ..utils import TransferMode
@@ -71,8 +69,8 @@ class OptionsModel(BaseModel):
 class MandalaConfigModel(BaseModel):
     """Model for Mandala configuration."""
 
-    root: Path
-    dest: Path
+    root: str
+    dest: str
     filecount: FilecountModel
     folder: FolderModel
     filename: FilenameModel

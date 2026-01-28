@@ -142,19 +142,7 @@ The core engine must remain UI-agnostic:
 
 ### Path Handling
 
-Always use `Path` objects from `pathlib`:
-
-```python
-from pathlib import Path
-
-# Good
-src = Path("/source/file.txt")
-dst = src.parent / "new_name.txt"
-
-# Bad
-src = "/source/file.txt"
-dst = src.replace("file", "new_name")  # Don't use string manipulation
-```
+Always use `os.path` module over Pathlib.
 
 ### Thread Safety (GUI)
 

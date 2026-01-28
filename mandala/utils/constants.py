@@ -1,11 +1,12 @@
 """Constants for mandala."""
 
+import os
 from enum import IntEnum, StrEnum
 
 from .paths import Paths
 
 # Ensure necessary directories exist
-Paths.profiles.mkdir(parents=True, exist_ok=True)
+os.makedirs(Paths.profiles, exist_ok=True)
 
 # General constants
 WALKER_CACHE_LIMIT = 1000

@@ -1,12 +1,12 @@
 """Mandala Engine Module."""
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from ..config import Filecount, Filename
     from ..utils import MandalaObserver
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MandalaEngine:
     """Core engine class for Mandala."""
 
-    root: Path
+    root: str
     walker: FSWalker
     validator: FileValidator
     filecount: Filecount
@@ -62,7 +62,7 @@ class MandalaEngine:
         self._obs.on_count_total()
         self.report(self._ctx.finalize(target, dest))
 
-    def _transfer_folder(self, target: int, dest: Path) -> None:
+    def _transfer_folder(self, target: int, dest: str) -> None:
         """Process a single folder for file copying."""
         if self._ctx.should_stop(target):
             self.report_state()
@@ -84,15 +84,15 @@ class MandalaEngine:
             self._obs.on_count(self._ctx.folderstats.count)
             self._obs.on_time()
 
-    def _transfer_file(self, chosen: Path, dest: Path) -> bool:
+    def _transfer_file(self, chosen: str, dest: str) -> bool:
         """Attempt to copy a file and return success status."""
         count = self._ctx.folderstats.count
-        chosen_rel = chosen.relative_to(self.root)
+        chosen_rel = os.path.relpath(chosen, self.root)
         chosen_new = self.filename.calc_dest_target(chosen_rel, dest, count)
         if chosen_new is None:
             return False
 
-        msg = f"{count + 1}: {chosen_rel} -> {chosen_new.relative_to(dest)}"
+        msg = f"{count + 1}: {chosen_rel} -> {os.path.relpath(chosen_new, dest)}"
 
         if self._ctx.is_dry_run(msg):
             self.report_state()

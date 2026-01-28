@@ -1,13 +1,13 @@
 """Quota and State management."""
 
 import logging
+import os
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from pathlib import Path
 
     from .walker import FSEntry
 
@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 class DiversityQuota:
     """Manages rules for diversity (weights) and uniqueness."""
 
-    root: Path
+    root: str
 
     unique_folders: bool = False
     max_per_folder: int = 0
 
-    locked_files: set[Path] = field(default_factory=set)
-    locked_folders: set[Path] = field(default_factory=set)
-    folder_counts: Counter[Path] = field(default_factory=Counter)
+    locked_files: set[str] = field(default_factory=set)
+    locked_folders: set[str] = field(default_factory=set)
+    folder_counts: Counter[str] = field(default_factory=Counter)
 
     def prepare_for_batch(self) -> None:
         """Reset batch-specific counters, optionally keeping file history."""
@@ -38,11 +38,11 @@ class DiversityQuota:
         """Check if all files/folders are locked."""
         return self.root in self.locked_folders
 
-    def lock_file(self, file_path: Path) -> None:
+    def lock_file(self, file_path: str) -> None:
         """Mark a file as used without registering a success."""
         self.locked_files.add(file_path)
 
-    def lock_folder(self, folder_path: Path) -> None:
+    def lock_folder(self, folder_path: str) -> None:
         """Mark a folder as locked without registering a success."""
         self.locked_folders.add(folder_path)
 
@@ -58,9 +58,9 @@ class DiversityQuota:
             return e.path not in self.locked_folders
         return False
 
-    def register_success(self, file_path: Path) -> None:
+    def register_success(self, file_path: str) -> None:
         """Record a successful copy and apply locking rules."""
-        leaf_dir = file_path.parent
+        leaf_dir = os.path.dirname(file_path)
         if self.max_per_folder > 0:
             self.folder_counts[leaf_dir] += 1
             if self.folder_counts[leaf_dir] >= self.max_per_folder:

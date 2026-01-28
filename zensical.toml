@@ -1,5 +1,5 @@
 [project]
-site_name = "Mandala Documentation"
+site_name = "Mandala"
 site_description = "Documentation for the Mandala random file transferer."
 site_author = "Wonyoung Jang"
 site_url = "https://wonyoung-jang.github.io/mandala/"

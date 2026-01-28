@@ -1,7 +1,6 @@
 """CLI package for Mandala."""
 
 import logging
-from pathlib import Path
 
 from cyclopts import App
 
@@ -45,24 +44,29 @@ class ConsoleObserver(MandalaObserver):
         """Handle folder progress count update."""
 
 
-def run_cli(config_json: str | Path = "") -> None:
+def run_cli(path: str = "") -> None:
     """Run the Mandala CLI application."""
-    if not config_json:
-        config_json = Paths.config("mandala.json")
-    if isinstance(config_json, str):
-        config_json = Path(config_json)
+    if not path:
+        path = Paths.config("mandala.json")
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = f.read()
+    except FileNotFoundError:
+        logger.exception("Configuration file not found: %s", path)
+        return
 
     observer = ConsoleObserver()
-    config = MandalaConfigModel.model_validate_json(config_json.read_text(encoding="utf-8"))
+    config = MandalaConfigModel.model_validate_json(data)
     engine = build_engine(config)
     engine.set_observer(observer)
     engine.start()
 
 
 @app.default
-def run(json_path: str = "") -> None:
+def run(path: str = "") -> None:
     """Run the Mandala CLI."""
-    run_cli(json_path)
+    run_cli(path)
 
 
 def main() -> None:

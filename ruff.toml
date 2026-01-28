@@ -48,6 +48,20 @@ ignore = [
     "S", 
     "TID252",  
     "T201",
+    # OS Path to Pathlib warnings
+    "PTH102",
+    "PTH103",
+    "PTH108",
+    "PTH110",
+    "PTH112",
+    "PTH113",
+    "PTH118",
+    "PTH119",
+    "PTH120",
+    "PTH122",
+    "PTH123",
+    "PTH206",
+    "PTH211",
 ]
 fixable = ["ALL"]
 unfixable = []

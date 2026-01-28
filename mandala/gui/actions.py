@@ -7,13 +7,13 @@ from PySide6.QtGui import QAction, QIcon
 from ..utils import IconFilename, Paths
 from .components import set_qt_tips
 
-i_save = QIcon(str(Paths.icon(IconFilename.SAVE)))
-i_save_as = QIcon(str(Paths.icon(IconFilename.SAVE_AS)))
-i_open = QIcon(str(Paths.icon(IconFilename.OPEN)))
-i_autosave = QIcon(str(Paths.icon(IconFilename.AUTOSAVE)))
-i_start = QIcon(str(Paths.icon(IconFilename.START)))
-i_stop = QIcon(str(Paths.icon(IconFilename.STOP)))
-i_close = QIcon(str(Paths.icon(IconFilename.CLOSE)))
+i_save = QIcon(Paths.icon(IconFilename.SAVE))
+i_save_as = QIcon(Paths.icon(IconFilename.SAVE_AS))
+i_open = QIcon(Paths.icon(IconFilename.OPEN))
+i_autosave = QIcon(Paths.icon(IconFilename.AUTOSAVE))
+i_start = QIcon(Paths.icon(IconFilename.START))
+i_stop = QIcon(Paths.icon(IconFilename.STOP))
+i_close = QIcon(Paths.icon(IconFilename.CLOSE))
 
 
 @dataclass(slots=True)

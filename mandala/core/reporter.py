@@ -1,29 +1,26 @@
 """Reporter for Mandala process."""
 
+import os
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from ..utils import convert_byte_to_size, date_time_report_str
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 @dataclass(slots=True)
 class ReportWriter:
     """ReportWriter class for Mandala."""
 
-    root: Path
+    root: str
     exts_str: str
     keys_str: str
     buffer: list[str] = field(default_factory=list)
-    report_path: Path = field(init=False)
-    _dest: Path = field(init=False)
+    report_path: str = field(init=False)
+    _dest: str = field(init=False)
 
-    def reset_for_dest(self, dest: Path) -> None:
+    def reset_for_dest(self, dest: str) -> None:
         """Initialize reporter for a new run."""
         self.buffer.clear()
-        self.report_path = dest / f"!_report_{dest.name}.txt"
+        self.report_path = os.path.join(dest, f"!_report_{os.path.basename(dest)}.txt")
         self._dest = dest
 
     def record_message(self, message: str) -> None:
@@ -51,7 +48,7 @@ class ReportWriter:
 
     def save(self) -> None:
         """Save the report to file."""
-        mode = "a" if self.report_path.exists() else "w"
-        with self.report_path.open(mode=mode, encoding="utf-8") as f:
+        mode = "a" if os.path.exists(self.report_path) else "w"
+        with open(self.report_path, mode=mode, encoding="utf-8") as f:
             f.writelines(self.buffer)
             f.write("\n\n")

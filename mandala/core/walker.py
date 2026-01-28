@@ -5,7 +5,6 @@ import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..utils import WALKER_CACHE_LIMIT
@@ -24,19 +23,20 @@ class FSEntry:
     """Represents a file system entry (file or directory)."""
 
     _entry: os.DirEntry
-    _path: Path | None = None
     _is_file: bool | None = None
     _is_dir: bool | None = None
     _is_symlink: bool | None = None
     _size: int | None = None
 
     @property
-    def path(self) -> Path:
-        """Get the Path object for this entry."""
-        if self._path is not None:
-            return self._path
-        self._path = Path(self._entry.path)
-        return self._path
+    def name(self) -> str:
+        """Get the name of the entry."""
+        return self._entry.name
+
+    @property
+    def path(self) -> str:
+        """Get the path of the entry."""
+        return self._entry.path
 
     @property
     def is_file(self) -> bool:
@@ -84,14 +84,13 @@ class FSWalker(ABC):
 class RandomFSWalker(FSWalker):
     """Navigates the file system randomly based on Quota rules."""
 
-    root: Path
+    root: str
     quota: DiversityQuota
     rng: Random
     follow_symlinks: bool
 
     _cache_limit: int = WALKER_CACHE_LIMIT
-    _cache: OrderedDict[Path, tuple[FSEntry, ...]] = field(default_factory=OrderedDict)
-    _stack: list[tuple[Path, list[FSEntry], int]] = field(default_factory=list)
+    _cache: OrderedDict[str, tuple[FSEntry, ...]] = field(default_factory=OrderedDict)
 
     def walk(self) -> Iterator[FSEntry]:
         """Generate shuffled candidates for a given directory."""
@@ -100,18 +99,18 @@ class RandomFSWalker(FSWalker):
 
     def _descend(self) -> FSEntry | None:
         """Descend directories finding a valid file using an explicit stack."""
-        _stack: list[tuple[Path, list[FSEntry], int]] = [(self.root, [], 0)]
+        _stack: list[tuple[str, list[FSEntry], int]] = [(self.root, [], 0)]
 
         while _stack:
-            path, available, idx = _stack.pop()
+            entry_root, available, idx = _stack.pop()
 
             if idx >= len(available):
-                if not (entries := self._get_entries(path)):
-                    self.quota.lock_folder(path)
+                if not (entries := self._get_entries(entry_root)):
+                    self.quota.lock_folder(entry_root)
                     continue
 
                 if not (available := self.quota.get_available(entries)):
-                    self.quota.lock_folder(path)
+                    self.quota.lock_folder(entry_root)
                     continue
 
                 if len(available) > 1:
@@ -122,7 +121,7 @@ class RandomFSWalker(FSWalker):
 
             # Only push the next index if there are more entries
             if idx + 1 < len(available):
-                _stack.append((path, available, idx + 1))
+                _stack.append((entry_root, available, idx + 1))
 
             # If it's a file, return it
             if entry.is_file:
@@ -145,7 +144,7 @@ class RandomFSWalker(FSWalker):
 
         return None
 
-    def _get_entries(self, current: Path) -> tuple[FSEntry, ...]:
+    def _get_entries(self, current: str) -> tuple[FSEntry, ...]:
         """Retrieve and cache directory entries for a given path."""
         if current in self._cache:
             return self._cache[current]
