@@ -1,3 +1,3 @@
 # Components
 
-::: mandala.gui.components
+::: file_roulette.gui.components

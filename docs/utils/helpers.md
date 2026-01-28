@@ -1,3 +1,3 @@
 # Helpers
 
-::: mandala.utils.helpers
+::: file_roulette.utils.helpers

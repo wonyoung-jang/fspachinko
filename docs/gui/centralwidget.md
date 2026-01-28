@@ -1,3 +1,3 @@
 # Central Widget
 
-::: mandala.gui.centralwidget
+::: file_roulette.gui.centralwidget

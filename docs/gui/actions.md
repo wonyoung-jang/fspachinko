@@ -1,3 +1,3 @@
 # Actions
 
-::: mandala.gui.actions
+::: file_roulette.gui.actions

@@ -1,3 +1,3 @@
 # GUI Helpers
 
-::: mandala.gui.qthelpers
+::: file_roulette.gui.qthelpers

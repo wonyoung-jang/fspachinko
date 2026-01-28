@@ -1,3 +1,3 @@
 # UI Builder
 
-::: mandala.gui.uibuilder
+::: file_roulette.gui.uibuilder

@@ -1,3 +1,3 @@
 # Diversity Quota
 
-::: mandala.core.quota
+::: file_roulette.core.quota

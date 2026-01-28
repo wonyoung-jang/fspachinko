@@ -1,3 +1,3 @@
 # Builder
 
-::: mandala.core.builder
+::: file_roulette.core.builder

@@ -123,5 +123,5 @@ venv.bak/
 *.lprof
 output/
 *.txt
-mandala_profiles/
-mandala_output/
+*_profiles/
+*_output/

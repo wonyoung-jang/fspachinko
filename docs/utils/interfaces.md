@@ -1,3 +1,3 @@
 # Interfaces and Protocols
 
-::: mandala.utils.interfaces
+::: file_roulette.utils.interfaces

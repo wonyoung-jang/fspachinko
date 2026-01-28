@@ -1,3 +1,3 @@
 # Transfer Strategies
 
-::: mandala.core.transfer
+::: file_roulette.core.transfer

@@ -4,12 +4,12 @@ icon: lucide/layers
 
 # Architecture
 
-Mandala uses a three-layer architecture to separate concerns and enable both CLI and GUI frontends.
+File Roulette uses a three-layer architecture to separate concerns and enable both CLI and GUI frontends.
 
 ## Design Principles
 
 ### Core Layer
-The **core** layer ([mandala.core](https://github.com/wonyoung-jang/mandala/tree/main/mandala/core)) contains all business logic:
+The **core** layer (file_roulette.core) contains all business logic:
 
 - **Engine** ([engine](./core/engine.md)): Orchestrates the file transfer workflow
 - **Builder** ([builder](./core/builder.md)): Dependency injection factory
@@ -20,7 +20,7 @@ The **core** layer ([mandala.core](https://github.com/wonyoung-jang/mandala/tree
 - **Transfer** ([transfer](./core/transfer.md)): Transfer mode strategies (copy/move/link)
 
 ### Config Layer
-The **config** layer ([mandala.config](https://github.com/wonyoung-jang/mandala/tree/main/mandala/config)) manages configuration:
+The **config** layer (file_roulette.config) manages configuration:
 
 - **Schemas** ([schemas](./config/schemas.md)): Pydantic models for JSON validation
 - **Config** ([config](./config/config.md)): Dataclass conversion and management
@@ -29,11 +29,11 @@ The **config** layer ([mandala.config](https://github.com/wonyoung-jang/mandala/
 Two independent frontends share the core engine:
 
 - **CLI** ([cli](./cli/cli.md)): Terminal interface using cyclopts
-- **GUI** ([gui](./gui/gui.md)): PySide6 Qt interface
+- **GUI** ([gui](./gui/gui.md)): PySide6 QtWidgets interface
 
 ## Observer Pattern
 
-The core engine communicates with frontends via the `MandalaObserver` protocol ([interfaces](./utils/interfaces.md)):
+The core engine communicates with frontends via the `FileRouletteObserver` protocol ([interfaces](./utils/interfaces.md)):
 
 ### Implementations
 
@@ -42,9 +42,9 @@ The core engine communicates with frontends via the `MandalaObserver` protocol (
 
 ## Data Flow
 
-1. **Configuration**: JSON → Pydantic validation → `MandalaConfig` dataclass
+1. **Configuration**: JSON → Pydantic validation → `FileRouletteConfig` dataclass
 2. **Engine Build**: `build_engine()` wires all dependencies
-3. **Execution**: `MandalaEngine.start()` → process folders → validate → transfer files
+3. **Execution**: `File RouletteEngine.start()` → process folders → validate → transfer files
 4. **Reporting**: Generate reports in output directories
 
 ## Key Design Patterns
@@ -54,8 +54,8 @@ All core classes use `@dataclass(slots=True)` for memory efficiency:
 
 ```python
 @dataclass(slots=True)
-class MandalaEngine:
-    config: MandalaConfig
+class FileRouletteEngine:
+    config: FileRouletteConfig
     validator: FileValidator
     # ... more fields
 ```
@@ -77,10 +77,10 @@ The GUI uses Qt's threading model:
 
 ```mermaid
 graph LR
-    A[mandala.json] --> B[Pydantic Models]
-    B --> C[MandalaConfig]
+    A[file-roulette.json] --> B[Pydantic Models]
+    B --> C[FileRouletteConfig]
     C --> D[build_engine]
-    D --> E[MandalaEngine]
+    D --> E[FileRouletteEngine]
 ```
 
 ## Execution Flow

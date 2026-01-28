@@ -1,3 +1,3 @@
 # Command Line Interface
 
-::: mandala.cli.cli
+::: file_roulette.cli.cli

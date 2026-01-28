@@ -1,3 +1,3 @@
 # Report Writer
 
-::: mandala.core.reporter
+::: file_roulette.core.reporter

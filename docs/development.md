@@ -4,7 +4,7 @@ icon: lucide/code
 
 # Development
 
-Contributing to Mandala development.
+Contributing to File Roulette development.
 
 ## Setup Development Environment
 
@@ -18,8 +18,8 @@ Contributing to Mandala development.
 
 ```bash
 # Clone repository
-git clone https://github.com/wonyoung-jang/mandala.git
-cd mandala
+git clone https://github.com/wonyoung-jang/file-roulette.git
+cd file-roulette
 
 # Install with development dependencies
 uv sync
@@ -28,14 +28,14 @@ uv sync
 ## Project Structure
 
 ```
-mandala/
-├── mandala/
+file-roulette/
+├── file_roulette/
 │   ├── core/          # Core engine logic
 │   ├── config/        # Configuration management
 │   ├── cli/           # Command-line interface
 │   ├── gui/           # Graphical interface
 │   └── utils/         # Shared utilities
-├── mandala_config/    # Default configuration files
+├── file_roulette_configs/    # Default configuration files
 ├── docs/              # Documentation (Zensical)
 ├── icons/             # Application icons
 └── tests/             # Unit tests (future)
@@ -67,16 +67,16 @@ ruff format && ruff check --fix --unsafe-fixes && ty check && uv run vulture
 
 ### Linting Configuration
 
-**ruff** ([ruff.toml](https://github.com/wonyoung-jang/mandala/blob/main/ruff.toml)):
+**ruff** ([ruff.toml](https://github.com/wonyoung-jang/file-roulette/blob/main/ruff.toml)):
 - 120-character line length
 - E4/E7/E9/F rules enabled
 - Ignores: T201 (print allowed), S (security), D203/D213 (docstring style)
 
-**vulture** ([pyproject.toml](https://github.com/wonyoung-jang/mandala/blob/main/pyproject.toml)):
+**vulture** ([pyproject.toml](https://github.com/wonyoung-jang/file-roulette/blob/main/pyproject.toml)):
 - `min_confidence=40`
 - Excludes `@app.*` decorators
 
-**ty** ([ty.toml](https://github.com/wonyoung-jang/mandala/blob/main/ty.toml)):
+**ty** ([ty.toml](https://github.com/wonyoung-jang/file-roulette/blob/main/ty.toml)):
 - Targets Python 3.14
 
 ## Coding Standards
@@ -106,7 +106,7 @@ def process_file(path: Path, size: int) -> bool:
 
 ### Naming Conventions
 
-- **Classes**: `PascalCase` (e.g., `FileValidator`, `MandalaEngine`)
+- **Classes**: `PascalCase` (e.g., `FileValidator`, `File RouletteEngine`)
 - **Functions**: `snake_case` (e.g., `build_engine`, `process_folder`)
 - **Constants**: `UPPER_SNAKE_CASE` (e.g., `WALKER_CACHE_LIMIT`)
 - **Private**: Prefix with `_` (e.g., `_get_duration`)
@@ -120,10 +120,10 @@ def process_file(path: Path, size: int) -> bool:
 
 ### Observer Pattern
 
-All UI updates must go through `MandalaObserver` callbacks:
+All UI updates must go through `FileRouletteObserver` callbacks:
 
 ```python
-class MyObserver(MandalaObserver):
+class MyObserver(FileRouletteObserver):
     def on_log(self, msg: str) -> None:
         print(msg)
     
@@ -136,7 +136,7 @@ class MyObserver(MandalaObserver):
 ### Core Layer Isolation
 
 The core engine must remain UI-agnostic:
-- No Qt imports in `mandala/core/`
+- No Qt imports in `file_roulette/core/`
 - No print statements (use observer callbacks)
 - No GUI-specific logic
 
@@ -166,7 +166,7 @@ def on_start(self) -> None:
 
 ### New Filter Type
 
-Add to `FileValidator._validate()` in [validator.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/core/validator.py):
+Add to `FileValidator._validate()` in [validator.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/core/validator.py):
 
 ```python
 @dataclass(slots=True)
@@ -183,7 +183,7 @@ class FileValidator:
 
 ### New Transfer Mode
 
-1. Add enum to [constants.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/utils/constants.py):
+1. Add enum to [constants.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/utils/constants.py):
 
 ```python
 class TransferMode(StrEnum):
@@ -194,7 +194,7 @@ class TransferMode(StrEnum):
     NEWTHING = "NewThing"  # Add here
 ```
 
-2. Implement strategy in [transfer.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/core/transfer.py):
+2. Implement strategy in [transfer.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/core/transfer.py):
 
 ```python
 def newthing_transfer(src: Path, dst: Path) -> None:
@@ -210,7 +210,7 @@ def fetch_transfer_strategy(mode: TransferMode) -> Callable[[Path, Path], None]:
 
 ### New Config Option
 
-1. Add Pydantic model to [schemas.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/config/schemas.py):
+1. Add Pydantic model to [schemas.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/config/schemas.py):
 
 ```python
 class NewFeatureModel(BaseModel):
@@ -218,15 +218,15 @@ class NewFeatureModel(BaseModel):
     value: int = 0
 ```
 
-2. Add to `MandalaConfigModel`:
+2. Add to `FileRouletteConfigModel`:
 
 ```python
-class MandalaConfigModel(BaseModel):
+class FileRouletteConfigModel(BaseModel):
     ...
     newfeature: NewFeatureModel
 ```
 
-3. Create dataclass in [config.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/config/config.py):
+3. Create dataclass in [config.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/config/config.py):
 
 ```python
 @dataclass(slots=True)
@@ -235,10 +235,10 @@ class NewFeature:
     value: int
 ```
 
-4. Wire in [builder.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/core/builder.py):
+4. Wire in [builder.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/core/builder.py):
 
 ```python
-def build_engine(m: MandalaConfigModel) -> MandalaEngine:
+def build_engine(m: FileRouletteConfigModel) -> FileRouletteEngine:
     newfeature = NewFeature(
         enabled=m.newfeature.enabled,
         value=m.newfeature.value,
@@ -248,11 +248,11 @@ def build_engine(m: MandalaConfigModel) -> MandalaEngine:
 
 ### New GUI Widget
 
-Add to `MandalaCentralGui` in [centralwidget.py](https://github.com/wonyoung-jang/mandala/blob/main/mandala/gui/centralwidget.py):
+Add to `FileRouletteCentralGui` in [centralwidget.py](https://github.com/wonyoung-jang/file-roulette/blob/main/file-roulette/gui/centralwidget.py):
 
 ```python
 @dataclass(slots=True)
-class MandalaCentralGui(QWidget):
+class FileRouletteCentralGui(QWidget):
     def __post_init__(self) -> None:
         super().__init__()
         
@@ -304,7 +304,7 @@ zensical deploy
 pytest
 
 # With coverage
-pytest --cov=mandala
+pytest --cov=file_roulette
 ```
 
 ## Building Standalone Executables
@@ -321,7 +321,7 @@ pyinstaller _gui.spec
 ## Common Pitfalls
 
 1. **Modifying core without observer**: All UI updates must go through callbacks
-2. **JSON schema sync**: Update Pydantic models, dataclasses, and `mandala.json` together
+2. **JSON schema sync**: Update Pydantic models, dataclasses, and `file-roulette.json` together
 3. **Path handling**: Use `Path` objects, avoid string manipulation
 4. **Qt threading**: Never block main thread with `engine.start()`
 5. **Stylesheet modifications**: Edit `style.qss`, avoid inline `setStyleSheet()`
@@ -330,7 +330,7 @@ pyinstaller _gui.spec
 
 ### Enable Debug Logging
 
-Edit [logging.json](https://github.com/wonyoung-jang/mandala/blob/main/mandala_config/logging.json):
+Edit [logging.json](https://github.com/wonyoung-jang/file-roulette/blob/main/file_roulette_configs/logging.json):
 
 ```json
 {
@@ -347,9 +347,6 @@ Edit [logging.json](https://github.com/wonyoung-jang/mandala/blob/main/mandala_c
 ```bash
 # Install line_profiler
 uv add line-profiler --group dev
-
-# Profile specific functions
-uv run python -m line_profiler mandala.prof
 ```
 
 ### Qt Designer (Future)
@@ -361,7 +358,7 @@ For complex GUI layouts, consider using Qt Designer:
 
 ## Release Checklist
 
-1. Update version in [pyproject.toml](https://github.com/wonyoung-jang/mandala/blob/main/pyproject.toml)
+1. Update version in [pyproject.toml](https://github.com/wonyoung-jang/file-roulette/blob/main/pyproject.toml)
 2. Run all code quality tools
 3. Test CLI and GUI manually
 4. Update CHANGELOG.md (if exists)

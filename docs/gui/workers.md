@@ -1,3 +1,3 @@
 # Worker Threads
 
-::: mandala.gui.workers
+::: file_roulette.gui.workers

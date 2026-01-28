@@ -1,3 +1,3 @@
 # Configuration
 
-::: mandala.config.config
+::: file_roulette.config.config

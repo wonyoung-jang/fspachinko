@@ -1,3 +1,3 @@
 # Main Window
 
-::: mandala.gui.mainwindow
+::: file_roulette.gui.mainwindow

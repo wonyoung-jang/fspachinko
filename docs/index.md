@@ -6,7 +6,7 @@ icon: lucide/book-open
 
 ## Usage
 
-Mandala can be used via command-line interface (CLI) or graphical user interface (GUI).
+File Roulette can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Installation
 
@@ -24,55 +24,55 @@ uv sync
 
 ```bash
 # Copy 10 random files
-mandala-cli --root /source/path --dest /output/path --count 10
+file-roulette-cli --root /source/path --dest /output/path --count 10
 
 # Use configuration file
-mandala-cli --config mandala.json
+file-roulette-cli --config File Roulette.json
 
 # Dry run (no actual transfers)
-mandala-cli --root /source --dest /output --dry-run
+file-roulette-cli --root /source --dest /output --dry-run
 ```
 
 ### Common Options
 
 ```bash
 # Filter by extension
-mandala-cli --root /music --dest /playlist --extension .mp3 .flac
+file-roulette-cli --root /music --dest /playlist --extension .mp3 .flac
 
 # Exclude keywords
-mandala-cli --root /photos --dest /album --exclude vacation draft
+file-roulette-cli --root /photos --dest /album --exclude vacation draft
 
 # Random file count between 5-15
-mandala-cli --root /source --dest /output --rand-min 5 --rand-max 15
+file-roulette-cli --root /source --dest /output --rand-min 5 --rand-max 15
 
 # Limit file size (in MB)
-mandala-cli --root /videos --dest /output --min-size 10 --max-size 500
+file-roulette-cli --root /videos --dest /output --min-size 10 --max-size 500
 ```
 
 ### Transfer Modes
 
 ```bash
 # Copy files (default)
-mandala-cli --root /source --dest /output --mode copy
+file-roulette-cli --root /source --dest /output --mode copy
 
 # Move files
-mandala-cli --root /source --dest /output --mode move
+file-roulette-cli --root /source --dest /output --mode move
 
 # Create symbolic links
-mandala-cli --root /source --dest /output --mode symlink
+file-roulette-cli --root /source --dest /output --mode symlink
 
 # Create hard links
-mandala-cli --root /source --dest /output --mode hardlink
+file-roulette-cli --root /source --dest /output --mode hardlink
 ```
 
 ### Diversity Controls
 
 ```bash
 # Maximum files per source folder
-mandala-cli --root /source --dest /output --max-per-folder 2
+file-roulette-cli --root /source --dest /output --max-per-folder 2
 
 # Ensure unique folder selection
-mandala-cli --root /source --dest /output --unique-folders
+file-roulette-cli --root /source --dest /output --unique-folders
 ```
 
 ## Graphical User Interface
@@ -80,13 +80,13 @@ mandala-cli --root /source --dest /output --unique-folders
 ### Launch GUI
 
 ```bash
-mandala-gui
+file-roulette-gui
 ```
 
 Or simply:
 
 ```bash
-mandala
+File Roulette
 ```
 
 ### GUI Features
@@ -107,7 +107,7 @@ Save frequently used configurations as profiles:
 
 ## Configuration File
 
-Create a `mandala.json` file for reusable configurations:
+Create a `File Roulette.json` file for reusable configurations:
 
 ```json
 {
@@ -136,7 +136,7 @@ Create a `mandala.json` file for reusable configurations:
 ### Random Music Playlist
 
 ```bash
-mandala-cli \
+file-roulette-cli \
   --root ~/Music \
   --dest ~/Playlists/Random \
   --extension .mp3 .flac .m4a \
@@ -147,7 +147,7 @@ mandala-cli \
 ### Photo Gallery Selection
 
 ```bash
-mandala-cli \
+file-roulette-cli \
   --root ~/Photos \
   --dest ~/Gallery \
   --extension .jpg .png \
@@ -159,7 +159,7 @@ mandala-cli \
 ### Video Highlights
 
 ```bash
-mandala-cli \
+file-roulette-cli \
   --root ~/Videos \
   --dest ~/Highlights \
   --extension .mp4 \
@@ -171,7 +171,7 @@ mandala-cli \
 ### Safe Preview (Dry Run)
 
 ```bash
-mandala-cli \
+file-roulette-cli \
   --root /important/files \
   --dest /backup \
   --dry-run \
@@ -196,7 +196,7 @@ Example: `{date}_{index}_{original}` → `2026-01-25_001_photo.jpg`
 
 ### Logging
 
-Configure logging in a `json` file. Here is the default `mandala_configs/logging.json` provided:
+Configure logging in a `json` file. Here is the default `File Roulette_configs/logging.json` provided:
 
 ```json
 {
@@ -221,7 +221,7 @@ Configure logging in a `json` file. Here is the default `mandala_configs/logging
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "mandala.log",
+            "filename": "File Roulette.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

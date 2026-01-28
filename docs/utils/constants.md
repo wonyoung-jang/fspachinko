@@ -1,3 +1,3 @@
 # Constants
 
-::: mandala.utils.constants
+::: file_roulette.utils.constants

@@ -1,3 +1,3 @@
 # Filesystem Walker
 
-::: mandala.core.walker
+::: file_roulette.core.walker

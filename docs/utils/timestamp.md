@@ -1,3 +1,3 @@
 # Timestamp Provider
 
-::: mandala.utils.timestamp
+::: file_roulette.utils.timestamp

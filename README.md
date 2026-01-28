@@ -1,4 +1,4 @@
-# Mandala
+# File Roulette
 
 ### Copies random files from point A to point B. Customize what and how to copy with various filters.
 

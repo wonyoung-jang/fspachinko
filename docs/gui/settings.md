@@ -1,3 +1,3 @@
 # Settings
 
-::: mandala.gui.settings
+::: file_roulette.gui.settings

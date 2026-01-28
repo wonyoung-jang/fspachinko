@@ -1,3 +1,3 @@
 # File Validator
 
-::: mandala.core.validator
+::: file_roulette.core.validator

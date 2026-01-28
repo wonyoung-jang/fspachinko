@@ -1,3 +1,3 @@
 # Schemas
 
-::: mandala.config.schemas
+::: file_roulette.config.schemas

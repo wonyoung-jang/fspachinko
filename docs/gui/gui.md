@@ -1,3 +1,3 @@
 # GUI
 
-::: mandala.gui.gui
+::: file_roulette.gui.gui
