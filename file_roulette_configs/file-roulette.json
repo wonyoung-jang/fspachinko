@@ -14,7 +14,7 @@
         "count": 10
     },
     "filename": {
-        "template": "{original"
+        "template": "{original}"
     },
     "transfermode": {
         "transfer_mode": "Symlink",

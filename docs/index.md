@@ -2,7 +2,7 @@
 icon: lucide/book-open
 ---
 
-# Home
+# File Roulette
 
 ## Usage
 
@@ -12,9 +12,6 @@ File Roulette can be used via command-line interface (CLI) or graphical user int
 
 ```bash
 # Install using uv
-uv pip install -e .
-
-# Or with development dependencies
 uv sync
 ```
 
@@ -23,56 +20,8 @@ uv sync
 ### Basic Usage
 
 ```bash
-# Copy 10 random files
-file-roulette-cli --root /source/path --dest /output/path --count 10
-
 # Use configuration file
-file-roulette-cli --config File Roulette.json
-
-# Dry run (no actual transfers)
-file-roulette-cli --root /source --dest /output --dry-run
-```
-
-### Common Options
-
-```bash
-# Filter by extension
-file-roulette-cli --root /music --dest /playlist --extension .mp3 .flac
-
-# Exclude keywords
-file-roulette-cli --root /photos --dest /album --exclude vacation draft
-
-# Random file count between 5-15
-file-roulette-cli --root /source --dest /output --rand-min 5 --rand-max 15
-
-# Limit file size (in MB)
-file-roulette-cli --root /videos --dest /output --min-size 10 --max-size 500
-```
-
-### Transfer Modes
-
-```bash
-# Copy files (default)
-file-roulette-cli --root /source --dest /output --mode copy
-
-# Move files
-file-roulette-cli --root /source --dest /output --mode move
-
-# Create symbolic links
-file-roulette-cli --root /source --dest /output --mode symlink
-
-# Create hard links
-file-roulette-cli --root /source --dest /output --mode hardlink
-```
-
-### Diversity Controls
-
-```bash
-# Maximum files per source folder
-file-roulette-cli --root /source --dest /output --max-per-folder 2
-
-# Ensure unique folder selection
-file-roulette-cli --root /source --dest /output --unique-folders
+file-roulette-cli --config your-file-roulette.json
 ```
 
 ## Graphical User Interface
@@ -86,101 +35,183 @@ file-roulette-gui
 Or simply:
 
 ```bash
-File Roulette
+file-roulette
 ```
 
-### GUI Features
-
-1. **Configuration Tab**: Set source, destination, and file count
-2. **Filters Tab**: Configure extension, keyword, size, and duration filters
-3. **Advanced Tab**: Set diversity quotas and transfer modes
-4. **Progress Tab**: Monitor transfer progress and view logs
-
-### Profiles
+### GUI Profiles
 
 Save frequently used configurations as profiles:
 
 1. Configure settings in the GUI
-2. Click **File → Save Profile**
+2. Click **File → Save Profile As**
 3. Name your profile (e.g., "music_copy")
 4. Load later with **File → Load Profile**
 
 ## Configuration File
 
-Create a `File Roulette.json` file for reusable configurations:
+Create a `file-roulette.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
 
 ```json
 {
-  "root": "/path/to/source",
-  "dest": "/path/to/output",
-  "filecount": {
-    "count": 10,
-    "rand_enabled": false,
-    "rand_min": 0,
-    "rand_max": 0
-  },
-  "extension": {
-    "include_enabled": true,
-    "exclude_enabled": false,
-    "text": [".mp3", ".flac"]
-  },
-  "transfermode": {
-    "transfer_mode": "Copy",
-    "dry_run_enabled": false
-  }
+    "root": "C:/",
+    "dest": "file_roulette_output/",
+    "filecount": {
+        "count": 20,
+        "rand_enabled": false,
+        "rand_min": 1,
+        "rand_max": 12
+    },
+    "folder": {
+        "create_enabled": true,
+        "unique_enabled": true,
+        "name": "test_folder_output",
+        "count": 10
+    },
+    "filename": {
+        "template": "{original}"
+    },
+    "transfermode": {
+        "transfer_mode": "Symlink",
+        "trash_empty_folder_enabled": false
+    },
+    "keyword": {
+        "include_enabled": true,
+        "exclude_enabled": false,
+        "text": []
+    },
+    "extension": {
+        "include_enabled": true,
+        "exclude_enabled": false,
+        "text": ["wav"]
+    },
+    "filesize": {
+        "enabled": false,
+        "minimum": 0.0,
+        "maximum": 0.0
+    },
+    "duration": {
+        "enabled": false,
+        "minimum": 0.0,
+        "maximum": 0.0
+    },
+    "folder_size_limit": {
+        "enabled": false,
+        "size_limit": 500.0
+    },
+    "total_size_limit": {
+        "enabled": false,
+        "size_limit": 500.0
+    },
+    "options": {
+        "max_per_folder": 3,
+        "follow_symlinks": false,
+        "dry_run_enabled": true
+    }
 }
 ```
 
-## Common Workflows
+## Example Configurations
 
 ### Random Music Playlist
 
-```bash
-file-roulette-cli \
-  --root ~/Music \
-  --dest ~/Playlists/Random \
-  --extension .mp3 .flac .m4a \
-  --count 50 \
-  --max-per-folder 2
+```json
+{
+    "root": "~/Music",
+    "dest": "~/Playlists/Random",
+    "filecount": {
+        "count": 50,
+        ...
+    },
+    ...
+    "extension": {
+        "include_enabled": true,
+        "exclude_enabled": false,
+        "text": ["wav","flac","m4a"]
+    },
+    ...
+    "options": {
+        "max_per_folder": 2,
+        ...
+    }
+}
 ```
 
 ### Photo Gallery Selection
 
-```bash
-file-roulette-cli \
-  --root ~/Photos \
-  --dest ~/Gallery \
-  --extension .jpg .png \
-  --min-size 1 \
-  --exclude thumbnail draft \
-  --count 20
+```json
+{
+    "root": "~/Photos",
+    "dest": "~/Gallery",
+    "filecount": {
+        "count": 20,
+        ...
+    },
+    ...
+    "extension": {
+        "include_enabled": true,
+        "exclude_enabled": false,
+        "text": ["jpg","png"]
+    },
+    "filesize": {
+        "enabled": true,
+        "minimum": 1.0,
+        ...
+    },
+    "keyword": {
+        "include_enabled": false,
+        "exclude_enabled": true,
+        "text": ["thumbnail","draft"]
+    },
+    ...
+}
 ```
 
 ### Video Highlights
 
-```bash
-file-roulette-cli \
-  --root ~/Videos \
-  --dest ~/Highlights \
-  --extension .mp4 \
-  --min-duration 30 \
-  --max-duration 600 \
-  --count 10
+```json
+{
+    "root": "~/Videos",
+    "dest": "~/Highlights",
+    "filecount": {
+        "count": 10,
+        ...
+    },
+    ...
+    "extension": {
+        "include_enabled": true,
+        "exclude_enabled": false,
+        "text": ["mp4"]
+    },
+    "duration": {
+        "enabled": true,
+        "minimum": 30.0,
+        "maximum": 600.0
+    },
+    ...
+}
 ```
 
 ### Safe Preview (Dry Run)
 
-```bash
-file-roulette-cli \
-  --root /important/files \
-  --dest /backup \
-  --dry-run \
-  --count 100
+```json
+{
+    "root": "/important/files",
+    "dest": "/backup",
+    "filecount": {
+        "count": 100,
+        ...
+    },
+    ...
+    "options": {
+        ...
+        "dry_run_enabled": true
+    }
+}
 ```
 
 ## Advanced Features
 
-### Custom Filename Templates
+### Output Filename Templates
 
 Use template variables in filenames:
 
@@ -190,13 +221,13 @@ Use template variables in filenames:
 - `{time}`: Current time (HH-MM-SS)
 - `{datetime}`: Combined date and time
 - `{parent}`: Parent folder name
-- `{parentstoroot}`: Full parent path
+- `{parentstoroot}`: Full parent path separated by `-`
 
-Example: `{date}_{index}_{original}` → `2026-01-25_001_photo.jpg`
+Example: `{index}_{original}_{date}`: `photo.jpg` -> `1_photo_2026-01-25.jpg`
 
 ### Logging
 
-Configure logging in a `json` file. Here is the default `File Roulette_configs/logging.json` provided:
+Configure logging in a `json` file. Here is the default `file_roulette_configs/logging.json` provided:
 
 ```json
 {
@@ -221,7 +252,7 @@ Configure logging in a `json` file. Here is the default `File Roulette_configs/l
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "File Roulette.log",
+            "filename": "file-roulette.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true
@@ -254,7 +285,7 @@ Configure logging in a `json` file. Here is the default `File Roulette_configs/l
 **Hardlink errors:**
 - Source and destination must be on same filesystem
 - Not supported on all filesystems (e.g., FAT32)
-- Use symlink or copy instead
+- Falls back to symlink automatically
 
 **Duration filter not working:**
 - Requires ffmpeg installed on system
