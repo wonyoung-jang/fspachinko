@@ -11,11 +11,11 @@ import file_roulette
 class Paths:
     """Dataclass for general directories used in File Roulette."""
 
-    pkg: ClassVar[str] = os.path.dirname(file_roulette.__file__ if file_roulette.__file__ else "")
-    proj: ClassVar[str] = os.path.dirname(pkg)
-    icons: ClassVar[str] = os.path.join(proj, "icons")
-    configs: ClassVar[str] = os.path.join(proj, "file_roulette_configs")
-    profiles: ClassVar[str] = os.path.join(proj, "file_roulette_profiles")
+    pkg: ClassVar[str] = os.path.dirname(file_roulette.__file__)
+    data: ClassVar[str] = os.path.join(pkg, "_data")
+    icons: ClassVar[str] = os.path.join(data, "icons")
+    configs: ClassVar[str] = os.path.join(data, "configs")
+    profiles: ClassVar[str] = os.path.join(data, "gui_profiles")
 
     @classmethod
     def icon(cls, path: str) -> str:
