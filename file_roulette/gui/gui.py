@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 try:  # Windows only for taskbar icon
     from ctypes import windll
 
-    myappid = "wonyoungjang.file_roulette.random_file_copier.0.0.1"
+    myappid = "wonyoungjang.file_roulette.random_file_transfer_utility.0.0.1"
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except ImportError:
     pass

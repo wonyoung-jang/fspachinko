@@ -11,7 +11,7 @@ from .observer import ConsoleObserver
 
 logger = logging.getLogger(__name__)
 app = App(
-    help="File Roulette - Random file copier.",
+    help="File Roulette - Random file transfer utility.",
 )
 
 
