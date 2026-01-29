@@ -2,6 +2,18 @@
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
 
+## Installation (uv)
+
+```bash
+uv add file-roulette
+```
+
+or
+
+```bash
+uv tool install file-roulette
+```
+
 ![Setup](resources/images/tab_output.png)
 ![Filter](resources/images/tab_filters.png)
 ![Options](resources/images/tab_options.png)
@@ -9,12 +21,6 @@ Transfer random files from point A to point B. Customize what and how to transfe
 ## Usage
 
 File Roulette can be used via command-line interface (CLI) or graphical user interface (GUI).
-
-## Installation (uv)
-
-```bash
-uv sync
-```
 
 ## Command Line Interface
 

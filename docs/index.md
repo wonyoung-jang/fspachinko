@@ -6,15 +6,21 @@ icon: lucide/book-open
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
 
-## Usage
-
-File Roulette can be used via command-line interface (CLI) or graphical user interface (GUI).
-
 ## Installation (uv)
 
 ```bash
-uv sync
+uv add file-roulette
 ```
+
+or
+
+```bash
+uv tool install file-roulette
+```
+
+## Usage
+
+File Roulette can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Command Line Interface
 
