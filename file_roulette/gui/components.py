@@ -65,14 +65,7 @@ logger = logging.getLogger(__name__)
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
 
-    def __init__(
-        self,
-        title: str,
-        name: str,
-        *,
-        parent: QWidget | None = None,
-        checkable: bool = False,
-    ) -> None:
+    def __init__(self, title: str, name: str, *, parent: QWidget | None = None, checkable: bool = False) -> None:
         """Initialize the base group box."""
         super().__init__(title=title, parent=parent)
         set_qt_name(self, name)

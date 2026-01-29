@@ -4,7 +4,6 @@ import os
 import re
 from dataclasses import dataclass, field
 from filecmp import cmp
-from functools import cache
 from typing import TYPE_CHECKING
 
 from ..utils import (
@@ -164,15 +163,6 @@ class SizeLimit:
         return size > self.size_limit
 
 
-@cache
-def compile_re(re_fmt: str, text: str) -> re.Pattern:
-    """Compile a regex pattern.
-
-    Cached to avoid recompilation of the same pattern.
-    """
-    return re.compile(re_fmt.format(re.escape(text)), re.IGNORECASE)
-
-
 @dataclass(slots=True)
 class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
@@ -199,7 +189,7 @@ class ListIncludeExclude:
         """Compile regex patterns based on the text list."""
         if self.text:
             self.as_string = ", ".join(self.text)
-            self.patterns = tuple(compile_re(self.re_fmt, i) for i in self.text)
+            self.patterns = tuple(re.compile(self.re_fmt.format(re.escape(i)), re.IGNORECASE) for i in self.text)
 
     def is_valid(self, part: str) -> bool:
         """Check if a file name part matches the cached regexes."""

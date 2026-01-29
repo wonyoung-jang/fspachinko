@@ -67,7 +67,7 @@ class AppSettings(StrEnum):
     """Enumeration for different settings categories."""
 
     ORGANIZATION = "Wonyoung Jang"
-    DOMAIN = "wonyoungjang.org"
+    DOMAIN = "https://github.com/wonyoung-jang/file-roulette"
     APPLICATION = "File Roulette"
 
 
