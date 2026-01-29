@@ -39,8 +39,7 @@ class ListIncludeExcludeModel(BaseModel):
     """Model for list filtering."""
 
     include_enabled: bool = False
-    exclude_enabled: bool = False
-    text: tuple[str, ...] = ()
+    text: str = ""
 
 
 class MinMaxModel(BaseModel):

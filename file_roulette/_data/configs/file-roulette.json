@@ -22,12 +22,10 @@
     },
     "keyword": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": []
     },
     "extension": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": ["wav"]
     },
     "filesize": {

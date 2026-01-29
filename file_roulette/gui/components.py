@@ -48,7 +48,6 @@ from ..utils import (
     Paths,
     TimeUnit,
     TransferMode,
-    convert_string_to_list,
 )
 from .qthelpers import set_qt_name, set_qt_tips
 
@@ -359,8 +358,7 @@ class DualListFilterWidget(BaseGroupBox):
         """Return clean data for the config."""
         return ListIncludeExcludeModel(
             include_enabled=self.filter_include_radio.isChecked(),
-            exclude_enabled=self.filter_exclude_radio.isChecked(),
-            text=convert_string_to_list(self.filter_edit.text()),
+            text=self.filter_edit.text(),
         )
 
 

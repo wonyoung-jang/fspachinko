@@ -83,12 +83,10 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     "keyword": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": []
     },
     "extension": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": ["wav"]
     },
     "filesize": {
@@ -132,7 +130,6 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     ...
     "extension": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": ["wav","flac","m4a"]
     },
     ...
@@ -156,7 +153,6 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     ...
     "extension": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": ["jpg","png"]
     },
     "filesize": {
@@ -166,7 +162,6 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     "keyword": {
         "include_enabled": false,
-        "exclude_enabled": true,
         "text": ["thumbnail","draft"]
     },
     ...
@@ -186,7 +181,6 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     ...
     "extension": {
         "include_enabled": true,
-        "exclude_enabled": false,
         "text": ["mp4"]
     },
     "duration": {

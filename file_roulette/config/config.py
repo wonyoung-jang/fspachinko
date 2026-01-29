@@ -11,6 +11,7 @@ from ..utils import (
     FilenameTemplateMapKeys,
     SafeDict,
     calc_unique_path_name,
+    convert_string_to_list,
     date,
     date_time,
     time,
@@ -158,8 +159,12 @@ class SizeLimit:
 
     def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
-        if not self.enabled or self.size_limit <= 0:
+        if not self.enabled:
             return False
+
+        if self.size_limit <= 0:
+            return False
+
         return size > self.size_limit
 
 
@@ -168,8 +173,7 @@ class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
 
     include_enabled: bool
-    exclude_enabled: bool
-    text: tuple[str, ...]
+    text: str
     re_fmt: str
     as_string: str = "ALL"
     patterns: tuple[re.Pattern, ...] = ()
@@ -181,21 +185,20 @@ class ListIncludeExclude:
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
         """Create ListIncludeExclude from configuration model."""
-        return cls(
-            include_enabled=m.include_enabled, exclude_enabled=m.exclude_enabled, text=tuple(m.text), re_fmt=re_fmt
-        )
+        return cls(include_enabled=m.include_enabled, text=m.text, re_fmt=re_fmt)
 
     def _precompile(self) -> None:
         """Compile regex patterns based on the text list."""
         if self.text:
-            self.as_string = ", ".join(self.text)
-            self.patterns = tuple(re.compile(self.re_fmt.format(re.escape(i)), re.IGNORECASE) for i in self.text)
+            text_list = convert_string_to_list(self.text)
+            self.as_string = ", ".join(text_list)
+            self.patterns = tuple(re.compile(self.re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
 
     def is_valid(self, part: str) -> bool:
         """Check if a file name part matches the cached regexes."""
-        if not self.patterns:
+        if not self.text:
             return True
 
-        if self.exclude_enabled:
+        if self.include_enabled:
             return any(p.search(part) for p in self.patterns)
-        return any(p.search(part) for p in self.patterns)
+        return not any(p.search(part) for p in self.patterns)
