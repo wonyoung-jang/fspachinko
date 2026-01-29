@@ -91,35 +91,30 @@ class ProfileManager:
 
     def set_current(self, profile: str) -> None:
         """Set the current profile name."""
-        self.current_profile = profile
-
-    def _get_profile_path(self) -> str:
-        """Get the full path for a given profile name."""
-        return Paths.profile(self.current_profile)
+        self.current_profile = Paths.profile(profile)
 
     def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
         data = {}
         for key, child in _iter_valid_widgets(parent):
-            if (val := get_widget_value(child)) is not None:
-                data[key] = val
+            if (val := get_widget_value(child)) is None:
+                continue
 
-                if isinstance(child, QComboBox):
-                    items = [child.itemText(i) for i in range(child.count())]
-                    data[f"{key}_items"] = items
+            data[key] = val
+            if isinstance(child, QComboBox):
+                items = [child.itemText(i) for i in range(child.count())]
+                data[f"{key}_items"] = items
 
-        path = self._get_profile_path()
-        with open(path, "w", encoding="utf-8") as f:
+        with open(self.current_profile, "w") as f:
             json.dump(data, f, indent=4)
 
     def open_profile(self, parent: QWidget) -> None:
         """Recursively load settings for all child widgets."""
-        path = self._get_profile_path()
-        if not (os.path.exists(path) and os.path.isfile(path)):
+        if not (os.path.exists(self.current_profile) and os.path.isfile(self.current_profile)):
             return
 
         data = {}
-        with open(path, encoding="utf-8") as f:
+        with open(self.current_profile) as f:
             data = json.load(f)
 
         for key, child in _iter_valid_widgets(parent):

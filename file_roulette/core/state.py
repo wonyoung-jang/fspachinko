@@ -112,7 +112,7 @@ class FileRouletteContext(EngineContext):
             )
             return True
 
-        if self.folderstats.count >= target:
+        if self.folderstats.count == target:
             self.state = SuccessState(
                 status="SUCCESS",
                 message=f"Copied {self.folderstats.count}/{target} files",

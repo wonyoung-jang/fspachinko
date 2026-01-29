@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,17 @@ class DiversityQuota:
         """Check if all files/folders are locked."""
         return self.root in self.locked_folders
 
+    def is_folder_locked(self, folder_path: str) -> bool:
+        """Check if a folder is locked."""
+        return folder_path in self.locked_folders
+
+    def lock_entry(self, e: os.DirEntry) -> None:
+        """Mark an entry as locked without registering a success."""
+        if e.is_file():
+            self.lock_file(e.path)
+        elif e.is_dir():
+            self.lock_folder(e.path)
+
     def lock_file(self, file_path: str) -> None:
         """Mark a file as used without registering a success."""
         self.locked_files.add(file_path)
@@ -46,15 +56,15 @@ class DiversityQuota:
         """Mark a folder as locked without registering a success."""
         self.locked_folders.add(folder_path)
 
-    def get_available(self, entries: Iterable[FSEntry]) -> list[FSEntry]:
+    def get_available(self, entries: Iterable[os.DirEntry]) -> list[os.DirEntry]:
         """Filter entries to only those that are available."""
         return [e for e in entries if self.is_available(e)]
 
-    def is_available(self, e: FSEntry) -> bool:
+    def is_available(self, e: os.DirEntry) -> bool:
         """Check if a file or folder is eligible for selection."""
-        if e.is_file:
+        if e.is_file():
             return e.path not in self.locked_files
-        if e.is_dir:
+        if e.is_dir():
             return e.path not in self.locked_folders
         return False
 

@@ -68,7 +68,7 @@ class FileRouletteEngine:
                 self.report_state()
                 return
 
-            path, size = entry.path, entry.size
+            path, size = entry.path, entry.stat().st_size
             if not self.validator.is_valid(path, size):
                 continue
 
