@@ -1,7 +1,7 @@
 [project]
 name = "file-roulette"
-version = "0.0.1"
-description = "Copy random files from directory A to directory B."
+version = "0.0.2"
+description = "Transfer random files from directory A to directory B."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -19,7 +19,7 @@ file-roulette-gui = "file_roulette._gui:main"
 file-roulette-cli = "file_roulette._cli:main"
 
 [build-system]
-requires = ["uv_build>=0.9.1,<0.10.0"]
+requires = ["uv_build>=0.9.27,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
