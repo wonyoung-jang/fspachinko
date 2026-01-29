@@ -106,7 +106,7 @@ wheels = [
 
 [[package]]
 name = "file-roulette"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "cyclopts" },
