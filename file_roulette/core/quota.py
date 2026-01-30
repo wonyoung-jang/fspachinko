@@ -19,7 +19,7 @@ class DiversityQuota:
 
     root: str
 
-    unique_folders: bool = False
+    is_unique: bool = False
     max_per_folder: int = 0
 
     locked_files: set[str] = field(default_factory=set)
@@ -30,10 +30,10 @@ class DiversityQuota:
         """Reset batch-specific counters, optionally keeping file history."""
         self.folder_counts.clear()
         self.locked_folders.clear()
-        if not self.unique_folders:
+        if not self.is_unique:
             self.locked_files.clear()
 
-    def all_locked(self) -> bool:
+    def is_all_locked(self) -> bool:
         """Check if all files/folders are locked."""
         return self.root in self.locked_folders
 

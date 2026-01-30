@@ -17,6 +17,7 @@ from .constants import (
     FilenameTemplateMapKeys,
     IconFilename,
     ReStrFmt,
+    StateStatus,
     TimeUnit,
     TransferMode,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "Paths",
     "ReStrFmt",
     "SafeDict",
+    "StateStatus",
     "TimeUnit",
     "TransferMode",
     "calc_unique_path_name",

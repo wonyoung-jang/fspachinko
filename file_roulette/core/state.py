@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..utils import DateTimeStamp, remove_directory
+from ..utils import DateTimeStamp, StateStatus, remove_directory
 
 if TYPE_CHECKING:
     from ..config import Folder, SizeLimit
@@ -47,8 +47,8 @@ class EngineContext(ABC):
     folder_size_limit: SizeLimit
     total_size_limit: SizeLimit
     reporter: ReportWriter
-    dry_run: bool
-    stop_requested: bool = False
+    is_dry_run: bool
+    is_stop_requested: bool = False
     folderstats: FolderStats = field(default_factory=FolderStats)
     _state: EngineState | None = None
 
@@ -83,7 +83,7 @@ class EngineContext(ABC):
         """Update context on successful file operation."""
 
     @abstractmethod
-    def is_dry_run(self, copy_path_str: str) -> bool:
+    def should_treat_as_dry_run(self, copy_path_str: str) -> bool:
         """Check if a file has already been transferred."""
 
     @abstractmethod
@@ -105,37 +105,37 @@ class MainEngineContext(EngineContext):
 
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
-        if self.stop_requested:
+        if self.is_stop_requested:
             self.state = UserStoppedState(
-                status="USER STOPPED",
+                status=StateStatus.USER_STOPPED,
                 message="Stopped by user request",
             )
             return True
 
         if self.folderstats.count == target:
             self.state = SuccessState(
-                status="SUCCESS",
+                status=StateStatus.SUCCESS,
                 message=f"Copied {self.folderstats.count}/{target} files",
             )
             return True
 
-        if self.quota.all_locked():
+        if self.quota.is_all_locked():
             self.state = AllSearched(
-                status="ALL FILES SEARCHED",
+                status=StateStatus.ALL_FILES_SEARCHED,
                 message="All files locked by diversity quota",
             )
             return True
 
         if self.folder_size_limit.is_valid(self.folderstats.curr_size):
             self.state = FolderSizeLimitState(
-                status="FOLDER SIZE LIMIT REACHED",
+                status=StateStatus.FOLDER_SIZE_LIMIT_REACHED,
                 message=f"{(self.folderstats.curr_size)} B / {(self.folder_size_limit.size_limit)} B",
             )
             return True
 
         if self.total_size_limit.is_valid(self.folderstats.total_size):
             self.state = TotalSizeLimitState(
-                status="TOTAL SIZE LIMIT REACHED",
+                status=StateStatus.TOTAL_SIZE_LIMIT_REACHED,
                 message=f"{(self.folderstats.total_size)} B / {(self.total_size_limit.size_limit)} B",
             )
             return True
@@ -146,15 +146,15 @@ class MainEngineContext(EngineContext):
         """Check if no files were found in the current folder."""
         none_found = self.folderstats.count == 0 and self.folder.should_create
         if none_found:
-            if self.quota.all_locked():
+            if self.quota.is_all_locked():
                 self.state = NoFilesFoundAllSearchedState(
-                    status="NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED",
+                    status=StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED,
                     message="No files found and all files locked by diversity quota",
                 )
                 return True
 
             self.state = NoFilesFoundState(
-                status="NO FILES FOUND | FOLDER DELETED",
+                status=StateStatus.NO_FILES_FOUND_FOLDER_DELETED,
                 message="No files found in the folder",
             )
             return True
@@ -173,9 +173,9 @@ class MainEngineContext(EngineContext):
         self.folderstats.update_folder(size)
         self.quota.register_success(path)
 
-    def is_dry_run(self, copy_path_str: str) -> bool:
+    def should_treat_as_dry_run(self, copy_path_str: str) -> bool:
         """Check if a file has already been transferred."""
-        if self.dry_run:
+        if self.is_dry_run:
             self.state = DryRunState(message=f"DRY - {copy_path_str}")
             return True
         return False

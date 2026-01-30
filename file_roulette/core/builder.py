@@ -33,7 +33,7 @@ def build_engine(m: ConfigModel) -> Engine:
     rng = Random()
     quota = DiversityQuota(
         root=root,
-        unique_folders=m.folder.is_unique,
+        is_unique=m.folder.is_unique,
         max_per_folder=options.max_per_folder,
     )
     walker = RandomFSWalker(
@@ -53,7 +53,7 @@ def build_engine(m: ConfigModel) -> Engine:
             exts_str=validator.extensions.as_string,
             keys_str=validator.keywords.as_string,
         ),
-        dry_run=options.is_dry_run,
+        is_dry_run=options.is_dry_run,
     )
 
     return Engine(
@@ -62,6 +62,6 @@ def build_engine(m: ConfigModel) -> Engine:
         validator=validator,
         filecount=Filecount.from_model(m.filecount, rng=rng),
         filename=Filename.from_model(m.filename),
-        transfer_file=fetch_transfer_strategy(m.transfermode.transfer_mode),
+        do_transfer_strategy=fetch_transfer_strategy(m.transfermode.transfer_mode),
         _ctx=context,
     )

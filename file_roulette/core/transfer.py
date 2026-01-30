@@ -51,7 +51,7 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
     return tuple(available)
 
 
-def fetch_transfer_strategy(mode: TransferMode) -> Callable:
+def fetch_transfer_strategy(mode: TransferMode) -> Callable[[str, str], None]:
     """Return the appropriate transfer strategy instance.
 
     Falls back to SYMLINK if the requested mode is not available.
