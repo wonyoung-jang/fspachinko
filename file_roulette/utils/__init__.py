@@ -31,7 +31,7 @@ from .helpers import (
 from .interfaces import Observer
 from .loggers import initialize_logging
 from .paths import Paths
-from .timestamp import date, date_time, date_time_report_str, refresh, time
+from .timestamp import DateTimeStamp
 
 __all__ = [
     "FALSE_STRS",
@@ -44,6 +44,7 @@ __all__ = [
     "AppSettings",
     "ByteUnit",
     "BytesIn",
+    "DateTimeStamp",
     "DefaultPath",
     "FileError",
     "FilenameTemplate",
@@ -58,12 +59,7 @@ __all__ = [
     "calc_unique_path_name",
     "convert_byte_to_size",
     "convert_string_to_list",
-    "date",
-    "date_time",
-    "date_time_report_str",
     "initialize_logging",
-    "refresh",
     "remove_directory",
     "strtobool",
-    "time",
 ]

@@ -1,32 +1,27 @@
-"""Timestamp related functionality."""
+"""Provider for current date and time."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import ClassVar
+
+from .constants import DateTimeFormats
 
 
 @dataclass(slots=True)
-class DateTimeProvider:
+class DateTimeStamp:
     """Provider for current date and time."""
 
-    _now: datetime = field(init=False)
-    date: str = field(init=False)
-    time: str = field(init=False)
-    date_time: str = field(init=False)
-    date_time_report_str: str = field(init=False)
+    _now: ClassVar[datetime] = datetime.now(tz=UTC)
+    date: ClassVar[str] = _now.strftime(DateTimeFormats.DATE)
+    time: ClassVar[str] = _now.strftime(DateTimeFormats.TIME)
+    date_time: ClassVar[str] = f"{date}--{time}"
+    date_time_report_str: ClassVar[str] = _now.strftime(DateTimeFormats.DATETIME)
 
-    def refresh(self) -> None:
+    @classmethod
+    def refresh(cls) -> None:
         """Refresh the current date and time."""
-        self._now = datetime.now(tz=UTC)
-        self.date = self._now.strftime("%Y-%m-%d")
-        self.time = self._now.strftime("%H-%M-%S")
-        self.date_time = f"{self.date}--{self.time}"
-        self.date_time_report_str = self._now.strftime("%Y-%m-%d %H:%M:%S")
-
-
-_dtp = DateTimeProvider()
-_dtp.refresh()
-refresh = _dtp.refresh
-date_time_report_str = _dtp.date_time_report_str
-date = _dtp.date
-time = _dtp.time
-date_time = _dtp.date_time
+        cls._now = datetime.now(tz=UTC)
+        cls.date = cls._now.strftime(DateTimeFormats.DATE)
+        cls.time = cls._now.strftime(DateTimeFormats.TIME)
+        cls.date_time = f"{cls.date}--{cls.time}"
+        cls.date_time_report_str = cls._now.strftime(DateTimeFormats.DATETIME)

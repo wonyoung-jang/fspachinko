@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..utils import refresh, remove_directory
+from ..utils import DateTimeStamp, remove_directory
 
 if TYPE_CHECKING:
     from ..config import Folder, SizeLimit
@@ -163,7 +163,7 @@ class MainEngineContext(EngineContext):
 
     def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
-        refresh()
+        DateTimeStamp.refresh()
         self.folderstats.reset_for_folder()
         self.quota.prepare_for_batch()
         self.reporter.reset_for_dest(dest)

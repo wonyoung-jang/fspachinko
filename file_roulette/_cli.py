@@ -1,6 +1,6 @@
-"""Main cli entry point for File Roulette application."""
+"""CLI entry point."""
 
-from file_roulette.cli.cli import main
+from file_roulette import main_cli as main
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass, field
 
-from ..utils import convert_byte_to_size, date_time_report_str
+from ..utils import DateTimeStamp, convert_byte_to_size
 
 
 @dataclass(slots=True)
@@ -32,7 +32,7 @@ class ReportWriter:
         return (
             f"\n{status}"
             "\n------------------------------------------------------------------------\n"
-            f"Date:             {date_time_report_str}\n"
+            f"Date:             {DateTimeStamp.date_time_report_str}\n"
             f"Root:             {self.root}\n"
             f"Destination:      {self._dest}\n"
             f"Extensions:       {self.exts_str}\n"

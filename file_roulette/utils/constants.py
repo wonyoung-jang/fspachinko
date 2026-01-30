@@ -140,3 +140,11 @@ class IconFilename(StrEnum):
     BROWSE = "add_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     OPEN_DIR = "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     REMOVE = "remove_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+
+
+class DateTimeFormats(StrEnum):
+    """Enumeration for date and time formats."""
+
+    DATE = "%Y-%m-%d"
+    TIME = "%H-%M-%S"
+    DATETIME = "%Y-%m-%d--%H-%M-%S"

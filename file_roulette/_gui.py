@@ -1,6 +1,6 @@
-"""Main gui entry point for File Roulette application."""
+"""GUI entry point."""
 
-from file_roulette.gui.gui import main
+from file_roulette import main_gui as main
 
 if __name__ == "__main__":
     main()

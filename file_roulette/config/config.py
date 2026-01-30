@@ -8,13 +8,11 @@ from typing import TYPE_CHECKING
 
 from ..utils import (
     INVALID_FILENAME_CHARS,
+    DateTimeStamp,
     FilenameTemplateMapKeys,
     SafeDict,
     calc_unique_path_name,
     convert_string_to_list,
-    date,
-    date_time,
-    time,
 )
 
 if TYPE_CHECKING:
@@ -71,9 +69,9 @@ class Filename:
 
         self._map.update(
             {
-                FilenameTemplateMapKeys.DATE: date,
-                FilenameTemplateMapKeys.TIME: time,
-                FilenameTemplateMapKeys.DATETIME: date_time,
+                FilenameTemplateMapKeys.DATE: DateTimeStamp.date,
+                FilenameTemplateMapKeys.TIME: DateTimeStamp.time,
+                FilenameTemplateMapKeys.DATETIME: DateTimeStamp.date_time,
                 FilenameTemplateMapKeys.ORIGINAL: original_stem,
                 FilenameTemplateMapKeys.INDEX: index + 1,
                 FilenameTemplateMapKeys.PARENT: os.path.basename(os.path.dirname(chosen)),
