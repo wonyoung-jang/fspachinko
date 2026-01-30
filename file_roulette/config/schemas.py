@@ -40,6 +40,7 @@ class TransferModeModel(BaseModel):
 class ListIncludeExcludeModel(BaseModel):
     """Model for list filtering."""
 
+    is_enabled: bool = True
     should_include: bool = True
     text: str = ""
 

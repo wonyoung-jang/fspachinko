@@ -78,10 +78,12 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
         "trash_empty_folder_enabled": false
     },
     "keyword": {
+        "is_enabled": true,
         "should_include": true,
         "text": ""
     },
     "extension": {
+        "is_enabled": true,
         "should_include": true,
         "text": "wav"
     },
@@ -125,6 +127,7 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
+        "is_enabled": true,
         "should_include": true,
         "text": "wav,flac,m4a"
     },
@@ -148,10 +151,12 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
+        "is_enabled": true,
         "should_include": true,
         "text": "jpg,png"
     },
     "filesize": {
+        "is_enabled": true,
         "is_enabled": true,
         "minimum": 1.0,
         ...
@@ -176,6 +181,7 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
+        "is_enabled": true,
         "should_include": true,
         "text": "mp4"
     },

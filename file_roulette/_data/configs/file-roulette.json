@@ -21,10 +21,12 @@
         "trash_empty_folder_enabled": false
     },
     "keyword": {
+        "is_enabled": true,
         "should_include": true,
         "text": ""
     },
     "extension": {
+        "is_enabled": true,
         "should_include": true,
         "text": "wav"
     },

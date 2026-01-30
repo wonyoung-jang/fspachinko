@@ -172,6 +172,7 @@ class SizeLimit:
 class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
 
+    is_enabled: bool
     should_include: bool
     text: str
     re_fmt: str
@@ -185,7 +186,7 @@ class ListIncludeExclude:
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
         """Create ListIncludeExclude from configuration model."""
-        return cls(should_include=m.should_include, text=m.text, re_fmt=re_fmt)
+        return cls(is_enabled=m.is_enabled, should_include=m.should_include, text=m.text, re_fmt=re_fmt)
 
     def _precompile(self) -> None:
         """Compile regex patterns based on the text list."""

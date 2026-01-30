@@ -357,6 +357,7 @@ class ListIncludeExcludeFilterWidget(BaseGroupBox):
     def get_config(self) -> ListIncludeExcludeModel:
         """Return clean data for the config."""
         return ListIncludeExcludeModel(
+            is_enabled=self.isChecked(),
             should_include=self.filter_include_radio.isChecked(),
             text=self.filter_edit.text(),
         )

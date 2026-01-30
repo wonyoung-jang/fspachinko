@@ -42,10 +42,10 @@ class FileValidator:
         name = os.path.basename(path)
         stem, ext = os.path.splitext(name)
 
-        if not self.extensions.is_valid(ext):
+        if self.extensions.is_enabled and not self.extensions.is_valid(ext):
             return False
 
-        if not self.keywords.is_valid(stem):
+        if self.keywords.is_enabled and not self.keywords.is_valid(stem):
             return False
 
         duration = self._duration_cache.setdefault(path, _get_duration(path))
