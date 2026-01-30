@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QTabWidget, QVBoxLayout, QWidget
 
-from ..config import FileRouletteConfigModel
+from ..config import ConfigModel
 from .components import (
     DestPathSelectorWidget,
     DurationFilterWidget,
@@ -106,9 +106,9 @@ class UIBuilder:
         main_layout.addWidget(self.progress)
         return main_layout
 
-    def get_config(self) -> FileRouletteConfigModel:
+    def get_config(self) -> ConfigModel:
         """Get the current configuration from all widgets."""
-        return FileRouletteConfigModel(
+        return ConfigModel(
             root=self.root.get_config(),
             dest=self.dest.get_config(),
             filecount=self.filecount.get_config(),

@@ -9,9 +9,9 @@ from .config import (
     SizeLimit,
 )
 from .schemas import (
+    ConfigModel,
     FilecountModel,
     FilenameModel,
-    FileRouletteConfigModel,
     FolderModel,
     ListIncludeExcludeModel,
     MinMaxModel,
@@ -21,7 +21,7 @@ from .schemas import (
 )
 
 __all__ = [
-    "FileRouletteConfigModel",
+    "ConfigModel",
     "Filecount",
     "FilecountModel",
     "Filename",

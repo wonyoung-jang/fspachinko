@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Signal
 
-from ..utils import FileRouletteObserver
+from ..utils import Observer
 
 
 class WorkerSignals(QObject):
@@ -20,7 +20,7 @@ class WorkerSignals(QObject):
 
 
 @dataclass(slots=True)
-class GuiObserver(FileRouletteObserver):
+class GuiObserver(Observer):
     """GUI observer for File Roulette."""
 
     signals: WorkerSignals

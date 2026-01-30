@@ -68,7 +68,7 @@ class OptionsModel(BaseModel):
     is_dry_run: bool = True
 
 
-class FileRouletteConfigModel(BaseModel):
+class ConfigModel(BaseModel):
     """Model for File Roulette configuration."""
 
     root: str

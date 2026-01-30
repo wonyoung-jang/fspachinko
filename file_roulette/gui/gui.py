@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
 from ..utils import IconFilename, Paths, initialize_logging
-from .mainwindow import FileRouletteMainWindow
+from .mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,6 @@ def main() -> None:
     app = QApplication()
     app.setWindowIcon(QIcon(Paths.icon(IconFilename.WINDOW)))
     apply_stylesheet(app, theme="dark_purple.xml", extra={"density_scale": "-2"})
-    w = FileRouletteMainWindow()
+    w = MainWindow()
     w.show()
     app.exec()

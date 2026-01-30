@@ -28,7 +28,7 @@ from .helpers import (
     remove_directory,
     strtobool,
 )
-from .interfaces import FileRouletteObserver
+from .interfaces import Observer
 from .loggers import initialize_logging
 from .paths import Paths
 from .timestamp import date, date_time, date_time_report_str, refresh, time
@@ -46,10 +46,10 @@ __all__ = [
     "BytesIn",
     "DefaultPath",
     "FileError",
-    "FileRouletteObserver",
     "FilenameTemplate",
     "FilenameTemplateMapKeys",
     "IconFilename",
+    "Observer",
     "Paths",
     "ReStrFmt",
     "SafeDict",

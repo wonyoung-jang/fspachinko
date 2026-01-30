@@ -5,19 +5,19 @@ from typing import TYPE_CHECKING
 
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
 from ..utils import ReStrFmt
-from .engine import FileRouletteEngine
+from .engine import Engine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
-from .state import FileRouletteContext
+from .state import MainEngineContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
 from .walker import RandomFSWalker
 
 if TYPE_CHECKING:
-    from ..config import FileRouletteConfigModel
+    from ..config import ConfigModel
 
 
-def build_engine(m: FileRouletteConfigModel) -> FileRouletteEngine:
+def build_engine(m: ConfigModel) -> Engine:
     """Build and return the File Roulette engine based on the configuration."""
     # Build FileValidator
     validator = FileValidator(
@@ -43,7 +43,7 @@ def build_engine(m: FileRouletteConfigModel) -> FileRouletteEngine:
         should_follow_symlink=options.should_follow_symlink,
     )
 
-    context = FileRouletteContext(
+    context = MainEngineContext(
         folder=Folder.from_model(m.folder, dest=m.dest),
         quota=quota,
         folder_size_limit=SizeLimit.from_model(m.folder_size_limit),
@@ -56,7 +56,7 @@ def build_engine(m: FileRouletteConfigModel) -> FileRouletteEngine:
         dry_run=options.is_dry_run,
     )
 
-    return FileRouletteEngine(
+    return Engine(
         root=root,
         walker=walker,
         validator=validator,

@@ -9,19 +9,19 @@ from ..core import build_engine
 from .observer import GuiObserver, WorkerSignals
 
 if TYPE_CHECKING:
-    from ..config import FileRouletteConfigModel
-    from ..core import FileRouletteEngine
+    from ..config import ConfigModel
+    from ..core import Engine
 
 
 @dataclass(slots=True)
-class FileRouletteWorker:
+class MainWorker:
     """Worker for running File Roulette."""
 
     signals: WorkerSignals
-    engine: FileRouletteEngine
+    engine: Engine
 
     @classmethod
-    def from_config(cls, config: FileRouletteConfigModel, signals: WorkerSignals) -> FileRouletteWorker:
+    def from_config(cls, config: ConfigModel, signals: WorkerSignals) -> MainWorker:
         """Post-initialization tasks."""
         observer = GuiObserver(signals)
         engine = build_engine(config)
@@ -38,10 +38,10 @@ class FileRouletteWorker:
 
 
 @dataclass(slots=True)
-class FileRouletteThread(QThread):
+class MainThread(QThread):
     """Worker thread for running File Roulette."""
 
-    worker: FileRouletteWorker
+    worker: MainWorker
 
     def __post_init__(self) -> None:
         """Initialize the worker thread."""

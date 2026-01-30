@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 
 
-class FileRouletteObserver(ABC):
+class Observer(ABC):
     """Interface for File Roulette Observer."""
 
     @abstractmethod

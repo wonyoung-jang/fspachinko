@@ -61,7 +61,7 @@ class RunActions:
 
 
 @dataclass(slots=True)
-class FileRouletteActions:
+class Actions:
     """Main actions for File Roulette."""
 
     file: FileActions = field(default_factory=FileActions)

@@ -2,12 +2,12 @@
 
 import logging
 
-from ..utils import FileRouletteObserver
+from ..utils import Observer
 
 logger = logging.getLogger(__name__)
 
 
-class ConsoleObserver(FileRouletteObserver):
+class ConsoleObserver(Observer):
     """A simple console observer for File Roulette."""
 
     def on_progress_total(self, maximum: int) -> None:

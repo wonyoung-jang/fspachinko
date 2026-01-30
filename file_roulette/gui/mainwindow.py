@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
-from .actions import FileRouletteActions
-from .centralwidget import FileRouletteCentralGui
+from .actions import Actions
+from .centralwidget import CentralWidget
 from .qthelpers import set_qt_name
 from .settings import ProfileManager
 
@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
-class FileRouletteMainWindow(QMainWindow):
+class MainWindow(QMainWindow):
     """Main application window for File Roulette."""
 
-    ui: FileRouletteCentralGui = field(default_factory=FileRouletteCentralGui)
+    ui: CentralWidget = field(default_factory=CentralWidget)
     profiles: ProfileManager = field(default_factory=ProfileManager)
     qsettings: QSettings = field(default_factory=QSettings)
-    _actions: FileRouletteActions = field(default_factory=FileRouletteActions)
+    _actions: Actions = field(default_factory=Actions)
 
     def __post_init__(self) -> None:
         """Initialize the main window."""
@@ -53,10 +53,10 @@ class FileRouletteMainWindow(QMainWindow):
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
         menubar = self.menuBar()
-        set_qt_name(menubar, "FileRouletteMenuBar")
+        set_qt_name(menubar, "MenuBar")
 
         file_menu = menubar.addMenu("&File")
-        set_qt_name(file_menu, "FileRouletteFileMenu")
+        set_qt_name(file_menu, "FileMenu")
 
         file_menu.addAction(self._actions.file.save)
         file_menu.addAction(self._actions.file.save_as)
@@ -67,15 +67,15 @@ class FileRouletteMainWindow(QMainWindow):
         file_menu.addAction(self._actions.file.exit)
 
         run_menu = menubar.addMenu("&Run")
-        set_qt_name(run_menu, "FileRouletteRunMenu")
+        set_qt_name(run_menu, "RunMenu")
 
         run_menu.addAction(self._actions.run.start)
         run_menu.addAction(self._actions.run.stop)
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
-        toolbar = QToolBar("FileRouletteToolBar")
-        set_qt_name(toolbar, "FileRouletteToolBar")
+        toolbar = QToolBar("ToolBar")
+        set_qt_name(toolbar, "ToolBar")
 
         toolbar.addAction(self._actions.file.save)
         toolbar.addAction(self._actions.file.save_as)
@@ -92,7 +92,7 @@ class FileRouletteMainWindow(QMainWindow):
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
         statusbar = QStatusBar(self, sizeGripEnabled=True)
-        set_qt_name(statusbar, "FileRouletteStatusBar")
+        set_qt_name(statusbar, "StatusBar")
 
         self.setStatusBar(statusbar)
 

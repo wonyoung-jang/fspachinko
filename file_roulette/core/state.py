@@ -1,4 +1,4 @@
-"""Engine state classes for FileRouletteEngine."""
+"""Engine state classes."""
 
 import logging
 from abc import ABC, abstractmethod
@@ -100,7 +100,7 @@ class EngineContext(ABC):
 
 
 @dataclass(slots=True)
-class FileRouletteContext(EngineContext):
+class MainEngineContext(EngineContext):
     """Abstract base class for engine state context."""
 
     def should_stop(self, target: int) -> bool:

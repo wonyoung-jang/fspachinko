@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from ..config import Filecount, Filename
-    from ..utils import FileRouletteObserver
+    from ..utils import Observer
     from .state import EngineContext
     from .validator import FileValidator
     from .walker import FSWalker
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
-class FileRouletteEngine:
+class Engine:
     """Core engine class for File Roulette."""
 
     root: str
@@ -29,9 +29,9 @@ class FileRouletteEngine:
     filename: Filename
     transfer_file: Callable
     _ctx: EngineContext
-    _obs: FileRouletteObserver = field(init=False)
+    _obs: Observer = field(init=False)
 
-    def set_observer(self, observer: FileRouletteObserver) -> None:
+    def set_observer(self, observer: Observer) -> None:
         """Set the observer for the engine."""
         self._obs = observer
 

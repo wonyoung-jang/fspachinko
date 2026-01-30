@@ -4,7 +4,7 @@ import logging
 
 from cyclopts import App
 
-from ..config import FileRouletteConfigModel
+from ..config import ConfigModel
 from ..core import build_engine
 from ..utils import DefaultPath, Paths, initialize_logging
 from .observer import ConsoleObserver
@@ -28,7 +28,7 @@ def run_cli(config: str = "") -> None:
         return
 
     observer = ConsoleObserver()
-    config_model = FileRouletteConfigModel.model_validate_json(data)
+    config_model = ConfigModel.model_validate_json(data)
     engine = build_engine(config_model)
     engine.set_observer(observer)
     engine.start()

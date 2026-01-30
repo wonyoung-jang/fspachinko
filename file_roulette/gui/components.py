@@ -272,10 +272,7 @@ class FilenameWidget(BaseGroupBox):
 
         self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}", clearButtonEnabled=True)
         set_qt_name(self.edit_template, f"{name}_template")
-        set_qt_tips(
-            self.edit_template,
-            "Template for renaming files. Use the 'Insert Tag' button to add tags.",
-        )
+        set_qt_tips(self.edit_template, "Template for renaming files. Use the 'Insert Tag' button to add tags.")
 
         self.btn_template = QPushButton("Insert tag")
         set_qt_name(self.btn_template, f"{name}_template_button")
