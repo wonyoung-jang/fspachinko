@@ -1,5 +1,6 @@
 line-length = 120
 indent-width = 4
+target-version = "py314"
 exclude = [
     ".bzr",
     ".direnv",
@@ -35,7 +36,6 @@ extend-exclude = [
 
 
 [lint]
-select = ["E4", "E7", "E9", "F"]
 ignore = [
     "ANN401",  
     "ARG002", 

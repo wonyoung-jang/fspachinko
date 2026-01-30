@@ -181,19 +181,15 @@ class ListIncludeExclude:
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
-        self._precompile()
+        if self.text:
+            text_list = convert_string_to_list(self.text)
+            self.as_string = ", ".join(text_list)
+            self.patterns = tuple(re.compile(self.re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
 
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
         """Create ListIncludeExclude from configuration model."""
         return cls(is_enabled=m.is_enabled, should_include=m.should_include, text=m.text, re_fmt=re_fmt)
-
-    def _precompile(self) -> None:
-        """Compile regex patterns based on the text list."""
-        if self.text:
-            text_list = convert_string_to_list(self.text)
-            self.as_string = ", ".join(text_list)
-            self.patterns = tuple(re.compile(self.re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
 
     def is_valid(self, part: str) -> bool:
         """Check if a file name part matches the cached regexes."""

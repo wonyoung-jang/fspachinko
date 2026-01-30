@@ -31,7 +31,6 @@ class MainWindow(QMainWindow):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-
         logger.debug("Initializing GUI")
         self.setCentralWidget(self.ui)
         self.init_connections()
