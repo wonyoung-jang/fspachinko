@@ -3,13 +3,13 @@
     "dest": "file_roulette_output/",
     "filecount": {
         "count": 20,
-        "rand_enabled": false,
+        "is_rand_enabled": false,
         "rand_min": 1,
         "rand_max": 12
     },
     "folder": {
-        "create_enabled": true,
-        "unique_enabled": true,
+        "should_create": true,
+        "is_unique": true,
         "name": "test_folder_output",
         "count": 10
     },
@@ -21,34 +21,34 @@
         "trash_empty_folder_enabled": false
     },
     "keyword": {
-        "include_enabled": true,
-        "text": []
+        "should_include": true,
+        "text": ""
     },
     "extension": {
-        "include_enabled": true,
-        "text": ["wav"]
+        "should_include": true,
+        "text": "wav"
     },
     "filesize": {
-        "enabled": false,
+        "is_enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "duration": {
-        "enabled": false,
+        "is_enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "folder_size_limit": {
-        "enabled": false,
+        "is_enabled": false,
         "size_limit": 500.0
     },
     "total_size_limit": {
-        "enabled": false,
+        "is_enabled": false,
         "size_limit": 500.0
     },
     "options": {
         "max_per_folder": 3,
-        "follow_symlinks": false,
-        "dry_run_enabled": true
+        "should_follow_symlink": false,
+        "is_dry_run": true
     }
 }

@@ -9,11 +9,11 @@ from .paths import Paths
 os.makedirs(Paths.profiles, exist_ok=True)
 
 # General constants
-WALKER_CACHE_LIMIT = 1000
-PERCENTAGE_100 = 100.0
-INVALID_FILENAME_CHARS = set(r'\/:*?"<>|')
-TRUE_STRS = {"y", "yes", "t", "true", "on", "1"}
-FALSE_STRS = {"n", "no", "f", "false", "off", "0"}
+WALKER_CACHE_LIMIT: int = 1000
+PERCENTAGE_100: float = 100.0
+INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
+TRUE_STRS: set[str] = {"y", "yes", "t", "true", "on", "1"}
+FALSE_STRS: set[str] = {"n", "no", "f", "false", "off", "0"}
 
 
 class DefaultPath(StrEnum):

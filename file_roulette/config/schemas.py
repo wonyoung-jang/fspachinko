@@ -1,6 +1,8 @@
 """Pydantic schemas for File Roulette configuration."""
 
-from pydantic import BaseModel
+import os
+
+from pydantic import BaseModel, field_validator
 
 from ..utils import TransferMode
 
@@ -9,7 +11,7 @@ class FilecountModel(BaseModel):
     """Model for file count configuration."""
 
     count: int = 0
-    rand_enabled: bool = False
+    is_rand_enabled: bool = False
     rand_min: int = 0
     rand_max: int = 0
 
@@ -17,8 +19,8 @@ class FilecountModel(BaseModel):
 class FolderModel(BaseModel):
     """Model for folder creation configuration."""
 
-    create_enabled: bool = False
-    unique_enabled: bool = True
+    should_create: bool = False
+    is_unique: bool = True
     name: str = ""
     count: int = 1
 
@@ -38,14 +40,14 @@ class TransferModeModel(BaseModel):
 class ListIncludeExcludeModel(BaseModel):
     """Model for list filtering."""
 
-    include_enabled: bool = False
+    should_include: bool = True
     text: str = ""
 
 
 class MinMaxModel(BaseModel):
     """Model for size filter."""
 
-    enabled: bool = False
+    is_enabled: bool = False
     minimum: float = 0.0
     maximum: float = 0.0
 
@@ -53,7 +55,7 @@ class MinMaxModel(BaseModel):
 class SizeLimitModel(BaseModel):
     """Model for output folder size limits."""
 
-    enabled: bool = False
+    is_enabled: bool = False
     size_limit: float = 0.0
 
 
@@ -61,8 +63,8 @@ class OptionsModel(BaseModel):
     """Model for additional options."""
 
     max_per_folder: int = 0
-    follow_symlinks: bool = False
-    dry_run_enabled: bool = True
+    should_follow_symlink: bool = False
+    is_dry_run: bool = True
 
 
 class FileRouletteConfigModel(BaseModel):
@@ -81,3 +83,11 @@ class FileRouletteConfigModel(BaseModel):
     folder_size_limit: SizeLimitModel
     total_size_limit: SizeLimitModel
     options: OptionsModel
+
+    @field_validator("root", "dest")
+    @classmethod
+    def is_absolute(cls, val: str) -> str:
+        """Ensure root and dest paths are absolute."""
+        if not os.path.isabs(val):
+            return os.path.realpath(val)
+        return val

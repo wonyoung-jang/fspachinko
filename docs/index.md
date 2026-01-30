@@ -1,7 +1,3 @@
----
-icon: lucide/book-open
----
-
 # File Roulette
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
@@ -64,13 +60,13 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     "dest": "file_roulette_output/",
     "filecount": {
         "count": 20,
-        "rand_enabled": false,
+        "is_rand_enabled": false,
         "rand_min": 1,
         "rand_max": 12
     },
     "folder": {
-        "create_enabled": true,
-        "unique_enabled": true,
+        "should_create": true,
+        "is_unique": true,
         "name": "test_folder_output",
         "count": 10
     },
@@ -82,35 +78,35 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
         "trash_empty_folder_enabled": false
     },
     "keyword": {
-        "include_enabled": true,
-        "text": []
+        "should_include": true,
+        "text": ""
     },
     "extension": {
-        "include_enabled": true,
-        "text": ["wav"]
+        "should_include": true,
+        "text": "wav"
     },
     "filesize": {
-        "enabled": false,
+        "is_enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "duration": {
-        "enabled": false,
+        "is_enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "folder_size_limit": {
-        "enabled": false,
+        "is_enabled": false,
         "size_limit": 500.0
     },
     "total_size_limit": {
-        "enabled": false,
+        "is_enabled": false,
         "size_limit": 500.0
     },
     "options": {
         "max_per_folder": 3,
-        "follow_symlinks": false,
-        "dry_run_enabled": true
+        "should_follow_symlink": false,
+        "is_dry_run": true
     }
 }
 ```
@@ -129,8 +125,8 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
-        "include_enabled": true,
-        "text": ["wav","flac","m4a"]
+        "should_include": true,
+        "text": "wav,flac,m4a"
     },
     ...
     "options": {
@@ -152,17 +148,17 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
-        "include_enabled": true,
-        "text": ["jpg","png"]
+        "should_include": true,
+        "text": "jpg,png"
     },
     "filesize": {
-        "enabled": true,
+        "is_enabled": true,
         "minimum": 1.0,
         ...
     },
     "keyword": {
-        "include_enabled": false,
-        "text": ["thumbnail","draft"]
+        "should_include": false,
+        "text": "thumbnail,draft"
     },
     ...
 }
@@ -180,11 +176,11 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
-        "include_enabled": true,
-        "text": ["mp4"]
+        "should_include": true,
+        "text": "mp4"
     },
     "duration": {
-        "enabled": true,
+        "is_enabled": true,
         "minimum": 30.0,
         "maximum": 600.0
     },
@@ -205,7 +201,7 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     ...
     "options": {
         ...
-        "dry_run_enabled": true
+        "is_dry_run": true
     }
 }
 ```

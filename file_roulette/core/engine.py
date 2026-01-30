@@ -70,9 +70,11 @@ class FileRouletteEngine:
 
             path, size = entry.path, entry.stat().st_size
             if not self.validator.is_valid(path, size):
+                self._ctx.quota.lock_file(path)
                 continue
 
             if not self._transfer_file(path, dest):
+                self._ctx.quota.lock_file(path)
                 continue
 
             self._ctx.update_on_success(path, size)

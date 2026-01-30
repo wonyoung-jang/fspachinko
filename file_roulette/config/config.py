@@ -35,7 +35,7 @@ class Filecount:
     """Dataclass for file count configuration."""
 
     count: int
-    rand_enabled: bool
+    is_rand_enabled: bool
     rand_min: int
     rand_max: int
     rng: Random
@@ -43,11 +43,11 @@ class Filecount:
     @classmethod
     def from_model(cls, m: FilecountModel, rng: Random) -> Filecount:
         """Create Filecount from configuration model."""
-        return cls(count=m.count, rand_enabled=m.rand_enabled, rand_min=m.rand_min, rand_max=m.rand_max, rng=rng)
+        return cls(count=m.count, is_rand_enabled=m.is_rand_enabled, rand_min=m.rand_min, rand_max=m.rand_max, rng=rng)
 
     def get_count(self) -> int:
         """Get the file count based on configuration."""
-        if self.rand_enabled:
+        if self.is_rand_enabled:
             return self.rng.randint(self.rand_min, self.rand_max)
         return self.count
 
@@ -105,7 +105,7 @@ class Filename:
 class Folder:
     """Dataclass for folder creation configuration."""
 
-    create_enabled: bool
+    should_create: bool
     name: str
     count: int
     dest: str
@@ -113,11 +113,11 @@ class Folder:
     @classmethod
     def from_model(cls, m: FolderModel, dest: str) -> Folder:
         """Create Folder from configuration model."""
-        return cls(create_enabled=m.create_enabled, name=m.name, count=m.count, dest=dest)
+        return cls(should_create=m.should_create, name=m.name, count=m.count, dest=dest)
 
     def create_dest_folder(self) -> str:
         """Create the destination folder based on configuration."""
-        if not self.create_enabled:
+        if not self.should_create:
             return self.dest
 
         target = calc_unique_path_name(self.dest, self.name)
@@ -129,18 +129,18 @@ class Folder:
 class MinMax:
     """Dataclass for min-max limit configuration."""
 
-    enabled: bool
+    is_enabled: bool
     minimum: float
     maximum: float
 
     @classmethod
     def from_model(cls, m: MinMaxModel) -> MinMax:
         """Create MinMax from configuration model."""
-        return cls(enabled=m.enabled, minimum=m.minimum, maximum=m.maximum)
+        return cls(is_enabled=m.is_enabled, minimum=m.minimum, maximum=m.maximum)
 
     def is_valid(self, value: float) -> bool:
         """Check if a value is within the min-max range."""
-        if not self.enabled:
+        if not self.is_enabled:
             return True
         return self.minimum <= value <= self.maximum
 
@@ -149,17 +149,17 @@ class MinMax:
 class SizeLimit:
     """Dataclass for output folder size limits."""
 
-    enabled: bool
+    is_enabled: bool
     size_limit: float
 
     @classmethod
     def from_model(cls, m: SizeLimitModel) -> SizeLimit:
         """Create SizeLimit from configuration model."""
-        return cls(enabled=m.enabled, size_limit=m.size_limit)
+        return cls(is_enabled=m.is_enabled, size_limit=m.size_limit)
 
     def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
-        if not self.enabled:
+        if not self.is_enabled:
             return False
 
         if self.size_limit <= 0:
@@ -172,7 +172,7 @@ class SizeLimit:
 class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
 
-    include_enabled: bool
+    should_include: bool
     text: str
     re_fmt: str
     as_string: str = "ALL"
@@ -185,7 +185,7 @@ class ListIncludeExclude:
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
         """Create ListIncludeExclude from configuration model."""
-        return cls(include_enabled=m.include_enabled, text=m.text, re_fmt=re_fmt)
+        return cls(should_include=m.should_include, text=m.text, re_fmt=re_fmt)
 
     def _precompile(self) -> None:
         """Compile regex patterns based on the text list."""
@@ -199,6 +199,6 @@ class ListIncludeExclude:
         if not self.text:
             return True
 
-        if self.include_enabled:
+        if self.should_include:
             return any(p.search(part) for p in self.patterns)
         return not any(p.search(part) for p in self.patterns)

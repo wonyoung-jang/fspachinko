@@ -45,7 +45,7 @@ class RandomFSWalker(FSWalker):
     root: str
     quota: DiversityQuota
     rng: Random
-    follow_symlinks: bool
+    should_follow_symlink: bool
 
     def walk(self) -> Iterator[os.DirEntry]:
         """Generate shuffled candidates for a given directory."""
@@ -68,7 +68,7 @@ class RandomFSWalker(FSWalker):
                 del cache[folder_path]
 
             # Handle symlinks
-            if not self.follow_symlinks and entry.is_symlink():
+            if not self.should_follow_symlink and entry.is_symlink():
                 self.quota.lock_entry(entry)
                 continue
 

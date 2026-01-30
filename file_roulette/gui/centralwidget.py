@@ -47,7 +47,7 @@ class FileRouletteCentralGui(QWidget):
         self.progress_binder.bind(self.thread.worker.signals)
         self.progress_binder.count.connect(self.update_title_progress)
         self.progress_binder.finished.connect(self.on_finished)
-        self.toggle_ui(enabled=False)
+        self.toggle_ui(is_enabled=False)
         self.thread.start()
 
     @Slot()
@@ -65,10 +65,10 @@ class FileRouletteCentralGui(QWidget):
     @Slot()
     def on_finished(self) -> None:
         """Handle worker finished signal."""
-        self.toggle_ui(enabled=True)
+        self.toggle_ui(is_enabled=True)
         self.window().setWindowTitle(self.window_title_original)
 
-    def toggle_ui(self, *, enabled: bool) -> None:
+    def toggle_ui(self, *, is_enabled: bool) -> None:
         """Lock or unlock UI elements."""
         for child in self.findChildren(QGroupBox):
-            child.setEnabled(enabled)
+            child.setEnabled(is_enabled)

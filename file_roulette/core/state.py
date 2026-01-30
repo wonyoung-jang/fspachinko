@@ -144,7 +144,7 @@ class FileRouletteContext(EngineContext):
 
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
-        none_found = self.folderstats.count == 0 and self.folder.create_enabled
+        none_found = self.folderstats.count == 0 and self.folder.should_create
         if none_found:
             if self.quota.all_locked():
                 self.state = NoFilesFoundAllSearchedState(

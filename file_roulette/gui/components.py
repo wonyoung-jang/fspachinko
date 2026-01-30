@@ -222,7 +222,7 @@ class FileCountWidget(BaseGroupBox):
         """Return clean data for the config."""
         return FilecountModel(
             count=self.spin_fixed.value(),
-            rand_enabled=self.radio_rand.isChecked(),
+            is_rand_enabled=self.radio_rand.isChecked(),
             rand_min=self.spin_min_rand.value(),
             rand_max=self.spin_max_rand.value(),
         )
@@ -256,8 +256,8 @@ class FolderCreatorWidget(BaseGroupBox):
     def get_config(self) -> FolderModel:
         """Return clean data for the config."""
         return FolderModel(
-            create_enabled=self.isChecked(),
-            unique_enabled=self.chk_unique_folders.isChecked(),
+            should_create=self.isChecked(),
+            is_unique=self.chk_unique_folders.isChecked(),
             name=self.lineedit_folder_name.text(),
             count=self.spinbox_folder_count.value() if self.isChecked() else 1,
         )
@@ -329,12 +329,12 @@ class TransferModeWidget(BaseGroupBox):
         return TransferModeModel(transfer_mode=TransferMode(self.combo_mode.currentText()))
 
 
-class DualListFilterWidget(BaseGroupBox):
+class ListIncludeExcludeFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude pattern for Keywords and Extensions."""
 
     def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the dual list widget."""
-        super().__init__(title, name, parent=parent)
+        super().__init__(title, name, checkable=True, parent=parent)
 
         self.filter_edit = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
         set_qt_name(self.filter_edit, f"{name}_text")
@@ -357,12 +357,12 @@ class DualListFilterWidget(BaseGroupBox):
     def get_config(self) -> ListIncludeExcludeModel:
         """Return clean data for the config."""
         return ListIncludeExcludeModel(
-            include_enabled=self.filter_include_radio.isChecked(),
+            should_include=self.filter_include_radio.isChecked(),
             text=self.filter_edit.text(),
         )
 
 
-class ExtensionsFilterWidget(DualListFilterWidget):
+class ExtensionsFilterWidget(ListIncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for file extensions."""
 
     def __init__(self) -> None:
@@ -370,7 +370,7 @@ class ExtensionsFilterWidget(DualListFilterWidget):
         super().__init__("Extensions", "extension")
 
 
-class KeywordsFilterWidget(DualListFilterWidget):
+class KeywordsFilterWidget(ListIncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for keywords."""
 
     def __init__(self) -> None:
@@ -378,7 +378,7 @@ class KeywordsFilterWidget(DualListFilterWidget):
         super().__init__("Keywords", "keyword")
 
 
-class DblRangeFilterWidget(BaseGroupBox):
+class MinMaxFilterWidget(BaseGroupBox):
     """Handles logic for ranges (Min/Max), e.g., Size or Duration."""
 
     def __init__(
@@ -419,10 +419,10 @@ class DblRangeFilterWidget(BaseGroupBox):
         """Return clean data for the config."""
         mult = self.mapping.get(self.combo.currentText(), 1)
         minimum, maximum = self.min_spin.value() * mult, self.max_spin.value() * mult
-        return MinMaxModel(enabled=self.isChecked(), minimum=minimum, maximum=maximum)
+        return MinMaxModel(is_enabled=self.isChecked(), minimum=minimum, maximum=maximum)
 
 
-class SizeFilterWidget(DblRangeFilterWidget):
+class SizeFilterWidget(MinMaxFilterWidget):
     """Handles logic for size range filter."""
 
     def __init__(self) -> None:
@@ -430,7 +430,7 @@ class SizeFilterWidget(DblRangeFilterWidget):
         super().__init__("File Size", "filesize", tuple(ByteUnit), SIZE_MAP)
 
 
-class DurationFilterWidget(DblRangeFilterWidget):
+class DurationFilterWidget(MinMaxFilterWidget):
     """Handles logic for duration range filter."""
 
     def __init__(self) -> None:
@@ -472,7 +472,7 @@ class SizeLimitWidget(BaseGroupBox):
         """Return clean data for the config."""
         mult = self.mapping.get(self.combo.currentText(), 1)
         size_limit = self.size_spin.value() * mult
-        return SizeLimitModel(enabled=self.isChecked(), size_limit=size_limit)
+        return SizeLimitModel(is_enabled=self.isChecked(), size_limit=size_limit)
 
 
 class FolderSizeLimitWidget(SizeLimitWidget):
@@ -550,9 +550,11 @@ class OptionsWidget(BaseGroupBox):
         set_qt_name(self.spin_max_per_folder, f"{name}_max_per_folder")
         set_qt_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
 
-        self.chk_follow_symlinks = QCheckBox()
-        set_qt_name(self.chk_follow_symlinks, f"{name}_follow_symlinks")
-        set_qt_tips(self.chk_follow_symlinks, "If checked, symbolic links will be followed during file traversal.")
+        self.chk_should_follow_symlink = QCheckBox()
+        set_qt_name(self.chk_should_follow_symlink, f"{name}_should_follow_symlink")
+        set_qt_tips(
+            self.chk_should_follow_symlink, "If checked, symbolic links will be followed during file traversal."
+        )
 
         self.chk_dry_run = QCheckBox()
         set_qt_name(self.chk_dry_run, f"{name}_dry_run")
@@ -560,15 +562,15 @@ class OptionsWidget(BaseGroupBox):
 
         layout = QFormLayout(self)
         layout.addRow("Max from one folder", self.spin_max_per_folder)
-        layout.addRow("Follow symbolic links", self.chk_follow_symlinks)
+        layout.addRow("Follow symbolic links", self.chk_should_follow_symlink)
         layout.addRow("Dry run (simulation)", self.chk_dry_run)
 
     def get_config(self) -> OptionsModel:
         """Return clean data for the config."""
         return OptionsModel(
             max_per_folder=self.spin_max_per_folder.value(),
-            follow_symlinks=self.chk_follow_symlinks.isChecked(),
-            dry_run_enabled=self.chk_dry_run.isChecked(),
+            should_follow_symlink=self.chk_should_follow_symlink.isChecked(),
+            is_dry_run=self.chk_dry_run.isChecked(),
         )
 
 

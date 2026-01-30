@@ -33,14 +33,14 @@ def build_engine(m: FileRouletteConfigModel) -> FileRouletteEngine:
     rng = Random()
     quota = DiversityQuota(
         root=root,
-        unique_folders=m.folder.unique_enabled,
+        unique_folders=m.folder.is_unique,
         max_per_folder=options.max_per_folder,
     )
     walker = RandomFSWalker(
         root=root,
         rng=rng,
         quota=quota,
-        follow_symlinks=options.follow_symlinks,
+        should_follow_symlink=options.should_follow_symlink,
     )
 
     context = FileRouletteContext(
@@ -53,7 +53,7 @@ def build_engine(m: FileRouletteConfigModel) -> FileRouletteEngine:
             exts_str=validator.extensions.as_string,
             keys_str=validator.keywords.as_string,
         ),
-        dry_run=options.dry_run_enabled,
+        dry_run=options.is_dry_run,
     )
 
     return FileRouletteEngine(

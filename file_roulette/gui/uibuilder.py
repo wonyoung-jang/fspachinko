@@ -6,9 +6,7 @@ from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QTabWidget, QVBoxLayout,
 
 from ..config import FileRouletteConfigModel
 from .components import (
-    DblRangeFilterWidget,
     DestPathSelectorWidget,
-    DualListFilterWidget,
     DurationFilterWidget,
     ExtensionsFilterWidget,
     FileCountWidget,
@@ -16,7 +14,9 @@ from .components import (
     FolderCreatorWidget,
     FolderSizeLimitWidget,
     KeywordsFilterWidget,
+    ListIncludeExcludeFilterWidget,
     LoggingWidget,
+    MinMaxFilterWidget,
     OptionsWidget,
     PathSelectorWidget,
     ProgressWidget,
@@ -38,10 +38,10 @@ class UIBuilder:
     folders: FolderCreatorWidget = field(default_factory=FolderCreatorWidget)
     filename: FilenameWidget = field(default_factory=FilenameWidget)
     transfermode: TransferModeWidget = field(default_factory=TransferModeWidget)
-    keywords: DualListFilterWidget = field(default_factory=KeywordsFilterWidget)
-    extensions: DualListFilterWidget = field(default_factory=ExtensionsFilterWidget)
-    filesize: DblRangeFilterWidget = field(default_factory=SizeFilterWidget)
-    duration: DblRangeFilterWidget = field(default_factory=DurationFilterWidget)
+    keywords: ListIncludeExcludeFilterWidget = field(default_factory=KeywordsFilterWidget)
+    extensions: ListIncludeExcludeFilterWidget = field(default_factory=ExtensionsFilterWidget)
+    filesize: MinMaxFilterWidget = field(default_factory=SizeFilterWidget)
+    duration: MinMaxFilterWidget = field(default_factory=DurationFilterWidget)
     folder_size_limit: SizeLimitWidget = field(default_factory=FolderSizeLimitWidget)
     total_size_limit: SizeLimitWidget = field(default_factory=TotalSizeLimitWidget)
     options: OptionsWidget = field(default_factory=OptionsWidget)
