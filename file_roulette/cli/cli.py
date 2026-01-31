@@ -15,8 +15,14 @@ app = App(
 )
 
 
-def run_cli(config: str = "") -> None:
-    """Run the File Roulette CLI application."""
+@app.default
+def run(config: str = "") -> None:
+    """Run the File Roulette CLI.
+
+    Args:
+        config (str): Path to configuration file.
+
+    """
     if not config:
         config = Paths.config(DefaultPath.CONFIG)
 
@@ -32,17 +38,6 @@ def run_cli(config: str = "") -> None:
     engine = build_engine(config_model)
     engine.set_observer(observer)
     engine.start()
-
-
-@app.default
-def run(config: str = "") -> None:
-    """Run the File Roulette CLI.
-
-    Args:
-        config (str): Path to configuration file.
-
-    """
-    run_cli(config)
 
 
 def main() -> None:

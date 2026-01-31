@@ -112,7 +112,7 @@ class MainWindow(QMainWindow):
     def save_profile_as_dialog(self) -> None:
         """Save a GUI profile via dialog."""
         filename, _ = QFileDialog.getSaveFileName(
-            self, "Save Profile As", self.profiles.profile_dir, "JSON Files (*.json)"
+            self, "Save Profile As", self.profiles.get_current_profile_parent(), "JSON Files (*.json)"
         )
         if filename:
             self.profiles.set_current(filename)
@@ -123,7 +123,7 @@ class MainWindow(QMainWindow):
     def open_profile_dialog(self) -> None:
         """Load a GUI profile via dialog."""
         filename, _ = QFileDialog.getOpenFileName(
-            self, "Open Profile", self.profiles.profile_dir, "JSON Files (*.json)"
+            self, "Open Profile", self.profiles.get_current_profile_parent(), "JSON Files (*.json)"
         )
         if filename:
             self.profiles.set_current(filename)

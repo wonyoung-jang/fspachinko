@@ -153,7 +153,7 @@ class PathSelectorWidget(BaseGroupBox):
 
     def get_config(self) -> str:
         """Return clean data for the config."""
-        return os.path.realpath(self.combo.currentText())
+        return self.combo.currentText()
 
 
 class RootPathSelectorWidget(PathSelectorWidget):

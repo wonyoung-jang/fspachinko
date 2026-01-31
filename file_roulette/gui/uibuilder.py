@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from ..config import ConfigModel
 from .components import (
@@ -50,58 +50,45 @@ class UIBuilder:
 
     def build_layout(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
-        # 1. Path Selection Section (Top)
-        paths = QWidget()
-        path_layout = QVBoxLayout(paths)
+        path_widget = QWidget()
+        path_layout = QVBoxLayout(path_widget)
         path_layout.addWidget(self.root)
         path_layout.addWidget(self.dest)
 
-        # 2. Main Configuration Tabs
-        tabs = QTabWidget()
+        output_widget = QWidget()
+        output_layout = QHBoxLayout(output_widget)
+        output_layout.addWidget(self.filecount)
+        output_layout.addWidget(self.transfermode)
+        output_layout.addWidget(self.folders)
+        output_layout.addWidget(self.filename)
 
-        # --- Tab 1: Output Settings ---
-        tab_output = QWidget()
-        output_layout = QGridLayout(tab_output)
+        filter_widget = QWidget()
+        filter_layout = QVBoxLayout(filter_widget)
+        filter_layout.addWidget(self.keywords)
+        filter_layout.addWidget(self.extensions)
 
-        # Column 0: Transfer Configs
-        output_layout.addWidget(self.filecount, 0, 0)
-        output_layout.addWidget(self.transfermode, 1, 0)
+        size_widget = QWidget()
+        size_layout = QHBoxLayout(size_widget)
+        size_layout.addWidget(self.filesize)
+        size_layout.addWidget(self.duration)
 
-        # Column 1: Organization
-        output_layout.addWidget(self.folders, 0, 1)
-        output_layout.addWidget(self.filename, 1, 1)
+        size_limit_widget = QWidget()
+        size_limit_layout = QHBoxLayout(size_limit_widget)
+        size_limit_layout.addWidget(self.folder_size_limit)
+        size_limit_layout.addWidget(self.total_size_limit)
 
-        tabs.addTab(tab_output, "Output Settings")
-
-        # --- Tab 2: Filters ---
-        tab_filters = QWidget()
-        filter_layout = QGridLayout(tab_filters)
-
-        # Row 0: Text based filters
-        filter_layout.addWidget(self.keywords, 0, 0)
-        filter_layout.addWidget(self.extensions, 0, 1)
-
-        # Row 1: Numeric filters
-        filter_layout.addWidget(self.filesize, 1, 0)
-        filter_layout.addWidget(self.duration, 1, 1)
-
-        # Row 2: Size Limits
-        filter_layout.addWidget(self.folder_size_limit, 2, 0)
-        filter_layout.addWidget(self.total_size_limit, 2, 1)
-
-        tabs.addTab(tab_filters, "Filters && Rules")
-
-        # --- Tab 3: Options ---
         options_widget = QWidget()
         options_layout = QHBoxLayout(options_widget)
         options_layout.addWidget(self.options)
 
-        tabs.addTab(options_widget, "Options")
-
-        # 3. Assemble Main Layout
+        # Assemble Main Layout
         main_layout = QVBoxLayout()
-        main_layout.addWidget(paths)
-        main_layout.addWidget(tabs)
+        main_layout.addWidget(path_widget)
+        main_layout.addWidget(output_widget)
+        main_layout.addWidget(filter_widget)
+        main_layout.addWidget(size_widget)
+        main_layout.addWidget(size_limit_widget)
+        main_layout.addWidget(options_widget)
         main_layout.addWidget(self.logging)
         main_layout.addWidget(self.progress)
         return main_layout
