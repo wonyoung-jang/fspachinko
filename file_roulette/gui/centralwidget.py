@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
-from ..utils import PERCENTAGE_100
+from ..utils import PERCENTAGE_100, GUIName
 from .components import ProgressBinder
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
@@ -27,7 +27,7 @@ class CentralWidget(QWidget):
     def __post_init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        set_qt_name(self, "CentralWidget")
+        set_qt_name(self, GUIName.CENTRAL_WIDGET)
         layout = self.ui.build_layout()
         self.setLayout(layout)
         self.progress_binder = ProgressBinder(self.ui.progress, self.ui.logging)
@@ -37,8 +37,8 @@ class CentralWidget(QWidget):
         """Start the File Roulette process and disable UI elements."""
         try:
             config = self.ui.get_config()
-        except ValueError:
-            logger.exception("Configuration error")
+        except Exception:
+            logger.exception("")
             return
 
         self.thread = MainThread(MainWorker.from_config(config, WorkerSignals()))

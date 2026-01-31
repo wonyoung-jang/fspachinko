@@ -63,7 +63,7 @@ class TransferMode(StrEnum):
     HARDLINK = "Hardlink"
 
 
-class AppSettings(StrEnum):
+class AppSetting(StrEnum):
     """Enumeration for different settings categories."""
 
     ORGANIZATION = "Wonyoung Jang"
@@ -114,7 +114,7 @@ class FilenameTemplate(StrEnum):
     PARENTS_TO_ROOT = "{parentstoroot}"
 
 
-class FilenameTemplateMapKeys(StrEnum):
+class FilenameTemplateMapKey(StrEnum):
     """Enumeration for filename templates."""
 
     ORIGINAL = "original"
@@ -142,7 +142,7 @@ class IconFilename(StrEnum):
     REMOVE = "remove_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
 
 
-class DateTimeFormats(StrEnum):
+class DateTimeFormat(StrEnum):
     """Enumeration for date and time formats."""
 
     DATE = "%Y-%m-%d"
@@ -160,3 +160,43 @@ class StateStatus(StrEnum):
     TOTAL_SIZE_LIMIT_REACHED = "TOTAL SIZE LIMIT REACHED"
     NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED = "NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED"
     NO_FILES_FOUND_FOLDER_DELETED = "NO FILES FOUND | FOLDER DELETED"
+
+
+class GUISettingsKey(StrEnum):
+    """Enumeration for QSettings keys."""
+
+    GEOMETRY = "geometry"
+    STATE = "state"
+    PROFILE = "profile"
+
+
+class GUITitle(StrEnum):
+    """Enumeration for GUI window titles."""
+
+    WINDOW = "File Roulette: Copy random files"
+    SAVE_PROFILE = "Save Profile As"
+    OPEN_PROFILE = "Open Profile"
+
+
+class GUIName(StrEnum):
+    """Enumeration for GUI object names."""
+
+    CENTRAL_WIDGET = "central_widget"
+    MENUBAR = "menubar"
+    RUNMENU = "run_menu"
+    FILEMENU = "file_menu"
+    TOOLBAR = "toolbar"
+    STATUSBAR = "statusbar"
+
+
+class GUILabel(StrEnum):
+    """Enumeration for GUI labels."""
+
+    FILEMENU = "&File"
+    RUNMENU = "&Run"
+
+
+class GUIFileDialogFilter(StrEnum):
+    """Enumeration for GUI file dialog filters."""
+
+    JSON = "JSON Files (*.json)"

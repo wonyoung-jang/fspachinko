@@ -7,14 +7,14 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
-from ..utils import AppSettings, IconFilename, Paths, initialize_logging
+from ..utils import AppSetting, IconFilename, Paths, initialize_logging
 from .mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
 
-QCoreApplication.setOrganizationName(AppSettings.ORGANIZATION)
-QCoreApplication.setOrganizationDomain(AppSettings.DOMAIN)
-QCoreApplication.setApplicationName(AppSettings.APPLICATION)
+QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION)
+QCoreApplication.setOrganizationDomain(AppSetting.DOMAIN)
+QCoreApplication.setApplicationName(AppSetting.APPLICATION)
 
 
 try:  # Windows only for taskbar icon

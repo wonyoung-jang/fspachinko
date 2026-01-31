@@ -1,3 +1,3 @@
 # Command Line Interface
 
-::: file_roulette.cli.cli
+::: file_roulette.cli.app
