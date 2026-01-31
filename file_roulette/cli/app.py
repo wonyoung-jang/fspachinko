@@ -6,7 +6,7 @@ from cyclopts import App
 
 from ..config import ConfigModel
 from ..core import build_engine
-from ..utils import DefaultPath, Paths, initialize_logging
+from ..utils import DefaultPath, Paths
 from .observer import ConsoleObserver
 
 logger = logging.getLogger(__name__)
@@ -38,10 +38,3 @@ def run(config: str = "") -> None:
     engine = build_engine(config_model)
     engine.set_observer(observer)
     engine.start()
-
-
-def main() -> None:
-    """Enter File Roulette CLI."""
-    initialize_logging()
-    logger.info("Start: File Roulette GUI")
-    app()

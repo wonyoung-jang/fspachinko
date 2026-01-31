@@ -24,9 +24,9 @@ Repository = "https://github.com/wonyoung-jang/file-roulette"
 Issues = "https://github.com/wonyoung-jang/file-roulette/issues"
 
 [project.scripts]
-file-roulette = "file_roulette._gui:main"
-file-roulette-gui = "file_roulette._gui:main"
-file-roulette-cli = "file_roulette._cli:main"
+file-roulette = "file_roulette.gui.__main__:main"
+file-roulette-gui = "file_roulette.gui.__main__:main"
+file-roulette-cli = "file_roulette.cli.__main__:main"
  
 [build-system]
 requires = ["uv_build>=0.9.27,<0.10.0"]

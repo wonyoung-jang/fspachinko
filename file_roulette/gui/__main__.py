@@ -1,4 +1,4 @@
-"""GUI runner for File Roulette application."""
+"""Main entry point for File Roulette GUI."""
 
 import logging
 
@@ -37,3 +37,7 @@ def main() -> None:
     w = MainWindow()
     w.show()
     app.exec()
+
+
+if __name__ == "__main__":
+    main()
