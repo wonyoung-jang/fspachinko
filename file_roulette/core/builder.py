@@ -63,5 +63,5 @@ def build_engine(m: ConfigModel) -> Engine:
         filecount=Filecount.from_model(m.filecount, rng=rng),
         filename=Filename.from_model(m.filename),
         do_transfer_strategy=fetch_transfer_strategy(m.transfermode.transfer_mode),
-        _ctx=context,
+        context=context,
     )

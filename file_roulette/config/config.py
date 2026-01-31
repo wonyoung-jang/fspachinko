@@ -3,7 +3,6 @@
 import os
 import re
 from dataclasses import dataclass, field
-from filecmp import cmp
 from typing import TYPE_CHECKING
 
 from ..utils import (
@@ -11,6 +10,7 @@ from ..utils import (
     DateTimeStamp,
     FilenameTemplateMapKeys,
     SafeDict,
+    are_paths_equal,
     calc_unique_path_name,
     convert_string_to_list,
 )
@@ -43,7 +43,7 @@ class Filecount:
         """Create Filecount from configuration model."""
         return cls(count=m.count, is_rand_enabled=m.is_rand_enabled, rand_min=m.rand_min, rand_max=m.rand_max, rng=rng)
 
-    def get_count(self) -> int:
+    def get_file_count(self) -> int:
         """Get the file count based on configuration."""
         if self.is_rand_enabled:
             return self.rng.randint(self.rand_min, self.rand_max)
@@ -65,14 +65,14 @@ class Filename:
     def _get_target(self, chosen: str, dest: str, index: int) -> str:
         """Prepare the target file path based on naming conventions."""
         name = os.path.basename(chosen)
-        original_stem, ext = os.path.splitext(name)
+        stem, ext = os.path.splitext(name)
 
         self._map.update(
             {
                 FilenameTemplateMapKeys.DATE: DateTimeStamp.date,
                 FilenameTemplateMapKeys.TIME: DateTimeStamp.time,
                 FilenameTemplateMapKeys.DATETIME: DateTimeStamp.date_time,
-                FilenameTemplateMapKeys.ORIGINAL: original_stem,
+                FilenameTemplateMapKeys.ORIGINAL: stem,
                 FilenameTemplateMapKeys.INDEX: index + 1,
                 FilenameTemplateMapKeys.PARENT: os.path.basename(os.path.dirname(chosen)),
                 FilenameTemplateMapKeys.PARENTS_TO_ROOT: "_".join(chosen.split(os.sep)[:-1]),
@@ -80,23 +80,26 @@ class Filename:
         )
 
         try:
-            stem = self.template.format_map(self._map)
+            new_stem = self.template.format_map(self._map)
         except (KeyError, ValueError):
-            stem = original_stem
+            new_stem = stem
 
-        new_stem = "".join(c for c in stem if c not in INVALID_FILENAME_CHARS)
+        new_stem = "".join(c for c in new_stem if c not in INVALID_FILENAME_CHARS)
         return os.path.join(dest, f"{new_stem}{ext}")
 
-    def calc_dest_target(self, chosen: str, dest: str, index: int) -> str | None:
-        """Calculate the destination file path based on naming conventions."""
+    def determine_dest_filename(self, chosen: str, dest: str, index: int) -> str | None:
+        """Calculate the destination file path based on configuration."""
         target = self._get_target(chosen, dest, index)
-        if os.path.exists(target):
-            if cmp(chosen, target, shallow=True) and cmp(chosen, target, shallow=False):
-                return None
-            name = os.path.basename(target)
-            stem, ext = os.path.splitext(name)
-            return calc_unique_path_name(dest, stem, ext)
-        return target
+
+        if not os.path.exists(target):
+            return target
+
+        if are_paths_equal(chosen, target):
+            return None
+
+        name = os.path.basename(target)
+        stem, ext = os.path.splitext(name)
+        return calc_unique_path_name(dest, stem, ext)
 
 
 @dataclass(slots=True)
@@ -111,16 +114,18 @@ class Folder:
     @classmethod
     def from_model(cls, m: FolderModel, dest: str) -> Folder:
         """Create Folder from configuration model."""
-        return cls(should_create=m.should_create, name=m.name, count=m.count, dest=dest)
+        return cls(
+            should_create=m.should_create,
+            name=m.name,
+            count=m.count,
+            dest=dest,
+        )
 
-    def create_dest_folder(self) -> str:
-        """Create the destination folder based on configuration."""
+    def determine_dest_dirname(self) -> str:
+        """Calculate the destination directory name based on configuration."""
         if not self.should_create:
             return self.dest
-
-        target = calc_unique_path_name(self.dest, self.name)
-        os.mkdir(target)
-        return target
+        return calc_unique_path_name(self.dest, self.name)
 
 
 @dataclass(slots=True)

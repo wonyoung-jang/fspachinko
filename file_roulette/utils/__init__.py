@@ -23,6 +23,7 @@ from .constants import (
 )
 from .helpers import (
     SafeDict,
+    are_paths_equal,
     calc_unique_path_name,
     convert_byte_to_size,
     convert_string_to_list,
@@ -58,6 +59,7 @@ __all__ = [
     "StateStatus",
     "TimeUnit",
     "TransferMode",
+    "are_paths_equal",
     "calc_unique_path_name",
     "convert_byte_to_size",
     "convert_string_to_list",

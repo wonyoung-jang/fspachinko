@@ -3,6 +3,7 @@
 import contextlib
 import os
 import shutil
+from filecmp import cmp
 
 from .constants import FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
 
@@ -85,3 +86,10 @@ def remove_directory(path: str) -> None:
     """Remove a directory and its contents."""
     with contextlib.suppress(OSError):
         shutil.rmtree(path)
+
+
+def are_paths_equal(path1: str, path2: str) -> bool:
+    """Compare two paths for equality, accounting for case sensitivity."""
+    if cmp(path1, path2, shallow=True):
+        return True
+    return cmp(path1, path2, shallow=False)
