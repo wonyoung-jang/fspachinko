@@ -40,14 +40,11 @@ from ..config import (
 )
 from ..core import get_available_transfer_modes
 from ..utils import (
-    SIZE_MAP,
-    TIME_MAP,
     ByteUnit,
     FilenameTemplate,
     IconFilename,
     Paths,
     TimeUnit,
-    TransferMode,
 )
 from .qthelpers import set_qt_name, set_qt_tips
 
@@ -323,7 +320,7 @@ class TransferModeWidget(BaseGroupBox):
 
     def get_config(self) -> TransferModeModel:
         """Return clean data for the config."""
-        return TransferModeModel(transfer_mode=TransferMode(self.combo_mode.currentText()))
+        return TransferModeModel(transfer_mode=self.combo_mode.currentText())
 
 
 class ListIncludeExcludeFilterWidget(BaseGroupBox):
@@ -380,44 +377,40 @@ class MinMaxFilterWidget(BaseGroupBox):
     """Handles logic for ranges (Min/Max), e.g., Size or Duration."""
 
     def __init__(
-        self,
-        title: str,
-        name: str,
-        items: Sequence[str | ByteUnit | TimeUnit],
-        mapping: dict[str | ByteUnit | TimeUnit, int],
-        parent: QWidget | None = None,
+        self, title: str, name: str, items: Sequence[str | ByteUnit | TimeUnit], parent: QWidget | None = None
     ) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, parent=parent, checkable=True)
 
-        self.mapping = mapping
+        self.spin_min = QDoubleSpinBox(prefix="Min ")
+        set_qt_name(self.spin_min, f"{name}_minimum")
+        set_qt_tips(self.spin_min, f"Minimum value for the {name} filter.")
 
-        self.min_spin = QDoubleSpinBox(prefix="Min: ")
-        set_qt_name(self.min_spin, f"{name}_minimum")
-        set_qt_tips(self.min_spin, f"Minimum value for the {name} filter.")
+        self.spin_max = QDoubleSpinBox(prefix="Max ")
+        set_qt_name(self.spin_max, f"{name}_maximum")
+        set_qt_tips(self.spin_max, f"Maximum value for the {name} filter.")
 
-        self.max_spin = QDoubleSpinBox(prefix="Max: ")
-        set_qt_name(self.max_spin, f"{name}_maximum")
-        set_qt_tips(self.max_spin, f"Maximum value for the {name} filter.")
+        self.spin_min.valueChanged.connect(self.spin_max.setMinimum)
+        self.spin_max.valueChanged.connect(self.spin_min.setMaximum)
 
-        self.min_spin.valueChanged.connect(self.max_spin.setMinimum)
-        self.max_spin.valueChanged.connect(self.min_spin.setMaximum)
-
-        self.combo = QComboBox()
-        self.combo.addItems(items)
-        set_qt_name(self.combo, f"{name}_unit")
-        set_qt_tips(self.combo, f"Unit multiplier for the {name} filter.")
+        self.combo_unit = QComboBox()
+        self.combo_unit.addItems(items)
+        set_qt_name(self.combo_unit, f"{name}_unit")
+        set_qt_tips(self.combo_unit, f"Unit multiplier for the {name} filter.")
 
         layout = QHBoxLayout(self)
-        layout.addWidget(self.min_spin)
-        layout.addWidget(self.max_spin)
-        layout.addWidget(self.combo)
+        layout.addWidget(self.spin_min)
+        layout.addWidget(self.spin_max)
+        layout.addWidget(self.combo_unit)
 
     def get_config(self) -> MinMaxModel:
         """Return clean data for the config."""
-        mult = self.mapping.get(self.combo.currentText(), 1)
-        minimum, maximum = self.min_spin.value() * mult, self.max_spin.value() * mult
-        return MinMaxModel(is_enabled=self.isChecked(), minimum=minimum, maximum=maximum)
+        return MinMaxModel(
+            is_enabled=self.isChecked(),
+            minimum=self.spin_min.value(),
+            maximum=self.spin_max.value(),
+            unit=self.combo_unit.currentText(),
+        )
 
 
 class SizeFilterWidget(MinMaxFilterWidget):
@@ -425,7 +418,7 @@ class SizeFilterWidget(MinMaxFilterWidget):
 
     def __init__(self) -> None:
         """Initialize the size filter widget."""
-        super().__init__("File Size", "filesize", tuple(ByteUnit), SIZE_MAP)
+        super().__init__("File Size", "filesize", tuple(ByteUnit))
 
 
 class DurationFilterWidget(MinMaxFilterWidget):
@@ -433,44 +426,39 @@ class DurationFilterWidget(MinMaxFilterWidget):
 
     def __init__(self) -> None:
         """Initialize the duration filter widget."""
-        super().__init__("Duration", "duration", tuple(TimeUnit), TIME_MAP)
+        super().__init__("Duration", "duration", tuple(TimeUnit))
 
 
 class SizeLimitWidget(BaseGroupBox):
     """Handles logic for output folder size limit."""
 
     def __init__(
-        self,
-        title: str,
-        name: str,
-        items: Sequence[str | ByteUnit | TimeUnit],
-        mapping: dict[str | ByteUnit | TimeUnit, int],
-        parent: QWidget | None = None,
+        self, title: str, name: str, items: Sequence[str | ByteUnit | TimeUnit], parent: QWidget | None = None
     ) -> None:
         """Initialize the size limit widget."""
         super().__init__(title, name, parent=parent, checkable=True)
 
-        self.mapping = mapping
+        self.spin_size = QDoubleSpinBox(prefix="Size ")
+        self.spin_size.setSpecialValueText("Unlimited")
+        set_qt_name(self.spin_size, f"{name}_size")
+        set_qt_tips(self.spin_size, f"{title} value for the size limit.")
 
-        self.size_spin = QDoubleSpinBox(prefix="Size: ")
-        self.size_spin.setSpecialValueText("Unlimited")
-        set_qt_name(self.size_spin, f"{name}_size")
-        set_qt_tips(self.size_spin, f"{title} value for the size limit.")
-
-        self.combo = QComboBox()
-        self.combo.addItems(items)
-        set_qt_name(self.combo, f"{name}_unit")
-        set_qt_tips(self.combo, f"Unit multiplier for the {title} filter.")
+        self.combo_unit = QComboBox()
+        self.combo_unit.addItems(items)
+        set_qt_name(self.combo_unit, f"{name}_unit")
+        set_qt_tips(self.combo_unit, f"Unit multiplier for the {title} filter.")
 
         layout = QHBoxLayout(self)
-        layout.addWidget(self.size_spin)
-        layout.addWidget(self.combo)
+        layout.addWidget(self.spin_size)
+        layout.addWidget(self.combo_unit)
 
     def get_config(self) -> SizeLimitModel:
         """Return clean data for the config."""
-        mult = self.mapping.get(self.combo.currentText(), 1)
-        size_limit = self.size_spin.value() * mult
-        return SizeLimitModel(is_enabled=self.isChecked(), size_limit=size_limit)
+        return SizeLimitModel(
+            is_enabled=self.isChecked(),
+            size_limit=self.spin_size.value(),
+            unit=self.combo_unit.currentText(),
+        )
 
 
 class FolderSizeLimitWidget(SizeLimitWidget):
@@ -478,7 +466,7 @@ class FolderSizeLimitWidget(SizeLimitWidget):
 
     def __init__(self) -> None:
         """Initialize the folder size limit widget."""
-        super().__init__("Max Folder Size", "folder_size_limit", tuple(ByteUnit), SIZE_MAP)
+        super().__init__("Max Folder Size", "folder_size_limit", tuple(ByteUnit))
 
 
 class TotalSizeLimitWidget(SizeLimitWidget):
@@ -486,7 +474,7 @@ class TotalSizeLimitWidget(SizeLimitWidget):
 
     def __init__(self) -> None:
         """Initialize the total size limit widget."""
-        super().__init__("Max Total Size", "total_size_limit", tuple(ByteUnit), SIZE_MAP)
+        super().__init__("Max Total Size", "total_size_limit", tuple(ByteUnit))
 
 
 class ProgressWidget(QWidget):

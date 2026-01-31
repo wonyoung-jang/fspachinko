@@ -132,9 +132,13 @@ class MinMax:
     maximum: float
 
     @classmethod
-    def from_model(cls, m: MinMaxModel) -> MinMax:
+    def from_model(cls, m: MinMaxModel, mapping: dict[str, float]) -> MinMax:
         """Create MinMax from configuration model."""
-        return cls(is_enabled=m.is_enabled, minimum=m.minimum, maximum=m.maximum)
+        return cls(
+            is_enabled=m.is_enabled,
+            minimum=m.minimum * mapping.get(m.unit, 1.0),
+            maximum=m.maximum * mapping.get(m.unit, 1.0),
+        )
 
     def is_valid(self, value: float) -> bool:
         """Check if a value is within the min-max range."""
@@ -151,9 +155,12 @@ class SizeLimit:
     size_limit: float
 
     @classmethod
-    def from_model(cls, m: SizeLimitModel) -> SizeLimit:
+    def from_model(cls, m: SizeLimitModel, mapping: dict[str, float]) -> SizeLimit:
         """Create SizeLimit from configuration model."""
-        return cls(is_enabled=m.is_enabled, size_limit=m.size_limit)
+        return cls(
+            is_enabled=m.is_enabled,
+            size_limit=m.size_limit * mapping.get(m.unit, 1.0),
+        )
 
     def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
@@ -173,21 +180,25 @@ class ListIncludeExclude:
     is_enabled: bool
     should_include: bool
     text: str
-    re_fmt: str
-    as_string: str = "ALL"
-    patterns: tuple[re.Pattern, ...] = ()
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        if self.text:
-            text_list = convert_string_to_list(self.text)
-            self.as_string = ", ".join(text_list)
-            self.patterns = tuple(re.compile(self.re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+    as_string: str
+    patterns: tuple[re.Pattern, ...]
 
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
         """Create ListIncludeExclude from configuration model."""
-        return cls(is_enabled=m.is_enabled, should_include=m.should_include, text=m.text, re_fmt=re_fmt)
+        as_string = ""
+        patterns = ()
+        if m.text:
+            text_list = convert_string_to_list(m.text)
+            as_string = ", ".join(text_list)
+            patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+        return cls(
+            is_enabled=m.is_enabled,
+            should_include=m.should_include,
+            text=m.text,
+            as_string=as_string,
+            patterns=patterns,
+        )
 
     def is_valid(self, part: str) -> bool:
         """Check if a file name part matches the cached regexes."""

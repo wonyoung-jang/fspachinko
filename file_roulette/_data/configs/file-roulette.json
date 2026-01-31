@@ -33,20 +33,24 @@
     "filesize": {
         "is_enabled": false,
         "minimum": 0.0,
-        "maximum": 0.0
+        "maximum": 0.0,
+        "unit": "MB"
     },
     "duration": {
         "is_enabled": false,
         "minimum": 0.0,
-        "maximum": 0.0
+        "maximum": 0.0,
+        "unit": "s"
     },
     "folder_size_limit": {
         "is_enabled": false,
-        "size_limit": 500.0
+        "size_limit": 500.0,
+        "unit": "MB"
     },
     "total_size_limit": {
         "is_enabled": false,
-        "size_limit": 500.0
+        "size_limit": 500.0,
+        "unit": "MB"
     },
     "options": {
         "max_per_folder": 3,

@@ -4,7 +4,7 @@ from random import Random
 from typing import TYPE_CHECKING
 
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
-from ..utils import ReStrFmt
+from ..utils import SIZE_MAP, TIME_MAP, ReStrFmt
 from .engine import Engine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
@@ -23,8 +23,8 @@ def build_engine(m: ConfigModel) -> Engine:
     validator = FileValidator(
         keywords=ListIncludeExclude.from_model(m.keyword, re_fmt=ReStrFmt.KEYWORD),
         extensions=ListIncludeExclude.from_model(m.extension, re_fmt=ReStrFmt.EXTENSION),
-        filesize=MinMax.from_model(m.filesize),
-        duration=MinMax.from_model(m.duration),
+        filesize=MinMax.from_model(m.filesize, mapping=SIZE_MAP),
+        duration=MinMax.from_model(m.duration, mapping=TIME_MAP),
     )
 
     # Build other components
@@ -46,8 +46,8 @@ def build_engine(m: ConfigModel) -> Engine:
     context = MainEngineContext(
         folder=Folder.from_model(m.folder, dest=m.dest),
         quota=quota,
-        folder_size_limit=SizeLimit.from_model(m.folder_size_limit),
-        total_size_limit=SizeLimit.from_model(m.total_size_limit),
+        folder_size_limit=SizeLimit.from_model(m.folder_size_limit, mapping=SIZE_MAP),
+        total_size_limit=SizeLimit.from_model(m.total_size_limit, mapping=SIZE_MAP),
         reporter=ReportWriter(
             root=root,
             exts_str=validator.extensions.as_string,

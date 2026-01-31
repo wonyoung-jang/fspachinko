@@ -34,7 +34,7 @@ class FilenameModel(BaseModel):
 class TransferModeModel(BaseModel):
     """Model for mode configuration."""
 
-    transfer_mode: TransferMode = TransferMode.SYMLINK
+    transfer_mode: str = TransferMode.SYMLINK
 
 
 class ListIncludeExcludeModel(BaseModel):
@@ -51,6 +51,7 @@ class MinMaxModel(BaseModel):
     is_enabled: bool = False
     minimum: float = 0.0
     maximum: float = 0.0
+    unit: str = ""
 
 
 class SizeLimitModel(BaseModel):
@@ -58,6 +59,7 @@ class SizeLimitModel(BaseModel):
 
     is_enabled: bool = False
     size_limit: float = 0.0
+    unit: str = ""
 
 
 class OptionsModel(BaseModel):
