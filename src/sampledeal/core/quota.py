@@ -18,10 +18,8 @@ class DiversityQuota:
     """Manages rules for diversity (weights) and uniqueness."""
 
     root: str
-
     is_unique: bool = False
     max_per_folder: int = 0
-
     locked_files: set[str] = field(default_factory=set)
     locked_folders: set[str] = field(default_factory=set)
     folder_counts: Counter[str] = field(default_factory=Counter)

@@ -1,9 +1,9 @@
 """Logging configuration."""
 
-import json
 import logging.config
 
 from .constants import DefaultPath
+from .helpers import load_json
 from .paths import Paths
 
 
@@ -12,6 +12,5 @@ def initialize_logging(path: str | None = None) -> None:
     if path is None:
         path = Paths.config(DefaultPath.LOGGING)
 
-    with open(path, encoding="utf-8") as f:
-        cfg_dict = json.load(f)
-        logging.config.dictConfig(cfg_dict)
+    data = load_json(path)
+    logging.config.dictConfig(data)
