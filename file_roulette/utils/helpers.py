@@ -1,9 +1,11 @@
 """Utility functions for file-roulette."""
 
 import contextlib
+import json
 import os
 import shutil
 from filecmp import cmp
+from typing import Any
 
 from .constants import FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
 
@@ -93,3 +95,20 @@ def are_paths_equal(path1: str, path2: str) -> bool:
     if cmp(path1, path2, shallow=True):
         return True
     return cmp(path1, path2, shallow=False)
+
+
+def load_json(path: str) -> dict[str, Any]:
+    """Load JSON data from a file and return as a dictionary."""
+    if not (os.path.exists(path) and os.path.isfile(path)):
+        return {}
+
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_json(path: str, data: dict[str, Any]) -> None:
+    """Save a dictionary as JSON data to a file."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        data = dict(sorted(data.items(), key=lambda item: item[0]))
+        json.dump(data, f, indent=4)
