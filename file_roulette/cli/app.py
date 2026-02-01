@@ -1,10 +1,12 @@
 """CLI package for File Roulette."""
 
 import logging
+import os
 
 from cyclopts import App
 
 from ..config import ConfigModel
+from ..config.converter import config_to_profile_file, profile_to_config_file
 from ..core import build_engine
 from ..utils import DefaultPath, Paths
 from .observer import ConsoleObserver
@@ -38,3 +40,23 @@ def run(config: str = "") -> None:
     engine = build_engine(config_model)
     engine.set_observer(observer)
     engine.start()
+
+
+@app.command
+def profile_to_config(profile: str, output: str) -> None:
+    """Convert a GUI profile JSON to a file-roulette config JSON."""
+    if not os.path.exists(profile):
+        logger.error("Profile file not found: %s", profile)
+        return
+
+    profile_to_config_file(profile, output)
+
+
+@app.command
+def config_to_profile(config: str, output: str) -> None:
+    """Convert a file-roulette config JSON to a GUI profile JSON."""
+    if not os.path.exists(config):
+        logger.error("Config file not found: %s", config)
+        return
+
+    config_to_profile_file(config, output)
