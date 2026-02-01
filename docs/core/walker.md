@@ -1,3 +1,3 @@
 # Filesystem Walker
 
-::: file_roulette.core.walker
+::: sampledeal.core.walker

@@ -1,13 +1,13 @@
 [project]
-site_name = "File Roulette"
-site_description = "Documentation for the File Roulette random file transferer."
+site_name = "sampledeal"
+site_description = "Documentation for the sampledeal random file transferer."
 site_author = "Wonyoung Jang"
-site_url = "https://wonyoung-jang.github.io/file-roulette/"
+site_url = "https://wonyoung-jang.github.io/sampledeal/"
 copyright = "Copyright &copy; Wonyoung Jang"
 docs_dir = "docs"
 site_dir = "site"
-repo_url = "https://github.com/wonyoung-jang/file-roulette"
-repo_name = "wonyoung-jang/file-roulette"
+repo_url = "https://github.com/wonyoung-jang/sampledeal"
+repo_name = "wonyoung-jang/sampledeal"
 # nav = [
 #     { "Home" = "index.md" },
 #     { "Usage" = "usage.md" },
@@ -127,8 +127,8 @@ toggle.name = "Switch to light mode"
 # ----------------------------------------------------------------------------
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/wonyoung-jang/file-roulette"
-name = "File Roulette on GitHub"
+link = "https://github.com/wonyoung-jang/sampledeal"
+name = "sampledeal on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/linkedin"
@@ -140,7 +140,7 @@ name = "Wonyoung Jang on LinkedIn"
 # ----------------------------------------------------------------------------
 [project.plugins.mkdocstrings.handlers.python]
 inventories = ["https://docs.python.org/3/objects.inv"]
-paths = ["file_roulette"]
+paths = ["sampledeal"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
 # General

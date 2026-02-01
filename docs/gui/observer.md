@@ -1,3 +1,3 @@
 # GUI Observer
 
-::: file_roulette.gui.observer
+::: sampledeal.gui.observer

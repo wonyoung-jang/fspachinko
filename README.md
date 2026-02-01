@@ -1,17 +1,17 @@
-# File Roulette
+# sampledeal
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
 
 ## Installation (uv)
 
 ```bash
-uv add file-roulette
+uv add sampledeal
 ```
 
 or
 
 ```bash
-uv tool install file-roulette
+uv tool install sampledeal
 ```
 
 ![Setup](resources/images/tab_output.png)
@@ -20,7 +20,7 @@ uv tool install file-roulette
 
 ## Usage
 
-File Roulette can be used via command-line interface (CLI) or graphical user interface (GUI).
+sampledeal can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Command Line Interface
 
@@ -28,7 +28,7 @@ File Roulette can be used via command-line interface (CLI) or graphical user int
 
 ```bash
 # Use configuration file
-file-roulette-cli --config your-file-roulette.json
+sampledeal-cli --config your-sampledeal.json
 ```
 
 ## Graphical User Interface
@@ -36,13 +36,13 @@ file-roulette-cli --config your-file-roulette.json
 ### Launch GUI
 
 ```bash
-file-roulette-gui
+sampledeal-gui
 ```
 
 Or simply:
 
 ```bash
-file-roulette
+sampledeal
 ```
 
 ### GUI Profiles
@@ -56,12 +56,12 @@ Save frequently used configurations as profiles:
 
 ## Configuration File
 
-Create a `file-roulette.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
+Create a `sampledeal.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
 
 ```json
 {
     "root": "C:/",
-    "dest": "file_roulette_output/",
+    "dest": "sampledeal_output/",
     "filecount": {
         "count": 20,
         "is_rand_enabled": false,
@@ -234,7 +234,7 @@ Example: `{index}_{original}_{date}`: `photo.jpg` -> `1_photo_2026-01-25.jpg`
 
 ### Logging
 
-Configure logging in a `json` file. Here is the default `file_roulette_configs/logging.json` provided:
+Configure logging in a `json` file. Here is the default `sampledeal_configs/logging.json` provided:
 
 ```json
 {
@@ -259,7 +259,7 @@ Configure logging in a `json` file. Here is the default `file_roulette_configs/l
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "file-roulette.log",
+            "filename": "sampledeal.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

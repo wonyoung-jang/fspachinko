@@ -1,3 +1,3 @@
 # Helpers
 
-::: file_roulette.utils.helpers
+::: sampledeal.utils.helpers

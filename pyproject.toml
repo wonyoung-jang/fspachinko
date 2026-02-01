@@ -1,5 +1,5 @@
 [project]
-name = "file-roulette"
+name = "sampledeal"
 version = "0.0.2"
 description = "Transfer random files from directory A to directory B."
 readme = "README.md"
@@ -19,25 +19,21 @@ authors = [
 ]
 
 [project.urls]
-Documentation = "https://wonyoung-jang.github.io/file-roulette/"
-Repository = "https://github.com/wonyoung-jang/file-roulette"
-Issues = "https://github.com/wonyoung-jang/file-roulette/issues"
+Documentation = "https://wonyoung-jang.github.io/sampledeal/"
+Repository = "https://github.com/wonyoung-jang/sampledeal"
+Issues = "https://github.com/wonyoung-jang/sampledeal/issues"
 
 [project.scripts]
-file-roulette = "file_roulette.gui.__main__:main"
-file-roulette-gui = "file_roulette.gui.__main__:main"
-file-roulette-cli = "file_roulette.cli.__main__:main"
+sampledeal = "sampledeal.gui.__main__:main"
+sampledeal-gui = "sampledeal.gui.__main__:main"
+sampledeal-cli = "sampledeal.cli.__main__:main"
  
 [build-system]
 requires = ["uv_build>=0.9.27,<0.10.0"]
 build-backend = "uv_build"
 
-[tool.uv.build-backend]
-module-name = "file_roulette"
-module-root = ""
-
 [tool.vulture]
-paths = ["./file_roulette", "whitelist.py"]
+paths = ["./sampledeal", "whitelist.py"]
 ignore_decorators = ["@app.*"]
 min_confidence = 40
 verbose = false

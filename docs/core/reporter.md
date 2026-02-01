@@ -1,3 +1,3 @@
 # Report Writer
 
-::: file_roulette.core.reporter
+::: sampledeal.core.reporter

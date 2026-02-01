@@ -1,3 +1,3 @@
 # Constants
 
-::: file_roulette.utils.constants
+::: sampledeal.utils.constants

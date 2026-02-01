@@ -1,3 +1,3 @@
 # Configuration
 
-::: file_roulette.config.config
+::: sampledeal.config.config

@@ -1,3 +1,3 @@
 # Settings
 
-::: file_roulette.gui.settings
+::: sampledeal.gui.settings

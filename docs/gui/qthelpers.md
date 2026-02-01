@@ -1,3 +1,3 @@
 # GUI Helpers
 
-::: file_roulette.gui.qthelpers
+::: sampledeal.gui.qthelpers

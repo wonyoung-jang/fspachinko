@@ -1,3 +1,3 @@
 # Main Window
 
-::: file_roulette.gui.mainwindow
+::: sampledeal.gui.mainwindow

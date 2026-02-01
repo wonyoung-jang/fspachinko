@@ -1,3 +1,3 @@
 # UI Builder
 
-::: file_roulette.gui.uibuilder
+::: sampledeal.gui.uibuilder

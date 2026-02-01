@@ -1,3 +1,3 @@
 # Transfer Strategies
 
-::: file_roulette.core.transfer
+::: sampledeal.core.transfer
