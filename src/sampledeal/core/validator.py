@@ -1,6 +1,7 @@
 """Config validation functions."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from ffmpeg import Error as FFmpegError
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from ..config import ListIncludeExclude, MinMax
 
 
+@lru_cache(maxsize=1024)
 def _get_duration(path: str) -> float:
     """Get the duration of a media file."""
     try:
@@ -33,7 +35,6 @@ class FileValidator:
     extensions: ListIncludeExclude
     filesize: MinMax
     duration: MinMax
-    _duration_cache: dict[str, float] = field(default_factory=dict)
 
     def is_valid(self, path: str, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -48,16 +49,5 @@ class FileValidator:
         if self.keywords.is_enabled and not self.keywords.is_valid(stem):
             return False
 
-        duration = self._duration_cache.setdefault(path, _get_duration(path))
+        duration = _get_duration(path)
         return self.duration.is_enabled and self.duration.is_valid(duration)
-
-
-@dataclass(slots=True)
-class FileValidatorChainOfResponsibility:
-    """Class for chaining multiple FileValidators."""
-
-    validators: list[FileValidator]
-
-    def is_valid(self, path: str, size: int) -> bool:
-        """Check if a file is valid based on the chain of validators."""
-        return all(validator.is_valid(path, size) for validator in self.validators)
