@@ -20,7 +20,7 @@
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "sampledeal.log",
+            "filename": "galton.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

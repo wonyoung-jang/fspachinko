@@ -1,3 +1,3 @@
 # Filesystem Walker
 
-::: sampledeal.core.walker
+::: galton.core.walker

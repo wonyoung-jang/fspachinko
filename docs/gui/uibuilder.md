@@ -1,3 +1,3 @@
 # UI Builder
 
-::: sampledeal.gui.uibuilder
+::: galton.gui.uibuilder

@@ -1,3 +1,3 @@
 # Constants
 
-::: sampledeal.utils.constants
+::: galton.utils.constants

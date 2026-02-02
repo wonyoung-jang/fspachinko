@@ -13,13 +13,13 @@ from .observer import ConsoleObserver
 
 logger = logging.getLogger(__name__)
 app = App(
-    help="sampledeal - Random file transfer utility.",
+    help="galton - Random file transfer utility.",
 )
 
 
 @app.default
 def run(config: str = "") -> None:
-    """Run the sampledeal CLI.
+    """Run the galton CLI.
 
     Args:
         config (str): Path to configuration file.
@@ -44,7 +44,7 @@ def run(config: str = "") -> None:
 
 @app.command
 def profile_to_config(profile: str, output: str) -> None:
-    """Convert a GUI profile JSON to a sampledeal config JSON."""
+    """Convert a GUI profile JSON to a galton config JSON."""
     if not os.path.exists(profile):
         logger.error("Profile file not found: %s", profile)
         return
@@ -54,7 +54,7 @@ def profile_to_config(profile: str, output: str) -> None:
 
 @app.command
 def config_to_profile(config: str, output: str) -> None:
-    """Convert a sampledeal config JSON to a GUI profile JSON."""
+    """Convert a galton config JSON to a GUI profile JSON."""
     if not os.path.exists(config):
         logger.error("Config file not found: %s", config)
         return

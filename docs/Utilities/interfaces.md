@@ -1,3 +1,3 @@
 # Interfaces and Protocols
 
-::: sampledeal.utils.interfaces
+::: galton.utils.interfaces

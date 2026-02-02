@@ -1,3 +1,3 @@
 # File Validator
 
-::: sampledeal.core.validator
+::: galton.core.validator

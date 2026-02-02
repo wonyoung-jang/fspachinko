@@ -1,3 +1,3 @@
 # Helpers
 
-::: sampledeal.utils.helpers
+::: galton.utils.helpers

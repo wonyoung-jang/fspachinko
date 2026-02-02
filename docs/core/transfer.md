@@ -1,3 +1,3 @@
 # Transfer Strategies
 
-::: sampledeal.core.transfer
+::: galton.core.transfer

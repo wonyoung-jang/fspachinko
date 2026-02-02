@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConsoleObserver(Observer):
-    """A simple console observer for sampledeal."""
+    """A simple console observer for galton."""
 
     def on_progress_total(self, maximum: int) -> None:
         """Handle starting total progress."""

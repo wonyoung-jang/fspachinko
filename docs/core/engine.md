@@ -1,3 +1,3 @@
 # Engine
 
-::: sampledeal.core.engine
+::: galton.core.engine

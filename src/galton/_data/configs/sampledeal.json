@@ -1,6 +1,6 @@
 {
     "root": "C:/",
-    "dest": "sampledeal_output/",
+    "dest": "galton_output/",
     "filecount": {
         "count": 20,
         "is_rand_enabled": false,

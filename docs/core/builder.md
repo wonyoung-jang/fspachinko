@@ -1,3 +1,3 @@
 # Builder
 
-::: sampledeal.core.builder
+::: galton.core.builder

@@ -1,3 +1,3 @@
 # Configuration
 
-::: sampledeal.config.config
+::: galton.config.config

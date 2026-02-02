@@ -1,3 +1,3 @@
 # Diversity Quota
 
-::: sampledeal.core.quota
+::: galton.core.quota

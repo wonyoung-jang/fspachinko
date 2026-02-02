@@ -1,13 +1,13 @@
 [project]
-site_name = "sampledeal"
-site_description = "Documentation for the sampledeal random file transferer."
+site_name = "galton"
+site_description = "Documentation for the galton random file transferer."
 site_author = "Wonyoung Jang"
-site_url = "https://wonyoung-jang.github.io/sampledeal/"
+site_url = "https://wonyoung-jang.github.io/galton/"
 copyright = "Copyright &copy; Wonyoung Jang"
 docs_dir = "docs"
 site_dir = "site"
-repo_url = "https://github.com/wonyoung-jang/sampledeal"
-repo_name = "wonyoung-jang/sampledeal"
+repo_url = "https://github.com/wonyoung-jang/galton"
+repo_name = "wonyoung-jang/galton"
 # nav = [
 #     { "Home" = "index.md" },
 #     { "Usage" = "usage.md" },
@@ -127,8 +127,8 @@ toggle.name = "Switch to light mode"
 # ----------------------------------------------------------------------------
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/wonyoung-jang/sampledeal"
-name = "sampledeal on GitHub"
+link = "https://github.com/wonyoung-jang/galton"
+name = "galton on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/linkedin"
@@ -140,7 +140,7 @@ name = "Wonyoung Jang on LinkedIn"
 # ----------------------------------------------------------------------------
 [project.plugins.mkdocstrings.handlers.python]
 inventories = ["https://docs.python.org/3/objects.inv"]
-paths = ["sampledeal"]
+paths = ["galton"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
 # General

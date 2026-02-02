@@ -1,3 +1,3 @@
 # Engine State
 
-::: sampledeal.core.state
+::: galton.core.state

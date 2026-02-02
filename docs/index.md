@@ -1,22 +1,22 @@
-# sampledeal
+# galton
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
 
 ## Installation (uv)
 
 ```bash
-uv add sampledeal
+uv add galton
 ```
 
 or
 
 ```bash
-uv tool install sampledeal
+uv tool install galton
 ```
 
 ## Usage
 
-sampledeal can be used via command-line interface (CLI) or graphical user interface (GUI).
+galton can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Command Line Interface
 
@@ -24,7 +24,7 @@ sampledeal can be used via command-line interface (CLI) or graphical user interf
 
 ```bash
 # Use configuration file
-sampledeal-cli --config your-sampledeal.json
+galton-cli --config your-galton.json
 ```
 
 ## Graphical User Interface
@@ -32,13 +32,13 @@ sampledeal-cli --config your-sampledeal.json
 ### Launch GUI
 
 ```bash
-sampledeal-gui
+galton-gui
 ```
 
 Or simply:
 
 ```bash
-sampledeal
+galton
 ```
 
 ### GUI Profiles
@@ -52,12 +52,12 @@ Save frequently used configurations as profiles:
 
 ## Configuration File
 
-Create a `sampledeal.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
+Create a `galton.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
 
 ```json
 {
     "root": "C:/",
-    "dest": "sampledeal_output/",
+    "dest": "galton_output/",
     "filecount": {
         "count": 20,
         "is_rand_enabled": false,
@@ -230,7 +230,7 @@ Example: `{index}_{original}_{date}`: `photo.jpg` -> `1_photo_2026-01-25.jpg`
 
 ### Logging
 
-Configure logging in a `json` file. Here is the default `sampledeal_configs/logging.json` provided:
+Configure logging in a `json` file. Here is the default `galton_configs/logging.json` provided:
 
 ```json
 {
@@ -255,7 +255,7 @@ Configure logging in a `json` file. Here is the default `sampledeal_configs/logg
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "sampledeal.log",
+            "filename": "galton.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

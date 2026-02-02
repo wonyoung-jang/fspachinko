@@ -618,7 +618,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sampledeal"
+name = "galton"
 version = "0.0.2"
 source = { editable = "." }
 dependencies = [

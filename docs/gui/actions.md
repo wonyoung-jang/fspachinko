@@ -1,3 +1,3 @@
 # Actions
 
-::: sampledeal.gui.actions
+::: galton.gui.actions

@@ -1,3 +1,3 @@
 # CLI Observer
 
-::: sampledeal.cli.observer
+::: galton.cli.observer

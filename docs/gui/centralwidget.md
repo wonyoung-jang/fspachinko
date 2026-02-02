@@ -1,3 +1,3 @@
 # Central Widget
 
-::: sampledeal.gui.centralwidget
+::: galton.gui.centralwidget

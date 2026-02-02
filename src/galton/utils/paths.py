@@ -4,14 +4,14 @@ import os
 from dataclasses import dataclass
 from typing import ClassVar
 
-import sampledeal
+import galton
 
 
 @dataclass(slots=True)
 class Paths:
     """Dataclass for general directories used."""
 
-    pkg: ClassVar[str] = os.path.dirname(sampledeal.__file__)
+    pkg: ClassVar[str] = os.path.dirname(galton.__file__)
     data: ClassVar[str] = os.path.join(pkg, "_data")
     icons: ClassVar[str] = os.path.join(data, "icons")
     configs: ClassVar[str] = os.path.join(data, "configs")

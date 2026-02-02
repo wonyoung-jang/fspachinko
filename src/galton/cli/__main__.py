@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Enter CLI."""
     initialize_logging()
-    logger.info("Start: sampledeal CLI")
+    logger.info("Start: galton CLI")
     app()
 
 

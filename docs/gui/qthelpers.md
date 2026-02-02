@@ -1,3 +1,3 @@
 # GUI Helpers
 
-::: sampledeal.gui.qthelpers
+::: galton.gui.qthelpers

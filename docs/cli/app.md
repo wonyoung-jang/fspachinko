@@ -1,3 +1,3 @@
 # Command Line Interface
 
-::: sampledeal.cli.app
+::: galton.cli.app

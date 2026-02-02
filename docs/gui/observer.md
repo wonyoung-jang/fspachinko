@@ -1,3 +1,3 @@
 # GUI Observer
 
-::: sampledeal.gui.observer
+::: galton.gui.observer

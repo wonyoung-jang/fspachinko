@@ -1,3 +1,3 @@
 # Worker Threads
 
-::: sampledeal.gui.workers
+::: galton.gui.workers

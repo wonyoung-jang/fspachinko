@@ -1,3 +1,3 @@
 # Components
 
-::: sampledeal.gui.components
+::: galton.gui.components

@@ -1,3 +1,3 @@
 # Main Window
 
-::: sampledeal.gui.mainwindow
+::: galton.gui.mainwindow

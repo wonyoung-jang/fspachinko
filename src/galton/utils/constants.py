@@ -19,7 +19,7 @@ FALSE_STRS: set[str] = {"n", "no", "f", "false", "off", "0"}
 class DefaultPath(StrEnum):
     """Enumeration for default configuration filenames."""
 
-    CONFIG = "sampledeal.json"
+    CONFIG = "galton.json"
     LOGGING = "logging.json"
 
 
@@ -67,8 +67,8 @@ class AppSetting(StrEnum):
     """Enumeration for different settings categories."""
 
     ORGANIZATION = "Wonyoung Jang"
-    DOMAIN = "https://github.com/wonyoung-jang/sampledeal"
-    APPLICATION = "sampledeal"
+    DOMAIN = "https://github.com/wonyoung-jang/galton"
+    APPLICATION = "galton"
 
 
 class ByteUnit(StrEnum):
@@ -173,7 +173,7 @@ class GUISettingsKey(StrEnum):
 class GUITitle(StrEnum):
     """Enumeration for GUI window titles."""
 
-    WINDOW = "sampledeal: Copy random files"
+    WINDOW = "galton: Copy random files"
     SAVE_PROFILE = "Save Profile As"
     OPEN_PROFILE = "Open Profile"
 

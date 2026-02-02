@@ -1,3 +1,3 @@
 # Settings
 
-::: sampledeal.gui.settings
+::: galton.gui.settings

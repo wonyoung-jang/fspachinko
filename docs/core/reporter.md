@@ -1,3 +1,3 @@
 # Report Writer
 
-::: sampledeal.core.reporter
+::: galton.core.reporter

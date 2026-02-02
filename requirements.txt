@@ -10,13 +10,13 @@ annotated-types==0.7.0
 attrs==25.4.0
     # via cyclopts
 cyclopts==4.4.5
-    # via sampledeal
+    # via galton
 docstring-parser==0.17.0
     # via cyclopts
 docutils==0.22.4
     # via rich-rst
 ffmpeg-python==0.2.0
-    # via sampledeal
+    # via galton
 future==1.0.0
     # via ffmpeg-python
 jinja2==3.1.6
@@ -37,17 +37,17 @@ packaging==26.0
 pefile==2024.8.26 ; sys_platform == 'win32'
     # via pyinstaller
 pydantic==2.12.5
-    # via sampledeal
+    # via galton
 pydantic-core==2.41.5
     # via pydantic
 pygments==2.19.2
     # via rich
 pyinstaller==6.18.0
-    # via sampledeal
+    # via galton
 pyinstaller-hooks-contrib==2026.0
     # via pyinstaller
 pyside6==6.10.1
-    # via sampledeal
+    # via galton
 pyside6-addons==6.10.1
     # via pyside6
 pyside6-essentials==6.10.1
@@ -57,7 +57,7 @@ pyside6-essentials==6.10.1
 pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
     # via pyinstaller
 qt-material==2.17
-    # via sampledeal
+    # via galton
 rich==14.2.0
     # via
     #   cyclopts

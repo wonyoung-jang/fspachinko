@@ -1,10 +1,10 @@
-"""Protocols for sampledeal."""
+"""Protocols for galton."""
 
 from abc import ABC, abstractmethod
 
 
 class Observer(ABC):
-    """Interface for sampledeal Observer."""
+    """Interface for galton Observer."""
 
     @abstractmethod
     def on_progress_total(self, maximum: int) -> None:

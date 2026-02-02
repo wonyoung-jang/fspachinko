@@ -1,3 +1,3 @@
 # Timestamp Provider
 
-::: sampledeal.utils.timestamp
+::: galton.utils.timestamp

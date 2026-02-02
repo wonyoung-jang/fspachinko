@@ -1,3 +1,3 @@
 # Schemas
 
-::: sampledeal.config.schemas
+::: galton.config.schemas
