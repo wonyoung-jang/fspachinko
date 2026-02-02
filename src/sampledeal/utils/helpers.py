@@ -112,3 +112,8 @@ def save_json(path: str, data: dict[str, Any]) -> None:
     with open(path, "w", encoding="utf-8") as f:
         data = dict(sorted(data.items(), key=lambda item: item[0]))
         json.dump(data, f, indent=4)
+
+
+def get_stem_and_ext(path: str) -> tuple[str, str]:
+    """Get the stem and extension of a file path."""
+    return os.path.splitext(os.path.basename(path))

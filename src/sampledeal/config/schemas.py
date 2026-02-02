@@ -19,7 +19,7 @@ class FilecountModel(BaseModel):
 class FolderModel(BaseModel):
     """Model for folder creation configuration."""
 
-    should_create: bool = False
+    is_enabled: bool = False
     is_unique: bool = True
     name: str = ""
     count: int = 1

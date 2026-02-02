@@ -8,7 +8,7 @@ from ..utils import SIZE_MAP, TIME_MAP, ReStrFmt
 from .engine import Engine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
-from .state import MainEngineContext
+from .state import EngineContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
 from .walker import RandomFSWalker
@@ -53,7 +53,7 @@ def build_engine(m: ConfigModel) -> Engine:
         exts_str=validator.extensions.as_string,
         keys_str=validator.keywords.as_string,
     )
-    context = MainEngineContext(
+    context = EngineContext(
         folder=folder,
         quota=quota,
         folder_size_limit=folder_size_limit,

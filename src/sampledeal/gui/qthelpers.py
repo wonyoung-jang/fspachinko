@@ -67,7 +67,13 @@ def get_widget_value(widget: QWidget) -> Any:
 
 
 def set_widget_value(widget: QWidget, val: Any) -> None:
-    """Set the value of a widget based on its type."""
+    """Set the value of a widget based on its type.
+
+    Args:
+        widget (QWidget): The widget to set the value for.
+        val (Any): The value to set.
+
+    """
     match widget:
         case QLineEdit():
             widget.setText(val)

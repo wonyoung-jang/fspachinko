@@ -39,7 +39,7 @@ class FolderStats:
 
 
 @dataclass(slots=True)
-class EngineContext(ABC):
+class Context(ABC):
     """Abstract base class for engine state context."""
 
     folder: Folder
@@ -100,8 +100,8 @@ class EngineContext(ABC):
 
 
 @dataclass(slots=True)
-class MainEngineContext(EngineContext):
-    """Abstract base class for engine state context."""
+class EngineContext(Context):
+    """Class for engine state context."""
 
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
@@ -144,7 +144,7 @@ class MainEngineContext(EngineContext):
 
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
-        none_found = self.folderstats.count == 0 and self.folder.should_create
+        none_found = self.folderstats.count == 0 and self.folder.is_enabled
         if none_found:
             if self.quota.is_all_locked():
                 self.state = NoFilesFoundAllSearchedState(
@@ -210,14 +210,14 @@ class EngineState:
 
     status: str = ""
     message: str = ""
-    _context: EngineContext | None = None
+    _context: Context | None = None
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
         logger.debug("Change state to: %s", self.__class__.__name__)
 
     @property
-    def context(self) -> EngineContext:
+    def context(self) -> Context:
         """Get the engine state context."""
         if self._context is None:
             msg = "Engine state context is not set."
@@ -225,7 +225,7 @@ class EngineState:
         return self._context
 
     @context.setter
-    def context(self, new_context: EngineContext) -> None:
+    def context(self, new_context: Context) -> None:
         """Set a new engine state context."""
         self._context = new_context
 

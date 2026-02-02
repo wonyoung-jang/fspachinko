@@ -8,7 +8,7 @@
         "rand_max": 12
     },
     "folder": {
-        "should_create": true,
+        "is_enabled": true,
         "is_unique": true,
         "name": "test_folder_output",
         "count": 10

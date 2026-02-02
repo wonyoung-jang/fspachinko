@@ -2,7 +2,7 @@
 
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..utils import (
@@ -13,6 +13,7 @@ from ..utils import (
     are_paths_equal,
     calc_unique_path_name,
     convert_string_to_list,
+    get_stem_and_ext,
 )
 
 if TYPE_CHECKING:
@@ -55,7 +56,6 @@ class Filename:
     """Dataclass for file renaming."""
 
     template: str
-    _map: SafeDict = field(default_factory=SafeDict)
 
     @classmethod
     def from_model(cls, m: FilenameModel) -> Filename:
@@ -64,10 +64,9 @@ class Filename:
 
     def _get_target(self, chosen: str, dest: str, index: int) -> str:
         """Prepare the target file path based on naming conventions."""
-        name = os.path.basename(chosen)
-        stem, ext = os.path.splitext(name)
+        stem, ext = get_stem_and_ext(chosen)
 
-        self._map.update(
+        safe_dict = SafeDict(
             {
                 FilenameTemplateMapKey.DATE: DateTimeStamp.date,
                 FilenameTemplateMapKey.TIME: DateTimeStamp.time,
@@ -80,7 +79,7 @@ class Filename:
         )
 
         try:
-            new_stem = self.template.format_map(self._map)
+            new_stem = self.template.format_map(safe_dict)
         except (KeyError, ValueError):
             new_stem = stem
 
@@ -97,8 +96,7 @@ class Filename:
         if are_paths_equal(chosen, target):
             return None
 
-        name = os.path.basename(target)
-        stem, ext = os.path.splitext(name)
+        stem, ext = get_stem_and_ext(target)
         return calc_unique_path_name(dest, stem, ext)
 
 
@@ -106,7 +104,7 @@ class Filename:
 class Folder:
     """Dataclass for folder creation configuration."""
 
-    should_create: bool
+    is_enabled: bool
     name: str
     count: int
     dest: str
@@ -115,7 +113,7 @@ class Folder:
     def from_model(cls, m: FolderModel, dest: str) -> Folder:
         """Create Folder from configuration model."""
         return cls(
-            should_create=m.should_create,
+            is_enabled=m.is_enabled,
             name=m.name,
             count=m.count,
             dest=dest,
@@ -123,7 +121,7 @@ class Folder:
 
     def determine_dest_dirname(self) -> str:
         """Calculate the destination directory name based on configuration."""
-        if not self.should_create:
+        if not self.is_enabled:
             return self.dest
         return calc_unique_path_name(self.dest, self.name)
 
@@ -147,8 +145,6 @@ class MinMax:
 
     def is_valid(self, value: float) -> bool:
         """Check if a value is within the min-max range."""
-        if not self.is_enabled:
-            return True
         return self.minimum <= value <= self.maximum
 
 

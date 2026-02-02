@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from ..config import Filecount, Filename
     from ..utils import Observer
-    from .state import EngineContext
+    from .state import Context
     from .validator import FileValidator
     from .walker import FSWalker
 
@@ -28,7 +28,7 @@ class Engine:
     filecount: Filecount
     filename: Filename
     do_transfer_strategy: Callable[[str, str], None]
-    context: EngineContext
+    context: Context
     observer: Observer = field(init=False)
 
     def set_observer(self, observer: Observer) -> None:

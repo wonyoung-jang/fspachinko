@@ -1,11 +1,12 @@
 """Config validation functions."""
 
-import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from ffmpeg import Error as FFmpegError
 from ffmpeg import probe as ffprobe
+
+from ..utils import get_stem_and_ext
 
 if TYPE_CHECKING:
     from ..config import ListIncludeExclude, MinMax
@@ -36,11 +37,10 @@ class FileValidator:
 
     def is_valid(self, path: str, size: int) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not self.filesize.is_valid(size):
+        if self.filesize.is_enabled and not self.filesize.is_valid(size):
             return False
 
-        name = os.path.basename(path)
-        stem, ext = os.path.splitext(name)
+        stem, ext = get_stem_and_ext(path)
 
         if self.extensions.is_enabled and not self.extensions.is_valid(ext):
             return False
@@ -49,4 +49,15 @@ class FileValidator:
             return False
 
         duration = self._duration_cache.setdefault(path, _get_duration(path))
-        return self.duration.is_valid(duration)
+        return self.duration.is_enabled and self.duration.is_valid(duration)
+
+
+@dataclass(slots=True)
+class FileValidatorChainOfResponsibility:
+    """Class for chaining multiple FileValidators."""
+
+    validators: list[FileValidator]
+
+    def is_valid(self, path: str, size: int) -> bool:
+        """Check if a file is valid based on the chain of validators."""
+        return all(validator.is_valid(path, size) for validator in self.validators)
