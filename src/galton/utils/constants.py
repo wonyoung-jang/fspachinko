@@ -58,6 +58,7 @@ class TransferMode(StrEnum):
     """Enumeration for file transfer modes."""
 
     COPY = "Copy"
+    COPY_PRESERVE = "Copy (Preserve)"
     MOVE = "Move"
     SYMLINK = "Symlink"
     HARDLINK = "Hardlink"
@@ -173,7 +174,7 @@ class GUISettingsKey(StrEnum):
 class GUITitle(StrEnum):
     """Enumeration for GUI window titles."""
 
-    WINDOW = "galton: Copy random files"
+    WINDOW = "Galton: Transfer random files"
     SAVE_PROFILE = "Save Profile As"
     OPEN_PROFILE = "Open Profile"
 

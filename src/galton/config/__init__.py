@@ -10,9 +10,9 @@ from .config import (
 )
 from .schemas import (
     ConfigModel,
+    DirectoryModel,
     FilecountModel,
     FilenameModel,
-    FolderModel,
     ListIncludeExcludeModel,
     MinMaxModel,
     OptionsModel,
@@ -22,12 +22,12 @@ from .schemas import (
 
 __all__ = [
     "ConfigModel",
+    "DirectoryModel",
     "Filecount",
     "FilecountModel",
     "Filename",
     "FilenameModel",
     "Folder",
-    "FolderModel",
     "ListIncludeExclude",
     "ListIncludeExcludeModel",
     "MinMax",

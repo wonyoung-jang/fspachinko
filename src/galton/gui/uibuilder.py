@@ -55,6 +55,7 @@ class UIBuilder:
         path_layout.addWidget(self.root)
         path_layout.addWidget(self.dest)
 
+        # Left widget
         output_widget = QWidget()
         output_layout = QHBoxLayout(output_widget)
         output_layout.addWidget(self.filecount)
@@ -67,6 +68,12 @@ class UIBuilder:
         filter_layout.addWidget(self.keywords)
         filter_layout.addWidget(self.extensions)
 
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.addWidget(output_widget)
+        left_layout.addWidget(filter_widget)
+
+        # Right widget
         size_widget = QWidget()
         size_layout = QHBoxLayout(size_widget)
         size_layout.addWidget(self.filesize)
@@ -81,14 +88,22 @@ class UIBuilder:
         options_layout = QHBoxLayout(options_widget)
         options_layout.addWidget(self.options)
 
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.addWidget(size_widget)
+        right_layout.addWidget(size_limit_widget)
+        right_layout.addWidget(options_widget)
+
+        # Body widget
+        body_widget = QWidget()
+        body_layout = QHBoxLayout(body_widget)
+        body_layout.addWidget(left_widget)
+        body_layout.addWidget(right_widget)
+
         # Assemble Main Layout
         main_layout = QVBoxLayout()
         main_layout.addWidget(path_widget)
-        main_layout.addWidget(output_widget)
-        main_layout.addWidget(filter_widget)
-        main_layout.addWidget(size_widget)
-        main_layout.addWidget(size_limit_widget)
-        main_layout.addWidget(options_widget)
+        main_layout.addWidget(body_widget)
         main_layout.addWidget(self.logging)
         main_layout.addWidget(self.progress)
         return main_layout

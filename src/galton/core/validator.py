@@ -1,13 +1,12 @@
 """Config validation functions."""
 
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from ffmpeg import Error as FFmpegError
 from ffmpeg import probe as ffprobe
-
-from ..utils import get_stem_and_ext
 
 if TYPE_CHECKING:
     from ..config import ListIncludeExclude, MinMax
@@ -19,7 +18,6 @@ def _get_duration(path: str) -> float:
     try:
         probe = ffprobe(
             filename=path,
-            select_streams="v:0",
             show_entries="format=duration",
         )
         return float(probe["format"]["duration"])
@@ -36,18 +34,19 @@ class FileValidator:
     filesize: MinMax
     duration: MinMax
 
-    def is_valid(self, path: str, size: int) -> bool:
+    def is_valid(self, entry: os.DirEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        if self.filesize.is_enabled and not self.filesize.is_valid(size):
+        if self.filesize.is_enabled and not self.filesize.is_valid(entry.stat().st_size):
             return False
 
-        stem, ext = get_stem_and_ext(path)
-
-        if self.extensions.is_enabled and not self.extensions.is_valid(ext):
-            return False
+        stem, ext = os.path.splitext(entry.name)
 
         if self.keywords.is_enabled and not self.keywords.is_valid(stem):
             return False
 
-        duration = _get_duration(path)
+        return not (self.extensions.is_enabled and not self.extensions.is_valid(ext))
+
+    def is_valid_duration(self, entry: os.DirEntry) -> bool:
+        """Check if a file is valid based on the current filters."""
+        duration = _get_duration(entry.path)
         return self.duration.is_enabled and self.duration.is_valid(duration)

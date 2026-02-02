@@ -20,9 +20,9 @@ if TYPE_CHECKING:
     from random import Random
 
     from .schemas import (
+        DirectoryModel,
         FilecountModel,
         FilenameModel,
-        FolderModel,
         ListIncludeExcludeModel,
         MinMaxModel,
         SizeLimitModel,
@@ -110,7 +110,7 @@ class Folder:
     dest: str
 
     @classmethod
-    def from_model(cls, m: FolderModel, dest: str) -> Folder:
+    def from_model(cls, m: DirectoryModel, dest: str) -> Folder:
         """Create Folder from configuration model."""
         return cls(
             is_enabled=m.is_enabled,

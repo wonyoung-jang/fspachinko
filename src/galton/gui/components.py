@@ -29,9 +29,9 @@ from PySide6.QtWidgets import (
 )
 
 from ..config import (
+    DirectoryModel,
     FilecountModel,
     FilenameModel,
-    FolderModel,
     ListIncludeExcludeModel,
     MinMaxModel,
     OptionsModel,
@@ -261,9 +261,9 @@ class FolderCreatorWidget(BaseGroupBox):
         layout.addWidget(self.lineedit_folder_name)
         layout.addWidget(self.chk_unique_folders)
 
-    def get_config(self) -> FolderModel:
+    def get_config(self) -> DirectoryModel:
         """Return clean data for the config."""
-        return FolderModel(
+        return DirectoryModel(
             is_enabled=self.isChecked(),
             is_unique=self.chk_unique_folders.isChecked(),
             name=self.lineedit_folder_name.text(),
@@ -349,18 +349,20 @@ class ListIncludeExcludeFilterWidget(BaseGroupBox):
         """Initialize the dual list widget."""
         super().__init__(title, name, checkable=True)
 
+        title_lower = self.title().casefold()
+
         self.filter_edit = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
         set_qt_name(self.filter_edit, f"{name}_text")
-        set_qt_tips(self.filter_edit, f"Enter {title.lower()} separated by commas.")
+        set_qt_tips(self.filter_edit, f"Enter {title_lower} separated by commas.")
 
         self.filter_include_radio = QRadioButton("Include")
         self.filter_include_radio.setChecked(True)
         set_qt_name(self.filter_include_radio, f"{name}_include")
-        set_qt_tips(self.filter_include_radio, f"Include only items matching the {title.lower()} filter.")
+        set_qt_tips(self.filter_include_radio, f"Include only items matching the {title_lower} filter.")
 
         self.filter_exclude_radio = QRadioButton("Exclude")
         set_qt_name(self.filter_exclude_radio, f"{name}_exclude")
-        set_qt_tips(self.filter_exclude_radio, f"Exclude items matching the {title.lower()} filter.")
+        set_qt_tips(self.filter_exclude_radio, f"Exclude items matching the {title_lower} filter.")
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.filter_edit)
@@ -540,7 +542,7 @@ class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
     progbar_total: QProgressBar = field(default_factory=QProgressBar)
-    progbar_folder: QProgressBar = field(default_factory=QProgressBar)
+    progbar_dir: QProgressBar = field(default_factory=QProgressBar)
 
     def __post_init__(self) -> None:
         """Post-initialize the progress widget."""
@@ -552,13 +554,13 @@ class ProgressWidget(QWidget):
         set_qt_name(self.progbar_total, f"{name}_total")
         set_qt_tips(self.progbar_total, "Total progress bar, max is set at number of output folders.")
 
-        self.progbar_folder.setTextVisible(True)
-        set_qt_name(self.progbar_folder, f"{name}_folder")
-        set_qt_tips(self.progbar_folder, "Current folder progress bar, max is set at number of files to copy.")
+        self.progbar_dir.setTextVisible(True)
+        set_qt_name(self.progbar_dir, f"{name}_dir")
+        set_qt_tips(self.progbar_dir, "Current folder progress bar, max is set at number of files to copy.")
 
         layout = QFormLayout(self)
         layout.addRow("Total", self.progbar_total)
-        layout.addRow("Folder", self.progbar_folder)
+        layout.addRow("Folder", self.progbar_dir)
 
     @Slot()
     def update_total_prog(self) -> None:
@@ -568,7 +570,7 @@ class ProgressWidget(QWidget):
     def reset(self) -> None:
         """Reset progress bars."""
         self.progbar_total.setValue(0)
-        self.progbar_folder.setValue(0)
+        self.progbar_dir.setValue(0)
 
 
 @dataclass(slots=True)
@@ -608,13 +610,13 @@ class ProgressBinder(QObject):
         """Bind worker signals to progress widget."""
         signals.progress_total.connect(self.progress.progbar_total.setMaximum)
         signals.count_total.connect(self.progress.update_total_prog)
-        signals.progress.connect(self.progress.progbar_folder.setMaximum)
+        signals.progress.connect(self.progress.progbar_dir.setMaximum)
         signals.log.connect(self.logging.textbrowser_log.append)
         signals.count.connect(self.on_count)
         signals.finished.connect(self.finished.emit)
 
     @Slot(int)
     def on_count(self, count: int) -> None:
-        """Handle folder progress count update."""
-        self.progress.progbar_folder.setValue(count)
+        """Handle directory progress count update."""
+        self.progress.progbar_dir.setValue(count)
         self.count.emit(count)

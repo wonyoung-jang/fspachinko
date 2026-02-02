@@ -16,8 +16,8 @@ class FilecountModel(BaseModel):
     rand_max: int = 0
 
 
-class FolderModel(BaseModel):
-    """Model for folder creation configuration."""
+class DirectoryModel(BaseModel):
+    """Model for directory creation configuration."""
 
     is_enabled: bool = False
     is_unique: bool = True
@@ -76,7 +76,7 @@ class ConfigModel(BaseModel):
     root: str
     dest: str
     filecount: FilecountModel
-    folder: FolderModel
+    folder: DirectoryModel
     filename: FilenameModel
     transfermode: TransferModeModel
     keyword: ListIncludeExcludeModel

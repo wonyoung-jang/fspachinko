@@ -14,13 +14,8 @@ if TYPE_CHECKING:
 
 def get_available_transfer_modes() -> tuple[TransferMode, ...]:
     """Detect which transfer modes are supported on the current OS."""
-    available = []
-
-    # COPY is always available
-    available.append(TransferMode.COPY)
-
-    # MOVE is always available
-    available.append(TransferMode.MOVE)
+    # COPY and MOVE are always available
+    available = [TransferMode.COPY, TransferMode.COPY_PRESERVE, TransferMode.MOVE]
 
     # SYMLINK availability
     try:
@@ -58,6 +53,7 @@ def fetch_transfer_strategy(mode: str) -> Callable[[str, str], None]:
     """
     strategy_map = {
         TransferMode.COPY: transfer_copy,
+        TransferMode.COPY_PRESERVE: transfer_copy_preserve,
         TransferMode.MOVE: transfer_move,
         TransferMode.SYMLINK: transfer_symlink,
         TransferMode.HARDLINK: transfer_hardlink,
@@ -71,6 +67,11 @@ def fetch_transfer_strategy(mode: str) -> Callable[[str, str], None]:
 
 def transfer_copy(src: str, dst: str) -> None:
     """Copy a file from source to destination."""
+    shutil.copy(src, dst)
+
+
+def transfer_copy_preserve(src: str, dst: str) -> None:
+    """Copy a file from source to destination preserving metadata."""
     shutil.copy2(src, dst)
 
 

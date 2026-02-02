@@ -68,6 +68,7 @@ def build_engine(m: ConfigModel) -> Engine:
         rng=rng,
         quota=quota,
         should_follow_symlink=m.options.should_follow_symlink,
+        validator=validator,
     )
     filecount = Filecount.from_model(m.filecount, rng=rng)
     filename = Filename.from_model(m.filename)

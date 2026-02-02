@@ -59,7 +59,7 @@ class CentralWidget(QWidget):
     @Slot(int)
     def update_title_progress(self, val: int) -> None:
         """Update window title with progress percentage."""
-        pct = int((val / self.ui.progress.progbar_folder.maximum()) * PERCENTAGE_100)
+        pct = int((val / self.ui.progress.progbar_dir.maximum()) * PERCENTAGE_100)
         self.window().setWindowTitle(f"[{pct}%] {self.window_title_original}")
 
     @Slot()
