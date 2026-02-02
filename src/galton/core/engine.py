@@ -65,17 +65,20 @@ class Engine:
             return
 
         for entry in self.walker.walk():
+            if entry is None:
+                continue
+
             if self.context.should_stop(target):
                 self.report_state()
                 return
 
             path, size = entry.path, entry.stat().st_size
             if not self.validator.is_valid(path, size):
-                self.context.quota.lock_file(path)
+                self.context.quota.lock_file(entry)
                 continue
 
             if not self.transfer_file(path, dest):
-                self.context.quota.lock_file(path)
+                self.context.quota.lock_file(entry)
                 continue
 
             self.context.update_on_success(path, size)

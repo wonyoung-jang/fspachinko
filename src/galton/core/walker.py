@@ -1,13 +1,12 @@
 """Random file system navigator."""
 
+import itertools
 import logging
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from functools import lru_cache
-from typing import TYPE_CHECKING
-
-from ..utils import WALKER_CACHE_LIMIT
+from dataclasses import dataclass, field
+from os import fspath, scandir
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -16,17 +15,6 @@ if TYPE_CHECKING:
     from .quota import DiversityQuota
 
 logger = logging.getLogger(__name__)
-
-
-@lru_cache(maxsize=WALKER_CACHE_LIMIT)
-def _get_entries(folder_path: str) -> tuple[os.DirEntry, ...]:
-    """Retrieve directory entries for a given path."""
-    try:
-        with os.scandir(folder_path) as it:
-            return tuple(it)
-    except (PermissionError, OSError):
-        logger.debug("Failed to access directory: %s", folder_path)
-        return ()
 
 
 @dataclass(slots=True)
@@ -46,58 +34,93 @@ class RandomFSWalker(FSWalker):
     quota: DiversityQuota
     rng: Random
     should_follow_symlink: bool
+    _tree: dict[str, set[os.DirEntry]] = field(default_factory=dict)
+    _valid_dirs: list[str] = field(default_factory=list)
+    _valid_dirs_iter: Iterator[int] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize the walker by scanning the root directory."""
+        logger.info("Scanning root directory: %s", self.root)
+        self._scan_root()
+        logger.info("Completed scanning root directory.")
+
+    def _scan_root(self) -> None:
+        """Scan the root directory and return its entries."""
+        for dirpath, _, filenames in walk_entries(self.root, followlinks=self.should_follow_symlink):
+            if f := filenames:
+                self.rng.shuffle(f)
+                self._tree[dirpath] = set(f)
+
+        valid_dirs = list(self._tree.keys())
+        self.rng.shuffle(valid_dirs)
+        self._valid_dirs = valid_dirs
+        self._valid_dirs_iter = itertools.cycle(range(len(self._valid_dirs)))
 
     def walk(self) -> Iterator[os.DirEntry]:
         """Generate shuffled candidates for a given directory."""
-        root_entries = self._get_shuffled_available_entries(self.root)
-        if not root_entries:
-            self.quota.lock_folder(self.root)
+        if not self._valid_dirs:
+            self.quota.lock_root()
             return
 
-        stack: list[str] = [self.root]
-        cache: dict[str, set[os.DirEntry]] = {self.root: root_entries}
-
-        while stack:
-            folder_path = stack[-1]
-            if self.quota.is_folder_locked(folder_path) or (entries := cache.get(folder_path)) is None:
-                stack.pop()
+        for fi in self._valid_dirs_iter:
+            dirpath = self._valid_dirs[fi]
+            if self.quota.is_folder_locked(dirpath):
                 continue
 
-            entry = entries.pop()
-            if not entries:
-                del cache[folder_path]
-
-            # Handle symlinks
-            if not self.should_follow_symlink and entry.is_symlink():
-                self.quota.lock_entry(entry)
+            if not (entries := self._tree[dirpath]):
+                self.quota.lock_folder(dirpath)
                 continue
 
-            # If it's a directory and has entries, add to stack
-            if entry.is_dir():
-                next_folder_path = entry.path
-                if next_entries := self._get_shuffled_available_entries(next_folder_path):
-                    cache[next_folder_path] = next_entries
-                    stack.append(next_folder_path)
+            if not (available := self.quota.get_available(entries)):
+                self.quota.lock_folder(dirpath)
                 continue
 
-            # If it's a file, yield it
-            if entry.is_file():
-                self.quota.lock_file(entry.path)
+            for entry in available:
+                if not self.should_follow_symlink and entry.is_symlink():
+                    self.quota.lock_file(entry)
+                    continue
+
+                self.quota.lock_file(entry)
                 yield entry
+                break
 
-        return
 
-    def _get_shuffled_available_entries(self, folder_path: str) -> set[os.DirEntry]:
-        """Get available entries for a directory, shuffled if multiple exist."""
-        if not (entries := _get_entries(folder_path)):
-            self.quota.lock_folder(folder_path)
-            return set()
+def walk_entries(
+    top: str, *, onerror: Any = None, followlinks: bool = False
+) -> Iterator[tuple[str, list[os.DirEntry], list[os.DirEntry]]]:
+    """Reimplement os.walk with topdown walk of DirEntry objects."""
+    stack: list[str] = [fspath(top)]
+    islink, join = os.path.islink, os.path.join
+    while stack:
+        top = stack.pop()
+        if isinstance(top, tuple):
+            yield top
+            continue
 
-        if not (available := self.quota.get_available(entries)):
-            self.quota.lock_folder(folder_path)
-            return set()
+        dirs: list[os.DirEntry] = []
+        nondirs: list[os.DirEntry] = []
+        try:
+            with scandir(top) as entries:
+                for entry in entries:
+                    try:
+                        if followlinks:
+                            is_dir = entry.is_dir()
+                        else:
+                            is_dir = entry.is_dir(follow_symlinks=False) and not entry.is_junction()
+                    except OSError:
+                        is_dir = False
 
-        if len(available) > 1:
-            self.rng.shuffle(available)
+                    if is_dir:
+                        dirs.append(entry)
+                    else:
+                        nondirs.append(entry)
+        except OSError as error:
+            if onerror is not None:
+                onerror(error)
+            continue
 
-        return set(available)
+        yield top, dirs, nondirs
+        for dir_item in reversed(dirs):
+            new_path = join(top, dir_item.name)
+            if followlinks or not islink(new_path):
+                stack.append(new_path)

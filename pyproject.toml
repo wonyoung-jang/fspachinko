@@ -33,7 +33,7 @@ requires = ["uv_build>=0.9.27,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.vulture]
-paths = ["./galton", "whitelist.py"]
+paths = ["./src/galton", "whitelist.py"]
 ignore_decorators = ["@app.*"]
 min_confidence = 40
 verbose = false
