@@ -28,11 +28,11 @@ class MainWorker:
         engine.set_observer(observer)
         return cls(signals, engine)
 
-    def request_run(self) -> None:
+    def run(self) -> None:
         """Run the process."""
         self.engine.start()
 
-    def request_stop(self) -> None:
+    def stop(self) -> None:
         """Stop the process."""
         self.engine.request_stop()
 
@@ -50,8 +50,8 @@ class MainThread(QThread):
     @Slot()
     def run(self) -> None:
         """Run the process."""
-        self.worker.request_run()
+        self.worker.run()
 
     def stop(self) -> None:
         """Stop the process."""
-        self.worker.request_stop()
+        self.worker.stop()

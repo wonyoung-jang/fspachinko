@@ -8,8 +8,6 @@ from dataclasses import dataclass, field
 from os import scandir
 from typing import TYPE_CHECKING, Any
 
-from line_profiler import profile
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from random import Random
@@ -45,11 +43,10 @@ class RandomFSWalker(FSWalker):
     def __post_init__(self) -> None:
         """Initialize the walker by scanning the root directory."""
         logger.debug("Scanning root directory: %s", self.root)
-        self._scan_root()
+        self.scan()
         logger.debug("Completed scanning root directory.")
 
-    @profile
-    def _scan_root(self) -> None:
+    def scan(self) -> None:
         """Scan the root directory and return its entries."""
         is_valid = self.validator.is_valid
         shuffle = self.rng.shuffle
@@ -67,21 +64,20 @@ class RandomFSWalker(FSWalker):
         shuffle(valid_idx)
         self.dir_idx_cycle = itertools.cycle(valid_idx)
 
-    @profile
     def walk(self) -> Iterator[os.DirEntry]:
         """Generate shuffled candidates for a given directory."""
         if not self.directories:
             self.quota.lock_root()
             return
 
-        n_directories = len(self.directories)
+        directories = self.directories
+        n_directories = len(directories)
         n_locked = 0
         is_dir_locked = self.quota.is_dir_locked
         get_available = self.quota.get_available
         lock_file = self.quota.lock_file
         lock_dir = self.quota.lock_dir
         should_follow_symlink = self.should_follow_symlink
-        directories = self.directories
         tree = self.tree
 
         for di in self.dir_idx_cycle:

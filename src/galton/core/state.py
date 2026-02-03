@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from ..utils import DateTimeStamp, StateStatus, remove_directory
 
 if TYPE_CHECKING:
+    import os
+
     from ..config import Folder, SizeLimit
     from .quota import DiversityQuota
     from .reporter import ReportWriter
@@ -79,7 +81,7 @@ class Context(ABC):
         """Prepare the context for a new folder processing."""
 
     @abstractmethod
-    def update_on_success(self, path: str, size: int) -> None:
+    def update_on_success(self, entry: os.DirEntry) -> None:
         """Update context on successful file operation."""
 
     @abstractmethod
@@ -166,12 +168,12 @@ class EngineContext(Context):
         DateTimeStamp.refresh()
         self.folderstats.reset_for_folder()
         self.quota.prepare_for_batch()
-        self.reporter.reset_for_dest(dest)
+        self.reporter.reset(dest)
 
-    def update_on_success(self, path: str, size: int) -> None:
+    def update_on_success(self, entry: os.DirEntry) -> None:
         """Update context on successful file operation."""
-        self.folderstats.update_folder(size)
-        self.quota.register_success(path)
+        self.folderstats.update_folder(entry.stat().st_size)
+        self.quota.register_success(entry)
 
     def should_treat_as_dry_run(self, copy_path_str: str) -> bool:
         """Check if a file has already been transferred."""

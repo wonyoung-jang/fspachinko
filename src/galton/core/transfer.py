@@ -46,7 +46,7 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
     return tuple(available)
 
 
-def fetch_transfer_strategy(mode: str) -> Callable[[str, str], None]:
+def fetch_transfer_strategy(mode: str) -> Callable[[os.DirEntry, str], None]:
     """Return the appropriate transfer strategy instance.
 
     Falls back to SYMLINK if the requested mode is not available.
@@ -65,27 +65,27 @@ def fetch_transfer_strategy(mode: str) -> Callable[[str, str], None]:
     return transfer_symlink
 
 
-def transfer_copy(src: str, dst: str) -> None:
+def transfer_copy(src: os.DirEntry, dst: str) -> None:
     """Copy a file from source to destination."""
     shutil.copy(src, dst)
 
 
-def transfer_copy_preserve(src: str, dst: str) -> None:
+def transfer_copy_preserve(src: os.DirEntry, dst: str) -> None:
     """Copy a file from source to destination preserving metadata."""
     shutil.copy2(src, dst)
 
 
-def transfer_move(src: str, dst: str) -> None:
+def transfer_move(src: os.DirEntry, dst: str) -> None:
     """Move a file from source to destination."""
     shutil.move(src, dst)
 
 
-def transfer_symlink(src: str, dst: str) -> None:
+def transfer_symlink(src: os.DirEntry, dst: str) -> None:
     """Create a symlink from source to destination."""
     os.symlink(src, dst)
 
 
-def transfer_hardlink(src: str, dst: str) -> None:
+def transfer_hardlink(src: os.DirEntry, dst: str) -> None:
     """Create a hardlink from source to destination.
 
     Falls back to symlink if hardlinking across filesystems fails.

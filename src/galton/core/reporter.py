@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass, field
 
-from ..utils import DateTimeStamp, convert_byte_to_size
+from ..utils import DateTimeStamp, convert_byte_to_human_readable_size
 
 
 @dataclass(slots=True)
@@ -17,13 +17,13 @@ class ReportWriter:
     report_path: str = field(init=False)
     _dest: str = field(init=False)
 
-    def reset_for_dest(self, dest: str) -> None:
+    def reset(self, dest: str) -> None:
         """Initialize reporter for a new run."""
         self.buffer.clear()
         self.report_path = os.path.join(dest, f"!_report_{os.path.basename(dest)}.txt")
         self._dest = dest
 
-    def record_message(self, message: str) -> None:
+    def record(self, message: str) -> None:
         """Add a message to the buffer."""
         self.buffer.append(f"{message}\n")
 
@@ -37,7 +37,7 @@ class ReportWriter:
             f"Destination:      {self._dest}\n"
             f"Extensions:       {self.exts_str}\n"
             f"Keywords:         {self.keys_str}\n"
-            f"Total size:       {convert_byte_to_size(size)}\n"
+            f"Total size:       {convert_byte_to_human_readable_size(size)}\n"
             f"Total runtime:    {runtime}s\n"
             "\n========================================================================\n"
             "========================================================================\n"

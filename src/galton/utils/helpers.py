@@ -70,7 +70,7 @@ def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
     return li
 
 
-def convert_byte_to_size(nbytes: int) -> str:
+def convert_byte_to_human_readable_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
     if nbytes < BytesIn.KILOBYTE:
         return f"{nbytes} {ByteUnit.BYTES}"

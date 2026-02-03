@@ -27,7 +27,7 @@ class Engine:
     validator: FileValidator
     filecount: Filecount
     filename: Filename
-    do_transfer_strategy: Callable[[str, str], None]
+    do_transfer_strategy: Callable[[os.DirEntry, str], None]
     context: Context
     observer: Observer = field(init=False)
 
@@ -72,17 +72,16 @@ class Engine:
                 self.report_state()
                 return
 
-            path, size = entry.path, entry.stat().st_size
             if not self.validator.is_valid_duration(entry):
                 continue
 
-            if not self.transfer_file(path, dest):
+            if not self.transfer_file(entry, dest):
                 continue
 
-            self.context.update_on_success(path, size)
+            self.context.update_on_success(entry)
             self.update_observer_on_entry()
 
-    def transfer_file(self, chosen: str, dest: str) -> bool:
+    def transfer_file(self, chosen: os.DirEntry, dest: str) -> bool:
         """Attempt to copy a file and return success status."""
         count = self.context.folderstats.count
         chosen_rel = os.path.relpath(chosen, self.root)
@@ -114,7 +113,7 @@ class Engine:
     def report(self, msg: str) -> None:
         """Report and log a message."""
         self.observer.on_log(msg)
-        self.context.reporter.record_message(msg)
+        self.context.reporter.record(msg)
 
     def update_observer_on_entry(self) -> None:
         """Update observer with current entry statistics."""

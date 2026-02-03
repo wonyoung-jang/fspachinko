@@ -41,7 +41,7 @@ def build_engine(m: ConfigModel) -> Engine:
     quota = DiversityQuota(
         root=m.root,
         is_unique=m.folder.is_unique,
-        max_per_folder=m.options.max_per_folder,
+        max_per_dir=m.options.max_per_folder,
     )
 
     # Build EngineContext
