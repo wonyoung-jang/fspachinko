@@ -1,29 +1,44 @@
 """Config validation functions."""
 
+import logging
 import os
+import subprocess
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import TYPE_CHECKING
 
-from ffmpeg import Error as FFmpegError
-from ffmpeg import probe as ffprobe
+from line_profiler import profile
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from ..config import ListIncludeExclude, MinMax
 
+logger = logging.getLogger(__name__)
+DURATION_CMD = [
+    "ffprobe",
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+]
 
-@lru_cache(maxsize=1024)
+
+@profile
 def _get_duration(path: str) -> float:
     """Get the duration of a media file."""
     try:
-        probe = ffprobe(
-            filename=path,
-            show_entries="format=duration",
+        result = subprocess.run(
+            [*DURATION_CMD, path],
+            stdout=subprocess.PIPE,
+            check=False,
+            timeout=10,
         )
-        return float(probe["format"]["duration"])
-    except (ValueError, KeyError, FFmpegError):
+        if result.returncode != 0:
+            return 0.0
+        return float(result.stdout.strip())
+    except (ValueError, OSError, subprocess.SubprocessError, TimeoutError):
         return 0.0
 
 
