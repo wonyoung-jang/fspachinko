@@ -280,21 +280,25 @@ Configure logging in a `json` file. Here is the default `fspachinko_configs/logg
 ### Common Issues
 
 **No files found:**
+
 - Check your filters (extension, keyword, size)
 - Verify source path exists and contains matching files
 - Try `--dry-run` to see what would be selected
 
 **Permission errors:**
+
 - Ensure read access to source directory
 - Ensure write access to destination directory
 - Try running with appropriate permissions
 
 **Hardlink errors:**
+
 - Source and destination must be on same filesystem
 - Not supported on all filesystems (e.g., FAT32)
 - Falls back to symlink automatically
 
 **Duration filter not working:**
+
 - Requires ffmpeg installed on system
 - Only works with media files (video/audio)
 - Check file format is supported by ffmpeg

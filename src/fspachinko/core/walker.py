@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from line_profiler import profile
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from random import Random
@@ -60,7 +62,7 @@ class FSPachinkoPin:
 
     path: str
     subdirs: list[str] = field(default_factory=list)
-    files: set[FSEntry] = field(default_factory=set)
+    files: list[FSEntry] = field(default_factory=list)
     is_scanned: bool = False
     is_exhausted: bool = False
 
@@ -97,49 +99,58 @@ class PachinkoFSWalker(FSWalker):
                     return
                 continue
 
+    @profile
     def drop(self) -> FSEntry | None:
         """Drop a ball from the root."""
         current_path = self.root
-
         while True:
             pin = self.board[current_path]
-
             if pin.is_exhausted:
                 return None
 
             if not pin.is_scanned:
                 self.scan(pin)
 
-            pin.files.difference_update(self.quota.locked_file)
+            valid_subdirs = self.get_valid_subdirs(pin)
             valid_files = pin.files
-            valid_subdirs = [d for d in pin.subdirs if not (self.quota.is_dir_locked(d) or self.board[d].is_exhausted)]
 
-            if not (valid_files or valid_subdirs):
-                pin.is_exhausted = True
-                self.quota.lock_dir(current_path)
+            if not valid_subdirs and not valid_files:
+                self.mark_exhausted(pin)
                 return None
 
-            match bool(valid_subdirs), bool(valid_files):
-                case True, True:
-                    should_descend = self.rng.choice([True, False])
-                case True, False:
-                    should_descend = True
-                case False, True:
-                    should_descend = False
-                case False, False:
-                    should_descend = False
-
-            if should_descend:
-                next_dir = self.rng.choice(valid_subdirs)
-                current_path = next_dir
+            if self.should_descend(valid_subdirs, valid_files):
+                current_path = self.rng.choice(valid_subdirs)
                 continue
 
-            entry = valid_files.pop()
+            entry = pin.files.pop()
             self.quota.lock_file(entry)
             return entry
 
+    def get_valid_subdirs(self, pin: FSPachinkoPin) -> list[str]:
+        """Get valid subdirectories for a given pin."""
+        set_subdirs = set(pin.subdirs).difference(self.quota.locked_dir)
+        valid = [d for d in set_subdirs if not self.board[d].is_exhausted]
+        pin.subdirs = valid
+        return valid
+
+    def mark_exhausted(self, pin: FSPachinkoPin) -> None:
+        """Mark a pin and all its subdirs as exhausted."""
+        currpath = pin.path
+        pin.is_exhausted = True
+        self.quota.lock_dir(currpath)
+
+    def should_descend(self, valid_subdirs: list[str], valid_files: list[FSEntry]) -> bool:
+        """Decide whether to descend into a subdir or select a file."""
+        has_subdirs = bool(valid_subdirs)
+        has_files = bool(valid_files)
+        if has_subdirs and has_files:
+            return self.rng.choice([True, False])
+        return has_subdirs
+
     def scan(self, pin: FSPachinkoPin) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
+        is_valid = self.validator.is_valid
+        subdirs = []
         files = []
         try:
             with os.scandir(pin.path) as it:
@@ -150,20 +161,25 @@ class PachinkoFSWalker(FSWalker):
 
                         if e.is_dir():
                             dirpath = e.path
-                            pin.subdirs.append(dirpath)
+                            subdirs.append(dirpath)
                             if dirpath not in self.board:
                                 self.board[dirpath] = FSPachinkoPin(path=dirpath)
 
                         elif e.is_file():
                             fsentry = FSEntry.from_direntry(e)
-                            if self.validator.is_valid(fsentry):
+                            if is_valid(fsentry):
                                 files.append(fsentry)
                     except OSError:
                         continue
         except OSError:
             pin.is_exhausted = True
+            return
 
-        self.rng.shuffle(pin.subdirs)
-        self.rng.shuffle(files)
-        pin.files = set(files)
+        if subdirs:
+            self.rng.shuffle(subdirs)
+        if files:
+            self.rng.shuffle(files)
+
+        pin.subdirs = subdirs
+        pin.files = files
         pin.is_scanned = True
