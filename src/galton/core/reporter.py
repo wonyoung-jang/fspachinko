@@ -13,6 +13,7 @@ class ReportWriter:
     root: str
     exts_str: str
     keys_str: str
+    dtstamp: DateTimeStamp
     buffer: list[str] = field(default_factory=list)
     report_path: str = field(init=False)
     dest: str = field(init=False)
@@ -32,7 +33,7 @@ class ReportWriter:
         return (
             f"\n{status}"
             "\n------------------------------------------------------------------------\n"
-            f"Date:             {DateTimeStamp.date_time_report_str}\n"
+            f"Date:             {self.dtstamp.date_time_report_str}\n"
             f"Root:             {self.root}\n"
             f"Destination:      {self.dest}\n"
             f"Extensions:       {self.exts_str}\n"

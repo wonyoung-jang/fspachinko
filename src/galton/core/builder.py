@@ -3,6 +3,8 @@
 from random import Random
 from typing import TYPE_CHECKING
 
+from galton.utils.timestamp import DateTimeStamp
+
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
 from ..utils import SIZE_MAP, TIME_MAP, ReStrFmt
 from .engine import Engine
@@ -33,11 +35,14 @@ def build_file_validator(m: ConfigModel) -> FileValidator:
 
 def build_engine(m: ConfigModel) -> Engine:
     """Build and return the engine based on the configuration."""
+    # Build main components
+    rng = Random()
+    dtstamp = DateTimeStamp()
+
     # Build FileValidator
     validator = build_file_validator(m)
 
-    # Build other components
-    rng = Random()
+    # Build DiversityQuota
     quota = DiversityQuota(
         root=m.root,
         is_unique=m.folder.is_unique,
@@ -52,6 +57,7 @@ def build_engine(m: ConfigModel) -> Engine:
         root=m.root,
         exts_str=validator.extensions.as_string,
         keys_str=validator.keywords.as_string,
+        dtstamp=dtstamp,
     )
     context = EngineContext(
         folder=folder,
@@ -60,6 +66,7 @@ def build_engine(m: ConfigModel) -> Engine:
         total_size_limit=total_size_limit,
         reporter=reporter,
         is_dry_run=m.options.is_dry_run,
+        dtstamp=dtstamp,
     )
 
     # Build Walker
@@ -74,7 +81,7 @@ def build_engine(m: ConfigModel) -> Engine:
 
     # Build Engine
     filecount = Filecount.from_model(m.filecount, rng=rng)
-    filename = Filename.from_model(m.filename)
+    filename = Filename.from_model(m.filename, dtstamp=dtstamp)
     do_transfer_strategy = fetch_transfer_strategy(m.transfermode.transfer_mode)
     return Engine(
         root=m.root,

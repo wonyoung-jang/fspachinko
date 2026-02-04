@@ -63,11 +63,12 @@ class Filename:
     """Dataclass for file renaming."""
 
     template: str
+    dtstamp: DateTimeStamp
 
     @classmethod
-    def from_model(cls, m: FilenameModel) -> Filename:
+    def from_model(cls, m: FilenameModel, dtstamp: DateTimeStamp) -> Filename:
         """Create Filename from configuration model."""
-        return cls(template=m.template)
+        return cls(template=m.template, dtstamp=dtstamp)
 
     def calc_target_name(self, chosen: str, dest: str, index: int) -> str:
         """Prepare the target file path based on naming conventions."""
@@ -75,9 +76,9 @@ class Filename:
 
         safe_dict = SafeDict(
             {
-                FilenameTemplateMapKey.DATE: DateTimeStamp.date,
-                FilenameTemplateMapKey.TIME: DateTimeStamp.time,
-                FilenameTemplateMapKey.DATETIME: DateTimeStamp.date_time,
+                FilenameTemplateMapKey.DATE: self.dtstamp.date,
+                FilenameTemplateMapKey.TIME: self.dtstamp.time,
+                FilenameTemplateMapKey.DATETIME: self.dtstamp.date_time,
                 FilenameTemplateMapKey.ORIGINAL: stem,
                 FilenameTemplateMapKey.INDEX: index + 1,
                 FilenameTemplateMapKey.PARENT: os.path.basename(os.path.dirname(chosen)),

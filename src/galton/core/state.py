@@ -50,6 +50,7 @@ class Context(ABC):
     total_size_limit: SizeLimit
     reporter: ReportWriter
     is_dry_run: bool
+    dtstamp: DateTimeStamp
     is_stop_requested: bool = False
     folderstats: FolderStats = field(default_factory=FolderStats)
     _state: EngineState | None = None
@@ -173,7 +174,7 @@ class EngineContext(Context):
 
     def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
-        DateTimeStamp.refresh()
+        self.dtstamp.refresh()
         self.folderstats.reset()
         self.quota.reset()
         self.reporter.reset(dest)
