@@ -1,3 +1,3 @@
 # Helpers
 
-::: galton.utils.helpers
+::: fspachinko.utils.helpers

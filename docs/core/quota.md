@@ -1,3 +1,3 @@
 # Diversity Quota
 
-::: galton.core.quota
+::: fspachinko.core.quota

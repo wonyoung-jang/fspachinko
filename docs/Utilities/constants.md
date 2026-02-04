@@ -1,3 +1,3 @@
 # Constants
 
-::: galton.utils.constants
+::: fspachinko.utils.constants

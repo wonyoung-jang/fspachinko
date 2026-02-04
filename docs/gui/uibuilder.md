@@ -1,3 +1,3 @@
 # UI Builder
 
-::: galton.gui.uibuilder
+::: fspachinko.gui.uibuilder

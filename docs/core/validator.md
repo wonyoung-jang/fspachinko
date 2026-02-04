@@ -1,3 +1,3 @@
 # File Validator
 
-::: galton.core.validator
+::: fspachinko.core.validator

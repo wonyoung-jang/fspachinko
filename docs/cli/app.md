@@ -1,3 +1,3 @@
 # Command Line Interface
 
-::: galton.cli.app
+::: fspachinko.cli.app

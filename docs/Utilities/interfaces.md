@@ -1,3 +1,3 @@
 # Interfaces and Protocols
 
-::: galton.utils.interfaces
+::: fspachinko.utils.interfaces

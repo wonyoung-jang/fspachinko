@@ -1,3 +1,3 @@
 # Timestamp Provider
 
-::: galton.utils.timestamp
+::: fspachinko.utils.timestamp

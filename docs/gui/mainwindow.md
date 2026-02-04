@@ -1,3 +1,3 @@
 # Main Window
 
-::: galton.gui.mainwindow
+::: fspachinko.gui.mainwindow

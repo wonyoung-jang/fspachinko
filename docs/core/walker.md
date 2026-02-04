@@ -1,3 +1,3 @@
 # Filesystem Walker
 
-::: galton.core.walker
+::: fspachinko.core.walker

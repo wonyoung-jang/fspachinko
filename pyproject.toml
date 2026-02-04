@@ -1,5 +1,5 @@
 [project]
-name = "galton"
+name = "fspachinko"
 version = "0.0.2"
 description = "Transfer random files from directory A to directory B."
 readme = "README.md"
@@ -18,21 +18,21 @@ authors = [
 ]
 
 [project.urls]
-Documentation = "https://wonyoung-jang.github.io/galton/"
-Repository = "https://github.com/wonyoung-jang/galton"
-Issues = "https://github.com/wonyoung-jang/galton/issues"
+Documentation = "https://wonyoung-jang.github.io/fspachinko/"
+Repository = "https://github.com/wonyoung-jang/fspachinko"
+Issues = "https://github.com/wonyoung-jang/fspachinko/issues"
 
 [project.scripts]
-galton = "galton.gui.__main__:main"
-galton-gui = "galton.gui.__main__:main"
-galton-cli = "galton.cli.__main__:main"
+fspachinko = "fspachinko.gui.__main__:main"
+fspachinko-gui = "fspachinko.gui.__main__:main"
+fspachinko-cli = "fspachinko.cli.__main__:main"
  
 [build-system]
 requires = ["uv_build>=0.9.27,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.vulture]
-paths = ["./src/galton", "whitelist.py"]
+paths = ["./src/fspachinko", "whitelist.py"]
 ignore_decorators = ["@app.*"]
 min_confidence = 40
 verbose = false

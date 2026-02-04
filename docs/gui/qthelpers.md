@@ -1,3 +1,3 @@
 # GUI Helpers
 
-::: galton.gui.qthelpers
+::: fspachinko.gui.qthelpers

@@ -1,3 +1,3 @@
 # Configuration
 
-::: galton.config.config
+::: fspachinko.config.config

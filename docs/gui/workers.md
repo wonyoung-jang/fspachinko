@@ -1,3 +1,3 @@
 # Worker Threads
 
-::: galton.gui.workers
+::: fspachinko.gui.workers

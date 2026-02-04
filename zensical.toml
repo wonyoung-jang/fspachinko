@@ -1,13 +1,13 @@
 [project]
-site_name = "galton"
-site_description = "Documentation for the galton random file transferer."
+site_name = "fspachinko"
+site_description = "Documentation for the fspachinko random file transferer."
 site_author = "Wonyoung Jang"
-site_url = "https://wonyoung-jang.github.io/galton/"
+site_url = "https://wonyoung-jang.github.io/fspachinko/"
 copyright = "Copyright &copy; Wonyoung Jang"
 docs_dir = "docs"
 site_dir = "site"
-repo_url = "https://github.com/wonyoung-jang/galton"
-repo_name = "wonyoung-jang/galton"
+repo_url = "https://github.com/wonyoung-jang/fspachinko"
+repo_name = "wonyoung-jang/fspachinko"
 # nav = [
 #     { "Home" = "index.md" },
 #     { "Usage" = "usage.md" },
@@ -127,8 +127,8 @@ toggle.name = "Switch to light mode"
 # ----------------------------------------------------------------------------
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/wonyoung-jang/galton"
-name = "galton on GitHub"
+link = "https://github.com/wonyoung-jang/fspachinko"
+name = "fspachinko on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/linkedin"
@@ -140,7 +140,7 @@ name = "Wonyoung Jang on LinkedIn"
 # ----------------------------------------------------------------------------
 [project.plugins.mkdocstrings.handlers.python]
 inventories = ["https://docs.python.org/3/objects.inv"]
-paths = ["galton"]
+paths = ["fspachinko"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
 # General

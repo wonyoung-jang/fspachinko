@@ -1,3 +1,3 @@
 # Settings
 
-::: galton.gui.settings
+::: fspachinko.gui.settings

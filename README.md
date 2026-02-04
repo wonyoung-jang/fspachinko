@@ -1,17 +1,17 @@
-# galton
+# fspachinko
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
 
 ## Installation (uv)
 
 ```bash
-uv add galton
+uv add fspachinko
 ```
 
 or
 
 ```bash
-uv tool install galton
+uv tool install fspachinko
 ```
 
 ![Setup](resources/images/tab_output.png)
@@ -20,7 +20,7 @@ uv tool install galton
 
 ## Usage
 
-galton can be used via command-line interface (CLI) or graphical user interface (GUI).
+fspachinko can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Command Line Interface
 
@@ -28,7 +28,7 @@ galton can be used via command-line interface (CLI) or graphical user interface 
 
 ```bash
 # Use configuration file
-galton-cli --config your-galton.json
+fspachinko-cli --config your-fspachinko.json
 ```
 
 ## Graphical User Interface
@@ -36,13 +36,13 @@ galton-cli --config your-galton.json
 ### Launch GUI
 
 ```bash
-galton-gui
+fspachinko-gui
 ```
 
 Or simply:
 
 ```bash
-galton
+fspachinko
 ```
 
 ### GUI Profiles
@@ -56,12 +56,12 @@ Save frequently used configurations as profiles:
 
 ## Configuration File
 
-Create a `galton.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
+Create a `fspachinko.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
 
 ```json
 {
     "root": "C:/",
-    "dest": "galton_output/",
+    "dest": "fspachinko_output/",
     "filecount": {
         "count": 20,
         "is_rand_enabled": false,
@@ -234,7 +234,7 @@ Example: `{index}_{original}_{date}`: `photo.jpg` -> `1_photo_2026-01-25.jpg`
 
 ### Logging
 
-Configure logging in a `json` file. Here is the default `galton_configs/logging.json` provided:
+Configure logging in a `json` file. Here is the default `fspachinko_configs/logging.json` provided:
 
 ```json
 {
@@ -259,7 +259,7 @@ Configure logging in a `json` file. Here is the default `galton_configs/logging.
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "galton.log",
+            "filename": "fspachinko.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

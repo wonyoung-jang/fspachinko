@@ -20,7 +20,7 @@
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "galton.log",
+            "filename": "fspachinko.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

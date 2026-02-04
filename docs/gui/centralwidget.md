@@ -1,3 +1,3 @@
 # Central Widget
 
-::: galton.gui.centralwidget
+::: fspachinko.gui.centralwidget

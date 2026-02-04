@@ -1,3 +1,3 @@
 # Transfer Strategies
 
-::: galton.core.transfer
+::: fspachinko.core.transfer

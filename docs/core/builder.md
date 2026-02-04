@@ -1,3 +1,3 @@
 # Builder
 
-::: galton.core.builder
+::: fspachinko.core.builder

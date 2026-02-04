@@ -1,3 +1,3 @@
 # Report Writer
 
-::: galton.core.reporter
+::: fspachinko.core.reporter

@@ -93,7 +93,7 @@ wheels = [
 ]
 
 [[package]]
-name = "galton"
+name = "fspachinko"
 version = "0.0.2"
 source = { editable = "." }
 dependencies = [

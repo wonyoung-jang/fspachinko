@@ -1,3 +1,3 @@
 # GUI Observer
 
-::: galton.gui.observer
+::: fspachinko.gui.observer

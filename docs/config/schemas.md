@@ -1,3 +1,3 @@
 # Schemas
 
-::: galton.config.schemas
+::: fspachinko.config.schemas

@@ -1,3 +1,3 @@
 # Components
 
-::: galton.gui.components
+::: fspachinko.gui.components

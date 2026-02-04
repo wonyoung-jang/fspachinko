@@ -1,3 +1,3 @@
 # Actions
 
-::: galton.gui.actions
+::: fspachinko.gui.actions

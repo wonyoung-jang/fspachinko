@@ -1,3 +1,3 @@
 # Engine State
 
-::: galton.core.state
+::: fspachinko.core.state

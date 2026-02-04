@@ -4,14 +4,14 @@ import os
 from dataclasses import dataclass
 from typing import ClassVar
 
-import galton
+import fspachinko
 
 
 @dataclass(slots=True)
 class Paths:
     """Dataclass for general directories used."""
 
-    pkg: ClassVar[str] = os.path.dirname(galton.__file__)
+    pkg: ClassVar[str] = os.path.dirname(fspachinko.__file__)
     data: ClassVar[str] = os.path.join(pkg, "_data")
     icons: ClassVar[str] = os.path.join(data, "icons")
     configs: ClassVar[str] = os.path.join(data, "configs")

@@ -1,3 +1,3 @@
 # Engine
 
-::: galton.core.engine
+::: fspachinko.core.engine

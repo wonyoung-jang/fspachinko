@@ -20,7 +20,7 @@ QCoreApplication.setApplicationName(AppSetting.APPLICATION)
 try:  # Windows only for taskbar icon
     from ctypes import windll
 
-    myappid = "wonyoungjang.galton.random_file_transfer_utility.0.0.1"
+    myappid = "wonyoungjang.fspachinko.random_file_transfer_utility.0.0.1"
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except ImportError:
     pass
@@ -29,7 +29,7 @@ except ImportError:
 def main() -> None:
     """Run the application."""
     initialize_logging()
-    logger.info("Start: galton GUI")
+    logger.info("Start: fspachinko GUI")
 
     app = QApplication()
     app.setWindowIcon(QIcon(Paths.icon(IconFilename.WINDOW)))

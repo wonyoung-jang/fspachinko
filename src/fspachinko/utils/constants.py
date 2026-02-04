@@ -28,7 +28,7 @@ DURATION_CMD = [
 class DefaultPath(StrEnum):
     """Enumeration for default configuration filenames."""
 
-    CONFIG = "galton.json"
+    CONFIG = "fspachinko.json"
     LOGGING = "logging.json"
 
 
@@ -77,8 +77,8 @@ class AppSetting(StrEnum):
     """Enumeration for different settings categories."""
 
     ORGANIZATION = "Wonyoung Jang"
-    DOMAIN = "https://github.com/wonyoung-jang/galton"
-    APPLICATION = "galton"
+    DOMAIN = "https://github.com/wonyoung-jang/fspachinko"
+    APPLICATION = "fspachinko"
 
 
 class ByteUnit(StrEnum):
@@ -183,7 +183,7 @@ class GUISettingsKey(StrEnum):
 class GUITitle(StrEnum):
     """Enumeration for GUI window titles."""
 
-    WINDOW = "Galton: Transfer random files"
+    WINDOW = "fspachinko: Transfer random files"
     SAVE_PROFILE = "Save Profile As"
     OPEN_PROFILE = "Open Profile"
 

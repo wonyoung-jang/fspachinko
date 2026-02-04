@@ -1,6 +1,6 @@
 {
     "root": "C:/",
-    "dest": "galton_output/",
+    "dest": "fspachinko_output/",
     "filecount": {
         "count": 20,
         "is_rand_enabled": false,

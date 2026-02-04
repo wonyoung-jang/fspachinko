@@ -1,3 +1,3 @@
 # CLI Observer
 
-::: galton.cli.observer
+::: fspachinko.cli.observer
