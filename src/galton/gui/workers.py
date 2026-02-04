@@ -38,15 +38,13 @@ class MainWorker:
         self.engine.request_stop()
 
 
-@dataclass(slots=True)
 class MainThread(QThread):
     """Worker thread for running process."""
 
-    worker: MainWorker
-
-    def __post_init__(self) -> None:
+    def __init__(self, worker: MainWorker) -> None:
         """Initialize the worker thread."""
         super().__init__()
+        self.worker = worker
 
     @Slot()
     def run(self) -> None:

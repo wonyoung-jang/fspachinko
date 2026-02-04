@@ -1,7 +1,6 @@
 """Main module."""
 
 import logging
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Slot
@@ -19,19 +18,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    central_widget: CentralWidget = field(default_factory=CentralWidget)
-    profiles: ProfileManager = field(default_factory=ProfileManager)
-    qsettings: QSettings = field(default_factory=QSettings)
-    _actions: Actions = field(default_factory=Actions)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
         logger.debug("Initializing GUI")
+        self.central_widget = CentralWidget()
+        self.profiles = ProfileManager()
+        self.qsettings = QSettings()
+        self._actions = Actions()
         self.setCentralWidget(self.central_widget)
         self.init_connections()
         self.init_menubar()

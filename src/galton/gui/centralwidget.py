@@ -1,7 +1,6 @@
 """Main module."""
 
 import logging
-from dataclasses import dataclass, field
 
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
@@ -15,22 +14,19 @@ from .workers import MainThread, MainWorker
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
 class CentralWidget(QWidget):
     """Main application window."""
 
-    thread: MainThread | None = None
-    ui: UIBuilder = field(default_factory=UIBuilder)
-    progress_binder: ProgressBinder = field(init=False)
-    window_title_original: str = field(init=False)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
         set_qt_name(self, GUIName.CENTRAL_WIDGET)
+        self.main_thread: MainThread | None = None
+        self.ui = UIBuilder()
         layout = self.ui.build_layout()
         self.setLayout(layout)
         self.progress_binder = ProgressBinder(self.ui.progress, self.ui.logging)
+        self.window_title_original = ""
 
     @Slot()
     def on_start(self) -> None:
@@ -41,20 +37,20 @@ class CentralWidget(QWidget):
             logger.exception("")
             return
 
-        self.thread = MainThread(MainWorker.from_config(config))
+        self.main_thread = MainThread(MainWorker.from_config(config))
         self.ui.progress.reset()
         self.window_title_original = self.window().windowTitle()
-        self.progress_binder.bind(self.thread.worker.signals)
+        self.progress_binder.bind(self.main_thread.worker.signals)
         self.progress_binder.count.connect(self.update_title_progress)
         self.progress_binder.finished.connect(self.on_finished)
         self.toggle_ui(is_enabled=False)
-        self.thread.start()
+        self.main_thread.start()
 
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
-        if self.thread and self.thread.isRunning():
-            self.thread.stop()
+        if self.main_thread and self.main_thread.isRunning():
+            self.main_thread.stop()
 
     @Slot(int)
     def update_title_progress(self, val: int) -> None:

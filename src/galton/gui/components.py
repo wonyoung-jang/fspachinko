@@ -2,7 +2,6 @@
 
 import logging
 import os
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar
 
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
@@ -147,57 +146,48 @@ class PathSelectorWidget(BaseGroupBox):
         return self.combo.currentText()
 
 
-@dataclass(slots=True)
 class RootPathSelectorWidget(PathSelectorWidget):
     """Handles logic for selecting a root path."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the root path selector widget."""
         super().__init__("Root", "root", [QDir.rootPath()])
 
 
-@dataclass(slots=True)
 class DestPathSelectorWidget(PathSelectorWidget):
     """Handles logic for selecting a destination path."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the destination path selector widget."""
         super().__init__("Destination", "dest", [QDir.homePath()])
 
 
-@dataclass(slots=True)
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    radio_fixed: QRadioButton = field(default_factory=QRadioButton)
-    spin_fixed: QSpinBox = field(default_factory=QSpinBox)
-    radio_rand: QRadioButton = field(default_factory=QRadioButton)
-    spin_min_rand: QSpinBox = field(default_factory=QSpinBox)
-    spin_max_rand: QSpinBox = field(default_factory=QSpinBox)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the file count widget."""
         name = "filecount"
         super().__init__("File count", name)
 
-        self.radio_fixed.setText("Fixed")
+        self.radio_fixed = QRadioButton("Fixed")
         self.radio_fixed.setChecked(True)
         set_qt_name(self.radio_fixed, f"{name}_fixed_chk")
         set_qt_tips(self.radio_fixed, "Select fixed file count.")
 
-        self.spin_fixed.setSuffix(" files")
+        self.spin_fixed = QSpinBox(suffix=" files")
         set_qt_name(self.spin_fixed, f"{name}_fixed_val")
         set_qt_tips(self.spin_fixed, "Number of files to copy.")
 
-        self.radio_rand.setText("Random")
+        self.radio_rand = QRadioButton("Random")
         set_qt_name(self.radio_rand, f"{name}_rand_chk")
         set_qt_tips(self.radio_rand, "Select random file count.")
 
-        self.spin_min_rand.setPrefix("Min: ")
+        self.spin_min_rand = QSpinBox(prefix="Min: ")
         set_qt_name(self.spin_min_rand, f"{name}_rand_min")
         set_qt_tips(self.spin_min_rand, "Minimum random file count.")
 
-        self.spin_max_rand.setPrefix("Max: ")
+        self.spin_max_rand = QSpinBox(prefix="Max: ")
         set_qt_name(self.spin_max_rand, f"{name}_rand_max")
         set_qt_tips(self.spin_max_rand, "Maximum random file count.")
 
@@ -229,30 +219,23 @@ class FileCountWidget(BaseGroupBox):
         )
 
 
-@dataclass(slots=True)
 class FolderCreatorWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    spinbox_folder_count: QSpinBox = field(default_factory=QSpinBox)
-    lineedit_folder_name: QLineEdit = field(default_factory=QLineEdit)
-    chk_unique_folders: QCheckBox = field(default_factory=QCheckBox)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the create folders widget."""
         name = "folder"
         super().__init__("Create Folders", name, checkable=True)
 
-        self.spinbox_folder_count.setSuffix(" folders")
+        self.spinbox_folder_count = QSpinBox(suffix=" folders")
         set_qt_name(self.spinbox_folder_count, f"{name}_count")
         set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
 
-        self.lineedit_folder_name.setPlaceholderText("Ex: Random_Files")
-        self.lineedit_folder_name.setClearButtonEnabled(True)
+        self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
         set_qt_name(self.lineedit_folder_name, f"{name}_name")
         set_qt_tips(self.lineedit_folder_name, "Template for naming created folders.")
 
-        self.chk_unique_folders.setText("Ensure unique folders")
-        self.chk_unique_folders.setChecked(True)
+        self.chk_unique_folders = QCheckBox("Ensure unique folders")
         set_qt_name(self.chk_unique_folders, f"{name}_unique")
         set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
 
@@ -271,30 +254,23 @@ class FolderCreatorWidget(BaseGroupBox):
         )
 
 
-@dataclass(slots=True)
 class FilenameWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
 
-    edit_template: QLineEdit = field(default_factory=QLineEdit)
-    btn_template: QPushButton = field(default_factory=QPushButton)
-    menu_template: QMenu = field(default_factory=QMenu)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the filename template settings widget."""
         name: str = "filename"
         super().__init__("Filename", name)
 
-        self.edit_template.setText("{original}")
-        self.edit_template.setPlaceholderText("Ex: {original}_{index}")
-        self.edit_template.setClearButtonEnabled(True)
+        self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}", clearButtonEnabled=True)
         set_qt_name(self.edit_template, f"{name}_template")
         set_qt_tips(self.edit_template, "Template for renaming files. Use the 'Insert Tag' button to add tags.")
 
-        self.menu_template.setTitle("Tags")
+        self.menu_template = QMenu(title="Tags")
         set_qt_name(self.menu_template, f"{name}_template_menu")
         set_qt_tips(self.menu_template, "Select a tag to insert into the filename template.")
 
-        self.btn_template.setText("Insert tag")
+        self.btn_template = QPushButton("Insert tag")
         self.btn_template.setMenu(self.menu_template)
         set_qt_name(self.btn_template, f"{name}_template_button")
         set_qt_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
@@ -319,17 +295,15 @@ class FilenameWidget(BaseGroupBox):
         return FilenameModel(template=val)
 
 
-@dataclass(slots=True)
 class TransferModeWidget(BaseGroupBox):
     """Handles logic for mode settings."""
 
-    combo_mode: QComboBox = field(default_factory=QComboBox)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the mode settings widget."""
         name = "transfermode"
         super().__init__("Transfer Mode", name)
 
+        self.combo_mode = QComboBox()
         self.combo_mode.addItems(get_available_transfer_modes())
         set_qt_name(self.combo_mode, f"{name}_mode")
         set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
@@ -378,20 +352,18 @@ class ListIncludeExcludeFilterWidget(BaseGroupBox):
         )
 
 
-@dataclass(slots=True)
 class ExtensionsFilterWidget(ListIncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for file extensions."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the extensions filter widget."""
         super().__init__("Extensions", "extension")
 
 
-@dataclass(slots=True)
 class KeywordsFilterWidget(ListIncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for keywords."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the keywords filter widget."""
         super().__init__("Keywords", "keyword")
 
@@ -434,20 +406,18 @@ class MinMaxFilterWidget(BaseGroupBox):
         )
 
 
-@dataclass(slots=True)
 class SizeFilterWidget(MinMaxFilterWidget):
     """Handles logic for size range filter."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the size filter widget."""
         super().__init__("File Size", "filesize", tuple(ByteUnit))
 
 
-@dataclass(slots=True)
 class DurationFilterWidget(MinMaxFilterWidget):
     """Handles logic for duration range filter."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the duration filter widget."""
         super().__init__("Duration", "duration", tuple(TimeUnit))
 
@@ -482,44 +452,40 @@ class SizeLimitWidget(BaseGroupBox):
         )
 
 
-@dataclass(slots=True)
 class FolderSizeLimitWidget(SizeLimitWidget):
     """Handles logic for per-folder size limit."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the folder size limit widget."""
         super().__init__("Max Folder Size", "folder_size_limit", tuple(ByteUnit))
 
 
-@dataclass(slots=True)
 class TotalSizeLimitWidget(SizeLimitWidget):
     """Handles logic for total size limit across all folders."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the total size limit widget."""
         super().__init__("Max Total Size", "total_size_limit", tuple(ByteUnit))
 
 
-@dataclass(slots=True)
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    spin_max_per_folder: QSpinBox = field(default_factory=QSpinBox)
-    chk_follow_symlink: QCheckBox = field(default_factory=QCheckBox)
-    chk_dry_run: QCheckBox = field(default_factory=QCheckBox)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Initialize the options widget."""
         name = "options"
         super().__init__("Options", name)
 
+        self.spin_max_per_folder = QSpinBox()
         self.spin_max_per_folder.setSpecialValueText("Unlimited")
         set_qt_name(self.spin_max_per_folder, f"{name}_max_per_folder")
         set_qt_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
 
+        self.chk_follow_symlink = QCheckBox()
         set_qt_name(self.chk_follow_symlink, f"{name}_should_follow_symlink")
         set_qt_tips(self.chk_follow_symlink, "If checked, symbolic links will be followed during file traversal.")
 
+        self.chk_dry_run = QCheckBox()
         set_qt_name(self.chk_dry_run, f"{name}_dry_run")
         set_qt_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
 
@@ -537,24 +503,20 @@ class OptionsWidget(BaseGroupBox):
         )
 
 
-@dataclass(slots=True)
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
-    progbar_total: QProgressBar = field(default_factory=QProgressBar)
-    progbar_dir: QProgressBar = field(default_factory=QProgressBar)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Post-initialize the progress widget."""
         super().__init__()
         name = "progress"
         set_qt_name(self, name)
 
-        self.progbar_total.setTextVisible(True)
+        self.progbar_total = QProgressBar(textVisible=True)
         set_qt_name(self.progbar_total, f"{name}_total")
         set_qt_tips(self.progbar_total, "Total progress bar, max is set at number of output folders.")
 
-        self.progbar_dir.setTextVisible(True)
+        self.progbar_dir = QProgressBar(textVisible=True)
         set_qt_name(self.progbar_dir, f"{name}_dir")
         set_qt_tips(self.progbar_dir, "Current folder progress bar, max is set at number of files to copy.")
 
@@ -573,18 +535,16 @@ class ProgressWidget(QWidget):
         self.progbar_dir.setValue(0)
 
 
-@dataclass(slots=True)
 class LoggingWidget(QWidget):
     """Logging widget."""
 
-    textbrowser_log: QTextBrowser = field(default_factory=QTextBrowser)
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         """Post-initialize the logging widget."""
         super().__init__()
         name = "logging"
         set_qt_name(self, name)
 
+        self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         set_qt_name(self.textbrowser_log, f"{name}_log")
         set_qt_tips(self.textbrowser_log, "Log for output messages.")
@@ -593,18 +553,17 @@ class LoggingWidget(QWidget):
         layout.addWidget(self.textbrowser_log)
 
 
-@dataclass(slots=True)
 class ProgressBinder(QObject):
     """Class for binding progress widgets."""
 
-    progress: ProgressWidget
-    logging: LoggingWidget
     count: ClassVar[Signal] = Signal(int)
     finished: ClassVar[Signal] = Signal()
 
-    def __post_init__(self) -> None:
+    def __init__(self, progressw: ProgressWidget, loggingw: LoggingWidget) -> None:
         """Initialize the ProgressBinder."""
         super().__init__()
+        self.progress = progressw
+        self.logging = loggingw
 
     def bind(self, signals: WorkerSignals) -> None:
         """Bind worker signals to progress widget."""
