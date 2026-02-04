@@ -10,7 +10,7 @@ from ..utils import PERCENTAGE_100, GUIName
 from .components import ProgressBinder
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
-from .workers import MainThread, MainWorker, WorkerSignals
+from .workers import MainThread, MainWorker
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class CentralWidget(QWidget):
             logger.exception("")
             return
 
-        self.thread = MainThread(MainWorker.from_config(config, WorkerSignals()))
+        self.thread = MainThread(MainWorker.from_config(config))
         self.ui.progress.reset()
         self.window_title_original = self.window().windowTitle()
         self.progress_binder.bind(self.thread.worker.signals)

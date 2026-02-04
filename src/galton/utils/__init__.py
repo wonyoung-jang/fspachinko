@@ -1,6 +1,7 @@
 """Utilities package."""
 
 from .constants import (
+    DURATION_CMD,
     FALSE_STRS,
     INVALID_FILENAME_CHARS,
     PERCENTAGE_100,
@@ -32,6 +33,7 @@ from .helpers import (
     calc_unique_path_name,
     convert_byte_to_human_readable_size,
     convert_string_to_list,
+    get_duration,
     get_stem_and_ext,
     load_json,
     remove_directory,
@@ -44,6 +46,7 @@ from .paths import Paths
 from .timestamp import DateTimeStamp
 
 __all__ = [
+    "DURATION_CMD",
     "FALSE_STRS",
     "INVALID_FILENAME_CHARS",
     "PERCENTAGE_100",
@@ -76,6 +79,7 @@ __all__ = [
     "calc_unique_path_name",
     "convert_byte_to_human_readable_size",
     "convert_string_to_list",
+    "get_duration",
     "get_stem_and_ext",
     "initialize_logging",
     "load_json",

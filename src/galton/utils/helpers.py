@@ -2,12 +2,16 @@
 
 import contextlib
 import json
+import logging
 import os
 import shutil
+import subprocess
 from filecmp import cmp
 from typing import Any
 
-from .constants import FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
+from .constants import DURATION_CMD, FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
+
+logger = logging.getLogger(__name__)
 
 
 class SafeDict(dict):
@@ -117,3 +121,19 @@ def save_json(path: str, data: dict[str, Any]) -> None:
 def get_stem_and_ext(path: str) -> tuple[str, str]:
     """Get the stem and extension of a file path."""
     return os.path.splitext(os.path.basename(path))
+
+
+def get_duration(path: str) -> float:
+    """Get the duration of a media file."""
+    try:
+        out_bytes = subprocess.check_output(
+            [*DURATION_CMD, path],
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+        return float(out_bytes.strip())
+    except subprocess.CalledProcessError as e:
+        out_bytes = e.output
+        code = e.returncode
+        logger.debug("ffprobe failed with code %d: %s", code, out_bytes.decode(errors="ignore"))
+        return 0.0

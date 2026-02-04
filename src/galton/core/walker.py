@@ -4,7 +4,7 @@ import itertools
 import logging
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os import scandir
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +16,59 @@ if TYPE_CHECKING:
     from .validator import FileValidator
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class FSTree:
+    """Abstract class for file system tree representation."""
+
+    tree: dict[str, set[os.DirEntry]]
+    directories: tuple[str, ...]
+    dir_idx_cycle: Iterator[int]
+
+
+@dataclass(slots=True)
+class FSTreeBuilder(ABC):
+    """Scans the file system and builds a directory tree."""
+
+    root: str
+    validator: FileValidator
+    rng: Random
+    should_follow_symlink: bool
+
+    @abstractmethod
+    def build(self) -> Any:
+        """Scan the root directory and build the directory tree."""
+
+
+@dataclass(slots=True)
+class RandomFSTreeBuilder(FSTreeBuilder):
+    """Scans the file system and builds a directory tree with random order."""
+
+    def build(self) -> FSTree:
+        """Scan the root directory and build the directory tree."""
+        logger.debug("Scanning root directory: %s", self.root)
+        is_valid = self.validator.is_valid
+        shuffle = self.rng.shuffle
+        tree = {}
+        for dirpath, _, filenames in walk_entries(self.root, follow_symlinks=self.should_follow_symlink):
+            if not filenames:
+                continue
+
+            entries = [f for f in filenames if is_valid(f)]
+            if entries:
+                shuffle(entries)
+                tree[dirpath] = set(entries)
+
+        directories = tuple(tree.keys())
+        valid_idx = list(range(len(directories)))
+        shuffle(valid_idx)
+        logger.debug("Completed scanning root directory.")
+        return FSTree(
+            tree=tree,
+            directories=directories,
+            dir_idx_cycle=itertools.cycle(valid_idx),
+        )
 
 
 @dataclass(slots=True)
@@ -31,56 +84,27 @@ class FSWalker(ABC):
 class RandomFSWalker(FSWalker):
     """Navigates the file system randomly based on Quota rules."""
 
-    root: str
+    tree: FSTree
     quota: DiversityQuota
-    rng: Random
-    should_follow_symlink: bool
-    validator: FileValidator
-    tree: dict[str, set[os.DirEntry]] = field(default_factory=dict)
-    directories: tuple[str, ...] = ()
-    dir_idx_cycle: Iterator[int] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Initialize the walker by scanning the root directory."""
-        logger.debug("Scanning root directory: %s", self.root)
-        self.scan()
-        logger.debug("Completed scanning root directory.")
-
-    def scan(self) -> None:
-        """Scan the root directory and return its entries."""
-        is_valid = self.validator.is_valid
-        shuffle = self.rng.shuffle
-        for dirpath, _, filenames in walk_entries(self.root, follow_symlinks=self.should_follow_symlink):
-            if not filenames:
-                continue
-
-            entries = [f for f in filenames if is_valid(f)]
-            if entries:
-                shuffle(entries)
-                self.tree[dirpath] = set(entries)
-
-        self.directories = tuple(self.tree.keys())
-        valid_idx = list(range(len(self.directories)))
-        shuffle(valid_idx)
-        self.dir_idx_cycle = itertools.cycle(valid_idx)
 
     def walk(self) -> Iterator[os.DirEntry]:
         """Generate shuffled candidates for a given directory."""
-        if not self.directories:
+        if not self.tree.directories:
             self.quota.lock_root()
             return
 
-        directories = self.directories
+        _sc = self.tree
+        _qu = self.quota
+        directories = _sc.directories
         n_directories = len(directories)
         n_locked = 0
-        is_dir_locked = self.quota.is_dir_locked
-        get_available = self.quota.get_available
-        lock_file = self.quota.lock_file
-        lock_dir = self.quota.lock_dir
-        should_follow_symlink = self.should_follow_symlink
-        tree = self.tree
+        is_dir_locked = _qu.is_dir_locked
+        get_available = _qu.get_available
+        lock_file = _qu.lock_file
+        lock_dir = _qu.lock_dir
+        tree = _sc.tree
 
-        for di in self.dir_idx_cycle:
+        for di in _sc.dir_idx_cycle:
             dirpath = directories[di]
             if is_dir_locked(dirpath):
                 n_locked += 1
@@ -99,9 +123,6 @@ class RandomFSWalker(FSWalker):
 
             for entry in available:
                 lock_file(entry)
-                if not should_follow_symlink and entry.is_symlink():
-                    continue
-
                 yield entry
                 break
 

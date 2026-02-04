@@ -14,6 +14,15 @@ PERCENTAGE_100: float = 100.0
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
 TRUE_STRS: set[str] = {"y", "yes", "t", "true", "on", "1"}
 FALSE_STRS: set[str] = {"n", "no", "f", "false", "off", "0"}
+DURATION_CMD = [
+    "ffprobe",
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+]
 
 
 class DefaultPath(StrEnum):

@@ -27,13 +27,13 @@ class FolderStats:
     curr_size: int = 0
     total_size: int = 0
 
-    def reset_for_folder(self) -> None:
+    def reset(self) -> None:
         """Reset state variables for a new folder."""
         self.count = 0
         self.curr_size = 0
         self.starttime = perf_counter()
 
-    def update_folder(self, size: int) -> None:
+    def update(self, size: int) -> None:
         """Update state on successful operation."""
         self.count += 1
         self.curr_size += size
@@ -128,14 +128,22 @@ class EngineContext(Context):
             )
             return True
 
-        if self.folder_size_limit.is_valid(self.folderstats.curr_size):
+        if (
+            self.folder_size_limit.is_enabled
+            and self.folder_size_limit.size_limit > 0
+            and self.folder_size_limit.is_valid(self.folderstats.curr_size)
+        ):
             self.state = FolderSizeLimitState(
                 status=StateStatus.FOLDER_SIZE_LIMIT_REACHED,
                 message=f"{(self.folderstats.curr_size)} B / {(self.folder_size_limit.size_limit)} B",
             )
             return True
 
-        if self.total_size_limit.is_valid(self.folderstats.total_size):
+        if (
+            self.total_size_limit.is_enabled
+            and self.total_size_limit.size_limit > 0
+            and self.total_size_limit.is_valid(self.folderstats.total_size)
+        ):
             self.state = TotalSizeLimitState(
                 status=StateStatus.TOTAL_SIZE_LIMIT_REACHED,
                 message=f"{(self.folderstats.total_size)} B / {(self.total_size_limit.size_limit)} B",
@@ -166,13 +174,13 @@ class EngineContext(Context):
     def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
         DateTimeStamp.refresh()
-        self.folderstats.reset_for_folder()
-        self.quota.prepare_for_batch()
+        self.folderstats.reset()
+        self.quota.reset()
         self.reporter.reset(dest)
 
     def update_on_success(self, entry: os.DirEntry) -> None:
         """Update context on successful file operation."""
-        self.folderstats.update_folder(entry.stat().st_size)
+        self.folderstats.update(entry.stat().st_size)
         self.quota.register_success(entry)
 
     def should_treat_as_dry_run(self, copy_path_str: str) -> bool:

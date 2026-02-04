@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from ..config import Filecount, Filename
     from ..utils import Observer
@@ -27,8 +27,9 @@ class Engine:
     validator: FileValidator
     filecount: Filecount
     filename: Filename
-    do_transfer_strategy: Callable[[os.DirEntry, str], None]
+    do_transfer_strategy: Callable[[os.PathLike, str], None]
     context: Context
+    folder_count: int
     observer: Observer = field(init=False)
 
     def set_observer(self, observer: Observer) -> None:
@@ -41,16 +42,21 @@ class Engine:
 
     def start(self) -> None:
         """Run the main file copying process."""
-        folder_count = self.context.folder.count
-        self.observer.on_progress_total(folder_count)
-        for _ in range(folder_count):
-            self.process_directory()
+        self.observer.on_progress_total(self.folder_count)
+        for target, dest in self.get_transfer_parameters():
+            self.process_directory(target, dest)
         self.observer.on_finished()
 
-    def process_directory(self) -> None:
+    def get_transfer_parameters(self) -> Iterator[tuple[int, str]]:
+        """Get transfer parameters for all folders."""
+        for _ in range(self.folder_count):
+            yield (
+                self.filecount.get_file_count(),
+                self.context.folder.determine_dest_dirname(),
+            )
+
+    def process_directory(self, target: int, dest: str) -> None:
         """Run processing for a single folder."""
-        target = self.filecount.get_file_count()
-        dest = self.context.folder.determine_dest_dirname()
         os.mkdir(dest)
         self.observer.on_progress(target)
         self.context.prepare(dest)

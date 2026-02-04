@@ -2,11 +2,10 @@
 
 import logging
 import os
-import subprocess
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from line_profiler import profile
+from ..utils import get_duration
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -14,32 +13,6 @@ if TYPE_CHECKING:
     from ..config import ListIncludeExclude, MinMax
 
 logger = logging.getLogger(__name__)
-DURATION_CMD = [
-    "ffprobe",
-    "-v",
-    "error",
-    "-show_entries",
-    "format=duration",
-    "-of",
-    "default=noprint_wrappers=1:nokey=1",
-]
-
-
-@profile
-def _get_duration(path: str) -> float:
-    """Get the duration of a media file."""
-    try:
-        result = subprocess.run(
-            [*DURATION_CMD, path],
-            stdout=subprocess.PIPE,
-            check=False,
-            timeout=10,
-        )
-        if result.returncode != 0:
-            return 0.0
-        return float(result.stdout.strip())
-    except (ValueError, OSError, subprocess.SubprocessError, TimeoutError):
-        return 0.0
 
 
 @dataclass(slots=True)
@@ -94,5 +67,5 @@ class FileValidator:
         if not self.duration.is_enabled:
             return True
 
-        duration = _get_duration(entry.path)
+        duration = get_duration(entry.path)
         return self.duration.is_valid(duration)

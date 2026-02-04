@@ -13,22 +13,18 @@ class DiversityQuota:
     """Manages rules for diversity (weights) and uniqueness."""
 
     root: str
-    is_unique: bool = False
-    max_per_dir: int = 0
+    is_unique: bool
+    max_per_dir: int
     locked_file: set[os.DirEntry] = field(default_factory=set)
     locked_dir: set[str] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)
 
-    def prepare_for_batch(self) -> None:
+    def reset(self) -> None:
         """Reset batch-specific counters, optionally keeping file history."""
         self.dircount.clear()
         self.locked_dir.clear()
         if not self.is_unique:
             self.locked_file.clear()
-
-    def lock_root(self) -> None:
-        """Lock the root folder."""
-        self.locked_dir.add(self.root)
 
     def is_all_locked(self) -> bool:
         """Check if all files/folders are locked."""
@@ -37,6 +33,10 @@ class DiversityQuota:
     def is_dir_locked(self, directory: str) -> bool:
         """Check if a folder is locked."""
         return directory in self.locked_dir
+
+    def lock_root(self) -> None:
+        """Lock the root folder."""
+        self.locked_dir.add(self.root)
 
     def lock_file(self, path: os.DirEntry) -> None:
         """Mark a file as used without registering a success."""

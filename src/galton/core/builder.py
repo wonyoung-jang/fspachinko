@@ -11,7 +11,7 @@ from .reporter import ReportWriter
 from .state import EngineContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
-from .walker import RandomFSWalker
+from .walker import RandomFSTreeBuilder, RandomFSWalker
 
 if TYPE_CHECKING:
     from ..config import ConfigModel
@@ -62,14 +62,17 @@ def build_engine(m: ConfigModel) -> Engine:
         is_dry_run=m.options.is_dry_run,
     )
 
-    # Build Engine
-    walker = RandomFSWalker(
+    # Build Walker
+    tree_builder = RandomFSTreeBuilder(
         root=m.root,
-        rng=rng,
-        quota=quota,
-        should_follow_symlink=m.options.should_follow_symlink,
         validator=validator,
+        rng=rng,
+        should_follow_symlink=m.options.should_follow_symlink,
     )
+    tree = tree_builder.build()
+    walker = RandomFSWalker(tree=tree, quota=quota)
+
+    # Build Engine
     filecount = Filecount.from_model(m.filecount, rng=rng)
     filename = Filename.from_model(m.filename)
     do_transfer_strategy = fetch_transfer_strategy(m.transfermode.transfer_mode)
@@ -81,4 +84,5 @@ def build_engine(m: ConfigModel) -> Engine:
         filename=filename,
         do_transfer_strategy=do_transfer_strategy,
         context=context,
+        folder_count=m.folder.count,
     )

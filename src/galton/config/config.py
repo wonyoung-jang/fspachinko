@@ -2,7 +2,7 @@
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from ..utils import (
@@ -17,6 +17,7 @@ from ..utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from random import Random
 
     from .schemas import (
@@ -42,7 +43,13 @@ class Filecount:
     @classmethod
     def from_model(cls, m: FilecountModel, rng: Random) -> Filecount:
         """Create Filecount from configuration model."""
-        return cls(count=m.count, is_rand_enabled=m.is_rand_enabled, rand_min=m.rand_min, rand_max=m.rand_max, rng=rng)
+        return cls(
+            count=m.count,
+            is_rand_enabled=m.is_rand_enabled,
+            rand_min=m.rand_min,
+            rand_max=m.rand_max,
+            rng=rng,
+        )
 
     def get_file_count(self) -> int:
         """Get the file count based on configuration."""
@@ -62,7 +69,7 @@ class Filename:
         """Create Filename from configuration model."""
         return cls(template=m.template)
 
-    def _get_target(self, chosen: str, dest: str, index: int) -> str:
+    def calc_target_name(self, chosen: str, dest: str, index: int) -> str:
         """Prepare the target file path based on naming conventions."""
         stem, ext = get_stem_and_ext(chosen)
 
@@ -83,12 +90,12 @@ class Filename:
         except (KeyError, ValueError):
             new_stem = stem
 
-        new_stem = "".join(c for c in new_stem if c not in INVALID_FILENAME_CHARS)
-        return os.path.join(dest, f"{new_stem}{ext}")
+        name = "".join(c for c in new_stem if c not in INVALID_FILENAME_CHARS) + ext
+        return os.path.join(dest, name)
 
     def determine_dest_filename(self, chosen: str, dest: str, index: int) -> str | None:
         """Calculate the destination file path based on configuration."""
-        target = self._get_target(chosen, dest, index)
+        target = self.calc_target_name(chosen, dest, index)
 
         if not os.path.exists(target):
             return target
@@ -105,18 +112,16 @@ class Folder:
     """Dataclass for folder creation configuration."""
 
     is_enabled: bool
-    name: str
-    count: int
     dest: str
+    name: str
 
     @classmethod
     def from_model(cls, m: DirectoryModel, dest: str) -> Folder:
         """Create Folder from configuration model."""
         return cls(
             is_enabled=m.is_enabled,
-            name=m.name,
-            count=m.count,
             dest=dest,
+            name=m.name,
         )
 
     def determine_dest_dirname(self) -> str:
@@ -165,12 +170,6 @@ class SizeLimit:
 
     def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
-        if not self.is_enabled:
-            return False
-
-        if self.size_limit <= 0:
-            return False
-
         return size > self.size_limit
 
 
@@ -180,32 +179,34 @@ class ListIncludeExclude:
 
     is_enabled: bool
     should_include: bool
-    text: str
     as_string: str
     patterns: tuple[re.Pattern, ...]
+    is_valid: Callable[[str], bool] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post init to set validator function."""
+        self.is_valid = self._is_valid_include if self.should_include else self._is_valid_exclude
 
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
         """Create ListIncludeExclude from configuration model."""
         as_string = ""
         patterns = ()
-        if m.text:
-            text_list = convert_string_to_list(m.text)
+        if text := m.text.strip():
+            text_list = convert_string_to_list(text)
             as_string = ", ".join(text_list)
             patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
         return cls(
-            is_enabled=m.is_enabled,
+            is_enabled=m.is_enabled and bool(text),
             should_include=m.should_include,
-            text=m.text,
             as_string=as_string,
             patterns=patterns,
         )
 
-    def is_valid(self, part: str) -> bool:
-        """Check if a file name part matches the cached regexes."""
-        if not self.text:
-            return True
+    def _is_valid_include(self, part: str) -> bool:
+        """Check if a file name part matches the include regexes."""
+        return any(p.search(part) for p in self.patterns)
 
-        if self.should_include:
-            return any(p.search(part) for p in self.patterns)
+    def _is_valid_exclude(self, part: str) -> bool:
+        """Check if a file name part matches the exclude regexes."""
         return not any(p.search(part) for p in self.patterns)

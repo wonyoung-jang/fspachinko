@@ -21,8 +21,9 @@ class MainWorker:
     engine: Engine
 
     @classmethod
-    def from_config(cls, config: ConfigModel, signals: WorkerSignals) -> MainWorker:
+    def from_config(cls, config: ConfigModel) -> MainWorker:
         """Post-initialization tasks."""
+        signals = WorkerSignals()
         observer = GuiObserver(signals)
         engine = build_engine(config)
         engine.set_observer(observer)
