@@ -123,7 +123,7 @@ def get_stem_and_ext(path: str) -> tuple[str, str]:
     return os.path.splitext(os.path.basename(path))
 
 
-def get_duration(path: str) -> float:
+def get_duration(path: os.PathLike) -> float:
     """Get the duration of a media file."""
     try:
         out_bytes = subprocess.check_output(
@@ -131,7 +131,11 @@ def get_duration(path: str) -> float:
             stderr=subprocess.DEVNULL,
             timeout=10,
         )
-        return float(out_bytes.strip())
+        try:
+            return float(out_bytes.decode().strip())
+        except ValueError:
+            logger.debug("ffprobe output could not be parsed as float: %s", out_bytes.decode(errors="ignore"))
+            return 0.0
     except subprocess.CalledProcessError as e:
         out_bytes = e.output
         code = e.returncode

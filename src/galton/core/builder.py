@@ -3,17 +3,15 @@
 from random import Random
 from typing import TYPE_CHECKING
 
-from galton.utils.timestamp import DateTimeStamp
-
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
-from ..utils import SIZE_MAP, TIME_MAP, ReStrFmt
+from ..utils import SIZE_MAP, TIME_MAP, DateTimeStamp, ReStrFmt
 from .engine import Engine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
 from .state import EngineContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
-from .walker import RandomFSTreeBuilder, RandomFSWalker
+from .walker import StochasticWalker
 
 if TYPE_CHECKING:
     from ..config import ConfigModel
@@ -70,14 +68,21 @@ def build_engine(m: ConfigModel) -> Engine:
     )
 
     # Build Walker
-    tree_builder = RandomFSTreeBuilder(
+    walker = StochasticWalker(
         root=m.root,
+        quota=quota,
         validator=validator,
         rng=rng,
         should_follow_symlink=m.options.should_follow_symlink,
     )
-    tree = tree_builder.build()
-    walker = RandomFSWalker(tree=tree, quota=quota)
+    # tree_builder = RandomFSTreeBuilder(
+    #     root=m.root,
+    #     validator=validator,
+    #     rng=rng,
+    #     should_follow_symlink=m.options.should_follow_symlink,
+    # )
+    # tree = tree_builder.build()
+    # walker = RandomFSWalker(tree=tree, quota=quota)
 
     # Build Engine
     filecount = Filecount.from_model(m.filecount, rng=rng)

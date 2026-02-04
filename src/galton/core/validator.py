@@ -32,8 +32,7 @@ class FileValidator:
     def is_valid(self, entry: os.DirEntry) -> bool:
         """Check if a file is valid based on the current filters."""
         stem, ext = os.path.splitext(entry.name)
-        size = entry.stat().st_size
-        return all(is_valid(stem, ext, size) for is_valid in self.validators)
+        return all(is_valid(stem, ext, entry.stat().st_size) for is_valid in self.validators)
 
     def _gather_validators(self) -> None:
         """Gather validation functions based on enabled filters."""
@@ -62,10 +61,10 @@ class FileValidator:
         """Check if a file is valid based on the current filters."""
         return self.keywords.is_valid(stem)
 
-    def is_valid_duration(self, entry: os.DirEntry) -> bool:
+    def is_valid_duration(self, entry: os.PathLike) -> bool:
         """Check if a file is valid based on the current filters."""
         if not self.duration.is_enabled:
             return True
 
-        duration = get_duration(entry.path)
+        duration = get_duration(entry)
         return self.duration.is_valid(duration)

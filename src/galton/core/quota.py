@@ -15,7 +15,7 @@ class DiversityQuota:
     root: str
     is_unique: bool
     max_per_dir: int
-    locked_file: set[os.DirEntry] = field(default_factory=set)
+    locked_file: set[os.PathLike] = field(default_factory=set)
     locked_dir: set[str] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)
 
@@ -38,7 +38,7 @@ class DiversityQuota:
         """Lock the root folder."""
         self.locked_dir.add(self.root)
 
-    def lock_file(self, path: os.DirEntry) -> None:
+    def lock_file(self, path: os.PathLike) -> None:
         """Mark a file as used without registering a success."""
         self.locked_file.add(path)
 
@@ -50,7 +50,7 @@ class DiversityQuota:
         """Filter entries to only available files."""
         return entries.difference(self.locked_file)
 
-    def register_success(self, entry: os.DirEntry) -> None:
+    def register_success(self, entry: os.PathLike) -> None:
         """Record a successful copy and apply locking rules."""
         if self.max_per_dir <= 0:
             return

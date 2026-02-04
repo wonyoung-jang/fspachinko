@@ -9,11 +9,10 @@ from typing import TYPE_CHECKING
 from ..utils import DateTimeStamp, StateStatus, remove_directory
 
 if TYPE_CHECKING:
-    import os
-
     from ..config import Folder, SizeLimit
     from .quota import DiversityQuota
     from .reporter import ReportWriter
+    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +81,7 @@ class Context(ABC):
         """Prepare the context for a new folder processing."""
 
     @abstractmethod
-    def update_on_success(self, entry: os.DirEntry) -> None:
+    def update_on_success(self, entry: FSEntry) -> None:
         """Update context on successful file operation."""
 
     @abstractmethod
@@ -179,9 +178,9 @@ class EngineContext(Context):
         self.quota.reset()
         self.reporter.reset(dest)
 
-    def update_on_success(self, entry: os.DirEntry) -> None:
+    def update_on_success(self, entry: FSEntry) -> None:
         """Update context on successful file operation."""
-        self.folderstats.update(entry.stat().st_size)
+        self.folderstats.update(entry.size)
         self.quota.register_success(entry)
 
     def should_treat_as_dry_run(self, copy_path_str: str) -> bool:

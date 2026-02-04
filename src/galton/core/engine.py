@@ -87,10 +87,10 @@ class Engine:
             self.context.update_on_success(entry)
             self.update_observer_on_entry()
 
-    def transfer_file(self, chosen: os.DirEntry, dest: str) -> bool:
+    def transfer_file(self, entry: os.PathLike, dest: str) -> bool:
         """Attempt to copy a file and return success status."""
         count = self.context.folderstats.count
-        chosen_rel = os.path.relpath(chosen, self.root)
+        chosen_rel = os.path.relpath(entry, self.root)
         chosen_new = self.filename.determine_dest_filename(chosen_rel, dest, count)
         if chosen_new is None:
             return False
@@ -102,7 +102,7 @@ class Engine:
             return True
 
         try:
-            self.do_transfer_strategy(chosen, chosen_new)
+            self.do_transfer_strategy(entry, chosen_new)
         except (PermissionError, OSError):
             self.context.set_errored(msg)
             self.report_state()
