@@ -4,6 +4,10 @@ import logging
 import os
 from collections import Counter
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +19,7 @@ class DiversityQuota:
     root: str
     is_unique: bool
     max_per_dir: int
-    locked_file: set[os.PathLike] = field(default_factory=set)
+    locked_file: set[FSEntry] = field(default_factory=set)
     locked_dir: set[str] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)
 
@@ -38,17 +42,13 @@ class DiversityQuota:
         """Lock the root folder."""
         self.locked_dir.add(self.root)
 
-    def lock_file(self, path: os.PathLike) -> None:
+    def lock_file(self, path: FSEntry) -> None:
         """Mark a file as used without registering a success."""
         self.locked_file.add(path)
 
     def lock_dir(self, directory: str) -> None:
         """Mark a folder as locked without registering a success."""
         self.locked_dir.add(directory)
-
-    def get_available(self, entries: set[os.DirEntry]) -> set[os.DirEntry]:
-        """Filter entries to only available files."""
-        return entries.difference(self.locked_file)
 
     def register_success(self, entry: os.PathLike) -> None:
         """Record a successful copy and apply locking rules."""

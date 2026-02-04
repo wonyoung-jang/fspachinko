@@ -11,7 +11,7 @@ from .reporter import ReportWriter
 from .state import EngineContext
 from .transfer import fetch_transfer_strategy
 from .validator import FileValidator
-from .walker import StochasticWalker
+from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
     from ..config import ConfigModel
@@ -68,21 +68,13 @@ def build_engine(m: ConfigModel) -> Engine:
     )
 
     # Build Walker
-    walker = StochasticWalker(
+    walker = PachinkoFSWalker(
         root=m.root,
         quota=quota,
         validator=validator,
         rng=rng,
         should_follow_symlink=m.options.should_follow_symlink,
     )
-    # tree_builder = RandomFSTreeBuilder(
-    #     root=m.root,
-    #     validator=validator,
-    #     rng=rng,
-    #     should_follow_symlink=m.options.should_follow_symlink,
-    # )
-    # tree = tree_builder.build()
-    # walker = RandomFSWalker(tree=tree, quota=quota)
 
     # Build Engine
     filecount = Filecount.from_model(m.filecount, rng=rng)

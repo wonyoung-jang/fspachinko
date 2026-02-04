@@ -1,16 +1,17 @@
 """Config validation functions."""
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..utils import get_duration
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Callable
 
     from ..config import ListIncludeExclude, MinMax
+    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,9 @@ class FileValidator:
         """Gather validation functions based on enabled filters."""
         self._gather_validators()
 
-    def is_valid(self, entry: os.DirEntry) -> bool:
+    def is_valid(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        stem, ext = os.path.splitext(entry.name)
-        return all(is_valid(stem, ext, entry.stat().st_size) for is_valid in self.validators)
+        return all(is_valid(entry) for is_valid in self.validators)
 
     def _gather_validators(self) -> None:
         """Gather validation functions based on enabled filters."""
@@ -49,17 +49,17 @@ class FileValidator:
 
         self.validators = tuple(v)
 
-    def _is_valid_filesize(self, stem: str, ext: str, size: int) -> bool:
+    def _is_valid_filesize(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.filesize.is_valid(size)
+        return self.filesize.is_valid(entry.size)
 
-    def _is_valid_extension(self, stem: str, ext: str, size: int) -> bool:
+    def _is_valid_extension(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.extensions.is_valid(ext)
+        return self.extensions.is_valid(entry.ext)
 
-    def _is_valid_keyword(self, stem: str, ext: str, size: int) -> bool:
+    def _is_valid_keyword(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.keywords.is_valid(stem)
+        return self.keywords.is_valid(entry.stem)
 
     def is_valid_duration(self, entry: os.PathLike) -> bool:
         """Check if a file is valid based on the current filters."""
