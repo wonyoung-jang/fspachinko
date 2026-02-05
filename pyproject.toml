@@ -1,6 +1,6 @@
 [project]
 name = "fspachinko"
-version = "0.0.2"
+version = "0.0.3"
 description = "Transfer random files from directory A to directory B."
 readme = "README.md"
 license = "MIT"
