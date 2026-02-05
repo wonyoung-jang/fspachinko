@@ -30,6 +30,7 @@ class Engine:
     do_transfer_strategy: Callable[[os.PathLike, str], None]
     context: Context
     folder_count: int
+    is_create_unique_folders: bool
     observer: Observer = field(init=False)
 
     def set_observer(self, observer: Observer) -> None:
@@ -44,7 +45,7 @@ class Engine:
         """Run the main file copying process."""
         self.observer.on_progress_total(self.folder_count)
         for target, dest in self.get_transfer_parameters():
-            if not self.context.quota.is_unique:
+            if not self.is_create_unique_folders:
                 self.walker.reset()
             self.process_directory(target, dest)
         self.observer.on_finished()
@@ -80,7 +81,7 @@ class Engine:
                 self.report_state()
                 return
 
-            if not self.validator.is_valid_duration(entry):
+            if not self.validator.is_valid(entry):
                 continue
 
             if not self.transfer_file(entry, dest):

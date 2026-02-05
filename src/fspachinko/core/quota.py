@@ -13,7 +13,6 @@ class DiversityQuota:
     """Manages rules for diversity (weights) and uniqueness."""
 
     root: str
-    is_unique: bool
     max_per_dir: int
     locked_dir: set[str] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)

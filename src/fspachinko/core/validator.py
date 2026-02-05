@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from ..utils import get_duration
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Callable
 
     from ..config import ListIncludeExclude, MinMax
@@ -47,6 +46,9 @@ class FileValidator:
         if self.keywords.is_enabled:
             v.append(self._is_valid_keyword)
 
+        if self.duration.is_enabled:
+            v.append(self._is_valid_duration)
+
         self.validators = tuple(v)
 
     def _is_valid_filesize(self, entry: FSEntry) -> bool:
@@ -61,10 +63,6 @@ class FileValidator:
         """Check if a file is valid based on the current filters."""
         return self.keywords.is_valid(entry.stem)
 
-    def is_valid_duration(self, entry: os.PathLike) -> bool:
+    def _is_valid_duration(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not self.duration.is_enabled:
-            return True
-
-        duration = get_duration(entry)
-        return self.duration.is_valid(duration)
+        return self.duration.is_valid(get_duration(entry))

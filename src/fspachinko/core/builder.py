@@ -43,7 +43,6 @@ def build_engine(m: ConfigModel) -> Engine:
     # Build DiversityQuota
     quota = DiversityQuota(
         root=m.root,
-        is_unique=m.folder.is_unique,
         max_per_dir=m.options.max_per_folder,
     )
 
@@ -72,7 +71,6 @@ def build_engine(m: ConfigModel) -> Engine:
         root=m.root,
         quota=quota,
         validator=validator,
-        rng=rng,
         should_follow_symlink=m.options.should_follow_symlink,
     )
 
@@ -89,4 +87,5 @@ def build_engine(m: ConfigModel) -> Engine:
         do_transfer_strategy=do_transfer_strategy,
         context=context,
         folder_count=m.folder.count,
+        is_create_unique_folders=m.folder.is_unique,
     )
