@@ -1,3 +1,3 @@
 # File Validator
 
-::: file_roulette.core.validator
+::: fspachinko.core.validator

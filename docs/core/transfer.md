@@ -1,3 +1,3 @@
 # Transfer Strategies
 
-::: file_roulette.core.transfer
+::: fspachinko.core.transfer

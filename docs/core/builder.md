@@ -1,3 +1,3 @@
 # Builder
 
-::: file_roulette.core.builder
+::: fspachinko.core.builder

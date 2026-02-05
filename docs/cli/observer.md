@@ -1,3 +1,3 @@
 # CLI Observer
 
-::: file_roulette.cli.observer
+::: fspachinko.cli.observer

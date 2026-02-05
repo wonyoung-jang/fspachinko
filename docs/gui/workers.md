@@ -1,3 +1,3 @@
 # Worker Threads
 
-::: file_roulette.gui.workers
+::: fspachinko.gui.workers

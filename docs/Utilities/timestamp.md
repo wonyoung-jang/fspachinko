@@ -1,3 +1,3 @@
 # Timestamp Provider
 
-::: file_roulette.utils.timestamp
+::: fspachinko.utils.timestamp

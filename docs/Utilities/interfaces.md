@@ -1,3 +1,3 @@
 # Interfaces and Protocols
 
-::: file_roulette.utils.interfaces
+::: fspachinko.utils.interfaces

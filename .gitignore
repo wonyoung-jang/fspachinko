@@ -125,3 +125,4 @@ output/
 *.txt
 *_profiles/
 *_output/
+.github/*.md

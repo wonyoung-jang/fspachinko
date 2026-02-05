@@ -1,20 +1,22 @@
----
-icon: lucide/book-open
----
-
-# File Roulette
+# fspachinko
 
 Transfer random files from point A to point B. Customize what and how to transfer with various filters. Supports copy, move, symlink (shortcut), and hardlink transfer operations.
-
-## Usage
-
-File Roulette can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Installation (uv)
 
 ```bash
-uv sync
+uv add fspachinko
 ```
+
+or
+
+```bash
+uv tool install fspachinko
+```
+
+## Usage
+
+fspachinko can be used via command-line interface (CLI) or graphical user interface (GUI).
 
 ## Command Line Interface
 
@@ -22,7 +24,7 @@ uv sync
 
 ```bash
 # Use configuration file
-file-roulette-cli --config your-file-roulette.json
+fspachinko-cli --config your-fspachinko.json
 ```
 
 ## Graphical User Interface
@@ -30,13 +32,13 @@ file-roulette-cli --config your-file-roulette.json
 ### Launch GUI
 
 ```bash
-file-roulette-gui
+fspachinko-gui
 ```
 
 Or simply:
 
 ```bash
-file-roulette
+fspachinko
 ```
 
 ### GUI Profiles
@@ -50,21 +52,21 @@ Save frequently used configurations as profiles:
 
 ## Configuration File
 
-Create a `file-roulette.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
+Create a `fspachinko.json` file for reusable configurations. Pass this to the CLI after the `--config` flag. The default (for Windows) is shown below:
 
 ```json
 {
     "root": "C:/",
-    "dest": "file_roulette_output/",
+    "dest": "fspachinko_output/",
     "filecount": {
         "count": 20,
-        "rand_enabled": false,
+        "is_rand_enabled": false,
         "rand_min": 1,
         "rand_max": 12
     },
     "folder": {
-        "create_enabled": true,
-        "unique_enabled": true,
+        "should_create": true,
+        "is_unique": true,
         "name": "test_folder_output",
         "count": 10
     },
@@ -76,37 +78,37 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
         "trash_empty_folder_enabled": false
     },
     "keyword": {
-        "include_enabled": true,
-        "exclude_enabled": false,
-        "text": []
+        "is_enabled": true,
+        "should_include": true,
+        "text": ""
     },
     "extension": {
-        "include_enabled": true,
-        "exclude_enabled": false,
-        "text": ["wav"]
+        "is_enabled": true,
+        "should_include": true,
+        "text": "wav"
     },
     "filesize": {
-        "enabled": false,
+        "is_enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "duration": {
-        "enabled": false,
+        "is_enabled": false,
         "minimum": 0.0,
         "maximum": 0.0
     },
     "folder_size_limit": {
-        "enabled": false,
+        "is_enabled": false,
         "size_limit": 500.0
     },
     "total_size_limit": {
-        "enabled": false,
+        "is_enabled": false,
         "size_limit": 500.0
     },
     "options": {
         "max_per_folder": 3,
-        "follow_symlinks": false,
-        "dry_run_enabled": true
+        "should_follow_symlink": false,
+        "is_dry_run": true
     }
 }
 ```
@@ -125,9 +127,9 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
-        "include_enabled": true,
-        "exclude_enabled": false,
-        "text": ["wav","flac","m4a"]
+        "is_enabled": true,
+        "should_include": true,
+        "text": "wav,flac,m4a"
     },
     ...
     "options": {
@@ -149,19 +151,19 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
-        "include_enabled": true,
-        "exclude_enabled": false,
-        "text": ["jpg","png"]
+        "is_enabled": true,
+        "should_include": true,
+        "text": "jpg,png"
     },
     "filesize": {
-        "enabled": true,
+        "is_enabled": true,
+        "is_enabled": true,
         "minimum": 1.0,
         ...
     },
     "keyword": {
-        "include_enabled": false,
-        "exclude_enabled": true,
-        "text": ["thumbnail","draft"]
+        "should_include": false,
+        "text": "thumbnail,draft"
     },
     ...
 }
@@ -179,12 +181,12 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     },
     ...
     "extension": {
-        "include_enabled": true,
-        "exclude_enabled": false,
-        "text": ["mp4"]
+        "is_enabled": true,
+        "should_include": true,
+        "text": "mp4"
     },
     "duration": {
-        "enabled": true,
+        "is_enabled": true,
         "minimum": 30.0,
         "maximum": 600.0
     },
@@ -205,7 +207,7 @@ Create a `file-roulette.json` file for reusable configurations. Pass this to the
     ...
     "options": {
         ...
-        "dry_run_enabled": true
+        "is_dry_run": true
     }
 }
 ```
@@ -228,7 +230,7 @@ Example: `{index}_{original}_{date}`: `photo.jpg` -> `1_photo_2026-01-25.jpg`
 
 ### Logging
 
-Configure logging in a `json` file. Here is the default `file_roulette_configs/logging.json` provided:
+Configure logging in a `json` file. Here is the default `fspachinko_configs/logging.json` provided:
 
 ```json
 {
@@ -253,7 +255,7 @@ Configure logging in a `json` file. Here is the default `file_roulette_configs/l
             "class": "logging.FileHandler",
             "formatter": "file",
             "level": "DEBUG",
-            "filename": "file-roulette.log",
+            "filename": "fspachinko.log",
             "mode": "w",
             "encoding": "utf-8",
             "delay": true

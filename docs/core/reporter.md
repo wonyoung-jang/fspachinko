@@ -1,3 +1,3 @@
 # Report Writer
 
-::: file_roulette.core.reporter
+::: fspachinko.core.reporter

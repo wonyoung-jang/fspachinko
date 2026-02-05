@@ -1,3 +1,3 @@
 # Central Widget
 
-::: file_roulette.gui.centralwidget
+::: fspachinko.gui.centralwidget

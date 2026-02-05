@@ -1,3 +1,3 @@
 # Actions
 
-::: file_roulette.gui.actions
+::: fspachinko.gui.actions

@@ -1,0 +1,56 @@
+"""Workers for GUI."""
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from PySide6.QtCore import QThread, Slot
+
+from ..core import build_engine
+from .observer import GuiObserver, WorkerSignals
+
+if TYPE_CHECKING:
+    from ..config import ConfigModel
+    from ..core import Engine
+
+
+@dataclass(slots=True)
+class MainWorker:
+    """Worker for running process."""
+
+    signals: WorkerSignals
+    engine: Engine
+
+    @classmethod
+    def from_config(cls, config: ConfigModel) -> MainWorker:
+        """Post-initialization tasks."""
+        signals = WorkerSignals()
+        observer = GuiObserver(signals)
+        engine = build_engine(config)
+        engine.set_observer(observer)
+        return cls(signals, engine)
+
+    def run(self) -> None:
+        """Run the process."""
+        self.engine.start()
+
+    def stop(self) -> None:
+        """Stop the process."""
+        self.engine.request_stop()
+
+
+class MainThread(QThread):
+    """Worker thread for running process."""
+
+    def __init__(self, worker: MainWorker) -> None:
+        """Initialize the worker thread."""
+        super().__init__()
+        self.worker = worker
+
+    @Slot()
+    def run(self) -> None:
+        """Run the process."""
+        self.worker.run()
+
+    def stop(self) -> None:
+        """Stop the process."""
+        self.worker.stop()

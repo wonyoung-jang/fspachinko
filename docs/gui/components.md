@@ -1,3 +1,3 @@
 # Components
 
-::: file_roulette.gui.components
+::: fspachinko.gui.components

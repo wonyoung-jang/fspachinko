@@ -1,3 +1,3 @@
 # Schemas
 
-::: file_roulette.config.schemas
+::: fspachinko.config.schemas
