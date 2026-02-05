@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from line_profiler import profile
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from random import Random
@@ -21,6 +19,10 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class FSWalker(ABC):
     """Abstract file system walker."""
+
+    @abstractmethod
+    def reset(self) -> None:
+        """Reset the walker for a new batch."""
 
     @abstractmethod
     def walk(self) -> Iterator[FSEntry]:
@@ -84,27 +86,26 @@ class PachinkoFSWalker(FSWalker):
 
     def __post_init__(self) -> None:
         """Initialize the board with the root pin."""
+        self.reset()
+
+    def reset(self) -> None:
+        """Reset the walker and quota for a new batch."""
+        self.board.clear()
         self.board[self.root] = FSPachinkoPin(path=self.root)
 
     def walk(self) -> Iterator[FSEntry]:
         """Continuously drop balls until the board is empty."""
-        while True:
-            if self.board[self.root].is_exhausted:
-                return
-
-            if entry := self.drop():
+        while not self.board[self.root].is_exhausted:
+            if (entry := self.drop()) is not None:
                 yield entry
-            else:
-                if self.board[self.root].is_exhausted:
-                    return
-                continue
 
-    @profile
     def drop(self) -> FSEntry | None:
         """Drop a ball from the root."""
         current_path = self.root
+
         while True:
             pin = self.board[current_path]
+
             if pin.is_exhausted:
                 return None
 
@@ -114,22 +115,21 @@ class PachinkoFSWalker(FSWalker):
             valid_subdirs = self.get_valid_subdirs(pin)
             valid_files = pin.files
 
-            if not valid_subdirs and not valid_files:
+            has_subdirs, has_files = bool(valid_subdirs), bool(valid_files)
+
+            if not (has_subdirs or has_files):
                 self.mark_exhausted(pin)
                 return None
 
-            if self.should_descend(valid_subdirs, valid_files):
+            if self.should_descend(has_subdirs=has_subdirs, has_files=has_files):
                 current_path = self.rng.choice(valid_subdirs)
                 continue
 
-            entry = pin.files.pop()
-            self.quota.lock_file(entry)
-            return entry
+            return pin.files.pop()
 
     def get_valid_subdirs(self, pin: FSPachinkoPin) -> list[str]:
         """Get valid subdirectories for a given pin."""
-        set_subdirs = set(pin.subdirs).difference(self.quota.locked_dir)
-        valid = [d for d in set_subdirs if not self.board[d].is_exhausted]
+        valid = [d for d in pin.subdirs if not self.quota.is_dir_locked(d) and not self.board[d].is_exhausted]
         pin.subdirs = valid
         return valid
 
@@ -139,10 +139,8 @@ class PachinkoFSWalker(FSWalker):
         pin.is_exhausted = True
         self.quota.lock_dir(currpath)
 
-    def should_descend(self, valid_subdirs: list[str], valid_files: list[FSEntry]) -> bool:
+    def should_descend(self, *, has_subdirs: bool, has_files: bool) -> bool:
         """Decide whether to descend into a subdir or select a file."""
-        has_subdirs = bool(valid_subdirs)
-        has_files = bool(valid_files)
         if has_subdirs and has_files:
             return self.rng.choice([True, False])
         return has_subdirs
@@ -152,20 +150,21 @@ class PachinkoFSWalker(FSWalker):
         is_valid = self.validator.is_valid
         subdirs = []
         files = []
+        followlinks = self.should_follow_symlink
+
         try:
             with os.scandir(pin.path) as it:
                 for e in it:
                     try:
-                        if e.is_symlink() and not self.should_follow_symlink:
+                        if e.is_symlink() and not followlinks:
                             continue
 
-                        if e.is_dir():
+                        if e.is_dir(follow_symlinks=followlinks):
                             dirpath = e.path
                             subdirs.append(dirpath)
                             if dirpath not in self.board:
                                 self.board[dirpath] = FSPachinkoPin(path=dirpath)
-
-                        elif e.is_file():
+                        elif e.is_file(follow_symlinks=followlinks):
                             fsentry = FSEntry.from_direntry(e)
                             if is_valid(fsentry):
                                 files.append(fsentry)

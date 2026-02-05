@@ -4,10 +4,6 @@ import logging
 import os
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +15,6 @@ class DiversityQuota:
     root: str
     is_unique: bool
     max_per_dir: int
-    locked_file: set[FSEntry] = field(default_factory=set)
     locked_dir: set[str] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)
 
@@ -27,8 +22,6 @@ class DiversityQuota:
         """Reset batch-specific counters, optionally keeping file history."""
         self.dircount.clear()
         self.locked_dir.clear()
-        if not self.is_unique:
-            self.locked_file.clear()
 
     def is_all_locked(self) -> bool:
         """Check if all files/folders are locked."""
@@ -37,14 +30,6 @@ class DiversityQuota:
     def is_dir_locked(self, directory: str) -> bool:
         """Check if a folder is locked."""
         return directory in self.locked_dir
-
-    def lock_root(self) -> None:
-        """Lock the root folder."""
-        self.locked_dir.add(self.root)
-
-    def lock_file(self, path: FSEntry) -> None:
-        """Mark a file as used without registering a success."""
-        self.locked_file.add(path)
 
     def lock_dir(self, directory: str) -> None:
         """Mark a folder as locked without registering a success."""
@@ -59,4 +44,3 @@ class DiversityQuota:
         self.dircount[leaf_dir] += 1
         if self.dircount[leaf_dir] >= self.max_per_dir:
             self.lock_dir(leaf_dir)
-            logger.debug("Locked directory: %s, count: %d", leaf_dir, self.dircount[leaf_dir])

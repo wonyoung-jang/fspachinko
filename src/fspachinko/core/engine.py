@@ -44,6 +44,8 @@ class Engine:
         """Run the main file copying process."""
         self.observer.on_progress_total(self.folder_count)
         for target, dest in self.get_transfer_parameters():
+            if not self.context.quota.is_unique:
+                self.walker.reset()
             self.process_directory(target, dest)
         self.observer.on_finished()
 
