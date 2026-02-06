@@ -9,7 +9,6 @@
     },
     "folder": {
         "is_enabled": true,
-        "is_unique": true,
         "name": "test_folder_output",
         "count": 10
     },
@@ -17,8 +16,7 @@
         "template": "{original}"
     },
     "transfermode": {
-        "transfer_mode": "Symlink",
-        "trash_empty_folder_enabled": false
+        "transfer_mode": "Symlink"
     },
     "keyword": {
         "is_enabled": true,
@@ -54,6 +52,7 @@
     },
     "options": {
         "max_per_folder": 3,
+        "is_create_unique_folders": true,
         "should_follow_symlink": false,
         "is_dry_run": true,
         "rng_seed": null

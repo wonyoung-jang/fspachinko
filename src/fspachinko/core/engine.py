@@ -98,7 +98,7 @@ class Engine:
 
     def transfer_file(self, entry: os.PathLike, dest: str) -> bool:
         """Attempt to copy a file and return success status."""
-        count = self.context.folderstats.count
+        count = self.context.dirstat.count
         chosen_rel = os.path.relpath(entry, self.root)
         chosen_new = self.filename.determine_dest_filename(chosen_rel, dest, count)
         if chosen_new is None:
@@ -106,24 +106,22 @@ class Engine:
 
         msg = f"{count + 1}: {chosen_rel} -> {os.path.relpath(chosen_new, dest)}"
 
-        if self.context.should_treat_as_dry_run(msg):
-            self.report_state()
+        if self.context.is_dry_run:
+            self.report(f"DRY - {msg}")
             return True
 
         try:
             self.do_transfer_strategy(entry, chosen_new)
         except (PermissionError, OSError):
-            self.context.set_errored(msg)
-            self.report_state()
+            self.report(f"FAILED - {msg}")
             return False
 
-        self.context.set_transferred(msg)
-        self.report_state()
+        self.report(msg)
         return True
 
     def report_state(self) -> None:
         """Report the current engine state."""
-        self.report(msg=self.context.state.message)
+        self.report(msg=self.context.msg)
 
     def report(self, msg: str) -> None:
         """Report and log a message."""
@@ -132,5 +130,5 @@ class Engine:
 
     def update_observer_on_entry(self) -> None:
         """Update observer with current entry statistics."""
-        self.observer.on_count(self.context.folderstats.count)
+        self.observer.on_count(self.context.dirstat.count)
         self.observer.on_time()

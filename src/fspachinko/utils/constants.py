@@ -151,7 +151,7 @@ class DateTimeFormat(StrEnum):
 
     DATE = "%Y-%m-%d"
     TIME = "%H-%M-%S"
-    DATETIME = "%Y-%m-%d--%H-%M-%S"
+    DATETIME = "%Y-%m-%d %H:%M:%S"
 
 
 class StateStatus(StrEnum):

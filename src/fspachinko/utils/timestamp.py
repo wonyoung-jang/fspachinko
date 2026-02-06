@@ -18,9 +18,9 @@ class DateTimeStamp:
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
-        self.refresh()
+        self.reset()
 
-    def refresh(self) -> None:
+    def reset(self) -> None:
         """Refresh the current date and time."""
         self._now = datetime.now(tz=UTC)
         self.date = self._now.strftime(DateTimeFormat.DATE)

@@ -169,7 +169,7 @@ class SizeLimit:
 
     def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
-        return size > self.size_limit
+        return self.is_enabled and self.size_limit > 0 and size > self.size_limit
 
 
 @dataclass(slots=True)
