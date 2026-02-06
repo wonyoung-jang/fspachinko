@@ -7,8 +7,6 @@ from dataclasses import dataclass, field
 from random import choice
 from typing import TYPE_CHECKING
 
-from line_profiler import profile
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -18,20 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
-class FSWalker(ABC):
-    """Abstract file system walker."""
-
-    @abstractmethod
-    def reset(self) -> None:
-        """Reset the walker for a new batch."""
-
-    @abstractmethod
-    def walk(self) -> Iterator[os.DirEntry]:
-        """Generate candidates for a given directory."""
-
-
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class FSEntry:
     """Lightweight wrapper for os.DirEntry with only path and name."""
 
@@ -95,6 +80,15 @@ class FSPachinkoPin:
 
 
 @dataclass(slots=True)
+class FSWalker(ABC):
+    """Abstract file system walker."""
+
+    @abstractmethod
+    def walk(self) -> Iterator[os.DirEntry]:
+        """Generate candidates for a given directory."""
+
+
+@dataclass(slots=True)
 class PachinkoFSWalker(FSWalker):
     """Simulates a Pachinko machine.
 
@@ -110,14 +104,8 @@ class PachinkoFSWalker(FSWalker):
 
     def __post_init__(self) -> None:
         """Initialize the board with the root pin."""
-        self.reset()
-
-    def reset(self) -> None:
-        """Reset the walker and quota for a new batch."""
-        self.board.clear()
         self.board[self.root] = FSPachinkoPin(path=self.root)
 
-    @profile
     def walk(self) -> Iterator[os.DirEntry]:
         """Continuously drop balls until the board is empty."""
         curr = self.root

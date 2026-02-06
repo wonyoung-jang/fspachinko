@@ -34,7 +34,6 @@ class Engine:
     do_transfer_strategy: Callable[[os.PathLike, str], None]
     context: EngineContext
     folder_count: int
-    is_create_unique_folders: bool
     observer: Observer = field(init=False)
 
     def set_observer(self, observer: Observer) -> None:
@@ -49,8 +48,6 @@ class Engine:
         """Run the main file copying process."""
         self.observer.on_progress_total(self.folder_count)
         for target, dest in self.get_transfer_parameters():
-            if not self.is_create_unique_folders:
-                self.walker.reset()
             self.process_directory(target, dest)
         self.observer.on_finished()
 
@@ -75,7 +72,7 @@ class Engine:
     def transfer_directory(self, target: int, dest: str) -> None:
         """Process a single folder for file copying."""
         if self.context.should_stop(target):
-            self.report_state()
+            self.report(msg=self.context.msg)
             return
 
         for entry in self.walker.walk():
@@ -83,7 +80,7 @@ class Engine:
                 break
 
             if self.context.should_stop(target):
-                self.report_state()
+                self.report(msg=self.context.msg)
                 return
 
             fsentry = FSEntry.from_direntry(entry)
@@ -118,10 +115,6 @@ class Engine:
 
         self.report(msg)
         return True
-
-    def report_state(self) -> None:
-        """Report the current engine state."""
-        self.report(msg=self.context.msg)
 
     def report(self, msg: str) -> None:
         """Report and log a message."""

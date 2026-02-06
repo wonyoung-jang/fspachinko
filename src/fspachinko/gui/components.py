@@ -121,7 +121,12 @@ class PathSelectorWidget(BaseGroupBox):
     @Slot()
     def browse(self) -> None:
         """Return the browse button."""
-        d = QFileDialog.getExistingDirectory(self, f"Select {self.title()}")
+        currpath = self.combo.currentText() or QDir.homePath()
+        d = QFileDialog.getExistingDirectory(
+            parent=self,
+            caption=f"Select {self.title()}",
+            dir=currpath,
+        )
         if d:
             if self.combo.findText(d) == -1:
                 self.combo.addItem(d)

@@ -4,6 +4,10 @@ import logging
 import os
 from collections import Counter
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +18,7 @@ class DiversityQuota:
 
     root: str
     max_per_dir: int
+    is_create_unique_folders: bool = False
     locked_dir: set[str] = field(default_factory=set)
     locked_file: set[os.DirEntry] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)
@@ -22,6 +27,8 @@ class DiversityQuota:
         """Reset batch-specific counters, optionally keeping file history."""
         self.dircount.clear()
         self.locked_dir.clear()
+        if not self.is_create_unique_folders:
+            self.locked_file.clear()
 
     def is_all_locked(self) -> bool:
         """Check if all files/folders are locked."""
@@ -43,12 +50,12 @@ class DiversityQuota:
         """Mark a file as locked."""
         self.locked_file.add(file)
 
-    def register_success(self, entry: os.PathLike) -> None:
+    def register_success(self, entry: FSEntry) -> None:
         """Record a successful copy and apply locking rules."""
         if self.max_per_dir <= 0:
             return
 
-        leaf_dir = os.path.dirname(entry)
+        leaf_dir = os.path.dirname(entry.path)
         self.dircount[leaf_dir] += 1
         if self.dircount[leaf_dir] >= self.max_per_dir:
             self.lock_dir(leaf_dir)
