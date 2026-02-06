@@ -3,6 +3,7 @@
 import os
 import re
 from dataclasses import dataclass, field
+from random import randint
 from typing import TYPE_CHECKING
 
 from ..utils import (
@@ -18,7 +19,6 @@ from ..utils import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from random import Random
 
     from .schemas import (
         DirectoryModel,
@@ -38,23 +38,21 @@ class Filecount:
     is_rand_enabled: bool
     rand_min: int
     rand_max: int
-    rng: Random
 
     @classmethod
-    def from_model(cls, m: FilecountModel, rng: Random) -> Filecount:
+    def from_model(cls, m: FilecountModel) -> Filecount:
         """Create Filecount from configuration model."""
         return cls(
             count=m.count,
             is_rand_enabled=m.is_rand_enabled,
             rand_min=m.rand_min,
             rand_max=m.rand_max,
-            rng=rng,
         )
 
     def get_file_count(self) -> int:
         """Get the file count based on configuration."""
         if self.is_rand_enabled:
-            return self.rng.randint(self.rand_min, self.rand_max)
+            return randint(self.rand_min, self.rand_max)
         return self.count
 
 

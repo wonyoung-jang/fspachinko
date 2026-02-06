@@ -108,7 +108,8 @@ Create a `fspachinko.json` file for reusable configurations. Pass this to the CL
     "options": {
         "max_per_folder": 3,
         "should_follow_symlink": false,
-        "is_dry_run": true
+        "is_dry_run": true,
+        "rng_seed": null
     }
 }
 ```

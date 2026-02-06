@@ -27,7 +27,7 @@ class FSWalker(ABC):
         """Reset the walker for a new batch."""
 
     @abstractmethod
-    def walk(self) -> Iterator[FSEntry]:
+    def walk(self) -> Iterator[os.DirEntry]:
         """Generate candidates for a given directory."""
 
 
@@ -66,7 +66,7 @@ class FSPachinkoPin:
 
     path: str
     subdirs: list[str] = field(default_factory=list)
-    files: list[FSEntry] = field(default_factory=list)
+    files: list[os.DirEntry] = field(default_factory=list)
     is_scanned: bool = False
     is_exhausted: bool = False
 
@@ -94,14 +94,14 @@ class PachinkoFSWalker(FSWalker):
         self.board.clear()
         self.board[self.root] = FSPachinkoPin(path=self.root)
 
-    def walk(self) -> Iterator[FSEntry]:
+    def walk(self) -> Iterator[os.DirEntry]:
         """Continuously drop balls until the board is empty."""
         while not self.board[self.root].is_exhausted:
             if (entry := self.drop()) is not None:
                 yield entry
 
     @profile
-    def drop(self) -> FSEntry | None:
+    def drop(self) -> os.DirEntry | None:
         """Drop a ball from the root."""
         current_path = self.root
 
@@ -114,10 +114,9 @@ class PachinkoFSWalker(FSWalker):
             if not pin.is_scanned:
                 self.scan(pin)
 
-            valid_subdirs = self.get_valid_subdirs(pin)
-            valid_files = pin.files
+            self.get_valid_subdirs(pin)
 
-            has_subdirs, has_files = bool(valid_subdirs), bool(valid_files)
+            has_subdirs, has_files = bool(pin.subdirs), bool(pin.files)
             is_exhausted = not (has_subdirs or has_files)
 
             if is_exhausted:
@@ -125,16 +124,14 @@ class PachinkoFSWalker(FSWalker):
                 return None
 
             if self.should_descend(has_subdirs=has_subdirs, has_files=has_files):
-                current_path = choice(valid_subdirs)
+                current_path = choice(pin.subdirs)
                 continue
 
             return pin.files.pop()
 
-    def get_valid_subdirs(self, pin: FSPachinkoPin) -> list[str]:
+    def get_valid_subdirs(self, pin: FSPachinkoPin) -> None:
         """Get valid subdirectories for a given pin."""
-        valid = [d for d in pin.subdirs if not self.quota.is_dir_locked(d) and not self.board[d].is_exhausted]
-        pin.subdirs = valid
-        return valid
+        pin.subdirs = [d for d in pin.subdirs if not self.quota.is_dir_locked(d) and not self.board[d].is_exhausted]
 
     def mark_exhausted(self, pin: FSPachinkoPin) -> None:
         """Mark a pin as exhausted."""
@@ -148,6 +145,7 @@ class PachinkoFSWalker(FSWalker):
             return choice((True, False))
         return has_subdirs
 
+    @profile
     def scan(self, pin: FSPachinkoPin) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
         subdirs = []
@@ -167,7 +165,7 @@ class PachinkoFSWalker(FSWalker):
                             subdirs.append(dirpath)
                             board.setdefault(dirpath, FSPachinkoPin(path=dirpath))
                         elif e.is_file(follow_symlinks=should_follow_symlink):
-                            files.append(FSEntry.from_direntry(e))
+                            files.append(e)
                     except OSError:
                         continue
         except OSError:

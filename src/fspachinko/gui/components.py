@@ -489,10 +489,19 @@ class OptionsWidget(BaseGroupBox):
         set_qt_name(self.chk_dry_run, f"{name}_dry_run")
         set_qt_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
 
+        self.rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
+        set_qt_name(self.rng_seed, f"{name}_rng_seed")
+        set_qt_tips(
+            self.rng_seed,
+            "Optional seed for random number generator. Can be an integer or string. "
+            "If empty, a random seed will be used.",
+        )
+
         layout = QFormLayout(self)
         layout.addRow("Max from one folder", self.spin_max_per_folder)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
         layout.addRow("Dry run (simulation)", self.chk_dry_run)
+        layout.addRow("RNG seed", self.rng_seed)
 
     def get_config(self) -> OptionsModel:
         """Return clean data for the config."""
@@ -500,6 +509,7 @@ class OptionsWidget(BaseGroupBox):
             max_per_folder=self.spin_max_per_folder.value(),
             should_follow_symlink=self.chk_follow_symlink.isChecked(),
             is_dry_run=self.chk_dry_run.isChecked(),
+            rng_seed=self.rng_seed.text() or None,
         )
 
 

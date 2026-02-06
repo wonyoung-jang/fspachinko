@@ -1,6 +1,6 @@
 """Builder module for core functionality."""
 
-from random import Random
+from random import seed
 from typing import TYPE_CHECKING
 
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
@@ -34,7 +34,7 @@ def build_file_validator(m: ConfigModel) -> FileValidator:
 def build_engine(m: ConfigModel) -> Engine:
     """Build and return the engine based on the configuration."""
     # Build main components
-    rng = Random()
+    seed(m.options.rng_seed)
     dtstamp = DateTimeStamp()
 
     # Build FileValidator
@@ -75,7 +75,7 @@ def build_engine(m: ConfigModel) -> Engine:
     )
 
     # Build Engine
-    filecount = Filecount.from_model(m.filecount, rng=rng)
+    filecount = Filecount.from_model(m.filecount)
     filename = Filename.from_model(m.filename, dtstamp=dtstamp)
     do_transfer_strategy = fetch_transfer_strategy(m.transfermode.transfer_mode)
     return Engine(

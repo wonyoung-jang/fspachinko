@@ -68,6 +68,7 @@ class OptionsModel(BaseModel):
     max_per_folder: int = 0
     should_follow_symlink: bool = False
     is_dry_run: bool = True
+    rng_seed: int | str | bytes | None = None
 
 
 class ConfigModel(BaseModel):

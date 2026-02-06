@@ -93,6 +93,7 @@ def convert_profile_to_config(profile_data: dict[str, Any]) -> dict[str, Any]:
             "max_per_folder": int(profile_data.get("options_max_per_folder", 0)),
             "should_follow_symlink": bool(profile_data.get("options_should_follow_symlink", False)),
             "is_dry_run": bool(profile_data.get("options_dry_run", False)),
+            "rng_seed": profile_data.get("options_rng_seed"),
         },
     }
 
@@ -134,6 +135,7 @@ def convert_config_to_profile(config_data: dict[str, Any]) -> dict[str, Any]:
         "options_max_per_folder": data["options"]["max_per_folder"],
         "options_should_follow_symlink": data["options"]["should_follow_symlink"],
         "options_dry_run": data["options"]["is_dry_run"],
+        "options_rng_seed": data["options"]["rng_seed"],
     }
 
     _set_combo_value(profile, "root_combo", data["root"], [data["root"]])

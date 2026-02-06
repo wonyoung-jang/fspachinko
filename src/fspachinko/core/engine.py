@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .walker import FSEntry
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
@@ -81,13 +83,14 @@ class Engine:
                 self.report_state()
                 return
 
-            if not self.validator.is_valid(entry):
+            fsentry = FSEntry.from_direntry(entry)
+            if not self.validator.is_valid(fsentry):
                 continue
 
-            if not self.transfer_file(entry, dest):
+            if not self.transfer_file(fsentry, dest):
                 continue
 
-            self.context.update_on_success(entry)
+            self.context.update_on_success(fsentry)
             self.update_observer_on_entry()
 
     def transfer_file(self, entry: os.PathLike, dest: str) -> bool:
