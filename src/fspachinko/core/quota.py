@@ -15,6 +15,7 @@ class DiversityQuota:
     root: str
     max_per_dir: int
     locked_dir: set[str] = field(default_factory=set)
+    locked_file: set[os.DirEntry] = field(default_factory=set)
     dircount: Counter[str] = field(default_factory=Counter)
 
     def reset(self) -> None:
@@ -30,9 +31,17 @@ class DiversityQuota:
         """Check if a folder is locked."""
         return directory in self.locked_dir
 
+    def is_file_locked(self, file: os.DirEntry) -> bool:
+        """Check if a file is locked."""
+        return file in self.locked_file
+
     def lock_dir(self, directory: str) -> None:
         """Mark a folder as locked without registering a success."""
         self.locked_dir.add(directory)
+
+    def lock_file(self, file: os.DirEntry) -> None:
+        """Mark a file as locked."""
+        self.locked_file.add(file)
 
     def register_success(self, entry: os.PathLike) -> None:
         """Record a successful copy and apply locking rules."""

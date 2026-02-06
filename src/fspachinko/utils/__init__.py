@@ -27,6 +27,7 @@ from .constants import (
     TimeUnit,
     TransferMode,
 )
+from .datapaths import DataPaths, get_config, get_icon, get_profile
 from .helpers import (
     SafeDict,
     are_paths_equal,
@@ -42,7 +43,6 @@ from .helpers import (
 )
 from .interfaces import Observer
 from .loggers import initialize_logging
-from .paths import Paths
 from .timestamp import DateTimeStamp
 
 __all__ = [
@@ -57,6 +57,7 @@ __all__ = [
     "AppSetting",
     "ByteUnit",
     "BytesIn",
+    "DataPaths",
     "DateTimeStamp",
     "DefaultPath",
     "FileError",
@@ -69,7 +70,6 @@ __all__ = [
     "GUITitle",
     "IconFilename",
     "Observer",
-    "Paths",
     "ReStrFmt",
     "SafeDict",
     "StateStatus",
@@ -79,7 +79,10 @@ __all__ = [
     "calc_unique_path_name",
     "convert_byte_to_human_readable_size",
     "convert_string_to_list",
+    "get_config",
     "get_duration",
+    "get_icon",
+    "get_profile",
     "get_stem_and_ext",
     "initialize_logging",
     "load_json",

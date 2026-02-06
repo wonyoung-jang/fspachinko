@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from line_profiler import profile
+
 from .walker import FSEntry
 
 if TYPE_CHECKING:
@@ -69,6 +71,7 @@ class Engine:
         self.observer.on_count_total()
         self.report(self.context.finalize(target, dest))
 
+    @profile
     def transfer_directory(self, target: int, dest: str) -> None:
         """Process a single folder for file copying."""
         if self.context.should_stop(target):

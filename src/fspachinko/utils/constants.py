@@ -1,12 +1,6 @@
 """Constants."""
 
-import os
 from enum import IntEnum, StrEnum
-
-from .paths import Paths
-
-# Ensure necessary directories exist
-os.makedirs(Paths.profiles, exist_ok=True)
 
 # General constants
 WALKER_CACHE_LIMIT: int = 1000

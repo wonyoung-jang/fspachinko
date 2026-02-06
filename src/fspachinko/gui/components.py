@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QIcon
@@ -38,7 +38,7 @@ from ..config import (
     TransferModeModel,
 )
 from ..core import get_available_transfer_modes
-from ..utils import ByteUnit, FilenameTemplate, IconFilename, Paths, TimeUnit
+from ..utils import ByteUnit, FilenameTemplate, IconFilename, TimeUnit, get_icon
 from .qthelpers import set_qt_name, set_qt_tips
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ class PathSelectorWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
         """Initialize the path selector widget."""
-        super().__init__(title, name)
+        super().__init__(title=title, name=name)
         self.setAcceptDrops(True)
 
         title_lower = self.title().casefold()
@@ -76,9 +76,9 @@ class PathSelectorWidget(BaseGroupBox):
         set_qt_name(self.combo, f"{name}_combo")
         set_qt_tips(self.combo, f"Select or enter a path for {title_lower}.")
 
-        icon_browse = QIcon(Paths.icon(IconFilename.BROWSE))
-        icon_open = QIcon(Paths.icon(IconFilename.OPEN_DIR))
-        icon_delete = QIcon(Paths.icon(IconFilename.REMOVE))
+        icon_browse = QIcon(get_icon(IconFilename.BROWSE))
+        icon_open = QIcon(get_icon(IconFilename.OPEN_DIR))
+        icon_delete = QIcon(get_icon(IconFilename.REMOVE))
 
         self.btn_browse = QPushButton()
         self.btn_browse.setIcon(icon_browse)
@@ -151,7 +151,7 @@ class RootPathSelectorWidget(PathSelectorWidget):
 
     def __init__(self) -> None:
         """Initialize the root path selector widget."""
-        super().__init__("Root", "root", [QDir.rootPath()])
+        super().__init__(title="Root", name="root", items=[QDir.rootPath()])
 
 
 class DestPathSelectorWidget(PathSelectorWidget):
@@ -159,16 +159,15 @@ class DestPathSelectorWidget(PathSelectorWidget):
 
     def __init__(self) -> None:
         """Initialize the destination path selector widget."""
-        super().__init__("Destination", "dest", [QDir.homePath()])
+        super().__init__(title="Destination", name="dest", items=[QDir.homePath()])
 
 
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    def __init__(self) -> None:
+    def __init__(self, title: str = "File count", name: str = "filecount") -> None:
         """Initialize the file count widget."""
-        name = "filecount"
-        super().__init__("File count", name)
+        super().__init__(title=title, name=name)
 
         self.radio_fixed = QRadioButton("Fixed")
         self.radio_fixed.setChecked(True)
@@ -222,10 +221,9 @@ class FileCountWidget(BaseGroupBox):
 class FolderCreatorWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    def __init__(self) -> None:
+    def __init__(self, title: str = "Create Folders", name: str = "folder") -> None:
         """Initialize the create folders widget."""
-        name = "folder"
-        super().__init__("Create Folders", name, checkable=True)
+        super().__init__(title=title, name=name, checkable=True)
 
         self.spinbox_folder_count = QSpinBox(suffix=" folders")
         set_qt_name(self.spinbox_folder_count, f"{name}_count")
@@ -235,20 +233,14 @@ class FolderCreatorWidget(BaseGroupBox):
         set_qt_name(self.lineedit_folder_name, f"{name}_name")
         set_qt_tips(self.lineedit_folder_name, "Template for naming created folders.")
 
-        self.chk_unique_folders = QCheckBox("Ensure unique folders")
-        set_qt_name(self.chk_unique_folders, f"{name}_unique")
-        set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
-
         layout = QVBoxLayout(self)
         layout.addWidget(self.spinbox_folder_count)
         layout.addWidget(self.lineedit_folder_name)
-        layout.addWidget(self.chk_unique_folders)
 
     def get_config(self) -> DirectoryModel:
         """Return clean data for the config."""
         return DirectoryModel(
             is_enabled=self.isChecked(),
-            is_unique=self.chk_unique_folders.isChecked(),
             name=self.lineedit_folder_name.text(),
             count=self.spinbox_folder_count.value() if self.isChecked() else 1,
         )
@@ -257,10 +249,9 @@ class FolderCreatorWidget(BaseGroupBox):
 class FilenameWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
 
-    def __init__(self) -> None:
+    def __init__(self, title: str = "Filename", name: str = "filename") -> None:
         """Initialize the filename template settings widget."""
-        name: str = "filename"
-        super().__init__("Filename", name)
+        super().__init__(title=title, name=name)
 
         self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}", clearButtonEnabled=True)
         set_qt_name(self.edit_template, f"{name}_template")
@@ -298,10 +289,9 @@ class FilenameWidget(BaseGroupBox):
 class TransferModeWidget(BaseGroupBox):
     """Handles logic for mode settings."""
 
-    def __init__(self) -> None:
+    def __init__(self, title: str = "Transfer Mode", name: str = "transfermode") -> None:
         """Initialize the mode settings widget."""
-        name = "transfermode"
-        super().__init__("Transfer Mode", name)
+        super().__init__(title, name)
 
         self.combo_mode = QComboBox()
         self.combo_mode.addItems(get_available_transfer_modes())
@@ -357,7 +347,7 @@ class ExtensionsFilterWidget(ListIncludeExcludeFilterWidget):
 
     def __init__(self) -> None:
         """Initialize the extensions filter widget."""
-        super().__init__("Extensions", "extension")
+        super().__init__(title="Extensions", name="extension")
 
 
 class KeywordsFilterWidget(ListIncludeExcludeFilterWidget):
@@ -365,7 +355,7 @@ class KeywordsFilterWidget(ListIncludeExcludeFilterWidget):
 
     def __init__(self) -> None:
         """Initialize the keywords filter widget."""
-        super().__init__("Keywords", "keyword")
+        super().__init__(title="Keywords", name="keyword")
 
 
 class MinMaxFilterWidget(BaseGroupBox):
@@ -373,7 +363,7 @@ class MinMaxFilterWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, items: Sequence[str | ByteUnit | TimeUnit]) -> None:
         """Initialize the range filter widget."""
-        super().__init__(title, name, checkable=True)
+        super().__init__(title=title, name=name, checkable=True)
 
         self.spin_min = QDoubleSpinBox(prefix="Min ")
         set_qt_name(self.spin_min, f"{name}_minimum")
@@ -411,7 +401,7 @@ class SizeFilterWidget(MinMaxFilterWidget):
 
     def __init__(self) -> None:
         """Initialize the size filter widget."""
-        super().__init__("File Size", "filesize", tuple(ByteUnit))
+        super().__init__(title="File Size", name="filesize", items=tuple(ByteUnit))
 
 
 class DurationFilterWidget(MinMaxFilterWidget):
@@ -419,7 +409,7 @@ class DurationFilterWidget(MinMaxFilterWidget):
 
     def __init__(self) -> None:
         """Initialize the duration filter widget."""
-        super().__init__("Duration", "duration", tuple(TimeUnit))
+        super().__init__(title="Duration", name="duration", items=tuple(TimeUnit))
 
 
 class SizeLimitWidget(BaseGroupBox):
@@ -427,7 +417,7 @@ class SizeLimitWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str, items: Sequence[str | ByteUnit | TimeUnit]) -> None:
         """Initialize the size limit widget."""
-        super().__init__(title, name, checkable=True)
+        super().__init__(title=title, name=name, checkable=True)
 
         self.spin_size = QDoubleSpinBox(prefix="Size ")
         self.spin_size.setSpecialValueText("Unlimited")
@@ -457,7 +447,7 @@ class FolderSizeLimitWidget(SizeLimitWidget):
 
     def __init__(self) -> None:
         """Initialize the folder size limit widget."""
-        super().__init__("Max Folder Size", "folder_size_limit", tuple(ByteUnit))
+        super().__init__(title="Max Folder Size", name="folder_size_limit", items=tuple(ByteUnit))
 
 
 class TotalSizeLimitWidget(SizeLimitWidget):
@@ -465,16 +455,15 @@ class TotalSizeLimitWidget(SizeLimitWidget):
 
     def __init__(self) -> None:
         """Initialize the total size limit widget."""
-        super().__init__("Max Total Size", "total_size_limit", tuple(ByteUnit))
+        super().__init__(title="Max Total Size", name="total_size_limit", items=tuple(ByteUnit))
 
 
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    def __init__(self) -> None:
+    def __init__(self, title: str = "Options", name: str = "options") -> None:
         """Initialize the options widget."""
-        name = "options"
-        super().__init__("Options", name)
+        super().__init__(title=title, name=name)
 
         self.spin_max_per_folder = QSpinBox()
         self.spin_max_per_folder.setSpecialValueText("Unlimited")
@@ -497,8 +486,13 @@ class OptionsWidget(BaseGroupBox):
             "If empty, a random seed will be used.",
         )
 
+        self.chk_unique_folders = QCheckBox()
+        set_qt_name(self.chk_unique_folders, f"{name}_unique")
+        set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
+
         layout = QFormLayout(self)
         layout.addRow("Max from one folder", self.spin_max_per_folder)
+        layout.addRow("Ensure unique folders", self.chk_unique_folders)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
         layout.addRow("Dry run (simulation)", self.chk_dry_run)
         layout.addRow("RNG seed", self.rng_seed)
@@ -507,6 +501,7 @@ class OptionsWidget(BaseGroupBox):
         """Return clean data for the config."""
         return OptionsModel(
             max_per_folder=self.spin_max_per_folder.value(),
+            is_create_unique_folders=self.chk_unique_folders.isChecked(),
             should_follow_symlink=self.chk_follow_symlink.isChecked(),
             is_dry_run=self.chk_dry_run.isChecked(),
             rng_seed=self.rng_seed.text() or None,
@@ -516,10 +511,9 @@ class OptionsWidget(BaseGroupBox):
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
-    def __init__(self) -> None:
+    def __init__(self, name: str = "progress") -> None:
         """Post-initialize the progress widget."""
         super().__init__()
-        name = "progress"
         set_qt_name(self, name)
 
         self.progbar_total = QProgressBar(textVisible=True)
@@ -548,10 +542,9 @@ class ProgressWidget(QWidget):
 class LoggingWidget(QWidget):
     """Logging widget."""
 
-    def __init__(self) -> None:
+    def __init__(self, name: str = "logging") -> None:
         """Post-initialize the logging widget."""
         super().__init__()
-        name = "logging"
         set_qt_name(self, name)
 
         self.textbrowser_log = QTextBrowser()
@@ -566,8 +559,8 @@ class LoggingWidget(QWidget):
 class ProgressBinder(QObject):
     """Class for binding progress widgets."""
 
-    count: ClassVar[Signal] = Signal(int)
-    finished: ClassVar[Signal] = Signal()
+    count = Signal(int)
+    finished = Signal()
 
     def __init__(self, progressw: ProgressWidget, loggingw: LoggingWidget) -> None:
         """Initialize the ProgressBinder."""

@@ -87,5 +87,5 @@ def build_engine(m: ConfigModel) -> Engine:
         do_transfer_strategy=do_transfer_strategy,
         context=context,
         folder_count=m.folder.count,
-        is_create_unique_folders=m.folder.is_unique,
+        is_create_unique_folders=m.options.is_create_unique_folders,
     )

@@ -8,7 +8,7 @@ from cyclopts import App
 from ..config import ConfigModel
 from ..config.converter import config_to_profile_file, profile_to_config_file
 from ..core import build_engine
-from ..utils import DefaultPath, Paths
+from ..utils import DefaultPath, get_config
 from .observer import ConsoleObserver
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ def run(config: str = "") -> None:
 
     """
     if not config:
-        config = Paths.config(DefaultPath.CONFIG)
+        config = get_config(DefaultPath.CONFIG)
 
     try:
         with open(config, encoding="utf-8") as f:

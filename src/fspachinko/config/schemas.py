@@ -20,7 +20,6 @@ class DirectoryModel(BaseModel):
     """Model for directory creation configuration."""
 
     is_enabled: bool = False
-    is_unique: bool = True
     name: str = ""
     count: int = 1
 
@@ -66,6 +65,7 @@ class OptionsModel(BaseModel):
     """Model for additional options."""
 
     max_per_folder: int = 0
+    is_create_unique_folders: bool = False
     should_follow_symlink: bool = False
     is_dry_run: bool = True
     rng_seed: int | str | bytes | None = None

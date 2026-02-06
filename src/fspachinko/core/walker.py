@@ -4,7 +4,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from random import choice, shuffle
+from random import choice
 from typing import TYPE_CHECKING
 
 from line_profiler import profile
@@ -70,6 +70,29 @@ class FSPachinkoPin:
     is_scanned: bool = False
     is_exhausted: bool = False
 
+    def scan(self, *, should_follow_symlink: bool) -> None:
+        """Only look at the OS file system when a ball hits a specific folder for the first time."""
+        subdirs = self.subdirs
+        files = self.files
+        try:
+            with os.scandir(self.path) as it:
+                for e in it:
+                    try:
+                        if e.is_symlink() and not should_follow_symlink:
+                            continue
+
+                        if e.is_dir(follow_symlinks=should_follow_symlink):
+                            subdirs.append(e.path)
+                        elif e.is_file(follow_symlinks=should_follow_symlink):
+                            files.append(e)
+                    except OSError:
+                        continue
+        except OSError:
+            self.is_exhausted = True
+            return
+
+        self.is_scanned = True
+
 
 @dataclass(slots=True)
 class PachinkoFSWalker(FSWalker):
@@ -94,89 +117,42 @@ class PachinkoFSWalker(FSWalker):
         self.board.clear()
         self.board[self.root] = FSPachinkoPin(path=self.root)
 
+    @profile
     def walk(self) -> Iterator[os.DirEntry]:
         """Continuously drop balls until the board is empty."""
+        curr = self.root
+
         while not self.board[self.root].is_exhausted:
-            if (entry := self.drop()) is not None:
-                yield entry
-
-    @profile
-    def drop(self) -> os.DirEntry | None:
-        """Drop a ball from the root."""
-        current_path = self.root
-
-        while True:
-            pin = self.board[current_path]
-
-            if pin.is_exhausted:
-                return None
+            pin = self.board.setdefault(curr, FSPachinkoPin(path=curr))
 
             if not pin.is_scanned:
-                self.scan(pin)
+                pin.scan(should_follow_symlink=self.should_follow_symlink)
 
-            self.get_valid_subdirs(pin)
+            subdirs = []
+            for d in pin.subdirs:
+                if self.quota.is_dir_locked(d):
+                    self.board.pop(d, None)
+                else:
+                    subdirs.append(d)
 
+            pin.subdirs = subdirs
+            pin.files = [f for f in pin.files if not self.quota.is_file_locked(f)]
             has_subdirs, has_files = bool(pin.subdirs), bool(pin.files)
-            is_exhausted = not (has_subdirs or has_files)
 
-            if is_exhausted:
-                self.mark_exhausted(pin)
-                return None
-
-            if self.should_descend(has_subdirs=has_subdirs, has_files=has_files):
-                current_path = choice(pin.subdirs)
+            if not (has_subdirs or has_files):
+                pin.is_exhausted = True
+                self.quota.lock_dir(curr)
+                self.board.pop(curr, None)
+                curr = self.root
                 continue
 
-            return pin.files.pop()
+            should_descend = choice((True, False)) if has_subdirs and has_files else has_subdirs
 
-    def get_valid_subdirs(self, pin: FSPachinkoPin) -> None:
-        """Get valid subdirectories for a given pin."""
-        pin.subdirs = [d for d in pin.subdirs if not self.quota.is_dir_locked(d) and not self.board[d].is_exhausted]
+            if should_descend:
+                curr = choice(pin.subdirs)
+                continue
 
-    def mark_exhausted(self, pin: FSPachinkoPin) -> None:
-        """Mark a pin as exhausted."""
-        currpath = pin.path
-        pin.is_exhausted = True
-        self.quota.lock_dir(currpath)
-
-    def should_descend(self, *, has_subdirs: bool, has_files: bool) -> bool:
-        """Decide whether to descend into a subdir or select a file."""
-        if has_subdirs and has_files:
-            return choice((True, False))
-        return has_subdirs
-
-    @profile
-    def scan(self, pin: FSPachinkoPin) -> None:
-        """Only look at the OS file system when a ball hits a specific folder for the first time."""
-        subdirs = []
-        files = []
-        should_follow_symlink = self.should_follow_symlink
-        board = self.board
-
-        try:
-            with os.scandir(pin.path) as it:
-                for e in it:
-                    try:
-                        if e.is_symlink() and not should_follow_symlink:
-                            continue
-
-                        if e.is_dir(follow_symlinks=should_follow_symlink):
-                            dirpath = e.path
-                            subdirs.append(dirpath)
-                            board.setdefault(dirpath, FSPachinkoPin(path=dirpath))
-                        elif e.is_file(follow_symlinks=should_follow_symlink):
-                            files.append(e)
-                    except OSError:
-                        continue
-        except OSError:
-            pin.is_exhausted = True
-            return
-
-        if subdirs:
-            shuffle(subdirs)
-        if files:
-            shuffle(files)
-
-        pin.subdirs = subdirs
-        pin.files = files
-        pin.is_scanned = True
+            entry = choice(pin.files)
+            self.quota.lock_file(entry)
+            yield entry
+            curr = self.root
