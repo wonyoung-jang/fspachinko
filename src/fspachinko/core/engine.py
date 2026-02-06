@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from ..config import Filecount, Filename
     from ..utils import Observer
-    from .state import Context
+    from .state import EngineContext
     from .validator import FileValidator
     from .walker import FSWalker
 
@@ -32,7 +32,7 @@ class Engine:
     filecount: Filecount
     filename: Filename
     do_transfer_strategy: Callable[[os.PathLike, str], None]
-    context: Context
+    context: EngineContext
     folder_count: int
     is_create_unique_folders: bool
     observer: Observer = field(init=False)

@@ -1,7 +1,6 @@
 """Engine state classes."""
 
 import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
@@ -40,8 +39,8 @@ class DirectoryStatistic:
 
 
 @dataclass(slots=True)
-class Context(ABC):
-    """Abstract base class for engine state context."""
+class EngineContext:
+    """Class for engine state context."""
 
     folder: Folder
     quota: DiversityQuota
@@ -54,31 +53,6 @@ class Context(ABC):
     msg: str = ""
     is_stop_requested: bool = False
     dirstat: DirectoryStatistic = field(default_factory=DirectoryStatistic)
-
-    @abstractmethod
-    def should_stop(self, target: int) -> bool:
-        """Check and update state before file validation."""
-
-    @abstractmethod
-    def is_none_found(self) -> bool:
-        """Check if no files were found in the current folder."""
-
-    @abstractmethod
-    def prepare(self, dest: str) -> None:
-        """Prepare the context for a new folder processing."""
-
-    @abstractmethod
-    def update_on_success(self, entry: FSEntry) -> None:
-        """Update context on successful file operation."""
-
-    @abstractmethod
-    def finalize(self, target: int, dest: str) -> str:
-        """Finalize the context after processing."""
-
-
-@dataclass(slots=True)
-class EngineContext(Context):
-    """Class for engine state context."""
 
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
