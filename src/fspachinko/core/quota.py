@@ -50,7 +50,7 @@ class DiversityQuota:
         """Mark a file as locked."""
         self.locked_file.add(file)
 
-    def register_success(self, entry: FSEntry) -> None:
+    def update(self, entry: FSEntry) -> None:
         """Record a successful copy and apply locking rules."""
         if self.max_per_dir <= 0:
             return

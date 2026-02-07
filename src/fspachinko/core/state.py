@@ -49,7 +49,7 @@ class EngineContext:
     reporter: ReportWriter
     is_dry_run: bool
     dtstamp: DateTimeStamp
-    status: str = ""
+    state: str = ""
     msg: str = ""
     is_stop_requested: bool = False
     dirstat: DirectoryStatistic = field(default_factory=DirectoryStatistic)
@@ -57,46 +57,36 @@ class EngineContext:
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
         if self.is_stop_requested:
-            self.status = StateStatus.USER_STOPPED
+            self.state = StateStatus.USER_STOPPED
             self.msg = "Stopped by user request"
-            return True
-
-        if self.dirstat.count == target:
-            self.status = StateStatus.SUCCESS
+        elif self.dirstat.count == target:
+            self.state = StateStatus.SUCCESS
             self.msg = f"Copied {self.dirstat.count}/{target} files"
-            return True
-
-        if self.quota.is_all_locked():
-            self.status = StateStatus.ALL_FILES_SEARCHED
+        elif self.quota.is_all_locked():
+            self.state = StateStatus.ALL_FILES_SEARCHED
             self.msg = "All files locked by diversity quota"
-            return True
-
-        if self.folder_size_limit.is_valid(self.dirstat.curr_size):
-            self.status = StateStatus.FOLDER_SIZE_LIMIT_REACHED
+        elif self.folder_size_limit.is_valid(self.dirstat.curr_size):
+            self.state = StateStatus.FOLDER_SIZE_LIMIT_REACHED
             self.msg = f"{round(self.dirstat.curr_size * 100 / self.folder_size_limit.size_limit, 2)} %"
-            return True
-
-        if self.total_size_limit.is_valid(self.dirstat.total_size):
-            self.status = StateStatus.TOTAL_SIZE_LIMIT_REACHED
+        elif self.total_size_limit.is_valid(self.dirstat.total_size):
+            self.state = StateStatus.TOTAL_SIZE_LIMIT_REACHED
             self.msg = f"{round(self.dirstat.total_size * 100 / self.total_size_limit.size_limit, 2)} %"
-            return True
-
-        return False
+        else:
+            return False
+        return True
 
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
         none_found = self.dirstat.count == 0 and self.folder.is_enabled
-        if none_found:
-            if self.quota.is_all_locked():
-                self.status = StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
-                self.msg = "No files found and all files locked by diversity quota"
-                return True
-
-            self.status = StateStatus.NO_FILES_FOUND_FOLDER_DELETED
+        if none_found and self.quota.is_all_locked():
+            self.state = StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
+            self.msg = "No files found and all files locked by diversity quota"
+        elif none_found:
+            self.state = StateStatus.NO_FILES_FOUND_FOLDER_DELETED
             self.msg = "No files found in the folder"
-            return True
-
-        return False
+        else:
+            return False
+        return True
 
     def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
@@ -105,16 +95,16 @@ class EngineContext:
         self.quota.reset()
         self.reporter.reset(dest)
 
-    def update_on_success(self, entry: FSEntry) -> None:
+    def update(self, entry: FSEntry) -> None:
         """Update context on successful file operation."""
         self.dirstat.update(entry.size)
-        self.quota.register_success(entry)
+        self.quota.update(entry)
 
     def finalize(self, target: int, dest: str) -> str:
         """Finalize the context after processing."""
         none_found = self.is_none_found()
         report = self.reporter.generate_report(
-            status=f"{self.status}: {self.dirstat.count}/{target} files copied",
+            status=f"{self.state}: {self.dirstat.count}/{target} files copied",
             runtime=round(perf_counter() - self.dirstat.starttime, 2),
             size=self.dirstat.curr_size,
         )

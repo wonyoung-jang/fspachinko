@@ -3,9 +3,8 @@
 import logging
 import os
 from dataclasses import dataclass, field
+from os.path import relpath
 from typing import TYPE_CHECKING
-
-from line_profiler import profile
 
 from .walker import FSEntry
 
@@ -68,7 +67,6 @@ class Engine:
         self.observer.on_count_total()
         self.report(self.context.finalize(target, dest))
 
-    @profile
     def transfer_directory(self, target: int, dest: str) -> None:
         """Process a single folder for file copying."""
         if self.context.should_stop(target):
@@ -79,10 +77,6 @@ class Engine:
             if entry is None:
                 break
 
-            if self.context.should_stop(target):
-                self.report(msg=self.context.msg)
-                return
-
             fsentry = FSEntry.from_direntry(entry)
             if not self.validator.is_valid(fsentry):
                 continue
@@ -90,18 +84,23 @@ class Engine:
             if not self.transfer_file(fsentry, dest):
                 continue
 
-            self.context.update_on_success(fsentry)
-            self.update_observer_on_entry()
+            self.context.update(fsentry)
+            self.observer.on_count(self.context.dirstat.count)
+            self.observer.on_time()
+
+            if self.context.should_stop(target):
+                self.report(msg=self.context.msg)
+                return
 
     def transfer_file(self, entry: os.PathLike, dest: str) -> bool:
         """Attempt to copy a file and return success status."""
         count = self.context.dirstat.count
-        chosen_rel = os.path.relpath(entry, self.root)
+        chosen_rel = relpath(entry, self.root)
         chosen_new = self.filename.determine_dest_filename(chosen_rel, dest, count)
         if chosen_new is None:
             return False
 
-        msg = f"{count + 1}: {chosen_rel} -> {os.path.relpath(chosen_new, dest)}"
+        msg = f"{count + 1}: {chosen_rel} -> {relpath(chosen_new, dest)}"
 
         if self.context.is_dry_run:
             self.report(f"DRY - {msg}")
@@ -120,8 +119,3 @@ class Engine:
         """Report and log a message."""
         self.observer.on_log(msg)
         self.context.reporter.record(msg)
-
-    def update_observer_on_entry(self) -> None:
-        """Update observer with current entry statistics."""
-        self.observer.on_count(self.context.dirstat.count)
-        self.observer.on_time()
