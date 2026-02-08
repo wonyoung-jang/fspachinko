@@ -153,6 +153,41 @@ class MinMax:
 
 
 @dataclass(slots=True)
+class ListIncludeExclude:
+    """Dataclass for include-exclude list configuration."""
+
+    is_enabled: bool
+    should_include: bool
+    as_string: str
+    patterns: tuple[re.Pattern, ...]
+    is_valid: Callable[[str], bool] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post init to set validator function."""
+        self.is_valid = (
+            lambda part: any(pattern.search(part) for pattern in self.patterns)
+            if self.should_include
+            else lambda part: not any(pattern.search(part) for pattern in self.patterns)
+        )
+
+    @classmethod
+    def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
+        """Create ListIncludeExclude from configuration model."""
+        as_string = ""
+        patterns = ()
+        if text := m.text.strip():
+            text_list = convert_string_to_list(text)
+            as_string = ", ".join(text_list)
+            patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+        return cls(
+            is_enabled=m.is_enabled and bool(text),
+            should_include=m.should_include,
+            as_string=as_string,
+            patterns=patterns,
+        )
+
+
+@dataclass(slots=True)
 class SizeLimit:
     """Dataclass for output folder size limits."""
 
@@ -171,41 +206,7 @@ class SizeLimit:
         """Check if the size limit is exceeded."""
         return self.is_enabled and self.size_limit > 0 and size > self.size_limit
 
-
-@dataclass(slots=True)
-class ListIncludeExclude:
-    """Dataclass for include-exclude list configuration."""
-
-    is_enabled: bool
-    should_include: bool
-    as_string: str
-    patterns: tuple[re.Pattern, ...]
-    is_valid: Callable[[str], bool] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post init to set validator function."""
-        self.is_valid = self._is_valid_include if self.should_include else self._is_valid_exclude
-
-    @classmethod
-    def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
-        """Create ListIncludeExclude from configuration model."""
-        as_string = ""
-        patterns = ()
-        if text := m.text.strip():
-            text_list = convert_string_to_list(text)
-            as_string = ", ".join(text_list)
-            patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
-        return cls(
-            is_enabled=m.is_enabled and bool(text),
-            should_include=m.should_include,
-            as_string=as_string,
-            patterns=patterns,
-        )
-
-    def _is_valid_include(self, part: str) -> bool:
-        """Check if a file name part matches the include regexes."""
-        return any(p.search(part) for p in self.patterns)
-
-    def _is_valid_exclude(self, part: str) -> bool:
-        """Check if a file name part matches the exclude regexes."""
-        return not any(p.search(part) for p in self.patterns)
+    def get_percent_str(self, size: int) -> str:
+        """Get the percentage of the size limit used."""
+        percent = (size / self.size_limit) * 100
+        return f"{percent:.2f}%"

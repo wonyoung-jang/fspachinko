@@ -5,8 +5,9 @@ import json
 import logging
 import os
 import shutil
-import subprocess
 from filecmp import cmp
+from os.path import basename, dirname, exists, isfile, join, splitext
+from subprocess import DEVNULL, CalledProcessError, check_output
 from typing import Any
 
 from .constants import DURATION_CMD, FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
@@ -28,11 +29,11 @@ class SafeDict(dict):
 
 def calc_unique_path_name(dest: str, stem_or_name: str, ext: str = "") -> str:
     """Calculate a unique path name in the destination."""
-    target = os.path.join(dest, f"{stem_or_name}{ext}")
+    target = join(dest, f"{stem_or_name}{ext}")
 
     x = 2
-    while os.path.exists(target):
-        target = os.path.join(dest, f"{stem_or_name} ({x}){ext}")
+    while exists(target):
+        target = join(dest, f"{stem_or_name} ({x}){ext}")
         x += 1
 
     return target
@@ -103,7 +104,7 @@ def are_paths_equal(path1: str, path2: str) -> bool:
 
 def load_json(path: str) -> dict[str, Any]:
     """Load JSON data from a file and return as a dictionary."""
-    if not (os.path.exists(path) and os.path.isfile(path)):
+    if not (exists(path) and isfile(path)):
         return {}
 
     with open(path, encoding="utf-8") as f:
@@ -112,7 +113,7 @@ def load_json(path: str) -> dict[str, Any]:
 
 def save_json(path: str, data: dict[str, Any]) -> None:
     """Save a dictionary as JSON data to a file."""
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    os.makedirs(dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         data = dict(sorted(data.items(), key=lambda item: item[0]))
         json.dump(data, f, indent=4)
@@ -120,15 +121,15 @@ def save_json(path: str, data: dict[str, Any]) -> None:
 
 def get_stem_and_ext(path: str) -> tuple[str, str]:
     """Get the stem and extension of a file path."""
-    return os.path.splitext(os.path.basename(path))
+    return splitext(basename(path))
 
 
-def get_duration(path: os.PathLike) -> float:
+def get_duration(path: str) -> float:
     """Get the duration of a media file."""
     try:
-        out_bytes = subprocess.check_output(
+        out_bytes = check_output(
             [*DURATION_CMD, path],
-            stderr=subprocess.DEVNULL,
+            stderr=DEVNULL,
             timeout=10,
         )
         try:
@@ -136,7 +137,7 @@ def get_duration(path: os.PathLike) -> float:
         except ValueError:
             logger.debug("ffprobe output could not be parsed as float: %s", out_bytes.decode(errors="ignore"))
             return 0.0
-    except subprocess.CalledProcessError as e:
+    except CalledProcessError as e:
         out_bytes = e.output
         code = e.returncode
         logger.debug("ffprobe failed with code %d: %s", code, out_bytes.decode(errors="ignore"))

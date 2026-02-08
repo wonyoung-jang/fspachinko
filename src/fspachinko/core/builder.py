@@ -51,12 +51,7 @@ def build_engine(m: ConfigModel) -> Engine:
     folder = Folder.from_model(m.folder, dest=m.dest)
     folder_size_limit = SizeLimit.from_model(m.folder_size_limit, mapping=SIZE_MAP)
     total_size_limit = SizeLimit.from_model(m.total_size_limit, mapping=SIZE_MAP)
-    reporter = ReportWriter(
-        root=m.root,
-        exts_str=validator.extensions.as_string,
-        keys_str=validator.keywords.as_string,
-        dtstamp=dtstamp,
-    )
+    reporter = ReportWriter(root=m.root, dtstamp=dtstamp)
     context = EngineContext(
         folder=folder,
         quota=quota,

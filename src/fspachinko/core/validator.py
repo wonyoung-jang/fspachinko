@@ -1,7 +1,7 @@
 """Config validation functions."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from ..utils import get_duration
@@ -23,33 +23,21 @@ class FileValidator:
     extensions: ListIncludeExclude
     filesize: MinMax
     duration: MinMax
-    validators: tuple[Callable, ...] = ()
+    validators: tuple[Callable, ...] = field(init=False)
 
     def __post_init__(self) -> None:
         """Gather validation functions based on enabled filters."""
-        self._gather_validators()
+        vmap = (
+            (self.filesize.is_enabled, self._is_valid_filesize),
+            (self.extensions.is_enabled, self._is_valid_extension),
+            (self.keywords.is_enabled, self._is_valid_keyword),
+            (self.duration.is_enabled, self._is_valid_duration),
+        )
+        self.validators = tuple([c for k, c in vmap if k])
 
     def is_valid(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return all(is_valid(entry) for is_valid in self.validators)
-
-    def _gather_validators(self) -> None:
-        """Gather validation functions based on enabled filters."""
-        v = []
-
-        if self.filesize.is_enabled:
-            v.append(self._is_valid_filesize)
-
-        if self.extensions.is_enabled:
-            v.append(self._is_valid_extension)
-
-        if self.keywords.is_enabled:
-            v.append(self._is_valid_keyword)
-
-        if self.duration.is_enabled:
-            v.append(self._is_valid_duration)
-
-        self.validators = tuple(v)
+        return not any(not is_valid(entry) for is_valid in self.validators)
 
     def _is_valid_filesize(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -65,4 +53,4 @@ class FileValidator:
 
     def _is_valid_duration(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.duration.is_valid(get_duration(entry))
+        return self.duration.is_valid(get_duration(entry.path))

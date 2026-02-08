@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..utils import DateTimeStamp, StateStatus, remove_directory
+from ..utils import DateTimeStamp, StateStatus, convert_byte_to_human_readable_size, remove_directory
 
 if TYPE_CHECKING:
     from ..config import Folder, SizeLimit
@@ -37,6 +37,16 @@ class DirectoryStatistic:
         self.curr_size += size
         self.total_size += size
 
+    @property
+    def runtime_str(self) -> str:
+        """Get the runtime as a formatted string."""
+        return f"{perf_counter() - self.starttime:.2f}s"
+
+    @property
+    def size_str(self) -> str:
+        """Get the current size as a human-readable string."""
+        return convert_byte_to_human_readable_size(self.curr_size)
+
 
 @dataclass(slots=True)
 class EngineContext:
@@ -67,10 +77,10 @@ class EngineContext:
             self.msg = "All files locked by diversity quota"
         elif self.folder_size_limit.is_valid(self.dirstat.curr_size):
             self.state = StateStatus.FOLDER_SIZE_LIMIT_REACHED
-            self.msg = f"{round(self.dirstat.curr_size * 100 / self.folder_size_limit.size_limit, 2)} %"
+            self.msg = self.folder_size_limit.get_percent_str(self.dirstat.curr_size)
         elif self.total_size_limit.is_valid(self.dirstat.total_size):
             self.state = StateStatus.TOTAL_SIZE_LIMIT_REACHED
-            self.msg = f"{round(self.dirstat.total_size * 100 / self.total_size_limit.size_limit, 2)} %"
+            self.msg = self.total_size_limit.get_percent_str(self.dirstat.total_size)
         else:
             return False
         return True
@@ -105,8 +115,8 @@ class EngineContext:
         none_found = self.is_none_found()
         report = self.reporter.generate_report(
             status=f"{self.state}: {self.dirstat.count}/{target} files copied",
-            runtime=round(perf_counter() - self.dirstat.starttime, 2),
-            size=self.dirstat.curr_size,
+            runtime=self.dirstat.runtime_str,
+            size=self.dirstat.size_str,
         )
         self.reporter.save()
 
