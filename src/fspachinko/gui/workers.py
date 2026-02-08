@@ -1,9 +1,8 @@
 """Workers for GUI."""
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QThread, Slot
+from PySide6.QtCore import QRunnable, Slot
 
 from ..core import build_engine
 from .observer import GuiObserver, WorkerSignals
@@ -13,12 +12,14 @@ if TYPE_CHECKING:
     from ..core import Engine
 
 
-@dataclass(slots=True)
-class MainWorker:
+class MainWorker(QRunnable):
     """Worker for running process."""
 
-    signals: WorkerSignals
-    engine: Engine
+    def __init__(self, signals: WorkerSignals, engine: Engine) -> None:
+        """Initialize the worker."""
+        super().__init__()
+        self.signals = signals
+        self.engine = engine
 
     @classmethod
     def from_config(cls, config: ConfigModel) -> MainWorker:
@@ -29,6 +30,7 @@ class MainWorker:
         engine.set_observer(observer)
         return cls(signals, engine)
 
+    @Slot()
     def run(self) -> None:
         """Run the process."""
         self.engine.start()
@@ -36,21 +38,3 @@ class MainWorker:
     def stop(self) -> None:
         """Stop the process."""
         self.engine.request_stop()
-
-
-class MainThread(QThread):
-    """Worker thread for running process."""
-
-    def __init__(self, worker: MainWorker) -> None:
-        """Initialize the worker thread."""
-        super().__init__()
-        self.worker = worker
-
-    @Slot()
-    def run(self) -> None:
-        """Run the process."""
-        self.worker.run()
-
-    def stop(self) -> None:
-        """Stop the process."""
-        self.worker.stop()

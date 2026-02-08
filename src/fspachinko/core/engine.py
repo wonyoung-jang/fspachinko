@@ -1,6 +1,5 @@
 """Engine Module."""
 
-import logging
 import os
 from dataclasses import dataclass, field
 from os.path import relpath
@@ -16,9 +15,6 @@ if TYPE_CHECKING:
     from .state import EngineContext
     from .validator import FileValidator
     from .walker import FSWalker
-
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
