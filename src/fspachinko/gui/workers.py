@@ -15,20 +15,13 @@ if TYPE_CHECKING:
 class MainWorker(QRunnable):
     """Worker for running process."""
 
-    def __init__(self, signals: WorkerSignals, engine: Engine) -> None:
+    def __init__(self, config: ConfigModel) -> None:
         """Initialize the worker."""
         super().__init__()
-        self.signals = signals
-        self.engine = engine
-
-    @classmethod
-    def from_config(cls, config: ConfigModel) -> MainWorker:
-        """Post-initialization tasks."""
-        signals = WorkerSignals()
-        observer = GuiObserver(signals)
-        engine = build_engine(config)
-        engine.set_observer(observer)
-        return cls(signals, engine)
+        self.signals = WorkerSignals()
+        observer = GuiObserver(self.signals)
+        self.engine: Engine = build_engine(config)
+        self.engine.set_observer(observer)
 
     @Slot()
     def run(self) -> None:

@@ -3,6 +3,8 @@
 from random import seed
 from typing import TYPE_CHECKING
 
+from fspachinko.core.destination import JobRequestFactory
+
 from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
 from ..utils import SIZE_MAP, TIME_MAP, DateTimeStamp, ReStrFmt
 from .engine import Engine
@@ -74,13 +76,18 @@ def build_engine(m: ConfigModel) -> Engine:
     filecount = Filecount.from_model(m.filecount)
     filename = Filename.from_model(m.filename, dtstamp=dtstamp)
     do_transfer_strategy = fetch_transfer_strategy(m.transfermode.transfer_mode)
+
+    job_request_factory = JobRequestFactory(
+        get_file_count=filecount.get_file_count,
+        determine_dest_dirname=folder.determine_dest_dirname,
+        dir_count=m.folder.count,
+    )
     return Engine(
         root=m.root,
         walker=walker,
         validator=validator,
-        filecount=filecount,
         filename=filename,
         do_transfer_strategy=do_transfer_strategy,
         context=context,
-        folder_count=m.folder.count,
+        job_request_factory=job_request_factory,
     )

@@ -4,6 +4,8 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from os import scandir
+from os.path import splitext
 from random import choice
 from typing import TYPE_CHECKING
 
@@ -28,7 +30,7 @@ class FSEntry:
     @classmethod
     def from_direntry(cls, e: os.DirEntry) -> FSEntry:
         """Create a lightweight FSEntry from an os.DirEntry."""
-        stem, ext = os.path.splitext(e.name)
+        stem, ext = splitext(e.name)
         return cls(
             path=e.path,
             stem=stem,
@@ -50,22 +52,19 @@ class FSPachinkoPin:
     """Represents a 'pin' on the Pachinko board."""
 
     path: str
-    subdirs: list[str] = field(default_factory=list)
-    files: list[os.DirEntry] = field(default_factory=list)
+    subdirs: tuple[str, ...] = field(default_factory=tuple)
+    files: tuple[os.DirEntry, ...] = field(default_factory=tuple)
     is_scanned: bool = False
     is_exhausted: bool = False
 
     def scan(self, *, should_follow_symlink: bool) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
-        subdirs = self.subdirs
-        files = self.files
+        subdirs = []
+        files = []
         try:
-            with os.scandir(self.path) as it:
+            with scandir(self.path) as it:
                 for e in it:
                     try:
-                        if e.is_symlink() and not should_follow_symlink:
-                            continue
-
                         if e.is_dir(follow_symlinks=should_follow_symlink):
                             subdirs.append(e.path)
                         elif e.is_file(follow_symlinks=should_follow_symlink):
@@ -76,6 +75,8 @@ class FSPachinkoPin:
             self.is_exhausted = True
             return
 
+        self.subdirs = tuple(subdirs)
+        self.files = tuple(files)
         self.is_scanned = True
 
 
@@ -108,39 +109,47 @@ class PachinkoFSWalker(FSWalker):
 
     def walk(self) -> Iterator[os.DirEntry]:
         """Continuously drop balls until the board is empty."""
+        root = self.root
         curr = self.root
+        board = self.board
+        board_setdefault = board.setdefault
+        board_pop = board.pop
+        quota = self.quota
+        is_dir_locked = quota.is_dir_locked
+        is_file_locked = quota.is_file_locked
+        lock_dir = quota.lock_dir
+        lock_file = quota.lock_file
 
-        while not self.board[self.root].is_exhausted:
-            pin = self.board.setdefault(curr, FSPachinkoPin(path=curr))
+        while not board[root].is_exhausted:
+            pin = board_setdefault(curr, FSPachinkoPin(path=curr))
 
             if not pin.is_scanned:
                 pin.scan(should_follow_symlink=self.should_follow_symlink)
 
             subdirs = []
             for d in pin.subdirs:
-                if self.quota.is_dir_locked(d):
-                    self.board.pop(d, None)
+                if is_dir_locked(d):
+                    board_pop(d, None)
                 else:
                     subdirs.append(d)
 
-            pin.subdirs = subdirs
-            pin.files = [f for f in pin.files if not self.quota.is_file_locked(f)]
+            pin.subdirs = tuple(subdirs)
+            pin.files = tuple(f for f in pin.files if not is_file_locked(f))
             has_subdirs, has_files = bool(pin.subdirs), bool(pin.files)
 
             if not (has_subdirs or has_files):
                 pin.is_exhausted = True
-                self.quota.lock_dir(curr)
-                self.board.pop(curr, None)
-                curr = self.root
+                lock_dir(curr)
+                board_pop(curr, None)
+                curr = root
                 continue
 
             should_descend = choice((True, False)) if has_subdirs and has_files else has_subdirs
-
             if should_descend:
                 curr = choice(pin.subdirs)
                 continue
 
             entry = choice(pin.files)
-            self.quota.lock_file(entry)
+            lock_file(entry)
             yield entry
-            curr = self.root
+            curr = root

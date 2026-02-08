@@ -1,6 +1,5 @@
 """Engine Module."""
 
-import os
 from dataclasses import dataclass, field
 from os.path import relpath
 from typing import TYPE_CHECKING
@@ -8,10 +7,12 @@ from typing import TYPE_CHECKING
 from .walker import FSEntry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    import os
+    from collections.abc import Callable
 
-    from ..config import Filecount, Filename
+    from ..config import Filename
     from ..utils import Observer
+    from .destination import JobRequest, JobRequestFactory
     from .state import EngineContext
     from .validator import FileValidator
     from .walker import FSWalker
@@ -24,16 +25,15 @@ class Engine:
     root: str
     walker: FSWalker
     validator: FileValidator
-    filecount: Filecount
     filename: Filename
     do_transfer_strategy: Callable[[os.PathLike, str], None]
     context: EngineContext
-    folder_count: int
+    job_request_factory: JobRequestFactory
     observer: Observer = field(init=False)
 
     def set_observer(self, observer: Observer) -> None:
         """Set the observer for the engine."""
-        self.observer = observer
+        self.observer: Observer = observer
 
     def request_stop(self) -> None:
         """Request to stop the engine."""
@@ -41,30 +41,23 @@ class Engine:
 
     def start(self) -> None:
         """Run the main file copying process."""
-        self.observer.on_progress_total(self.folder_count)
-        for target, dest in self.get_transfer_parameters():
-            self.process_directory(target, dest)
+        self.observer.on_progress_total(self.job_request_factory.dir_count)
+        for request in self.job_request_factory.generate():
+            self.process_directory(request)
         self.observer.on_finished()
 
-    def get_transfer_parameters(self) -> Iterator[tuple[int, str]]:
-        """Get transfer parameters for all folders."""
-        for _ in range(self.folder_count):
-            yield (
-                self.filecount.get_file_count(),
-                self.context.folder.determine_dest_dirname(),
-            )
-
-    def process_directory(self, target: int, dest: str) -> None:
+    def process_directory(self, request: JobRequest) -> None:
         """Run processing for a single folder."""
-        os.mkdir(dest)
+        target, dest = request.target, request.dest
         self.observer.on_progress(target)
         self.context.prepare(dest)
-        self.transfer_directory(target, dest)
-        self.observer.on_count_total()
+        self.transfer_directory(request)
         self.report(self.context.finalize(target, dest))
+        self.observer.on_count_total()
 
-    def transfer_directory(self, target: int, dest: str) -> None:
+    def transfer_directory(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
+        target, dest = request.target, request.dest
         if self.context.should_stop(target):
             self.report(msg=self.context.msg)
             return

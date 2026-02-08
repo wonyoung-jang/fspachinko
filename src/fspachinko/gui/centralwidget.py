@@ -37,7 +37,7 @@ class CentralWidget(QWidget):
             logger.exception("")
             return
 
-        self.worker = MainWorker.from_config(config)
+        self.worker = MainWorker(config)
         self.ui.progress.reset()
         self.original_window_title = self.window().windowTitle()
         self.progress_binder.bind(self.worker.signals)
