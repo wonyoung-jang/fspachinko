@@ -6,8 +6,6 @@ from enum import IntEnum, StrEnum
 WALKER_CACHE_LIMIT: int = 1000
 PERCENTAGE_100: float = 100.0
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
-TRUE_STRS: set[str] = {"y", "yes", "t", "true", "on", "1"}
-FALSE_STRS: set[str] = {"n", "no", "f", "false", "off", "0"}
 DURATION_CMD = [
     "ffprobe",
     "-v",
@@ -70,9 +68,9 @@ class TransferMode(StrEnum):
 class AppSetting(StrEnum):
     """Enumeration for different settings categories."""
 
-    ORGANIZATION = "Wonyoung Jang"
-    DOMAIN = "https://github.com/wonyoung-jang/fspachinko"
-    APPLICATION = "fspachinko"
+    ORGANIZATION_NAME = "Wonyoung Jang"
+    ORGANIZATION_DOMAIN = "https://github.com/wonyoung-jang/fspachinko"
+    APPLICATION_NAME = "fspachinko"
 
 
 class ByteUnit(StrEnum):

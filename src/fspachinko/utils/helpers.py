@@ -10,7 +10,7 @@ from os.path import basename, dirname, exists, isfile, join, splitext
 from subprocess import DEVNULL, CalledProcessError, check_output
 from typing import Any
 
-from .constants import DURATION_CMD, FALSE_STRS, TRUE_STRS, BytesIn, ByteUnit
+from .constants import DURATION_CMD, BytesIn, ByteUnit
 
 logger = logging.getLogger(__name__)
 
@@ -37,31 +37,6 @@ def calc_unique_path_name(dest: str, stem_or_name: str, ext: str = "") -> str:
         x += 1
 
     return target
-
-
-def strtobool(*, val: str | int | bool) -> bool:
-    """Convert a string representation of truth to true (1) or false (0).
-
-    Replaces distutils.util.strtobool function (deprecated in Python 3.10).
-
-    True values are: y, yes, t, true, on, 1
-    False values are: n, no, f, false, off, 0
-
-    Raises ValueError if val is anything else.
-    """
-    if isinstance(val, bool):
-        return val
-
-    val_str = str(val).casefold()
-
-    if val_str in TRUE_STRS:
-        return True
-
-    if val_str in FALSE_STRS:
-        return False
-
-    msg = f"Invalid truth value {val!r}"
-    raise ValueError(msg)
 
 
 def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
