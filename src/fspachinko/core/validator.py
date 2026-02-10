@@ -1,6 +1,5 @@
 """Config validation functions."""
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -11,8 +10,6 @@ if TYPE_CHECKING:
 
     from ..config import ListIncludeExclude, MinMax
     from .walker import FSEntry
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

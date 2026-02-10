@@ -1,6 +1,5 @@
 """Engine state classes."""
 
-import logging
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
@@ -13,8 +12,6 @@ if TYPE_CHECKING:
     from .quota import DiversityQuota
     from .reporter import ReportWriter
     from .walker import FSEntry
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

@@ -1,6 +1,5 @@
 """Quota and State management."""
 
-import logging
 from collections import Counter
 from dataclasses import dataclass, field
 from os.path import dirname
@@ -10,8 +9,6 @@ if TYPE_CHECKING:
     from os import DirEntry
 
     from .walker import FSEntry
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
