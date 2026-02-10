@@ -13,8 +13,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..utils import strtobool
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -89,8 +87,7 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
         case QDoubleSpinBox():
             widget.setValue(float(val))
         case QCheckBox() | QRadioButton() | QGroupBox():
-            state = strtobool(val=val)
-            widget.setChecked(state)
+            widget.setChecked(val)
         case _:
             return
 

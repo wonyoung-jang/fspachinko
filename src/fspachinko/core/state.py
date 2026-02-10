@@ -9,6 +9,7 @@ from ..utils import DateTimeStamp, StateStatus, convert_byte_to_human_readable_s
 
 if TYPE_CHECKING:
     from ..config import Folder, SizeLimit
+    from .destination import JobRequest
     from .quota import DiversityQuota
     from .reporter import ReportWriter
     from .walker import FSEntry
@@ -52,6 +53,7 @@ class DirectoryStatistic:
 class EngineContext:
     """Class for engine state context."""
 
+    root: str
     folder: Folder
     quota: DiversityQuota
     folder_size_limit: SizeLimit
@@ -72,7 +74,7 @@ class EngineContext:
         elif self.dirstat.count == target:
             self.state = StateStatus.SUCCESS
             self.msg = f"Copied {self.dirstat.count}/{target} files"
-        elif self.quota.is_all_locked():
+        elif self.root in self.quota.locked_dir:
             self.state = StateStatus.ALL_FILES_SEARCHED
             self.msg = "All files locked by diversity quota"
         elif self.folder_size_limit.is_valid(self.dirstat.curr_size):
@@ -88,7 +90,7 @@ class EngineContext:
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
         none_found = self.dirstat.count == 0 and self.folder.is_enabled
-        if none_found and self.quota.is_all_locked():
+        if none_found and self.root in self.quota.locked_dir:
             self.state = StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
             self.msg = "No files found and all files locked by diversity quota"
         elif none_found:
@@ -110,17 +112,17 @@ class EngineContext:
         self.dirstat.update(entry.size)
         self.quota.update(entry)
 
-    def finalize(self, target: int, dest: str) -> str:
+    def finalize(self, request: JobRequest) -> str:
         """Finalize the context after processing."""
         none_found = self.is_none_found()
         report = self.reporter.generate_report(
-            status=f"{self.state}: {self.dirstat.count}/{target} files copied",
+            status=f"{self.state}: {self.dirstat.count}/{request.target} files copied",
             runtime=self.dirstat.runtime_str,
             size=self.dirstat.size_str,
         )
         self.reporter.save()
 
         if none_found:
-            remove_directory(dest)
+            remove_directory(request.dest)
 
         return report

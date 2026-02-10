@@ -42,17 +42,21 @@ class Engine:
     def start(self) -> None:
         """Run the main file copying process."""
         self.observer.on_progress_total(self.job_request_factory.dir_count)
+
         for request in self.job_request_factory.generate():
             self.process_directory(request)
+
         self.observer.on_finished()
 
     def process_directory(self, request: JobRequest) -> None:
         """Run processing for a single folder."""
-        target, dest = request.target, request.dest
-        self.observer.on_progress(target)
-        self.context.prepare(dest)
+        self.observer.on_progress(request.target)
+        self.context.prepare(request.dest)
+
         self.transfer_directory(request)
-        self.report(self.context.finalize(target, dest))
+
+        finalized_msg = self.context.finalize(request)
+        self.report(finalized_msg)
         self.observer.on_count_total()
 
     def transfer_directory(self, request: JobRequest) -> None:
@@ -62,6 +66,7 @@ class Engine:
             self.report(msg=self.context.msg)
             return
 
+        curr_count = 0
         for entry in self.walker.walk():
             if entry is None:
                 break
@@ -70,21 +75,21 @@ class Engine:
             if not self.validator.is_valid(fsentry):
                 continue
 
-            if not self.transfer_file(fsentry, dest):
+            if not self.transfer_file(fsentry, dest, curr_count):
                 continue
 
+            curr_count += 1
             self.context.update(fsentry)
-            self.observer.on_count(self.context.dirstat.count)
+            self.observer.on_count(curr_count)
             self.observer.on_time()
 
             if self.context.should_stop(target):
                 self.report(msg=self.context.msg)
                 return
 
-    def transfer_file(self, entry: os.PathLike, dest: str) -> bool:
+    def transfer_file(self, entry: FSEntry, dest: str, count: int) -> bool:
         """Attempt to copy a file and return success status."""
-        count = self.context.dirstat.count
-        chosen_rel = relpath(entry, self.root)
+        chosen_rel = relpath(entry.path, self.root)
         chosen_new = self.filename.determine_dest_filename(chosen_rel, dest, count)
         if chosen_new is None:
             return False

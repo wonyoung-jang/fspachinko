@@ -52,12 +52,12 @@ class FSPachinkoPin:
     """Represents a 'pin' on the Pachinko board."""
 
     path: str
-    subdirs: tuple[str, ...] = field(default_factory=tuple)
-    files: tuple[os.DirEntry, ...] = field(default_factory=tuple)
+    subdirs: tuple[str, ...] = ()
+    files: tuple[os.DirEntry, ...] = ()
     is_scanned: bool = False
     is_exhausted: bool = False
 
-    def scan(self, *, should_follow_symlink: bool) -> None:
+    def scan(self, *, follow: bool) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
         subdirs = []
         files = []
@@ -65,14 +65,16 @@ class FSPachinkoPin:
             with scandir(self.path) as it:
                 for e in it:
                     try:
-                        if e.is_dir(follow_symlinks=should_follow_symlink):
+                        if e.is_dir(follow_symlinks=follow):
                             subdirs.append(e.path)
-                        elif e.is_file(follow_symlinks=should_follow_symlink):
+                        elif e.is_file(follow_symlinks=follow):
                             files.append(e)
                     except OSError:
+                        logger.debug("Skipping entry due to OSError: %s", e.path)
                         continue
         except OSError:
             self.is_exhausted = True
+            logger.debug("Skipping pin scan due to OSError: %s", self.path)
             return
 
         self.subdirs = tuple(subdirs)
@@ -115,26 +117,26 @@ class PachinkoFSWalker(FSWalker):
         board_setdefault = board.setdefault
         board_pop = board.pop
         quota = self.quota
-        is_dir_locked = quota.is_dir_locked
-        is_file_locked = quota.is_file_locked
-        lock_dir = quota.lock_dir
-        lock_file = quota.lock_file
+        locked_dir = quota.locked_dir
+        locked_file = quota.locked_file
+        lock_dir = locked_dir.add
+        lock_file = locked_file.add
 
         while not board[root].is_exhausted:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
 
             if not pin.is_scanned:
-                pin.scan(should_follow_symlink=self.should_follow_symlink)
+                pin.scan(follow=self.should_follow_symlink)
 
             subdirs = []
             for d in pin.subdirs:
-                if is_dir_locked(d):
+                if d in locked_dir:
                     board_pop(d, None)
                 else:
                     subdirs.append(d)
 
             pin.subdirs = tuple(subdirs)
-            pin.files = tuple(f for f in pin.files if not is_file_locked(f))
+            pin.files = tuple(f for f in pin.files if f not in locked_file)
             has_subdirs, has_files = bool(pin.subdirs), bool(pin.files)
 
             if not (has_subdirs or has_files):

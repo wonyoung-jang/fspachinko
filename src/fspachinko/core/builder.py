@@ -43,9 +43,9 @@ def build_engine(m: ConfigModel) -> Engine:
     validator = build_file_validator(m)
 
     # Build DiversityQuota
+    opt_mpd = m.options.max_per_folder
     quota = DiversityQuota(
-        root=m.root,
-        max_per_dir=m.options.max_per_folder,
+        max_per_dir=opt_mpd if opt_mpd > 0 else float("inf"),
         is_create_unique_folders=m.options.is_create_unique_folders,
     )
 
@@ -55,6 +55,7 @@ def build_engine(m: ConfigModel) -> Engine:
     total_size_limit = SizeLimit.from_model(m.total_size_limit, mapping=SIZE_MAP)
     reporter = ReportWriter(root=m.root, dtstamp=dtstamp)
     context = EngineContext(
+        root=m.root,
         folder=folder,
         quota=quota,
         folder_size_limit=folder_size_limit,
