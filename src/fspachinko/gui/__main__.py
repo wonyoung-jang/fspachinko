@@ -12,9 +12,9 @@ from .mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
 
-QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION)
-QCoreApplication.setOrganizationDomain(AppSetting.DOMAIN)
-QCoreApplication.setApplicationName(AppSetting.APPLICATION)
+QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
+QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)
+QCoreApplication.setApplicationName(AppSetting.APPLICATION_NAME)
 
 
 try:  # Windows only for taskbar icon
@@ -34,8 +34,10 @@ def main() -> None:
     app = QApplication()
     app.setWindowIcon(QIcon(get_icon(IconFilename.WINDOW)))
     apply_stylesheet(app, theme="dark_purple.xml", extra={"density_scale": "-2"})
-    w = MainWindow()
-    w.show()
+
+    window = MainWindow()
+    window.show()
+
     app.exec()
 
 
