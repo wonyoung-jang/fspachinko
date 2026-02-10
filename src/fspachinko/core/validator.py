@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 class FileValidator:
     """Class for validating files based on configuration."""
 
+    directory_name: ListIncludeExclude
     keywords: ListIncludeExclude
     extensions: ListIncludeExclude
     filesize: MinMax
@@ -25,9 +26,10 @@ class FileValidator:
     def __post_init__(self) -> None:
         """Gather validation functions based on enabled filters."""
         vmap = (
-            (self.filesize.is_enabled, self._is_valid_filesize),
+            (self.directory_name.is_enabled, self._is_valid_directory_name),
             (self.extensions.is_enabled, self._is_valid_extension),
             (self.keywords.is_enabled, self._is_valid_keyword),
+            (self.filesize.is_enabled, self._is_valid_filesize),
             (self.duration.is_enabled, self._is_valid_duration),
         )
         self.validators = tuple([c for k, c in vmap if k])
@@ -36,9 +38,9 @@ class FileValidator:
         """Check if a file is valid based on the current filters."""
         return not any(not is_valid(entry) for is_valid in self.validators)
 
-    def _is_valid_filesize(self, entry: FSEntry) -> bool:
+    def _is_valid_directory_name(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.filesize.is_valid(entry.size)
+        return self.directory_name.is_valid(entry.parent)
 
     def _is_valid_extension(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
@@ -47,6 +49,10 @@ class FileValidator:
     def _is_valid_keyword(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
         return self.keywords.is_valid(entry.stem)
+
+    def _is_valid_filesize(self, entry: FSEntry) -> bool:
+        """Check if a file is valid based on the current filters."""
+        return self.filesize.is_valid(entry.size)
 
     def _is_valid_duration(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""

@@ -18,6 +18,11 @@
     "transfermode": {
         "transfer_mode": "Symlink"
     },
+    "directory_name": {
+        "is_enabled": true,
+        "should_include": true,
+        "text": ""
+    },
     "keyword": {
         "is_enabled": true,
         "should_include": true,

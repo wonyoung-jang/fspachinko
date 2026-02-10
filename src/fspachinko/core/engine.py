@@ -94,7 +94,7 @@ class Engine:
         if chosen_new is None:
             return False
 
-        msg = f"{count + 1}: {chosen_rel} -> {relpath(chosen_new, dest)}"
+        msg = f"{count + 1}: {chosen_rel}\n    ↳{relpath(chosen_new, dest)}"
 
         if self.context.is_dry_run:
             self.report(f"DRY - {msg}")

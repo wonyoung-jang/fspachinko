@@ -27,6 +27,7 @@ class DefaultPath(StrEnum):
 class ReStrFmt(StrEnum):
     """Enumeration for regex string formats."""
 
+    DIRECTORY = r"(.*){}(.*)"
     KEYWORD = r"(.*){}(.*)"
     EXTENSION = r".{}$"
 

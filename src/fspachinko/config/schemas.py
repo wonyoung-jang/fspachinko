@@ -80,6 +80,7 @@ class ConfigModel(BaseModel):
     folder: DirectoryModel
     filename: FilenameModel
     transfermode: TransferModeModel
+    directory_name: ListIncludeExcludeModel
     keyword: ListIncludeExcludeModel
     extension: ListIncludeExcludeModel
     filesize: MinMaxModel

@@ -3,6 +3,7 @@
 import os
 import re
 from dataclasses import dataclass, field
+from os.path import basename, dirname, exists
 from random import randint
 from typing import TYPE_CHECKING
 
@@ -79,7 +80,7 @@ class Filename:
                 FilenameTemplateMapKey.DATETIME: self.dtstamp.date_time,
                 FilenameTemplateMapKey.ORIGINAL: stem,
                 FilenameTemplateMapKey.INDEX: index + 1,
-                FilenameTemplateMapKey.PARENT: os.path.basename(os.path.dirname(chosen)),
+                FilenameTemplateMapKey.PARENT: basename(dirname(chosen)),
                 FilenameTemplateMapKey.PARENTS_TO_ROOT: "_".join(chosen.split(os.sep)[:-1]),
             }
         )
@@ -96,7 +97,7 @@ class Filename:
         """Calculate the destination file path based on configuration."""
         target = self.calc_target_name(chosen, dest, index)
 
-        if not os.path.exists(target):
+        if not exists(target):
             return target
 
         if are_paths_equal(chosen, target):

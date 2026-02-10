@@ -347,6 +347,14 @@ class ListIncludeExcludeFilterWidget(BaseGroupBox):
         )
 
 
+class DirectoryFilterWidget(ListIncludeExcludeFilterWidget):
+    """Handles the Include/Exclude pattern for directory names."""
+
+    def __init__(self) -> None:
+        """Initialize the directory filter widget."""
+        super().__init__(title="Directory Name", name="directory_name_filter")
+
+
 class ExtensionsFilterWidget(ListIncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for file extensions."""
 

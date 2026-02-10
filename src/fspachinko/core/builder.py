@@ -21,11 +21,13 @@ if TYPE_CHECKING:
 
 def build_file_validator(m: ConfigModel) -> FileValidator:
     """Build and return a FileValidator based on the configuration."""
+    directory_name = ListIncludeExclude.from_model(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)
     keywords = ListIncludeExclude.from_model(m.keyword, re_fmt=ReStrFmt.KEYWORD)
     extensions = ListIncludeExclude.from_model(m.extension, re_fmt=ReStrFmt.EXTENSION)
     filesize = MinMax.from_model(m.filesize, mapping=SIZE_MAP)
     duration = MinMax.from_model(m.duration, mapping=TIME_MAP)
     return FileValidator(
+        directory_name=directory_name,
         keywords=keywords,
         extensions=extensions,
         filesize=filesize,

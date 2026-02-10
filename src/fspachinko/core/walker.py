@@ -5,7 +5,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import scandir
-from os.path import splitext
+from os.path import basename, dirname, splitext
 from random import choice
 from typing import TYPE_CHECKING
 
@@ -23,6 +23,7 @@ class FSEntry:
     """Lightweight wrapper for os.DirEntry with only path and name."""
 
     path: str
+    parent: str
     stem: str
     ext: str
     size: int
@@ -30,9 +31,12 @@ class FSEntry:
     @classmethod
     def from_direntry(cls, e: os.DirEntry) -> FSEntry:
         """Create a lightweight FSEntry from an os.DirEntry."""
+        path = e.path
         stem, ext = splitext(e.name)
+        parent = basename(dirname(path))
         return cls(
-            path=e.path,
+            path=path,
+            parent=parent,
             stem=stem,
             ext=ext,
             size=e.stat().st_size,

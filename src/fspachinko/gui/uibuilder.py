@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from ..config import ConfigModel
 from .components import (
     DestPathSelectorWidget,
+    DirectoryFilterWidget,
     DurationFilterWidget,
     ExtensionsFilterWidget,
     FileCountWidget,
@@ -38,6 +39,7 @@ class UIBuilder:
     folders: FolderCreatorWidget = field(default_factory=FolderCreatorWidget)
     filename: FilenameWidget = field(default_factory=FilenameWidget)
     transfermode: TransferModeWidget = field(default_factory=TransferModeWidget)
+    directory_name_filter: ListIncludeExcludeFilterWidget = field(default_factory=DirectoryFilterWidget)
     keywords: ListIncludeExcludeFilterWidget = field(default_factory=KeywordsFilterWidget)
     extensions: ListIncludeExcludeFilterWidget = field(default_factory=ExtensionsFilterWidget)
     filesize: MinMaxFilterWidget = field(default_factory=SizeFilterWidget)
@@ -65,6 +67,7 @@ class UIBuilder:
 
         filter_widget = QWidget()
         filter_layout = QVBoxLayout(filter_widget)
+        filter_layout.addWidget(self.directory_name_filter)
         filter_layout.addWidget(self.keywords)
         filter_layout.addWidget(self.extensions)
 
@@ -117,6 +120,7 @@ class UIBuilder:
             folder=self.folders.get_config(),
             filename=self.filename.get_config(),
             transfermode=self.transfermode.get_config(),
+            directory_name=self.directory_name_filter.get_config(),
             keyword=self.keywords.get_config(),
             extension=self.extensions.get_config(),
             filesize=self.filesize.get_config(),
