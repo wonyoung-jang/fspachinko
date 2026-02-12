@@ -1,12 +1,14 @@
 """Settings handling for GUI."""
 
+import json
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from os.path import dirname, exists, isfile
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
-from ..core import get_profile_path, load_json, save_json
+from ..core import get_profile_path
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 
 
@@ -32,11 +34,20 @@ class ProfileManager:
                 items = [child.itemText(i) for i in range(child.count())]
                 data[f"{key}_items"] = items
 
-        save_json(self.current_profile, data)
+        path = self.current_profile
+        os.makedirs(dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            data = dict(sorted(data.items(), key=lambda x: x[0]))
+            json.dump(data, f, indent=4)
 
     def open_profile(self, parent: QWidget) -> None:
         """Recursively load settings for all child widgets."""
-        data = load_json(self.current_profile)
+        path = self.current_profile
+        data = {}
+        if not (exists(path) and isfile(path)):
+            return
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
 
         for key, child in iter_custom_widget(parent):
             if isinstance(child, QComboBox):

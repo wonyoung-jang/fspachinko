@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from filecmp import cmp
 from os.path import basename, dirname, exists, isfile, join, splitext
 from subprocess import DEVNULL, CalledProcessError, check_output
-from typing import Any
 
 import fspachinko
 
@@ -24,7 +23,12 @@ def initialize_logging(path: str | None = None) -> None:
     if path is None:
         path = get_config_path(DefaultPath.LOGGING)
 
-    data = load_json(path)
+    data = {}
+    if not (exists(path) and isfile(path)):
+        return
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+
     logging.config.dictConfig(data)
 
 
@@ -32,11 +36,11 @@ def initialize_logging(path: str | None = None) -> None:
 class DataPaths:
     """Dataclass for general directories used."""
 
-    pkg: str = os.path.dirname(fspachinko.__file__)
-    data: str = os.path.join(pkg, "_data")
-    icons: str = os.path.join(data, "icons")
-    configs: str = os.path.join(data, "configs")
-    profiles: str = os.path.join(data, "gui_profiles")
+    pkg: str = dirname(fspachinko.__file__)
+    data: str = join(pkg, "_data")
+    icons: str = join(data, "icons")
+    configs: str = join(data, "configs")
+    profiles: str = join(data, "gui_profiles")
 
     def __post_init__(self) -> None:
         """Ensure necessary directories exist."""
@@ -44,15 +48,15 @@ class DataPaths:
 
     def get_icon(self, path: str) -> str:
         """Get the full path to an icon."""
-        return os.path.join(self.icons, path)
+        return join(self.icons, path)
 
     def get_config(self, path: str) -> str:
         """Get the full path to a config file."""
-        return os.path.join(self.configs, path)
+        return join(self.configs, path)
 
     def get_profile(self, path: str) -> str:
         """Get the full path to a profile file."""
-        return os.path.join(self.profiles, path)
+        return join(self.profiles, path)
 
 
 _datapaths = DataPaths()
@@ -121,23 +125,6 @@ def are_paths_equal(path1: str, path2: str) -> bool:
     if cmp(path1, path2, shallow=True):
         return True
     return cmp(path1, path2, shallow=False)
-
-
-def load_json(path: str) -> dict[str, Any]:
-    """Load JSON data from a file and return as a dictionary."""
-    if not (exists(path) and isfile(path)):
-        return {}
-
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_json(path: str, data: dict[str, Any], **kwargs: Any) -> None:
-    """Save a dictionary as JSON data to a file."""
-    os.makedirs(dirname(path) or ".", exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        data = dict(sorted(data.items(), key=lambda item: item[0]))
-        json.dump(data, f, indent=4, **kwargs)
 
 
 def get_stem_and_ext(path: str) -> tuple[str, str]:

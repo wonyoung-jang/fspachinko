@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from .config import Filename
     from .context import EngineContext
-    from .interfaces import Observer
+    from .observer import Observer
     from .validator import FileValidator
     from .walker import FSWalker
 

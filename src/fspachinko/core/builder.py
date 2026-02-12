@@ -67,7 +67,6 @@ def build_engine(m: ConfigModel) -> Engine:
     walker = PachinkoFSWalker(
         root=m.root,
         quota=quota,
-        validator=validator,
         should_follow_symlink=m.options.should_follow_symlink,
     )
 

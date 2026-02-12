@@ -164,7 +164,7 @@ class FileCountWidget(BaseGroupBox):
         set_qt_name(self.radio_fixed, f"{name}_fixed_chk")
         set_qt_tips(self.radio_fixed, "Select fixed file count.")
 
-        self.spin_fixed = QSpinBox(suffix=" files")
+        self.spin_fixed = QSpinBox(suffix=" files", minimum=1)
         set_qt_name(self.spin_fixed, f"{name}_fixed_val")
         set_qt_tips(self.spin_fixed, "Number of files to copy.")
 
@@ -172,11 +172,11 @@ class FileCountWidget(BaseGroupBox):
         set_qt_name(self.radio_rand, f"{name}_rand_chk")
         set_qt_tips(self.radio_rand, "Select random file count.")
 
-        self.spin_min_rand = QSpinBox(prefix="Min: ")
+        self.spin_min_rand = QSpinBox(prefix="Min: ", minimum=1)
         set_qt_name(self.spin_min_rand, f"{name}_rand_min")
         set_qt_tips(self.spin_min_rand, "Minimum random file count.")
 
-        self.spin_max_rand = QSpinBox(prefix="Max: ")
+        self.spin_max_rand = QSpinBox(prefix="Max: ", minimum=1)
         set_qt_name(self.spin_max_rand, f"{name}_rand_max")
         set_qt_tips(self.spin_max_rand, "Maximum random file count.")
 
@@ -215,7 +215,7 @@ class FolderCreatorWidget(BaseGroupBox):
         """Initialize the create folders widget."""
         super().__init__(title=title, name=name, checkable=True)
 
-        self.spinbox_folder_count = QSpinBox(suffix=" folders")
+        self.spinbox_folder_count = QSpinBox(suffix=" folders", minimum=1)
         set_qt_name(self.spinbox_folder_count, f"{name}_count")
         set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
 

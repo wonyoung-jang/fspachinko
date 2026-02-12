@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from .context import DiversityQuota
-    from .validator import FileValidator
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +104,6 @@ class PachinkoFSWalker(FSWalker):
 
     root: str
     quota: DiversityQuota
-    validator: FileValidator
     should_follow_symlink: bool
     board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 

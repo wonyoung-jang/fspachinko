@@ -60,7 +60,6 @@ class UIBuilder:
         output_layout = QHBoxLayout(output_widget)
         output_layout.addWidget(self.filecount)
         output_layout.addWidget(self.folders)
-        output_layout.addWidget(self.filename)
 
         filter_widget = QWidget()
         filter_layout = QVBoxLayout(filter_widget)
@@ -71,6 +70,7 @@ class UIBuilder:
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.addWidget(output_widget)
+        left_layout.addWidget(self.filename)
         left_layout.addWidget(filter_widget)
 
         # Right widget

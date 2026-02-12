@@ -21,12 +21,12 @@ class CentralWidget(QWidget):
         """Initialize the main window."""
         super().__init__()
         set_qt_name(self, GUIName.CENTRAL_WIDGET)
-        self.threadpool: QThreadPool = QThreadPool()
+        self.original_window_title = ""
+        self.thread_pool = QThreadPool()
         self.ui = UIBuilder()
         layout = self.ui.build_layout()
         self.setLayout(layout)
         self.progress_binder = ProgressBinder(self.ui.progress, self.ui.logging)
-        self.original_window_title = ""
 
     @Slot()
     def on_start(self) -> None:
@@ -44,7 +44,7 @@ class CentralWidget(QWidget):
         self.progress_binder.count.connect(self.update_title_progress)
         self.progress_binder.finished.connect(self.on_finished)
         self.toggle_ui(is_enabled=False)
-        self.threadpool.start(self.worker)
+        self.thread_pool.start(self.worker)
 
     @Slot()
     def on_stop(self) -> None:
