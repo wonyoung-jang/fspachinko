@@ -7,16 +7,8 @@ from os.path import basename, dirname, exists
 from random import randint
 from typing import TYPE_CHECKING
 
-from ..core import (
-    INVALID_FILENAME_CHARS,
-    DateTimeStamp,
-    FilenameTemplateMapKey,
-    SafeDict,
-    are_paths_equal,
-    calc_unique_path_name,
-    convert_string_to_list,
-    get_stem_and_ext,
-)
+from .constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKey
+from .helpers import SafeDict, are_paths_equal, calc_unique_path_name, convert_string_to_list, get_stem_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,6 +21,7 @@ if TYPE_CHECKING:
         MinMaxModel,
         SizeLimitModel,
     )
+    from .timestamp import DateTimeStamp
 
 
 @dataclass(slots=True)

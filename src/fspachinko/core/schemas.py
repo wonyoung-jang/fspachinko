@@ -4,7 +4,7 @@ import os
 
 from pydantic import BaseModel, field_validator
 
-from ..core import TransferMode
+from .constants import TransferMode
 
 
 class FilecountModel(BaseModel):

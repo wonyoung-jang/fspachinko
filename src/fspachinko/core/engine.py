@@ -10,8 +10,9 @@ if TYPE_CHECKING:
     import os
     from collections.abc import Callable
 
-    from ..core import Filename, Observer
+    from .config import Filename
     from .destination import JobRequest, JobRequestFactory
+    from .interfaces import Observer
     from .state import EngineContext
     from .validator import FileValidator
     from .walker import FSWalker

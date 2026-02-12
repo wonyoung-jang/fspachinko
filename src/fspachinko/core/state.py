@@ -4,13 +4,15 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..core import DateTimeStamp, StateStatus, convert_byte_to_human_readable_size, remove_directory
+from .constants import StateStatus
+from .helpers import convert_byte_to_human_readable_size, remove_directory
 
 if TYPE_CHECKING:
-    from ..core import Folder, SizeLimit
+    from .config import Folder, SizeLimit
     from .destination import JobRequest
     from .quota import DiversityQuota
     from .reporter import ReportWriter
+    from .timestamp import DateTimeStamp
     from .walker import FSEntry
 
 

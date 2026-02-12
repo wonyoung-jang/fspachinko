@@ -3,12 +3,12 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..core import get_duration
+from .helpers import get_duration
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..core import ListIncludeExclude, MinMax
+    from .config import ListIncludeExclude, MinMax
     from .walker import FSEntry
 
 
