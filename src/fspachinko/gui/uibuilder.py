@@ -25,7 +25,6 @@ from .components import (
     SizeFilterWidget,
     SizeLimitWidget,
     TotalSizeLimitWidget,
-    TransferModeWidget,
 )
 
 
@@ -38,7 +37,6 @@ class UIBuilder:
     filecount: FileCountWidget = field(default_factory=FileCountWidget)
     folders: FolderCreatorWidget = field(default_factory=FolderCreatorWidget)
     filename: FilenameWidget = field(default_factory=FilenameWidget)
-    transfermode: TransferModeWidget = field(default_factory=TransferModeWidget)
     directory_name_filter: ListIncludeExcludeFilterWidget = field(default_factory=DirectoryFilterWidget)
     keywords: ListIncludeExcludeFilterWidget = field(default_factory=KeywordsFilterWidget)
     extensions: ListIncludeExcludeFilterWidget = field(default_factory=ExtensionsFilterWidget)
@@ -61,7 +59,6 @@ class UIBuilder:
         output_widget = QWidget()
         output_layout = QHBoxLayout(output_widget)
         output_layout.addWidget(self.filecount)
-        output_layout.addWidget(self.transfermode)
         output_layout.addWidget(self.folders)
         output_layout.addWidget(self.filename)
 
@@ -119,7 +116,6 @@ class UIBuilder:
             filecount=self.filecount.get_config(),
             folder=self.folders.get_config(),
             filename=self.filename.get_config(),
-            transfermode=self.transfermode.get_config(),
             directory_name=self.directory_name_filter.get_config(),
             keyword=self.keywords.get_config(),
             extension=self.extensions.get_config(),

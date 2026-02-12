@@ -17,7 +17,6 @@ from .schemas import (
     MinMaxModel,
     OptionsModel,
     SizeLimitModel,
-    TransferModeModel,
 )
 
 __all__ = [
@@ -35,5 +34,4 @@ __all__ = [
     "OptionsModel",
     "SizeLimit",
     "SizeLimitModel",
-    "TransferModeModel",
 ]

@@ -21,7 +21,7 @@ class MainWorker(QRunnable):
         self.signals = WorkerSignals()
         observer = GuiObserver(self.signals)
         self.engine: Engine = build_engine(config)
-        self.engine.set_observer(observer)
+        self.engine.observer = observer
 
     @Slot()
     def run(self) -> None:

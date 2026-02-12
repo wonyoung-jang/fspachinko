@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QGroupBox,
+    QLabel,
     QLineEdit,
     QRadioButton,
     QSpinBox,
@@ -50,7 +51,7 @@ def get_widget_value(widget: QWidget) -> Any:
 
     """
     match widget:
-        case QLineEdit():
+        case QLineEdit() | QLabel():
             return widget.text()
         case QComboBox():
             return widget.currentIndex()
@@ -73,7 +74,7 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
 
     """
     match widget:
-        case QLineEdit():
+        case QLineEdit() | QLabel():
             widget.setText(val)
         case QComboBox():
             try:

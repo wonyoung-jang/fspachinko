@@ -4,7 +4,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMenu,
     QProgressBar,
@@ -35,7 +36,6 @@ from ..config import (
     MinMaxModel,
     OptionsModel,
     SizeLimitModel,
-    TransferModeModel,
 )
 from ..core import get_available_transfer_modes
 from ..utils import ByteUnit, FilenameTemplate, IconFilename, TimeUnit, get_icon
@@ -59,26 +59,25 @@ class BaseGroupBox(QGroupBox):
         super().__init__(title=title)
         set_qt_name(self, name)
         self.setCheckable(checkable)
+        self.setFlat(True)
 
 
 class PathSelectorWidget(BaseGroupBox):
     """Handles logic for selecting a path."""
 
-    def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the path selector widget."""
         super().__init__(title=title, name=name)
         self.setAcceptDrops(True)
 
         title_lower = self.title().casefold()
 
-        self.combo = QComboBox()
-        self.combo.addItems(items)
-        set_qt_name(self.combo, f"{name}_combo")
-        set_qt_tips(self.combo, f"Select or enter a path for {title_lower}.")
+        self.label = QLabel()
+        set_qt_name(self.label, f"{name}_label")
+        set_qt_tips(self.label, f"Select the {title_lower} folder.")
 
         icon_browse = QIcon(get_icon(IconFilename.BROWSE))
         icon_open = QIcon(get_icon(IconFilename.OPEN_DIR))
-        icon_delete = QIcon(get_icon(IconFilename.REMOVE))
 
         self.btn_browse = QPushButton()
         self.btn_browse.setIcon(icon_browse)
@@ -92,16 +91,9 @@ class PathSelectorWidget(BaseGroupBox):
         set_qt_name(self.btn_open, f"{name}_open_btn")
         set_qt_tips(self.btn_open, f"Open current {title_lower} folder in file explorer.")
 
-        self.btn_delete = QPushButton()
-        self.btn_delete.setIcon(icon_delete)
-        self.btn_delete.clicked.connect(self.delete_curr_item)
-        set_qt_name(self.btn_delete, f"{name}_delete_btn")
-        set_qt_tips(self.btn_delete, f"Delete current {title_lower} entry.")
-
         layout = QHBoxLayout(self)
-        layout.addWidget(self.combo, stretch=1)
+        layout.addWidget(self.label, stretch=1)
         layout.addWidget(self.btn_browse)
-        layout.addWidget(self.btn_delete)
         layout.addWidget(self.btn_open)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
@@ -114,41 +106,30 @@ class PathSelectorWidget(BaseGroupBox):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if os.path.isdir(path):
-                if self.combo.findText(path) == -1:
-                    self.combo.addItem(path)
-                self.combo.setCurrentText(path)
+                self.label.setText(path)
 
     @Slot()
     def browse(self) -> None:
         """Return the browse button."""
-        currpath = self.combo.currentText() or QDir.homePath()
         d = QFileDialog.getExistingDirectory(
             parent=self,
             caption=f"Select {self.title()}",
-            dir=currpath,
+            dir=self.label.text(),
         )
         if d:
-            if self.combo.findText(d) == -1:
-                self.combo.addItem(d)
-            self.combo.setCurrentText(d)
-
-    @Slot()
-    def delete_curr_item(self) -> None:
-        """Delete the currently selected item."""
-        if self.combo.count() > 0:
-            self.combo.removeItem(self.combo.currentIndex())
+            self.label.setText(d)
 
     @Slot()
     def open(self) -> None:
         """Open the currently selected path in file explorer."""
         try:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(self.combo.currentText()))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self.label.text()))
         except Exception:
-            logger.exception("Failed to open path")
+            logger.exception("Failed to open path %s", self.label.text())
 
     def get_config(self) -> str:
         """Return clean data for the config."""
-        return self.combo.currentText()
+        return self.label.text()
 
 
 class RootPathSelectorWidget(PathSelectorWidget):
@@ -156,7 +137,7 @@ class RootPathSelectorWidget(PathSelectorWidget):
 
     def __init__(self) -> None:
         """Initialize the root path selector widget."""
-        super().__init__(title="Root", name="root", items=[QDir.rootPath()])
+        super().__init__(title="Root", name="root")
 
 
 class DestPathSelectorWidget(PathSelectorWidget):
@@ -164,7 +145,7 @@ class DestPathSelectorWidget(PathSelectorWidget):
 
     def __init__(self) -> None:
         """Initialize the destination path selector widget."""
-        super().__init__(title="Destination", name="dest", items=[QDir.homePath()])
+        super().__init__(title="Destination", name="dest")
 
 
 class FileCountWidget(BaseGroupBox):
@@ -289,26 +270,6 @@ class FilenameWidget(BaseGroupBox):
         """Return clean data for the config."""
         val = self.edit_template.text() or "{original}"
         return FilenameModel(template=val)
-
-
-class TransferModeWidget(BaseGroupBox):
-    """Handles logic for mode settings."""
-
-    def __init__(self, title: str = "Transfer Mode", name: str = "transfermode") -> None:
-        """Initialize the mode settings widget."""
-        super().__init__(title, name)
-
-        self.combo_mode = QComboBox()
-        self.combo_mode.addItems(get_available_transfer_modes())
-        set_qt_name(self.combo_mode, f"{name}_mode")
-        set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.combo_mode)
-
-    def get_config(self) -> TransferModeModel:
-        """Return clean data for the config."""
-        return TransferModeModel(transfer_mode=self.combo_mode.currentText())
 
 
 class ListIncludeExcludeFilterWidget(BaseGroupBox):
@@ -478,6 +439,11 @@ class OptionsWidget(BaseGroupBox):
         """Initialize the options widget."""
         super().__init__(title=title, name=name)
 
+        self.combo_mode = QComboBox()
+        self.combo_mode.addItems(get_available_transfer_modes())
+        set_qt_name(self.combo_mode, f"{name}_mode")
+        set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
+
         self.spin_max_per_folder = QSpinBox()
         self.spin_max_per_folder.setSpecialValueText("Unlimited")
         set_qt_name(self.spin_max_per_folder, f"{name}_max_per_folder")
@@ -504,6 +470,7 @@ class OptionsWidget(BaseGroupBox):
         set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
 
         layout = QFormLayout(self)
+        layout.addRow("Transfer mode", self.combo_mode)
         layout.addRow("Max from one folder", self.spin_max_per_folder)
         layout.addRow("Ensure unique folders", self.chk_unique_folders)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
