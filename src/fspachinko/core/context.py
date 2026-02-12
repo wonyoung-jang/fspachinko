@@ -1,19 +1,113 @@
 """Engine state classes."""
 
+import os
+from collections import Counter, deque
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from os.path import dirname
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from .constants import StateStatus
+from .constants import DateTimeFormat, StateStatus
 from .helpers import convert_byte_to_human_readable_size, remove_directory
 
 if TYPE_CHECKING:
+    from os import DirEntry
+
     from .config import Folder, SizeLimit
-    from .destination import JobRequest
-    from .quota import DiversityQuota
-    from .reporter import ReportWriter
-    from .timestamp import DateTimeStamp
+    from .engine import JobRequest
     from .walker import FSEntry
+
+
+@dataclass(slots=True)
+class DateTimeStamp:
+    """Provider for current date and time."""
+
+    date: str = ""
+    time: str = ""
+    date_time: str = ""
+    date_time_report_str: str = ""
+
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        self.reset()
+
+    def reset(self) -> None:
+        """Refresh the current date and time."""
+        now = datetime.now(tz=UTC)
+        self.date = now.strftime(DateTimeFormat.DATE)
+        self.time = now.strftime(DateTimeFormat.TIME)
+        self.date_time = f"{self.date}--{self.time}"
+        self.date_time_report_str = now.strftime(DateTimeFormat.DATETIME)
+
+
+@dataclass(slots=True)
+class DiversityQuota:
+    """Manages rules for diversity (weights) and uniqueness."""
+
+    max_per_dir: int | float
+    is_create_unique_folders: bool
+
+    locked_dir: set[str] = field(default_factory=set)
+    locked_file: set[DirEntry] = field(default_factory=set)
+    _dircount: Counter[str] = field(default_factory=Counter)
+
+    def reset(self) -> None:
+        """Reset the quota state for a new folder."""
+        self._dircount.clear()
+        self.locked_dir.clear()
+        if not self.is_create_unique_folders:
+            self.locked_file.clear()
+
+    def update(self, entry: FSEntry) -> None:
+        """Update the quota state after processing a file."""
+        parent = dirname(entry.path)
+        self._dircount[parent] += 1
+        if self._dircount[parent] >= self.max_per_dir:
+            self.locked_dir.add(parent)
+
+
+@dataclass(slots=True)
+class ReportWriter:
+    """ReportWriter class."""
+
+    root: str
+    dtstamp: DateTimeStamp
+    buffer: deque[str] = field(default_factory=deque)
+    dest: str = field(init=False)
+
+    def reset(self, dest: str) -> None:
+        """Initialize reporter for a new run."""
+        self.dest = dest
+
+    def record(self, message: str) -> None:
+        """Add a message to the buffer."""
+        self.buffer.append(f"{message}\n")
+
+    def generate_report(self, status: str, runtime: str, size: str) -> str:
+        """Generate the header report string."""
+        report = (
+            f"\n{status}"
+            "\n------------------------------------------------------------------------\n"
+            f"Timestamp:    {self.dtstamp.date_time_report_str}\n"
+            f"Root:         {self.root}\n"
+            f"Destination:  {self.dest}\n"
+            f"Size:         {size}\n"
+            f"Runtime:      {runtime}\n"
+            "\n========================================================================\n"
+        )
+        self.buffer.appendleft(report)
+        return report
+
+    def save(self) -> None:
+        """Save the report to file."""
+        report_path = os.path.join(self.dest, f"!_{os.path.basename(self.dest)}_report.txt")
+        mode = "a" if os.path.exists(report_path) else "w"
+        with open(report_path, mode=mode, encoding="utf-8") as f:
+            while self.buffer:
+                line = self.buffer.popleft()
+                f.write(line)
+            f.write("\n\n")
 
 
 @dataclass(slots=True)
@@ -32,7 +126,6 @@ class OutputDirStat:
     file_count: int = 0
     curr_size: int = 0
     start_time: float = 0.0
-
     total_size: int = 0
 
     def reset(self) -> None:

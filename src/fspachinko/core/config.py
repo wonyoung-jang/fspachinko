@@ -7,21 +7,100 @@ from os.path import basename, dirname, exists
 from random import randint
 from typing import TYPE_CHECKING
 
-from .constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKey
+from pydantic import BaseModel, field_validator
+
+from .constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKey, TransferMode
 from .helpers import SafeDict, are_paths_equal, calc_unique_path_name, convert_string_to_list, get_stem_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .schemas import (
-        DirectoryModel,
-        FilecountModel,
-        FilenameModel,
-        ListIncludeExcludeModel,
-        MinMaxModel,
-        SizeLimitModel,
-    )
-    from .timestamp import DateTimeStamp
+    from .context import DateTimeStamp
+
+
+class FilecountModel(BaseModel):
+    """Model for file count configuration."""
+
+    count: int = 0
+    is_rand_enabled: bool = False
+    rand_min: int = 0
+    rand_max: int = 0
+
+
+class DirectoryModel(BaseModel):
+    """Model for directory creation configuration."""
+
+    is_enabled: bool = False
+    name: str = ""
+    count: int = 1
+
+
+class FilenameModel(BaseModel):
+    """Model for file renaming."""
+
+    template: str = "{original}"
+
+
+class ListIncludeExcludeModel(BaseModel):
+    """Model for list filtering."""
+
+    is_enabled: bool = True
+    should_include: bool = True
+    text: str = ""
+
+
+class MinMaxModel(BaseModel):
+    """Model for size filter."""
+
+    is_enabled: bool = False
+    minimum: float = 0.0
+    maximum: float = 0.0
+    unit: str = ""
+
+
+class SizeLimitModel(BaseModel):
+    """Model for output folder size limits."""
+
+    is_enabled: bool = False
+    size_limit: float = 0.0
+    unit: str = ""
+
+
+class OptionsModel(BaseModel):
+    """Model for additional options."""
+
+    transfer_mode: str = TransferMode.SYMLINK
+    max_per_folder: int = 0
+    is_create_unique_folders: bool = False
+    should_follow_symlink: bool = False
+    is_dry_run: bool = True
+    rng_seed: int | str | bytes | None = None
+
+
+class ConfigModel(BaseModel):
+    """Model for  configuration."""
+
+    root: str
+    dest: str
+    filecount: FilecountModel
+    folder: DirectoryModel
+    filename: FilenameModel
+    directory_name: ListIncludeExcludeModel
+    keyword: ListIncludeExcludeModel
+    extension: ListIncludeExcludeModel
+    filesize: MinMaxModel
+    duration: MinMaxModel
+    folder_size_limit: SizeLimitModel
+    total_size_limit: SizeLimitModel
+    options: OptionsModel
+
+    @field_validator("root", "dest")
+    @classmethod
+    def is_absolute(cls, val: str) -> str:
+        """Ensure root and dest paths are absolute."""
+        if not os.path.isabs(val):
+            return os.path.realpath(val)
+        return val
 
 
 @dataclass(slots=True)

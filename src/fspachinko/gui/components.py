@@ -41,7 +41,7 @@ from ..core import (
     SizeLimitModel,
     TimeUnit,
     get_available_transfer_modes,
-    get_icon,
+    get_icon_path,
 )
 from .qthelpers import set_qt_name, set_qt_tips
 
@@ -80,8 +80,8 @@ class PathSelectorWidget(BaseGroupBox):
         set_qt_name(self.label, f"{name}_label")
         set_qt_tips(self.label, f"Select the {title_lower} folder.")
 
-        icon_browse = QIcon(get_icon(IconFilename.BROWSE))
-        icon_open = QIcon(get_icon(IconFilename.OPEN_DIR))
+        icon_browse = QIcon(get_icon_path(IconFilename.BROWSE))
+        icon_open = QIcon(get_icon_path(IconFilename.OPEN_DIR))
 
         self.btn_browse = QPushButton()
         self.btn_browse.setIcon(icon_browse)

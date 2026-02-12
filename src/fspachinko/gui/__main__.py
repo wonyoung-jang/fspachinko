@@ -7,7 +7,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
-from ..core import AppSetting, IconFilename, get_icon, initialize_logging
+from ..core import AppSetting, IconFilename, get_icon_path, initialize_logging
 from .mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def main() -> None:
     logger.info("Start: fspachinko GUI")
 
     app = QApplication()
-    app.setWindowIcon(QIcon(get_icon(IconFilename.WINDOW)))
+    app.setWindowIcon(QIcon(get_icon_path(IconFilename.WINDOW)))
     apply_stylesheet(app, theme="dark_purple.xml", extra={"density_scale": "-2"})
 
     window = MainWindow()

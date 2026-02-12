@@ -2,12 +2,20 @@
 
 from .builder import build_engine
 from .config import (
+    ConfigModel,
+    DirectoryModel,
     Filecount,
+    FilecountModel,
     Filename,
+    FilenameModel,
     Folder,
     ListIncludeExclude,
+    ListIncludeExcludeModel,
     MinMax,
+    MinMaxModel,
+    OptionsModel,
     SizeLimit,
+    SizeLimitModel,
 )
 from .constants import (
     DURATION_CMD,
@@ -34,35 +42,26 @@ from .constants import (
     TimeUnit,
     TransferMode,
 )
-from .datapaths import DataPaths, get_config, get_icon, get_profile
+from .context import DateTimeStamp, DiversityQuota, ReportWriter
 from .engine import Engine
 from .helpers import (
+    DataPaths,
     SafeDict,
     are_paths_equal,
     calc_unique_path_name,
     convert_byte_to_human_readable_size,
     convert_string_to_list,
+    get_config_path,
     get_duration,
+    get_icon_path,
+    get_profile_path,
     get_stem_and_ext,
+    initialize_logging,
     load_json,
     remove_directory,
     save_json,
 )
 from .interfaces import Observer
-from .loggers import initialize_logging
-from .quota import DiversityQuota
-from .reporter import ReportWriter
-from .schemas import (
-    ConfigModel,
-    DirectoryModel,
-    FilecountModel,
-    FilenameModel,
-    ListIncludeExcludeModel,
-    MinMaxModel,
-    OptionsModel,
-    SizeLimitModel,
-)
-from .timestamp import DateTimeStamp
 from .transfer import fetch_transfer_strategy, get_available_transfer_modes
 from .validator import FileValidator
 from .walker import FSWalker
@@ -121,10 +120,10 @@ __all__ = [
     "convert_string_to_list",
     "fetch_transfer_strategy",
     "get_available_transfer_modes",
-    "get_config",
+    "get_config_path",
     "get_duration",
-    "get_icon",
-    "get_profile",
+    "get_icon_path",
+    "get_profile_path",
     "get_stem_and_ext",
     "initialize_logging",
     "load_json",

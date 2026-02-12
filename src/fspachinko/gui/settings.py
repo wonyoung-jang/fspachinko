@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
-from ..core import get_profile, load_json, save_json
+from ..core import get_profile_path, load_json, save_json
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 
 
@@ -18,7 +18,7 @@ class ProfileManager:
 
     def set_current(self, profile: str) -> None:
         """Set the current profile name."""
-        self.current_profile = get_profile(profile)
+        self.current_profile = get_profile_path(profile)
 
     def save_profile(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""

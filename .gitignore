@@ -126,3 +126,4 @@ output/
 *_profiles/
 *_output/
 .github/*.md
+tach.toml

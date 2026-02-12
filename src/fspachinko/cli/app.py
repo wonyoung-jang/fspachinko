@@ -4,7 +4,7 @@ import logging
 
 from cyclopts import App
 
-from ..core import ConfigModel, DefaultPath, build_engine, get_config
+from ..core import ConfigModel, DefaultPath, build_engine, get_config_path
 from .observer import ConsoleObserver
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def run(config: str = "") -> None:
 
     """
     if not config:
-        config = get_config(DefaultPath.CONFIG)
+        config = get_config_path(DefaultPath.CONFIG)
 
     try:
         with open(config, encoding="utf-8") as f:
