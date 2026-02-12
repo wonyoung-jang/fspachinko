@@ -5,7 +5,7 @@ from os import mkdir
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
 
 @dataclass(slots=True)
@@ -30,6 +30,6 @@ class JobRequestFactory:
         mkdir(dest)
         return JobRequest(target=self.get_file_count(), dest=dest)
 
-    def generate(self) -> Iterator[JobRequest]:
+    def generate(self) -> list[JobRequest]:
         """Generate multiple job requests."""
-        yield from [self.create() for _ in range(self.dir_count)]
+        return [self.create() for _ in range(self.dir_count)]

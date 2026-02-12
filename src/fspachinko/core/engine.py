@@ -10,8 +10,7 @@ if TYPE_CHECKING:
     import os
     from collections.abc import Callable
 
-    from ..config import Filename
-    from ..utils import Observer
+    from ..core import Filename, Observer
     from .destination import JobRequest, JobRequestFactory
     from .state import EngineContext
     from .validator import FileValidator
@@ -31,10 +30,6 @@ class Engine:
     job_request_factory: JobRequestFactory
     observer: Observer = field(init=False)
 
-    def set_observer(self, observer: Observer) -> None:
-        """Set the observer for the engine."""
-        self.observer: Observer = observer
-
     def request_stop(self) -> None:
         """Request to stop the engine."""
         self.context.is_stop_requested = True
@@ -44,22 +39,22 @@ class Engine:
         self.observer.on_progress_total(self.job_request_factory.dir_count)
 
         for request in self.job_request_factory.generate():
-            self.process_directory(request)
+            self.process_request(request)
 
         self.observer.on_finished()
 
-    def process_directory(self, request: JobRequest) -> None:
+    def process_request(self, request: JobRequest) -> None:
         """Run processing for a single folder."""
         self.observer.on_progress(request.target)
         self.context.prepare(request.dest)
 
-        self.transfer_directory(request)
+        self.transfer_dir(request)
 
         finalized_msg = self.context.finalize(request)
         self.report(finalized_msg)
         self.observer.on_count_total()
 
-    def transfer_directory(self, request: JobRequest) -> None:
+    def transfer_dir(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
         target, dest = request.target, request.dest
         if self.context.should_stop(target):

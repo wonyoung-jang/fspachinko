@@ -7,7 +7,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
-from ..utils import AppSetting, IconFilename, get_icon, initialize_logging
+from ..core import AppSetting, IconFilename, get_icon, initialize_logging
 from .mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ import logging
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
-from ..utils import PERCENTAGE_100, GUIName
+from ..core import PERCENTAGE_100, GUIName
 from .components import ProgressBinder
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder

@@ -2,7 +2,7 @@
 
 import logging
 
-from ..utils import Observer
+from ..core import Observer
 
 logger = logging.getLogger(__name__)
 

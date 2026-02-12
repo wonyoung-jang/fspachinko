@@ -5,8 +5,18 @@ from typing import TYPE_CHECKING
 
 from fspachinko.core.destination import JobRequestFactory
 
-from ..config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
-from ..utils import SIZE_MAP, TIME_MAP, DateTimeStamp, ReStrFmt
+from ..core import (
+    SIZE_MAP,
+    TIME_MAP,
+    DateTimeStamp,
+    Filecount,
+    Filename,
+    Folder,
+    ListIncludeExclude,
+    MinMax,
+    ReStrFmt,
+    SizeLimit,
+)
 from .engine import Engine
 from .quota import DiversityQuota
 from .reporter import ReportWriter
@@ -16,7 +26,7 @@ from .validator import FileValidator
 from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
-    from ..config import ConfigModel
+    from . import ConfigModel
 
 
 def build_file_validator(m: ConfigModel) -> FileValidator:
@@ -78,11 +88,11 @@ def build_engine(m: ConfigModel) -> Engine:
     # Build Engine
     filecount = Filecount.from_model(m.filecount)
     filename = Filename.from_model(m.filename, dtstamp=dtstamp)
-    do_transfer_strategy = fetch_transfer_strategy(m.transfermode.transfer_mode)
+    do_transfer_strategy = fetch_transfer_strategy(m.options.transfer_mode)
 
     job_request_factory = JobRequestFactory(
-        get_file_count=filecount.get_file_count,
-        determine_dest_dirname=folder.determine_dest_dirname,
+        get_file_count=filecount.get_count,
+        determine_dest_dirname=folder.determine,
         dir_count=m.folder.count,
     )
     return Engine(

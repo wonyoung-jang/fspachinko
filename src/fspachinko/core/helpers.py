@@ -86,12 +86,12 @@ def load_json(path: str) -> dict[str, Any]:
         return json.load(f)
 
 
-def save_json(path: str, data: dict[str, Any]) -> None:
+def save_json(path: str, data: dict[str, Any], **kwargs: Any) -> None:
     """Save a dictionary as JSON data to a file."""
     os.makedirs(dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         data = dict(sorted(data.items(), key=lambda item: item[0]))
-        json.dump(data, f, indent=4)
+        json.dump(data, f, indent=4, **kwargs)
 
 
 def get_stem_and_ext(path: str) -> tuple[str, str]:

@@ -7,7 +7,7 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from ..utils import FileError, TransferMode
+from ..core import FileError, TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable

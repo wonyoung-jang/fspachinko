@@ -7,7 +7,7 @@ from os.path import basename, dirname, exists
 from random import randint
 from typing import TYPE_CHECKING
 
-from ..utils import (
+from ..core import (
     INVALID_FILENAME_CHARS,
     DateTimeStamp,
     FilenameTemplateMapKey,
@@ -39,6 +39,11 @@ class Filecount:
     is_rand_enabled: bool
     rand_min: int
     rand_max: int
+    get_count: Callable[[], int] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post init to set get_count function."""
+        self.get_count = self.get_count_rand if self.is_rand_enabled else lambda: self.count
 
     @classmethod
     def from_model(cls, m: FilecountModel) -> Filecount:
@@ -50,11 +55,9 @@ class Filecount:
             rand_max=m.rand_max,
         )
 
-    def get_file_count(self) -> int:
+    def get_count_rand(self) -> int:
         """Get the file count based on configuration."""
-        if self.is_rand_enabled:
-            return randint(self.rand_min, self.rand_max)
-        return self.count
+        return randint(self.rand_min, self.rand_max)
 
 
 @dataclass(slots=True)
@@ -114,6 +117,11 @@ class Folder:
     is_enabled: bool
     dest: str
     name: str
+    determine: Callable[[], str] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post init to set determine_dest function."""
+        self.determine = lambda: calc_unique_path_name(self.dest, self.name) if self.is_enabled else lambda: self.dest
 
     @classmethod
     def from_model(cls, m: DirectoryModel, dest: str) -> Folder:
@@ -123,12 +131,6 @@ class Folder:
             dest=dest,
             name=m.name,
         )
-
-    def determine_dest_dirname(self) -> str:
-        """Calculate the destination directory name based on configuration."""
-        if not self.is_enabled:
-            return self.dest
-        return calc_unique_path_name(self.dest, self.name)
 
 
 @dataclass(slots=True)
@@ -209,5 +211,4 @@ class SizeLimit:
 
     def get_percent_str(self, size: int) -> str:
         """Get the percentage of the size limit used."""
-        percent = (size / self.size_limit) * 100
-        return f"{percent:.2f}%"
+        return f"{size * 100 / self.size_limit:.2f}%"

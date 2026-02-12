@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
-from ..utils import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, get_stem_and_ext
+from ..core import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, get_stem_and_ext
 from .actions import Actions
 from .centralwidget import CentralWidget
 from .qthelpers import set_qt_name

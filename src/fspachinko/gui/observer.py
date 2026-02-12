@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Signal
 
-from ..utils import Observer
+from ..core import Observer
 
 
 class WorkerSignals(QObject):

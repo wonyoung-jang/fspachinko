@@ -8,8 +8,7 @@ from ..core import build_engine
 from .observer import GuiObserver, WorkerSignals
 
 if TYPE_CHECKING:
-    from ..config import ConfigModel
-    from ..core import Engine
+    from ..core import ConfigModel, Engine
 
 
 class MainWorker(QRunnable):

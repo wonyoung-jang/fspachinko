@@ -4,7 +4,7 @@ import os
 
 from pydantic import BaseModel, field_validator
 
-from ..utils import TransferMode
+from ..core import TransferMode
 
 
 class FilecountModel(BaseModel):
@@ -28,12 +28,6 @@ class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     template: str = "{original}"
-
-
-class TransferModeModel(BaseModel):
-    """Model for mode configuration."""
-
-    transfer_mode: str = TransferMode.SYMLINK
 
 
 class ListIncludeExcludeModel(BaseModel):
@@ -64,6 +58,7 @@ class SizeLimitModel(BaseModel):
 class OptionsModel(BaseModel):
     """Model for additional options."""
 
+    transfer_mode: str = TransferMode.SYMLINK
     max_per_folder: int = 0
     is_create_unique_folders: bool = False
     should_follow_symlink: bool = False
@@ -79,7 +74,6 @@ class ConfigModel(BaseModel):
     filecount: FilecountModel
     folder: DirectoryModel
     filename: FilenameModel
-    transfermode: TransferModeModel
     directory_name: ListIncludeExcludeModel
     keyword: ListIncludeExcludeModel
     extension: ListIncludeExcludeModel

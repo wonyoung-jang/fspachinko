@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtGui import QAction, QIcon
 
-from ..utils import IconFilename, get_icon
+from ..core import IconFilename, get_icon
 from .components import set_qt_tips
 
 

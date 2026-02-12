@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
-from ..utils import get_profile, load_json, save_json
+from ..core import get_profile, load_json, save_json
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 
 

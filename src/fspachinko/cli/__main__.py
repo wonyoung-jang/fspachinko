@@ -2,7 +2,7 @@
 
 import logging
 
-from ..utils import initialize_logging
+from ..core import initialize_logging
 from .app import app
 
 logger = logging.getLogger(__name__)

@@ -46,3 +46,6 @@ docs = [
     "mkdocstrings-python>=2.0.1",
     "zensical>=0.0.19",
 ]
+tests = [
+    "pytest>=9.0.2",
+]

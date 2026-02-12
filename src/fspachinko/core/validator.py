@@ -3,12 +3,12 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..utils import get_duration
+from ..core import get_duration
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..config import ListIncludeExclude, MinMax
+    from ..core import ListIncludeExclude, MinMax
     from .walker import FSEntry
 
 
@@ -36,7 +36,7 @@ class FileValidator:
 
     def is_valid(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return not any(not is_valid(entry) for is_valid in self.validators)
+        return all(is_valid(entry) for is_valid in self.validators)
 
     def _is_valid_directory_name(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""

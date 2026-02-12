@@ -4,9 +4,7 @@ import logging
 
 from cyclopts import App
 
-from ..config import ConfigModel
-from ..core import build_engine
-from ..utils import DefaultPath, get_config
+from ..core import ConfigModel, DefaultPath, build_engine, get_config
 from .observer import ConsoleObserver
 
 logger = logging.getLogger(__name__)

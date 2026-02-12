@@ -28,17 +28,21 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..config import (
+from ..core import (
+    ByteUnit,
     DirectoryModel,
     FilecountModel,
     FilenameModel,
+    FilenameTemplate,
+    IconFilename,
     ListIncludeExcludeModel,
     MinMaxModel,
     OptionsModel,
     SizeLimitModel,
+    TimeUnit,
+    get_available_transfer_modes,
+    get_icon,
 )
-from ..core import get_available_transfer_modes
-from ..utils import ByteUnit, FilenameTemplate, IconFilename, TimeUnit, get_icon
 from .qthelpers import set_qt_name, set_qt_tips
 
 if TYPE_CHECKING:

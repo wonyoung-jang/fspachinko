@@ -1,11 +1,12 @@
 """Reporter for process."""
 
 import os
+from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..utils import DateTimeStamp
+    from ..core import DateTimeStamp
 
 
 @dataclass(slots=True)
@@ -14,12 +15,11 @@ class ReportWriter:
 
     root: str
     dtstamp: DateTimeStamp
-    buffer: list[str] = field(default_factory=list)
+    buffer: deque[str] = field(default_factory=deque)
     dest: str = field(init=False)
 
     def reset(self, dest: str) -> None:
         """Initialize reporter for a new run."""
-        self.buffer.clear()
         self.dest = dest
 
     def record(self, message: str) -> None:
@@ -35,10 +35,10 @@ class ReportWriter:
             f"Root:         {self.root}\n"
             f"Destination:  {self.dest}\n"
             f"Size:         {size}\n"
-            f"Runtime:      {runtime}s\n"
+            f"Runtime:      {runtime}\n"
             "\n========================================================================\n"
         )
-        self.buffer.insert(0, report)
+        self.buffer.appendleft(report)
         return report
 
     def save(self) -> None:
@@ -46,5 +46,7 @@ class ReportWriter:
         report_path = os.path.join(self.dest, f"!_{os.path.basename(self.dest)}_report.txt")
         mode = "a" if os.path.exists(report_path) else "w"
         with open(report_path, mode=mode, encoding="utf-8") as f:
-            f.writelines(self.buffer)
+            while self.buffer:
+                line = self.buffer.popleft()
+                f.write(line)
             f.write("\n\n")
