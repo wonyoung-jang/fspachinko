@@ -1,5 +1,5 @@
 {
-    "root": "C:/",
+    "root": "E:/",
     "dest": "fspachinko_output/",
     "filecount": {
         "count": 20,
@@ -10,40 +10,37 @@
     "folder": {
         "is_enabled": true,
         "name": "test_folder_output",
-        "count": 10
+        "count": 5
     },
     "filename": {
         "template": "{original}"
     },
-    "transfermode": {
-        "transfer_mode": "Symlink"
-    },
     "directory_name": {
-        "is_enabled": true,
+        "is_enabled": false,
         "should_include": true,
         "text": ""
     },
     "keyword": {
-        "is_enabled": true,
+        "is_enabled": false,
         "should_include": true,
         "text": ""
     },
     "extension": {
         "is_enabled": true,
         "should_include": true,
-        "text": "wav"
+        "text": "wav, mp3"
     },
     "filesize": {
-        "is_enabled": false,
+        "is_enabled": true,
         "minimum": 0.0,
-        "maximum": 0.0,
+        "maximum": 1.0,
         "unit": "MB"
     },
     "duration": {
         "is_enabled": false,
         "minimum": 0.0,
-        "maximum": 0.0,
-        "unit": "s"
+        "maximum": 8.0,
+        "unit": "m"
     },
     "folder_size_limit": {
         "is_enabled": false,
@@ -56,9 +53,10 @@
         "unit": "MB"
     },
     "options": {
-        "max_per_folder": 3,
+        "transfer_mode": "Symlink",
+        "max_per_folder": 1,
         "is_create_unique_folders": true,
-        "should_follow_symlink": false,
+        "should_follow_symlink": true,
         "is_dry_run": true,
         "rng_seed": null
     }

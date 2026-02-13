@@ -3,7 +3,7 @@
 import os
 import re
 from dataclasses import dataclass, field
-from os.path import basename, dirname, exists
+from os.path import basename, dirname, exists, isabs, join, realpath
 from random import randint
 from typing import TYPE_CHECKING
 
@@ -26,6 +26,10 @@ class FilecountModel(BaseModel):
     rand_min: int = 0
     rand_max: int = 0
 
+    def get_count_fn(self) -> Callable[[], int]:
+        """Return a function that determines the number of files to transfer based on the configuration."""
+        return (lambda: randint(self.rand_min, self.rand_max)) if self.is_rand_enabled else (lambda: self.count)
+
 
 class DirectoryModel(BaseModel):
     """Model for directory creation configuration."""
@@ -33,6 +37,10 @@ class DirectoryModel(BaseModel):
     is_enabled: bool = False
     name: str = ""
     count: int = 1
+
+    def get_dirname_fn(self, dest: str) -> Callable[[], str]:
+        """Return a function that determines the destination folder name based on the configuration."""
+        return (lambda: calc_unique_path_name(dest, self.name)) if self.is_enabled else (lambda: dest)
 
 
 class FilenameModel(BaseModel):
@@ -98,38 +106,12 @@ class ConfigModel(BaseModel):
     @classmethod
     def is_absolute(cls, val: str) -> str:
         """Ensure root and dest paths are absolute."""
-        if not os.path.isabs(val):
-            return os.path.realpath(val)
+        if not isabs(val):
+            return realpath(val)
         return val
 
 
-@dataclass(slots=True)
-class Filecount:
-    """Dataclass for file count configuration."""
-
-    count: int
-    is_rand_enabled: bool
-    rand_min: int
-    rand_max: int
-    get_count: Callable[[], int] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post init to set get_count function."""
-        self.get_count = self.get_count_rand if self.is_rand_enabled else lambda: self.count
-
-    @classmethod
-    def from_model(cls, m: FilecountModel) -> Filecount:
-        """Create Filecount from configuration model."""
-        return cls(
-            count=m.count,
-            is_rand_enabled=m.is_rand_enabled,
-            rand_min=m.rand_min,
-            rand_max=m.rand_max,
-        )
-
-    def get_count_rand(self) -> int:
-        """Get the file count based on configuration."""
-        return randint(self.rand_min, self.rand_max)
+# Config logic
 
 
 @dataclass(slots=True)
@@ -139,16 +121,10 @@ class Filename:
     template: str
     dtstamp: DateTimeStamp
 
-    @classmethod
-    def from_model(cls, m: FilenameModel, dtstamp: DateTimeStamp) -> Filename:
-        """Create Filename from configuration model."""
-        return cls(template=m.template, dtstamp=dtstamp)
-
-    def calc_target_name(self, chosen: str, dest: str, index: int) -> str:
-        """Prepare the target file path based on naming conventions."""
+    def determine_dest_filename(self, chosen: str, dest: str, index: int) -> str | None:
+        """Calculate the destination file path based on configuration."""
         stem, ext = get_stem_and_ext(chosen)
-
-        safe_dict = SafeDict(
+        mapping = SafeDict(
             {
                 FilenameTemplateMapKey.DATE: self.dtstamp.date,
                 FilenameTemplateMapKey.TIME: self.dtstamp.time,
@@ -161,48 +137,43 @@ class Filename:
         )
 
         try:
-            new_stem = self.template.format_map(safe_dict)
+            new_stem = self.template.format_map(mapping)
         except (KeyError, ValueError):
             new_stem = stem
 
         name = "".join(c for c in new_stem if c not in INVALID_FILENAME_CHARS) + ext
-        return os.path.join(dest, name)
-
-    def determine_dest_filename(self, chosen: str, dest: str, index: int) -> str | None:
-        """Calculate the destination file path based on configuration."""
-        target = self.calc_target_name(chosen, dest, index)
-
+        target = join(dest, name)
         if not exists(target):
             return target
-
         if are_paths_equal(chosen, target):
             return None
-
         stem, ext = get_stem_and_ext(target)
         return calc_unique_path_name(dest, stem, ext)
 
 
 @dataclass(slots=True)
-class Folder:
-    """Dataclass for folder creation configuration."""
+class ListIncludeExclude:
+    """Dataclass for include-exclude list configuration."""
 
     is_enabled: bool
-    dest: str
-    name: str
-    determine: Callable[[], str] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post init to set determine_dest function."""
-        self.determine = lambda: calc_unique_path_name(self.dest, self.name) if self.is_enabled else lambda: self.dest
+    is_valid: Callable[[str], bool] = field(init=False)
 
     @classmethod
-    def from_model(cls, m: DirectoryModel, dest: str) -> Folder:
-        """Create Folder from configuration model."""
-        return cls(
-            is_enabled=m.is_enabled,
-            dest=dest,
-            name=m.name,
+    def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
+        """Create ListIncludeExclude from configuration model."""
+        if text := m.text.strip():
+            text_list = convert_string_to_list(text)
+            patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+        else:
+            patterns = ()
+
+        inst = ListIncludeExclude(is_enabled=m.is_enabled and bool(text))
+        inst.is_valid = (
+            lambda part: any(pattern.search(part) for pattern in patterns)
+            if m.should_include
+            else lambda part: not any(pattern.search(part) for pattern in patterns)
         )
+        return inst
 
 
 @dataclass(slots=True)
@@ -228,41 +199,6 @@ class MinMax:
 
 
 @dataclass(slots=True)
-class ListIncludeExclude:
-    """Dataclass for include-exclude list configuration."""
-
-    is_enabled: bool
-    should_include: bool
-    as_string: str
-    patterns: tuple[re.Pattern, ...]
-    is_valid: Callable[[str], bool] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post init to set validator function."""
-        self.is_valid = (
-            lambda part: any(pattern.search(part) for pattern in self.patterns)
-            if self.should_include
-            else lambda part: not any(pattern.search(part) for pattern in self.patterns)
-        )
-
-    @classmethod
-    def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
-        """Create ListIncludeExclude from configuration model."""
-        as_string = ""
-        patterns = ()
-        if text := m.text.strip():
-            text_list = convert_string_to_list(text)
-            as_string = ", ".join(text_list)
-            patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
-        return cls(
-            is_enabled=m.is_enabled and bool(text),
-            should_include=m.should_include,
-            as_string=as_string,
-            patterns=patterns,
-        )
-
-
-@dataclass(slots=True)
 class SizeLimit:
     """Dataclass for output folder size limits."""
 
@@ -273,13 +209,13 @@ class SizeLimit:
     def from_model(cls, m: SizeLimitModel, mapping: dict[str, float]) -> SizeLimit:
         """Create SizeLimit from configuration model."""
         return cls(
-            is_enabled=m.is_enabled,
+            is_enabled=m.is_enabled and m.size_limit > 0,
             size_limit=m.size_limit * mapping.get(m.unit, 1.0),
         )
 
     def is_valid(self, size: int) -> bool:
         """Check if the size limit is exceeded."""
-        return self.is_enabled and self.size_limit > 0 and size > self.size_limit
+        return self.is_enabled and size > self.size_limit
 
     def get_percent_str(self, size: int) -> str:
         """Get the percentage of the size limit used."""

@@ -3,7 +3,7 @@
 from random import seed
 from typing import TYPE_CHECKING
 
-from .config import Filecount, Filename, Folder, ListIncludeExclude, MinMax, SizeLimit
+from .config import Filename, ListIncludeExclude, MinMax, SizeLimit
 from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
 from .context import DateTimeStamp, DiversityQuota, EngineContext, ReportWriter
 from .engine import Engine, JobRequestFactory
@@ -41,25 +41,22 @@ def build_engine(m: ConfigModel) -> Engine:
     validator = build_file_validator(m)
 
     # Build DiversityQuota
-    opt_mpd = m.options.max_per_folder
     quota = DiversityQuota(
-        max_per_dir=opt_mpd if opt_mpd > 0 else float("inf"),
+        max_per_dir=m.options.max_per_folder,
         is_create_unique_folders=m.options.is_create_unique_folders,
     )
 
     # Build EngineContext
-    folder = Folder.from_model(m.folder, dest=m.dest)
     folder_size_limit = SizeLimit.from_model(m.folder_size_limit, mapping=SIZE_MAP)
     total_size_limit = SizeLimit.from_model(m.total_size_limit, mapping=SIZE_MAP)
     reporter = ReportWriter(root=m.root, dtstamp=dtstamp)
     context = EngineContext(
         root=m.root,
-        folder=folder,
-        quota=quota,
+        is_create_folder=m.folder.is_enabled,
         folder_size_limit=folder_size_limit,
         total_size_limit=total_size_limit,
+        quota=quota,
         reporter=reporter,
-        is_dry_run=m.options.is_dry_run,
         dtstamp=dtstamp,
     )
 
@@ -67,25 +64,24 @@ def build_engine(m: ConfigModel) -> Engine:
     walker = PachinkoFSWalker(
         root=m.root,
         quota=quota,
+        validator=validator,
         should_follow_symlink=m.options.should_follow_symlink,
     )
 
     # Build Engine
-    filecount = Filecount.from_model(m.filecount)
-    filename = Filename.from_model(m.filename, dtstamp=dtstamp)
-    do_transfer_strategy = fetch_transfer_strategy(m.options.transfer_mode)
+    filename = Filename(m.filename.template, dtstamp=dtstamp)
 
     job_request_factory = JobRequestFactory(
-        get_file_count=filecount.get_count,
-        determine_dest_dirname=folder.determine,
+        get_file_count=m.filecount.get_count_fn(),
+        determine_dest_dirname=m.folder.get_dirname_fn(m.dest),
         dir_count=m.folder.count,
     )
     return Engine(
         root=m.root,
-        walker=walker,
-        validator=validator,
-        filename=filename,
-        do_transfer_strategy=do_transfer_strategy,
         context=context,
+        walker=walker,
+        is_dry_run=m.options.is_dry_run,
+        filename_fn=filename.determine_dest_filename,
+        transfer_fn=fetch_transfer_strategy(m.options.transfer_mode),
         job_request_factory=job_request_factory,
     )

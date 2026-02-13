@@ -4,10 +4,10 @@ import contextlib
 import json
 import logging
 import logging.config
-import os
 import shutil
 from dataclasses import dataclass
 from filecmp import cmp
+from os import mkdir
 from os.path import basename, dirname, exists, isfile, join, splitext
 from subprocess import DEVNULL, CalledProcessError, check_output
 
@@ -44,7 +44,8 @@ class DataPaths:
 
     def __post_init__(self) -> None:
         """Ensure necessary directories exist."""
-        os.makedirs(self.profiles, exist_ok=True)
+        if not exists(self.profiles):
+            mkdir(self.profiles)
 
     def get_icon(self, path: str) -> str:
         """Get the full path to an icon."""

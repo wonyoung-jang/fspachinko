@@ -12,9 +12,9 @@ from .constants import DateTimeFormat, StateStatus
 from .helpers import convert_byte_to_human_readable_size, remove_directory
 
 if TYPE_CHECKING:
-    from os import DirEntry
+    from collections.abc import Iterator
 
-    from .config import Folder, SizeLimit
+    from .config import SizeLimit
     from .engine import JobRequest
     from .walker import FSEntry
 
@@ -49,8 +49,13 @@ class DiversityQuota:
     is_create_unique_folders: bool
 
     locked_dir: set[str] = field(default_factory=set)
-    locked_file: set[DirEntry] = field(default_factory=set)
+    locked_file: set[str] = field(default_factory=set)
     _dircount: Counter[str] = field(default_factory=Counter)
+
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        if self.max_per_dir <= 0:
+            self.max_per_dir = float("inf")
 
     def reset(self) -> None:
         """Reset the quota state for a new folder."""
@@ -156,52 +161,55 @@ class EngineContext:
     """Class for engine state context."""
 
     root: str
-    folder: Folder
-    quota: DiversityQuota
+    is_create_folder: bool
     folder_size_limit: SizeLimit
     total_size_limit: SizeLimit
+    quota: DiversityQuota
     reporter: ReportWriter
-    is_dry_run: bool
     dtstamp: DateTimeStamp
-    state: str = ""
-    msg: str = ""
-    is_stop_requested: bool = False
+
+    state: str = field(default="")
+    msg: str = field(default="")
+    is_stop_requested: bool = field(default=False)
     dir_stat: OutputDirStat = field(default_factory=OutputDirStat)
     total_stat: OutputTotalStat = field(default_factory=OutputTotalStat)
 
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
+        self.state, self.msg = next(self.generate_state_msg(target), ("", ""))
+        return bool(self.state and self.msg)
+
+    def generate_state_msg(self, target: int) -> Iterator[tuple[str, str]]:
+        """Generate state and message for reporting."""
         if self.is_stop_requested:
-            self.state = StateStatus.USER_STOPPED
-            self.msg = "Stopped by user request"
+            yield StateStatus.USER_STOPPED, "Stopped by user request"
         elif self.dir_stat.file_count == target:
-            self.state = StateStatus.SUCCESS
-            self.msg = f"Copied {self.dir_stat.file_count}/{target} files"
+            yield StateStatus.SUCCESS, f"Transferred {self.dir_stat.file_count}/{target} files"
         elif self.root in self.quota.locked_dir:
-            self.state = StateStatus.ALL_FILES_SEARCHED
-            self.msg = "All files locked by diversity quota"
+            yield StateStatus.ALL_FILES_SEARCHED, "All files locked by diversity quota"
         elif self.folder_size_limit.is_valid(self.dir_stat.curr_size):
-            self.state = StateStatus.FOLDER_SIZE_LIMIT_REACHED
-            self.msg = self.folder_size_limit.get_percent_str(self.dir_stat.curr_size)
+            yield StateStatus.FOLDER_SIZE_LIMIT_REACHED, self.folder_size_limit.get_percent_str(self.dir_stat.curr_size)
         elif self.total_size_limit.is_valid(self.dir_stat.total_size):
-            self.state = StateStatus.TOTAL_SIZE_LIMIT_REACHED
-            self.msg = self.total_size_limit.get_percent_str(self.dir_stat.total_size)
-        else:
-            return False
-        return True
+            yield StateStatus.TOTAL_SIZE_LIMIT_REACHED, self.total_size_limit.get_percent_str(self.dir_stat.total_size)
 
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
-        none_found = self.dir_stat.file_count == 0 and self.folder.is_enabled
+        state, msg = next(self.generate_none_found_state_msg(), ("", ""))
+        if state and msg:
+            self.state, self.msg = state, msg
+            return True
+        return False
+
+    def generate_none_found_state_msg(self) -> Iterator[tuple[str, str]]:
+        """Generate state and message for no files found scenario."""
+        none_found = self.dir_stat.file_count == 0 and self.is_create_folder
         if none_found and self.root in self.quota.locked_dir:
-            self.state = StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
-            self.msg = "No files found and all files locked by diversity quota"
+            yield (
+                StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED,
+                "No files found and all files locked by diversity quota",
+            )
         elif none_found:
-            self.state = StateStatus.NO_FILES_FOUND_FOLDER_DELETED
-            self.msg = "No files found in the folder"
-        else:
-            return False
-        return True
+            yield StateStatus.NO_FILES_FOUND_FOLDER_DELETED, "No files found in the folder"
 
     def prepare(self, dest: str) -> None:
         """Prepare the context for a new folder processing."""
