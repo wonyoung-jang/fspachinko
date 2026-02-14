@@ -13,6 +13,7 @@ from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
     from .config import ConfigModel
+    from .observer import Observer
 
 
 def build_file_validator(m: ConfigModel) -> FileValidator:
@@ -31,7 +32,7 @@ def build_file_validator(m: ConfigModel) -> FileValidator:
     )
 
 
-def build_engine(m: ConfigModel) -> Engine:
+def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     """Build and return the engine based on the configuration."""
     # Build main components
     seed(m.options.rng_seed)
@@ -77,9 +78,10 @@ def build_engine(m: ConfigModel) -> Engine:
     return Engine(
         root=m.root,
         context=context,
-        walker=walker,
         is_dry_run=m.options.is_dry_run,
         filename_fn=filename.determine_dest_filename,
         transfer_fn=fetch_transfer_strategy(m.options.transfer_mode),
         job_request_factory=job_request_factory,
+        entries=walker.walk(),
+        observer=observer,
     )

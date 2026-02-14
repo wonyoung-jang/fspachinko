@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, field_validator
 
-from .constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKey, TransferMode
+from fspachinko.core.helpers import get_valid_filename_from_str
+
+from .constants import FilenameTemplateMapKey, TransferMode
 from .helpers import SafeDict, are_paths_equal, calc_unique_path_name, convert_string_to_list, get_stem_and_ext
 
 if TYPE_CHECKING:
@@ -137,18 +139,18 @@ class Filename:
         )
 
         try:
-            new_stem = self.template.format_map(mapping)
+            formatted_stem = self.template.format_map(mapping)
+            new_stem = get_valid_filename_from_str(formatted_stem)
         except (KeyError, ValueError):
             new_stem = stem
 
-        name = "".join(c for c in new_stem if c not in INVALID_FILENAME_CHARS) + ext
+        name = new_stem + ext
         target = join(dest, name)
         if not exists(target):
             return target
         if are_paths_equal(chosen, target):
             return None
-        stem, ext = get_stem_and_ext(target)
-        return calc_unique_path_name(dest, stem, ext)
+        return calc_unique_path_name(dest, new_stem, ext)
 
 
 @dataclass(slots=True)
@@ -156,6 +158,7 @@ class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
 
     is_enabled: bool
+    patterns: tuple[re.Pattern, ...] = ()
     is_valid: Callable[[str], bool] = field(init=False)
 
     @classmethod
@@ -167,11 +170,11 @@ class ListIncludeExclude:
         else:
             patterns = ()
 
-        inst = ListIncludeExclude(is_enabled=m.is_enabled and bool(text))
+        inst = ListIncludeExclude(is_enabled=m.is_enabled and bool(text), patterns=patterns)
         inst.is_valid = (
-            lambda part: any(pattern.search(part) for pattern in patterns)
+            (lambda part: any(p.search(part) for p in inst.patterns))
             if m.should_include
-            else lambda part: not any(pattern.search(part) for pattern in patterns)
+            else (lambda part: not any(p.search(part) for p in inst.patterns))
         )
         return inst
 

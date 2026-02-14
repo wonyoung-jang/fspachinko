@@ -136,14 +136,14 @@ class MainWindow(QMainWindow):
     @Slot()
     def reset_window_title(self) -> None:
         """Update the window title based on the current profile."""
-        profile_stem, _ = get_stem_and_ext(self.profiles.current_profile)
+        profile_stem, _ = get_stem_and_ext(self.profiles.path)
         self.setWindowTitle(f"{profile_stem} - {GUITitle.WINDOW}")
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""
         self.qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
         self.qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        self.qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.current_profile)
+        self.qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""

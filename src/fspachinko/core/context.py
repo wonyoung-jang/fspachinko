@@ -197,7 +197,7 @@ class EngineContext:
     def finalize(self, request: JobRequest) -> str:
         """Finalize the context after processing."""
         none_found = self.is_none_found()
-        report = self.generate_report(request=request)
+        report = self.generate_report(request)
         if none_found:
             remove_directory(request.dest)
         return report

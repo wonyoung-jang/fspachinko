@@ -30,8 +30,5 @@ class ConsoleObserver(Observer):
         """Handle log message."""
         logger.info("%s", msg)
 
-    def on_time(self) -> None:
-        """Handle time update."""
-
     def on_count(self, count: int) -> None:
         """Handle directory progress count update."""

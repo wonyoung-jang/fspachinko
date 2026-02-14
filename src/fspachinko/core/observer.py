@@ -27,9 +27,5 @@ class Observer(ABC):
         """Call to log a message."""
 
     @abstractmethod
-    def on_time(self) -> None:
-        """Call to update time remaining."""
-
-    @abstractmethod
     def on_count(self, count: int) -> None:
         """Call to update progress percentage."""

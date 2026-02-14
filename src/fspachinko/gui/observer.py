@@ -15,7 +15,6 @@ class WorkerSignals(QObject):
     progress = Signal(int)
     finished = Signal()
     log = Signal(str)
-    time = Signal()
     count = Signal(int)
 
 
@@ -44,10 +43,6 @@ class GuiObserver(Observer):
     def on_log(self, msg: str) -> None:
         """Emit log message signal."""
         self.signals.log.emit(msg)
-
-    def on_time(self) -> None:
-        """Emit time update signal."""
-        self.signals.time.emit()
 
     def on_count(self, count: int) -> None:
         """Emit count update signal."""

@@ -31,8 +31,6 @@ def run(config: str = "") -> None:
         logger.exception("Configuration file not found: %s", config)
         return
 
-    observer = ConsoleObserver()
     config_model = ConfigModel.model_validate_json(data)
-    engine = build_engine(config_model)
-    engine.observer = observer
+    engine = build_engine(config_model, observer=ConsoleObserver())
     engine.start()

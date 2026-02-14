@@ -11,7 +11,7 @@ from subprocess import DEVNULL, CalledProcessError, check_output
 
 import fspachinko
 
-from .constants import DURATION_CMD, BytesIn, ByteUnit
+from .constants import DURATION_CMD, INVALID_FILENAME_CHARS, BytesIn, ByteUnit
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,11 @@ def are_paths_equal(path1: str, path2: str) -> bool:
 def get_stem_and_ext(path: str) -> tuple[str, str]:
     """Get the stem and extension of a file path."""
     return splitext(basename(path))
+
+
+def get_valid_filename_from_str(name: str) -> str:
+    """Remove invalid characters from a filename."""
+    return "".join(c for c in name if c not in INVALID_FILENAME_CHARS)
 
 
 def get_duration(path: str) -> float:

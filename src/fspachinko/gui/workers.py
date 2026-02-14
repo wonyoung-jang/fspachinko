@@ -18,9 +18,7 @@ class MainWorker(QRunnable):
         """Initialize the worker."""
         super().__init__()
         self.signals = WorkerSignals()
-        observer = GuiObserver(self.signals)
-        self.engine: Engine = build_engine(config)
-        self.engine.observer = observer
+        self.engine: Engine = build_engine(config, observer=GuiObserver(self.signals))
 
     @Slot()
     def run(self) -> None:

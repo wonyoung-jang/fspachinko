@@ -1,6 +1,6 @@
 """Engine Module."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os import mkdir
 from os.path import exists, relpath
 from typing import TYPE_CHECKING
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from .context import EngineContext
     from .observer import Observer
-    from .walker import FSEntry, FSWalker
+    from .walker import FSEntry
 
 
 @dataclass(slots=True)
@@ -48,18 +48,12 @@ class Engine:
 
     root: str
     context: EngineContext
-    walker: FSWalker
     is_dry_run: bool
     filename_fn: Callable[[str, str, int], str | None]
     transfer_fn: Callable[[os.PathLike, str], None]
     job_request_factory: JobRequestFactory
-
-    entries: Iterator[FSEntry] = field(init=False)
-    observer: Observer = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        self.entries = self.walker.walk()
+    entries: Iterator[FSEntry]
+    observer: Observer
 
     def request_stop(self) -> None:
         """Request to stop the engine."""
@@ -78,8 +72,8 @@ class Engine:
         self.context.prepare()
         self.context.setup_logger(request.dest)
         self.transfer_dir(request)
-        self.report(msg=self.context.msg)
-        self.report(msg=self.context.finalize(request))
+        self.log(msg=self.context.msg)
+        self.log(msg=self.context.finalize(request))
         self.observer.on_count_total()
 
     def transfer_dir(self, request: JobRequest) -> None:
@@ -93,27 +87,27 @@ class Engine:
                 curr_count += 1
                 self.context.update(entry)
                 self.observer.on_count(curr_count)
-                self.observer.on_time()
 
-    def transfer_file(self, entry: FSEntry, dest: str, count: int) -> bool:
+    def transfer_file(self, entry: FSEntry, dest: str, curr_count: int) -> bool:
         """Attempt to copy a file and return success status."""
-        chosen_rel = relpath(entry.path, self.root)
-        chosen_new = self.filename_fn(chosen_rel, dest, count)
-        if chosen_new is None:
+        new_filename = self.filename_fn(entry.path, dest, curr_count)
+        if new_filename is None:
             return False
-        msg = f"{count + 1}: {chosen_rel} -> {relpath(chosen_new, dest)}"
+
+        msg = f"{curr_count + 1}: {relpath(entry, self.root)} -> {relpath(new_filename, dest)}"
         if self.is_dry_run:
-            self.report(f"DRY - {msg}")
-        else:
-            try:
-                self.transfer_fn(entry, chosen_new)
-                self.report(msg)
-            except (PermissionError, OSError):
-                self.report(f"FAILED - {msg}")
-                return False
+            self.log(f"DRY - {msg}")
+            return True
+
+        try:
+            self.transfer_fn(entry, new_filename)
+            self.log(msg)
+        except (PermissionError, OSError):
+            self.log(f"FAILED - {msg}")
+            return False
         return True
 
-    def report(self, msg: str) -> None:
+    def log(self, msg: str) -> None:
         """Report and log a message."""
         self.observer.on_log(msg)
         self.context.on_log(msg)
