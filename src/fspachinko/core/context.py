@@ -1,10 +1,10 @@
 """Engine state classes."""
 
-import os
-from collections import Counter, deque
+import logging
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from os.path import dirname
+from os.path import basename, dirname, join
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -73,49 +73,6 @@ class DiversityQuota:
 
 
 @dataclass(slots=True)
-class ReportWriter:
-    """ReportWriter class."""
-
-    root: str
-    dtstamp: DateTimeStamp
-    buffer: deque[str] = field(default_factory=deque)
-    dest: str = field(init=False)
-
-    def reset(self, dest: str) -> None:
-        """Initialize reporter for a new run."""
-        self.dest = dest
-
-    def record(self, message: str) -> None:
-        """Add a message to the buffer."""
-        self.buffer.append(f"{message}\n")
-
-    def generate_report(self, status: str, runtime: str, size: str) -> str:
-        """Generate the header report string."""
-        report = (
-            f"\n{status}"
-            "\n------------------------------------------------------------------------\n"
-            f"Timestamp:    {self.dtstamp.date_time_report_str}\n"
-            f"Root:         {self.root}\n"
-            f"Destination:  {self.dest}\n"
-            f"Size:         {size}\n"
-            f"Runtime:      {runtime}\n"
-            "\n========================================================================\n"
-        )
-        self.buffer.appendleft(report)
-        return report
-
-    def save(self) -> None:
-        """Save the report to file."""
-        report_path = os.path.join(self.dest, f"!_{os.path.basename(self.dest)}_report.txt")
-        mode = "a" if os.path.exists(report_path) else "w"
-        with open(report_path, mode=mode, encoding="utf-8") as f:
-            while self.buffer:
-                line = self.buffer.popleft()
-                f.write(line)
-            f.write("\n\n")
-
-
-@dataclass(slots=True)
 class OutputTotalStat:
     """Dataclass for a single output directory statistics."""
 
@@ -157,6 +114,17 @@ class OutputDirStat:
 
 
 @dataclass(slots=True)
+class StaticEngineContext:
+    """Static context for the engine."""
+
+    root: str
+    dest: str
+    is_dry_run: bool
+    is_create_folder: bool
+    should_follow_symlink: bool
+
+
+@dataclass(slots=True)
 class EngineContext:
     """Class for engine state context."""
 
@@ -165,7 +133,6 @@ class EngineContext:
     folder_size_limit: SizeLimit
     total_size_limit: SizeLimit
     quota: DiversityQuota
-    reporter: ReportWriter
     dtstamp: DateTimeStamp
 
     state: str = field(default="")
@@ -174,6 +141,8 @@ class EngineContext:
     dir_stat: OutputDirStat = field(default_factory=OutputDirStat)
     total_stat: OutputTotalStat = field(default_factory=OutputTotalStat)
 
+    _logger: logging.Logger = field(init=False)
+
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
         self.state, self.msg = next(self.generate_state_msg(target), ("", ""))
@@ -181,16 +150,19 @@ class EngineContext:
 
     def generate_state_msg(self, target: int) -> Iterator[tuple[str, str]]:
         """Generate state and message for reporting."""
+        dir_stat = self.dir_stat
+        folder_size_limit = self.folder_size_limit
+        total_size_limit = self.total_size_limit
         if self.is_stop_requested:
             yield StateStatus.USER_STOPPED, "Stopped by user request"
-        elif self.dir_stat.file_count == target:
-            yield StateStatus.SUCCESS, f"Transferred {self.dir_stat.file_count}/{target} files"
+        elif dir_stat.file_count == target:
+            yield StateStatus.SUCCESS, f"Transferred {dir_stat.file_count}/{target} files"
         elif self.root in self.quota.locked_dir:
             yield StateStatus.ALL_FILES_SEARCHED, "All files locked by diversity quota"
-        elif self.folder_size_limit.is_valid(self.dir_stat.curr_size):
-            yield StateStatus.FOLDER_SIZE_LIMIT_REACHED, self.folder_size_limit.get_percent_str(self.dir_stat.curr_size)
-        elif self.total_size_limit.is_valid(self.dir_stat.total_size):
-            yield StateStatus.TOTAL_SIZE_LIMIT_REACHED, self.total_size_limit.get_percent_str(self.dir_stat.total_size)
+        elif folder_size_limit.is_valid(dir_stat.curr_size):
+            yield StateStatus.FOLDER_SIZE_LIMIT_REACHED, folder_size_limit.get_percent_str(dir_stat.curr_size)
+        elif total_size_limit.is_valid(dir_stat.total_size):
+            yield StateStatus.TOTAL_SIZE_LIMIT_REACHED, total_size_limit.get_percent_str(dir_stat.total_size)
 
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
@@ -211,12 +183,11 @@ class EngineContext:
         elif none_found:
             yield StateStatus.NO_FILES_FOUND_FOLDER_DELETED, "No files found in the folder"
 
-    def prepare(self, dest: str) -> None:
+    def prepare(self) -> None:
         """Prepare the context for a new folder processing."""
         self.dtstamp.reset()
         self.dir_stat.reset()
         self.quota.reset()
-        self.reporter.reset(dest)
 
     def update(self, entry: FSEntry) -> None:
         """Update context on successful file operation."""
@@ -226,14 +197,38 @@ class EngineContext:
     def finalize(self, request: JobRequest) -> str:
         """Finalize the context after processing."""
         none_found = self.is_none_found()
-        report = self.reporter.generate_report(
-            status=f"{self.state}: {self.dir_stat.file_count}/{request.target} files copied",
-            runtime=self.dir_stat.runtime_str,
-            size=self.dir_stat.size_str,
-        )
-        self.reporter.save()
-
+        report = self.generate_report(request=request)
         if none_found:
             remove_directory(request.dest)
-
         return report
+
+    def on_log(self, message: str) -> None:
+        """Log a message to the report file."""
+        self._logger.info(message)
+
+    def setup_logger(self, dest: str) -> None:
+        """Set up a file logger for the destination directory."""
+        report_path = join(dest, f"!_{basename(dest)}_report.log")
+
+        formatter = logging.Formatter("[%(asctime)s] %(message)s")
+        handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(formatter)
+
+        self._logger = logging.getLogger(f"fspachinko.report.{id(handler)}")
+        self._logger.setLevel(logging.INFO)
+        self._logger.addHandler(handler)
+        self._logger.propagate = False
+
+    def generate_report(self, request: JobRequest) -> str:
+        """Generate the header report string."""
+        return (
+            f"{self.state}: {self.dir_stat.file_count}/{request.target} files copied"
+            "\n------------------------------------------------------------------------\n"
+            f"Timestamp:    {self.dtstamp.date_time_report_str}\n"
+            f"Root:         {self.root}\n"
+            f"Destination:  {request.dest}\n"
+            f"Size:         {self.dir_stat.size_str}\n"
+            f"Runtime:      {self.dir_stat.runtime_str}\n"
+            "\n========================================================================\n"
+        )

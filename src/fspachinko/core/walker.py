@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class FSEntry:
-    """Lightweight wrapper for os.DirEntry with only path and name."""
+    """Lightweight wrapper for os.DirEntry."""
 
     path: str = ""
     parent: str = ""
@@ -55,6 +55,27 @@ class FSPachinkoPin:
     files: list[FSEntry] = field(default_factory=list)
     is_scanned: bool = False
     is_exhausted: bool = False
+
+    def scan(self, *, follow: bool) -> None:
+        """Only look at the OS file system when a ball hits a specific folder for the first time."""
+        self.is_scanned = True
+        subdirs = self.subdirs.append
+        files = self.files.append
+        try:
+            with scandir(self.path) as it:
+                for e in it:
+                    try:
+                        if e.is_dir(follow_symlinks=follow):
+                            subdirs(e.path)
+                        elif e.is_file(follow_symlinks=follow):
+                            files(FSEntry(entry=e, follow_symlink=follow))
+                    except OSError:
+                        logger.debug("Skipping entry due to OSError: %s", e.path)
+                        continue
+        except OSError:
+            self.is_exhausted = True
+            logger.debug("Skipping pin scan due to OSError: %s", self.path)
+            return
 
 
 @dataclass(slots=True)
@@ -94,12 +115,13 @@ class PachinkoFSWalker(FSWalker):
         quota = self.quota
         locked_dir, locked_file = quota.locked_dir, quota.locked_file
         lock_dir, lock_file = locked_dir.add, locked_file.add
+        is_valid = self.validator.is_valid
 
         while not board[root].is_exhausted:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
 
             if not pin.is_scanned:
-                self.scan(pin)
+                pin.scan(follow=self.should_follow_symlink)
 
             subdirs = []
             for d in pin.subdirs:
@@ -126,30 +148,8 @@ class PachinkoFSWalker(FSWalker):
 
             entry = choice(pin.files)
             lock_file(entry.path)
-            if self.validator.is_valid(entry):
-                yield entry
+            if not is_valid(entry):
+                continue  # Continuing here keeps the current working directory the same
 
+            yield entry
             curr = root
-
-    def scan(self, pin: FSPachinkoPin) -> None:
-        """Only look at the OS file system when a ball hits a specific folder for the first time."""
-        follow = self.should_follow_symlink
-        subdirs = pin.subdirs.append
-        files = pin.files.append
-        try:
-            with scandir(pin.path) as it:
-                for e in it:
-                    try:
-                        if e.is_dir(follow_symlinks=follow):
-                            subdirs(e.path)
-                        elif e.is_file(follow_symlinks=follow):
-                            files(FSEntry(entry=e, follow_symlink=follow))
-                    except OSError:
-                        logger.debug("Skipping entry due to OSError: %s", e.path)
-                        continue
-        except OSError:
-            pin.is_exhausted = True
-            logger.debug("Skipping pin scan due to OSError: %s", pin.path)
-            return
-
-        pin.is_scanned = True

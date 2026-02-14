@@ -40,7 +40,7 @@ from .constants import (
     TimeUnit,
     TransferMode,
 )
-from .context import DateTimeStamp, DiversityQuota, ReportWriter
+from .context import DateTimeStamp, DiversityQuota
 from .engine import Engine
 from .helpers import (
     DataPaths,
@@ -54,9 +54,9 @@ from .helpers import (
     get_icon_path,
     get_profile_path,
     get_stem_and_ext,
-    initialize_logging,
     remove_directory,
 )
+from .loggers import initialize_logging
 from .observer import Observer
 from .transfer import fetch_transfer_strategy, get_available_transfer_modes
 from .validator import FileValidator
@@ -100,7 +100,6 @@ __all__ = [
     "Observer",
     "OptionsModel",
     "ReStrFmt",
-    "ReportWriter",
     "SafeDict",
     "SizeLimit",
     "SizeLimitModel",

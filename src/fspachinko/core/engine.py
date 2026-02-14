@@ -75,7 +75,8 @@ class Engine:
     def process_request(self, request: JobRequest) -> None:
         """Run processing for a single folder."""
         self.observer.on_progress(request.target)
-        self.context.prepare(request.dest)
+        self.context.prepare()
+        self.context.setup_logger(request.dest)
         self.transfer_dir(request)
         self.report(msg=self.context.msg)
         self.report(msg=self.context.finalize(request))
@@ -103,18 +104,16 @@ class Engine:
         msg = f"{count + 1}: {chosen_rel} -> {relpath(chosen_new, dest)}"
         if self.is_dry_run:
             self.report(f"DRY - {msg}")
-            return True
-
-        try:
-            self.transfer_fn(entry, chosen_new)
-        except (PermissionError, OSError):
-            self.report(f"FAILED - {msg}")
-            return False
-
-        self.report(msg)
+        else:
+            try:
+                self.transfer_fn(entry, chosen_new)
+                self.report(msg)
+            except (PermissionError, OSError):
+                self.report(f"FAILED - {msg}")
+                return False
         return True
 
     def report(self, msg: str) -> None:
         """Report and log a message."""
         self.observer.on_log(msg)
-        self.context.reporter.record(msg)
+        self.context.on_log(msg)

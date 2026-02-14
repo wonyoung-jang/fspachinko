@@ -21,7 +21,6 @@ class DefaultPath(StrEnum):
     """Enumeration for default configuration filenames."""
 
     CONFIG = "fspachinko.json"
-    LOGGING = "logging.json"
 
 
 class ReStrFmt(StrEnum):

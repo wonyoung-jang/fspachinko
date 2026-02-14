@@ -1,35 +1,19 @@
 """Utility functions."""
 
 import contextlib
-import json
 import logging
-import logging.config
 import shutil
 from dataclasses import dataclass
 from filecmp import cmp
 from os import mkdir
-from os.path import basename, dirname, exists, isfile, join, splitext
+from os.path import basename, dirname, exists, join, splitext
 from subprocess import DEVNULL, CalledProcessError, check_output
 
 import fspachinko
 
-from .constants import DURATION_CMD, BytesIn, ByteUnit, DefaultPath
+from .constants import DURATION_CMD, BytesIn, ByteUnit
 
 logger = logging.getLogger(__name__)
-
-
-def initialize_logging(path: str | None = None) -> None:
-    """Initialize logging for the application."""
-    if path is None:
-        path = get_config_path(DefaultPath.LOGGING)
-
-    data = {}
-    if not (exists(path) and isfile(path)):
-        return
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-
-    logging.config.dictConfig(data)
 
 
 @dataclass(slots=True)

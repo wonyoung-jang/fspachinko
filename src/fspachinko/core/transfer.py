@@ -56,7 +56,7 @@ def fetch_transfer_strategy(mode: str) -> Callable[[PathLike, str], None]:
         TransferMode.COPY_PRESERVE: lambda src, dst: copy2(src, dst),
         TransferMode.MOVE: lambda src, dst: move(src, dst),
         TransferMode.SYMLINK: lambda src, dst: symlink(src, dst),
-        TransferMode.HARDLINK: transfer_hardlink,
+        TransferMode.HARDLINK: lambda src, dst: transfer_hardlink(src, dst),
     }
     available_modes = get_available_transfer_modes()
     requested_mode = TransferMode(mode)

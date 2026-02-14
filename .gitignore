@@ -125,5 +125,5 @@ output/
 *.txt
 *_profiles/
 *_output/
-.github/*.md
+.github/**/*.md
 tach.toml
