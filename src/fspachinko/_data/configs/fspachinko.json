@@ -42,16 +42,6 @@
         "maximum": 8.0,
         "unit": "m"
     },
-    "folder_size_limit": {
-        "is_enabled": false,
-        "size_limit": 500.0,
-        "unit": "MB"
-    },
-    "total_size_limit": {
-        "is_enabled": false,
-        "size_limit": 500.0,
-        "unit": "MB"
-    },
     "options": {
         "transfer_mode": "Symlink",
         "max_per_folder": 1,

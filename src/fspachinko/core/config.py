@@ -68,14 +68,6 @@ class MinMaxModel(BaseModel):
     unit: str = ""
 
 
-class SizeLimitModel(BaseModel):
-    """Model for output folder size limits."""
-
-    is_enabled: bool = False
-    size_limit: float = 0.0
-    unit: str = ""
-
-
 class OptionsModel(BaseModel):
     """Model for additional options."""
 
@@ -100,8 +92,6 @@ class ConfigModel(BaseModel):
     extension: ListIncludeExcludeModel
     filesize: MinMaxModel
     duration: MinMaxModel
-    folder_size_limit: SizeLimitModel
-    total_size_limit: SizeLimitModel
     options: OptionsModel
 
     @field_validator("root", "dest")
@@ -194,27 +184,3 @@ class MinMax:
             is_enabled=m.is_enabled,
             is_valid=lambda val: minimum <= val <= maximum,
         )
-
-
-@dataclass(slots=True)
-class SizeLimit:
-    """Dataclass for output folder size limits."""
-
-    is_enabled: bool
-    size_limit: float
-
-    @classmethod
-    def from_model(cls, m: SizeLimitModel, mapping: dict[str, float]) -> SizeLimit:
-        """Create SizeLimit from configuration model."""
-        return cls(
-            is_enabled=m.is_enabled and m.size_limit > 0,
-            size_limit=m.size_limit * mapping.get(m.unit, 1.0),
-        )
-
-    def is_valid(self, size: int) -> bool:
-        """Check if the size limit is exceeded."""
-        return self.is_enabled and size > self.size_limit
-
-    def get_percent_str(self, size: int) -> str:
-        """Get the percentage of the size limit used."""
-        return f"{size * 100 / self.size_limit:.2f}%"

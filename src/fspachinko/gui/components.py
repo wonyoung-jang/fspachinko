@@ -38,7 +38,6 @@ from ..core import (
     ListIncludeExcludeModel,
     MinMaxModel,
     OptionsModel,
-    SizeLimitModel,
     TimeUnit,
     get_available_transfer_modes,
     get_icon_path,
@@ -388,52 +387,6 @@ class DurationFilterWidget(MinMaxFilterWidget):
     def __init__(self) -> None:
         """Initialize the duration filter widget."""
         super().__init__(title="Duration", name="duration", items=tuple(TimeUnit))
-
-
-class SizeLimitWidget(BaseGroupBox):
-    """Handles logic for output folder size limit."""
-
-    def __init__(self, title: str, name: str, items: Sequence[str | ByteUnit | TimeUnit]) -> None:
-        """Initialize the size limit widget."""
-        super().__init__(title=title, name=name, checkable=True)
-
-        self.spin_size = QDoubleSpinBox(prefix="Size ")
-        self.spin_size.setSpecialValueText("Unlimited")
-        set_qt_name(self.spin_size, f"{name}_size")
-        set_qt_tips(self.spin_size, f"{title} value for the size limit.")
-
-        self.combo_unit = QComboBox()
-        self.combo_unit.addItems(items)
-        set_qt_name(self.combo_unit, f"{name}_unit")
-        set_qt_tips(self.combo_unit, f"Unit multiplier for the {title} filter.")
-
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.spin_size)
-        layout.addWidget(self.combo_unit)
-
-    def get_config(self) -> SizeLimitModel:
-        """Return clean data for the config."""
-        return SizeLimitModel(
-            is_enabled=self.isChecked(),
-            size_limit=self.spin_size.value(),
-            unit=self.combo_unit.currentText(),
-        )
-
-
-class FolderSizeLimitWidget(SizeLimitWidget):
-    """Handles logic for per-folder size limit."""
-
-    def __init__(self) -> None:
-        """Initialize the folder size limit widget."""
-        super().__init__(title="Max Folder Size", name="folder_size_limit", items=tuple(ByteUnit))
-
-
-class TotalSizeLimitWidget(SizeLimitWidget):
-    """Handles logic for total size limit across all folders."""
-
-    def __init__(self) -> None:
-        """Initialize the total size limit widget."""
-        super().__init__(title="Max Total Size", name="total_size_limit", items=tuple(ByteUnit))
 
 
 class OptionsWidget(BaseGroupBox):

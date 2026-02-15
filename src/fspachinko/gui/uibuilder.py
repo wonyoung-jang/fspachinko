@@ -13,7 +13,6 @@ from .components import (
     FileCountWidget,
     FilenameWidget,
     FolderCreatorWidget,
-    FolderSizeLimitWidget,
     KeywordsFilterWidget,
     ListIncludeExcludeFilterWidget,
     LoggingWidget,
@@ -23,8 +22,6 @@ from .components import (
     ProgressWidget,
     RootPathSelectorWidget,
     SizeFilterWidget,
-    SizeLimitWidget,
-    TotalSizeLimitWidget,
 )
 
 
@@ -42,8 +39,6 @@ class UIBuilder:
     extensions: ListIncludeExcludeFilterWidget = field(default_factory=ExtensionsFilterWidget)
     filesize: MinMaxFilterWidget = field(default_factory=SizeFilterWidget)
     duration: MinMaxFilterWidget = field(default_factory=DurationFilterWidget)
-    folder_size_limit: SizeLimitWidget = field(default_factory=FolderSizeLimitWidget)
-    total_size_limit: SizeLimitWidget = field(default_factory=TotalSizeLimitWidget)
     options: OptionsWidget = field(default_factory=OptionsWidget)
     progress: ProgressWidget = field(default_factory=ProgressWidget)
     logging: LoggingWidget = field(default_factory=LoggingWidget)
@@ -79,11 +74,6 @@ class UIBuilder:
         size_layout.addWidget(self.filesize)
         size_layout.addWidget(self.duration)
 
-        size_limit_widget = QWidget()
-        size_limit_layout = QHBoxLayout(size_limit_widget)
-        size_limit_layout.addWidget(self.folder_size_limit)
-        size_limit_layout.addWidget(self.total_size_limit)
-
         options_widget = QWidget()
         options_layout = QHBoxLayout(options_widget)
         options_layout.addWidget(self.options)
@@ -91,7 +81,6 @@ class UIBuilder:
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.addWidget(size_widget)
-        right_layout.addWidget(size_limit_widget)
         right_layout.addWidget(options_widget)
 
         # Body widget
@@ -121,7 +110,5 @@ class UIBuilder:
             extension=self.extensions.get_config(),
             filesize=self.filesize.get_config(),
             duration=self.duration.get_config(),
-            folder_size_limit=self.folder_size_limit.get_config(),
-            total_size_limit=self.total_size_limit.get_config(),
             options=self.options.get_config(),
         )

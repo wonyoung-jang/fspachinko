@@ -12,8 +12,6 @@ from .config import (
     MinMax,
     MinMaxModel,
     OptionsModel,
-    SizeLimit,
-    SizeLimitModel,
 )
 from .constants import (
     DURATION_CMD,
@@ -102,8 +100,6 @@ __all__ = [
     "OptionsModel",
     "ReStrFmt",
     "SafeDict",
-    "SizeLimit",
-    "SizeLimitModel",
     "StateStatus",
     "TimeUnit",
     "TransferMode",

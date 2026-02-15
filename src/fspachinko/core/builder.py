@@ -3,7 +3,7 @@
 from random import seed
 from typing import TYPE_CHECKING
 
-from .config import Filename, ListIncludeExclude, MinMax, SizeLimit
+from .config import Filename, ListIncludeExclude, MinMax
 from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
 from .context import DateTimeStamp, DiversityQuota, EngineContext
 from .engine import Engine, JobRequestFactory
@@ -49,13 +49,9 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
 
     # Build EngineContext
-    folder_size_limit = SizeLimit.from_model(m.folder_size_limit, mapping=SIZE_MAP)
-    total_size_limit = SizeLimit.from_model(m.total_size_limit, mapping=SIZE_MAP)
     context = EngineContext(
         root=m.root,
         is_create_folder=m.folder.is_enabled,
-        folder_size_limit=folder_size_limit,
-        total_size_limit=total_size_limit,
         quota=quota,
         dtstamp=dtstamp,
     )

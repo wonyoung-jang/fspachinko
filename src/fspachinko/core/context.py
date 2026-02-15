@@ -14,7 +14,6 @@ from .helpers import convert_byte_to_human_readable_size, remove_directory
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from .config import SizeLimit
     from .engine import JobRequest
     from .walker import FSEntry
 
@@ -130,8 +129,6 @@ class EngineContext:
 
     root: str
     is_create_folder: bool
-    folder_size_limit: SizeLimit
-    total_size_limit: SizeLimit
     quota: DiversityQuota
     dtstamp: DateTimeStamp
 
@@ -150,18 +147,12 @@ class EngineContext:
     def generate_state_msg(self, target: int) -> Iterator[tuple[str, str]]:
         """Generate state and message for reporting."""
         dir_stat = self.dir_stat
-        folder_size_limit = self.folder_size_limit
-        total_size_limit = self.total_size_limit
         if self.is_stop_requested:
             yield StateStatus.USER_STOPPED, "Stopped by user request"
         elif dir_stat.file_count == target:
             yield StateStatus.SUCCESS, f"Transferred {dir_stat.file_count}/{target} files"
         elif self.root in self.quota.locked_dir:
             yield StateStatus.ALL_FILES_SEARCHED, "All files locked by diversity quota"
-        elif folder_size_limit.is_valid(dir_stat.curr_size):
-            yield StateStatus.FOLDER_SIZE_LIMIT_REACHED, folder_size_limit.get_percent_str(dir_stat.curr_size)
-        elif total_size_limit.is_valid(dir_stat.total_size):
-            yield StateStatus.TOTAL_SIZE_LIMIT_REACHED, total_size_limit.get_percent_str(dir_stat.total_size)
 
     def is_none_found(self) -> bool:
         """Check if no files were found in the current folder."""
