@@ -116,7 +116,7 @@ class PachinkoFSWalker(FSWalker):
         lock_dir, lock_file = locked_dir.add, locked_file.add
         is_valid = self.validator.is_valid
 
-        while not board[root].is_exhausted:
+        while root in board:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
 
             if not pin.is_scanned:

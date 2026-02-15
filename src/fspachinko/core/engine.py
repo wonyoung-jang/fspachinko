@@ -85,7 +85,12 @@ class Engine:
         count = 0
         entries = self.entries
         while not self.context.should_stop(target):
-            entry = next(entries)
+            entry = next(entries, None)
+            if entry is None:
+                if self.context.is_none_found():
+                    break
+                entries = self.entries
+                continue
 
             new_filename = self.filename_fn(entry.path, dest, count)
             if new_filename is None:
@@ -96,7 +101,7 @@ class Engine:
             if not self.context.is_dry_run:
                 try:
                     self.transfer_fn(entry, new_filename)
-                except (PermissionError, OSError):
+                except PermissionError, OSError:
                     self.log(f"FAILED - {msg}")
                     continue
 
