@@ -22,10 +22,10 @@ if TYPE_CHECKING:
 class DateTimeStamp:
     """Provider for current date and time."""
 
-    date: str = ""
-    time: str = ""
-    date_time: str = ""
-    date_time_report_str: str = ""
+    date: str = field(init=False)
+    time: str = field(init=False)
+    date_time: str = field(init=False)
+    date_time_report_str: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
@@ -129,6 +129,7 @@ class EngineContext:
 
     root: str
     is_create_folder: bool
+    is_dry_run: bool
     quota: DiversityQuota
     dtstamp: DateTimeStamp
 
@@ -199,7 +200,7 @@ class EngineContext:
     def setup_logger(self, dest: str) -> None:
         """Set up a file logger for the destination directory."""
         report_path = join(dest, f"!_{basename(dest)}_report.log")
-        formatter = logging.Formatter("[%(asctime)s] %(message)s")
+        formatter = logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
         handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
         handler.setLevel(logging.INFO)
         handler.setFormatter(formatter)
@@ -218,5 +219,6 @@ class EngineContext:
             f"Destination:  {request.dest}\n"
             f"Size:         {self.dir_stat.size_str}\n"
             f"Runtime:      {self.dir_stat.runtime_str}\n"
+            f"Is Dry Run:   {self.is_dry_run}\n"
             "\n========================================================================\n"
         )

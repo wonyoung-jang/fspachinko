@@ -21,6 +21,11 @@ class JobRequest:
     target: int
     dest: str
 
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        if not exists(self.dest):
+            mkdir(self.dest)
+
 
 @dataclass(slots=True)
 class JobRequestFactory:
@@ -30,23 +35,15 @@ class JobRequestFactory:
     determine_dest_dirname: Callable[[], str]
     dir_count: int
 
-    def mkdirs(self, requests: list[JobRequest]) -> None:
-        """Create necessary directories for the job requests."""
-        for req in requests:
-            if not exists(req.dest):
-                mkdir(req.dest)
-
     def generate(self) -> list[JobRequest]:
         """Generate multiple job requests."""
-        requests = [
+        return [
             JobRequest(
                 target=self.get_file_count(),
                 dest=self.determine_dest_dirname(),
             )
             for _ in range(self.dir_count)
         ]
-        self.mkdirs(requests)
-        return requests
 
 
 @dataclass(slots=True)
@@ -55,7 +52,6 @@ class Engine:
 
     root: str
     context: EngineContext
-    is_dry_run: bool
     filename_fn: Callable[[str, str, int], str | None]
     transfer_fn: Callable[[os.PathLike, str], None]
     job_request_factory: JobRequestFactory
@@ -86,33 +82,28 @@ class Engine:
     def transfer_dir(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
         target, dest = request.target, request.dest
-        curr_count = 0
+        count = 0
         entries = self.entries
         while not self.context.should_stop(target):
             entry = next(entries)
-            if self.transfer_file(entry, dest, curr_count):
-                curr_count += 1
-                self.context.update(entry)
-                self.observer.on_count(curr_count)
 
-    def transfer_file(self, entry: FSEntry, dest: str, curr_count: int) -> bool:
-        """Attempt to copy a file and return success status."""
-        new_filename = self.filename_fn(entry.path, dest, curr_count)
-        if new_filename is None:
-            return False
+            new_filename = self.filename_fn(entry.path, dest, count)
+            if new_filename is None:
+                continue
 
-        msg = f"{curr_count + 1}: {relpath(entry, self.root)} -> {relpath(new_filename, dest)}"
-        if self.is_dry_run:
-            self.log(f"DRY - {msg}")
-            return True
+            msg = f"{count + 1}: {relpath(entry, self.root)} -> {relpath(new_filename, dest)}"
 
-        try:
-            self.transfer_fn(entry, new_filename)
+            if not self.context.is_dry_run:
+                try:
+                    self.transfer_fn(entry, new_filename)
+                except (PermissionError, OSError):
+                    self.log(f"FAILED - {msg}")
+                    continue
+
             self.log(msg)
-        except (PermissionError, OSError):
-            self.log(f"FAILED - {msg}")
-            return False
-        return True
+            count += 1
+            self.context.update(entry)
+            self.observer.on_count(count)
 
     def log(self, msg: str) -> None:
         """Report and log a message."""

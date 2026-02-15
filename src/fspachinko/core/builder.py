@@ -52,6 +52,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     context = EngineContext(
         root=m.root,
         is_create_folder=m.folder.is_enabled,
+        is_dry_run=m.options.is_dry_run,
         quota=quota,
         dtstamp=dtstamp,
     )
@@ -75,7 +76,6 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     return Engine(
         root=m.root,
         context=context,
-        is_dry_run=m.options.is_dry_run,
         filename_fn=filename.determine_dest_filename,
         transfer_fn=fetch_transfer_strategy(m.options.transfer_mode),
         job_request_factory=job_request_factory,
