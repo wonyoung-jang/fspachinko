@@ -18,11 +18,11 @@ class ProfileManager:
 
     path: str = field(default="")
 
-    def set_current(self, profile: str) -> None:
+    def set(self, profile: str) -> None:
         """Set the current profile name."""
         self.path = get_profile_path(profile)
 
-    def save_profile(self, parent: QWidget) -> None:
+    def save(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
         data = {}
         for key, child in iter_custom_widget(parent):
@@ -39,7 +39,7 @@ class ProfileManager:
             data = dict(sorted(data.items(), key=lambda x: x[0]))
             json.dump(data, f, indent=4)
 
-    def open_profile(self, parent: QWidget) -> None:
+    def open(self, parent: QWidget) -> None:
         """Recursively load settings for all child widgets."""
         if not (exists(self.path) and isfile(self.path)):
             return
@@ -58,6 +58,7 @@ class ProfileManager:
             if (val := data.get(key)) is not None:
                 set_widget_value(child, val)
 
-    def get_current_profile_parent(self) -> str:
+    @property
+    def parent(self) -> str:
         """Get the parent directory of the current profile."""
         return os.path.dirname(self.path)

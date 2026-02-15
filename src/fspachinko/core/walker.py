@@ -22,28 +22,27 @@ logger = logging.getLogger(__name__)
 class FSEntry:
     """Lightweight wrapper for os.DirEntry."""
 
-    path: str = ""
-    parent: str = ""
-    stem: str = ""
-    ext: str = ""
-    size: int = 0
+    path: str = field(init=False)
+    stem: str = field(init=False)
+    ext: str = field(init=False)
+    size: int = field(init=False)
     entry: InitVar[os.DirEntry | None] = None
     follow_symlink: InitVar[bool] = False
 
     def __post_init__(self, entry: os.DirEntry, follow_symlink: bool) -> None:
         """Create a lightweight FSEntry from an os.DirEntry."""
         self.path = entry.path
-        self.parent = basename(dirname(self.path))
         self.stem, self.ext = splitext(entry.name)
         self.size = entry.stat(follow_symlinks=follow_symlink).st_size
-
-    def __hash__(self) -> int:
-        """Return the hash based on the file path."""
-        return hash(self.path)
 
     def __fspath__(self) -> str:
         """Return the file system path representation."""
         return self.path
+
+    @property
+    def parent(self) -> str:
+        """Return the parent directory name."""
+        return basename(dirname(self.path))
 
 
 @dataclass(slots=True)

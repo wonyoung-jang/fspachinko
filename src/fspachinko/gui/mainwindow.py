@@ -96,14 +96,14 @@ class MainWindow(QMainWindow):
         """Initialize GUI settings manager."""
         self.restoreGeometry(self.qsettings.value(GUISettingsKey.GEOMETRY))
         self.restoreState(self.qsettings.value(GUISettingsKey.STATE))
-        self.profiles.set_current(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
-        self.profiles.open_profile(self)
+        self.profiles.set(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
+        self.profiles.open(self)
         self.reset_window_title()
 
     @Slot()
     def save_profile(self) -> None:
         """Save the current GUI profile."""
-        self.profiles.save_profile(self)
+        self.profiles.save(self)
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -111,11 +111,11 @@ class MainWindow(QMainWindow):
         filename, _ = QFileDialog.getSaveFileName(
             parent=self,
             caption=GUITitle.SAVE_PROFILE,
-            dir=self.profiles.get_current_profile_parent(),
+            dir=self.profiles.parent,
             filter=GUIFileDialogFilter.JSON,
         )
         if filename:
-            self.profiles.set_current(filename)
+            self.profiles.set(filename)
             self.save_profile()
             self.reset_window_title()
 
@@ -125,12 +125,12 @@ class MainWindow(QMainWindow):
         filename, _ = QFileDialog.getOpenFileName(
             parent=self,
             caption=GUITitle.OPEN_PROFILE,
-            dir=self.profiles.get_current_profile_parent(),
+            dir=self.profiles.parent,
             filter=GUIFileDialogFilter.JSON,
         )
         if filename:
-            self.profiles.set_current(filename)
-            self.profiles.open_profile(self)
+            self.profiles.set(filename)
+            self.profiles.open(self)
             self.reset_window_title()
 
     @Slot()

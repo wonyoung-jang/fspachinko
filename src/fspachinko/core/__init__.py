@@ -59,7 +59,7 @@ from .helpers import (
 from .loggers import initialize_logging
 from .observer import Observer
 from .transfer import fetch_transfer_strategy, get_available_transfer_modes
-from .validator import FileValidator
+from .validator import FileValidator, FileValidatorBuilder
 from .walker import FSWalker
 
 __all__ = [
@@ -82,6 +82,7 @@ __all__ = [
     "FSWalker",
     "FileError",
     "FileValidator",
+    "FileValidatorBuilder",
     "FilecountModel",
     "Filename",
     "FilenameModel",

@@ -140,8 +140,7 @@ class EngineContext:
     is_stop_requested: bool = field(default=False)
     dir_stat: OutputDirStat = field(default_factory=OutputDirStat)
     total_stat: OutputTotalStat = field(default_factory=OutputTotalStat)
-
-    _logger: logging.Logger = field(init=False)
+    _logger: logging.Logger | None = field(default=None)
 
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
@@ -196,25 +195,23 @@ class EngineContext:
 
     def finalize(self, request: JobRequest) -> str:
         """Finalize the context after processing."""
-        none_found = self.is_none_found()
-        report = self.generate_report(request)
-        if none_found:
+        if self.is_none_found():
             remove_directory(request.dest)
-        return report
+            return ""
+        return self.generate_report(request)
 
     def on_log(self, message: str) -> None:
         """Log a message to the report file."""
-        self._logger.info(message)
+        if self._logger:
+            self._logger.info(message)
 
     def setup_logger(self, dest: str) -> None:
         """Set up a file logger for the destination directory."""
         report_path = join(dest, f"!_{basename(dest)}_report.log")
-
         formatter = logging.Formatter("[%(asctime)s] %(message)s")
         handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
         handler.setLevel(logging.INFO)
         handler.setFormatter(formatter)
-
         self._logger = logging.getLogger(f"fspachinko.report.{id(handler)}")
         self._logger.setLevel(logging.INFO)
         self._logger.addHandler(handler)

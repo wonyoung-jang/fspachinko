@@ -11,7 +11,7 @@ from subprocess import DEVNULL, CalledProcessError, check_output
 
 import fspachinko
 
-from .constants import DURATION_CMD, INVALID_FILENAME_CHARS, BytesIn, ByteUnit
+from .constants import DURATION_CMD, INVALID_FILENAME_CHARS, BytesIn, ByteUnit, DefaultPath
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,10 @@ class DataPaths:
     """Dataclass for general directories used."""
 
     pkg: str = dirname(fspachinko.__file__)
-    data: str = join(pkg, "_data")
-    icons: str = join(data, "icons")
-    configs: str = join(data, "configs")
-    profiles: str = join(data, "gui_profiles")
+    data: str = join(pkg, DefaultPath.DATA_DIR)
+    icons: str = join(data, DefaultPath.ICON_DIR)
+    configs: str = join(data, DefaultPath.CONFIG_DIR)
+    profiles: str = join(data, DefaultPath.GUI_PROFILE_DIR)
 
     def __post_init__(self) -> None:
         """Ensure necessary directories exist."""
@@ -65,12 +65,10 @@ class SafeDict(dict):
 def calc_unique_path_name(dest: str, stem_or_name: str, ext: str = "") -> str:
     """Calculate a unique path name in the destination."""
     target = join(dest, f"{stem_or_name}{ext}")
-
     x = 2
     while exists(target):
         target = join(dest, f"{stem_or_name} ({x}){ext}")
         x += 1
-
     return target
 
 
@@ -78,7 +76,6 @@ def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
     """Convert a comma-separated string to a list."""
     if not string:
         return ()
-
     li = tuple(s.strip() for s in string.split(sep))
     if len(li) == 1 and li[0] == "":
         return ()
@@ -88,15 +85,14 @@ def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
     if nbytes < BytesIn.KILOBYTE:
-        return f"{nbytes} {ByteUnit.BYTES}"
-
-    if nbytes < BytesIn.MEGABYTE:
-        return f"{round(nbytes / BytesIn.KILOBYTE, 2)} {ByteUnit.KILOBYTES}"
-
-    if nbytes < BytesIn.GIGABYTE:
-        return f"{round(nbytes / BytesIn.MEGABYTE, 2)} {ByteUnit.MEGABYTES}"
-
-    return f"{round(nbytes / BytesIn.GIGABYTE, 2)} {ByteUnit.GIGABYTES}"
+        result = f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}"
+    elif nbytes < BytesIn.MEGABYTE:
+        result = f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}"
+    elif nbytes < BytesIn.GIGABYTE:
+        result = f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}"
+    else:
+        result = f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
+    return result
 
 
 def remove_directory(path: str) -> None:
@@ -107,9 +103,7 @@ def remove_directory(path: str) -> None:
 
 def are_paths_equal(path1: str, path2: str) -> bool:
     """Compare two paths for equality, accounting for case sensitivity."""
-    if cmp(path1, path2, shallow=True):
-        return True
-    return cmp(path1, path2, shallow=False)
+    return cmp(path1, path2, shallow=True) and cmp(path1, path2, shallow=False)
 
 
 def get_stem_and_ext(path: str) -> tuple[str, str]:

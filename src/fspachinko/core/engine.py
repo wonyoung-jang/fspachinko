@@ -30,16 +30,23 @@ class JobRequestFactory:
     determine_dest_dirname: Callable[[], str]
     dir_count: int
 
-    def create(self) -> JobRequest:
-        """Create a job request based on the current configuration."""
-        dest = self.determine_dest_dirname()
-        if not exists(dest):
-            mkdir(dest)
-        return JobRequest(target=self.get_file_count(), dest=dest)
+    def mkdirs(self, requests: list[JobRequest]) -> None:
+        """Create necessary directories for the job requests."""
+        for req in requests:
+            if not exists(req.dest):
+                mkdir(req.dest)
 
     def generate(self) -> list[JobRequest]:
         """Generate multiple job requests."""
-        return [self.create() for _ in range(self.dir_count)]
+        requests = [
+            JobRequest(
+                target=self.get_file_count(),
+                dest=self.determine_dest_dirname(),
+            )
+            for _ in range(self.dir_count)
+        ]
+        self.mkdirs(requests)
+        return requests
 
 
 @dataclass(slots=True)

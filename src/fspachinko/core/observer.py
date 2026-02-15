@@ -1,10 +1,10 @@
-"""Protocols for fspachinko."""
+"""Abstract interface for Observer pattern."""
 
 from abc import ABC, abstractmethod
 
 
 class Observer(ABC):
-    """Interface for fspachinko Observer."""
+    """Interface for Observer."""
 
     @abstractmethod
     def on_progress_total(self, maximum: int) -> None:

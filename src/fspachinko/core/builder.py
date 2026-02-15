@@ -8,7 +8,7 @@ from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
 from .context import DateTimeStamp, DiversityQuota, EngineContext
 from .engine import Engine, JobRequestFactory
 from .transfer import fetch_transfer_strategy
-from .validator import FileValidator
+from .validator import FileValidator, FileValidatorBuilder
 from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
@@ -23,13 +23,14 @@ def build_file_validator(m: ConfigModel) -> FileValidator:
     extensions = ListIncludeExclude.from_model(m.extension, re_fmt=ReStrFmt.EXTENSION)
     filesize = MinMax.from_model(m.filesize, mapping=SIZE_MAP)
     duration = MinMax.from_model(m.duration, mapping=TIME_MAP)
-    return FileValidator(
+    validators = FileValidatorBuilder(
         directory_name=directory_name,
         keywords=keywords,
         extensions=extensions,
         filesize=filesize,
         duration=duration,
-    )
+    ).build()
+    return FileValidator(validators=validators)
 
 
 def build_engine(m: ConfigModel, observer: Observer) -> Engine:

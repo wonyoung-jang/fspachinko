@@ -50,22 +50,23 @@ def fetch_transfer_strategy(mode: str) -> Callable[[PathLike, str], None]:
     """Return the appropriate transfer strategy instance.
 
     Falls back to SYMLINK if the requested mode is not available.
+    Falls back to COPY if SYMLINK is not available.
     """
-    strategy_map = {
+    mapping = {
         TransferMode.COPY: lambda src, dst: copy(src, dst),
         TransferMode.COPY_PRESERVE: lambda src, dst: copy2(src, dst),
         TransferMode.MOVE: lambda src, dst: move(src, dst),
         TransferMode.SYMLINK: lambda src, dst: symlink(src, dst),
-        TransferMode.HARDLINK: lambda src, dst: transfer_hardlink(src, dst),
+        TransferMode.HARDLINK: lambda src, dst: hardlink(src, dst),
     }
-    available_modes = get_available_transfer_modes()
-    requested_mode = TransferMode(mode)
-    if requested_mode in available_modes:
-        return strategy_map[requested_mode]
-    return lambda src, dst: symlink(src, dst)
+    available = get_available_transfer_modes()
+    requested = TransferMode(mode)
+    if requested in available:
+        return mapping[requested]
+    return mapping.get(TransferMode.SYMLINK, mapping[TransferMode.COPY])
 
 
-def transfer_hardlink(src: PathLike, dst: str) -> None:
+def hardlink(src: PathLike, dst: str) -> None:
     """Create a hardlink from source to destination.
 
     Falls back to symlink if hardlinking across filesystems fails.

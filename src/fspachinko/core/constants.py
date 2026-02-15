@@ -21,6 +21,10 @@ class DefaultPath(StrEnum):
     """Enumeration for default configuration filenames."""
 
     CONFIG = "fspachinko.json"
+    DATA_DIR = "_data"
+    ICON_DIR = "icons"
+    CONFIG_DIR = "configs"
+    GUI_PROFILE_DIR = "gui_profiles"
 
 
 class ReStrFmt(StrEnum):

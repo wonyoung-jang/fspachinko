@@ -2,7 +2,7 @@
 
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os.path import basename, dirname, exists, isabs, join, realpath
 from random import randint
 from typing import TYPE_CHECKING
@@ -158,8 +158,7 @@ class ListIncludeExclude:
     """Dataclass for include-exclude list configuration."""
 
     is_enabled: bool
-    patterns: tuple[re.Pattern, ...] = ()
-    is_valid: Callable[[str], bool] = field(init=False)
+    is_valid: Callable[[str], bool]
 
     @classmethod
     def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
@@ -169,14 +168,14 @@ class ListIncludeExclude:
             patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
         else:
             patterns = ()
-
-        inst = ListIncludeExclude(is_enabled=m.is_enabled and bool(text), patterns=patterns)
-        inst.is_valid = (
-            (lambda part: any(p.search(part) for p in inst.patterns))
-            if m.should_include
-            else (lambda part: not any(p.search(part) for p in inst.patterns))
+        return ListIncludeExclude(
+            is_enabled=m.is_enabled and bool(text),
+            is_valid=(
+                (lambda part: any(p.search(part) for p in patterns))
+                if m.should_include
+                else (lambda part: not any(p.search(part) for p in patterns))
+            ),
         )
-        return inst
 
 
 @dataclass(slots=True)
@@ -184,21 +183,17 @@ class MinMax:
     """Dataclass for min-max limit configuration."""
 
     is_enabled: bool
-    minimum: float
-    maximum: float
+    is_valid: Callable[[float], bool]
 
     @classmethod
     def from_model(cls, m: MinMaxModel, mapping: dict[str, float]) -> MinMax:
         """Create MinMax from configuration model."""
+        minimum = m.minimum * mapping.get(m.unit, 1.0)
+        maximum = m.maximum * mapping.get(m.unit, 1.0)
         return cls(
             is_enabled=m.is_enabled,
-            minimum=m.minimum * mapping.get(m.unit, 1.0),
-            maximum=m.maximum * mapping.get(m.unit, 1.0),
+            is_valid=lambda val: minimum <= val <= maximum,
         )
-
-    def is_valid(self, value: float) -> bool:
-        """Check if a value is within the min-max range."""
-        return self.minimum <= value <= self.maximum
 
 
 @dataclass(slots=True)
