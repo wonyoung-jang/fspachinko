@@ -14,17 +14,16 @@ class ConsoleObserver(Observer):
         """Handle starting total progress."""
         logger.info("Starting total progress: %d directories(s)", maximum)
 
-    def on_count_total(self) -> None:
+    def on_count_total(self, count: int) -> None:
         """Handle total progress count update."""
-        logger.info("Total progress updated.")
 
     def on_progress(self, maximum: int) -> None:
         """Handle starting directory progress."""
         logger.info("Starting directory: %d file(s)", maximum)
 
+    def on_count(self, count: int) -> None:
+        """Handle directory progress count update."""
+
     def on_finished(self) -> None:
         """Handle finishing process."""
         logger.info("Processing finished.")
-
-    def on_count(self, count: int) -> None:
-        """Handle directory progress count update."""

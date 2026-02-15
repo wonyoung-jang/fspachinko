@@ -68,8 +68,9 @@ class Engine:
     def start(self) -> None:
         """Run the main file copying process."""
         self.observer.on_progress_total(self.job_request_factory.dir_count)
-        for request in self.job_request_factory.generate():
+        for i, request in enumerate(self.job_request_factory.generate(), start=1):
             self.process_request(request)
+            self.observer.on_count_total(i)
         self.observer.on_finished()
 
     def process_request(self, request: JobRequest) -> None:
@@ -81,7 +82,6 @@ class Engine:
         self.log(msg=self.context.msg)
         self.log(msg=self.context.generate_report_header(request))
         self.context.finalize(request)
-        self.observer.on_count_total()
 
     def transfer_dir(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""

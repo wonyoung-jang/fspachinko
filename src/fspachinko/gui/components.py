@@ -4,7 +4,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QUrl, Signal, Slot
+from PySide6.QtCore import QUrl, Slot
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -447,9 +447,6 @@ class OptionsWidget(BaseGroupBox):
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
-    count = Signal(int)
-    finished = Signal()
-
     def __init__(self, name: str = "progress") -> None:
         """Post-initialize the progress widget."""
         super().__init__()
@@ -464,27 +461,15 @@ class ProgressWidget(QWidget):
         set_qt_tips(self.progbar_dir, "Current folder progress bar, max is set at number of files to copy.")
 
         layout = QFormLayout(self)
-        layout.addRow("Total", self.progbar_total)
-        layout.addRow("Folder", self.progbar_dir)
+        layout.addRow("Folders", self.progbar_total)
+        layout.addRow("Current", self.progbar_dir)
 
     def bind(self, signals: WorkerSignals) -> None:
         """Bind worker signals to progress widget."""
         signals.progress_total.connect(self.progbar_total.setMaximum)
-        signals.count_total.connect(self.update_total_prog)
+        signals.count_total.connect(self.progbar_total.setValue)
         signals.progress.connect(self.progbar_dir.setMaximum)
-        signals.count.connect(self.on_count)
-        signals.finished.connect(self.finished.emit)
-
-    @Slot()
-    def update_total_prog(self) -> None:
-        """Update the total progress bar."""
-        self.progbar_total.setValue(self.progbar_total.value() + 1)
-
-    @Slot(int)
-    def on_count(self, count: int) -> None:
-        """Handle directory progress count update."""
-        self.progbar_dir.setValue(count)
-        self.count.emit(count)
+        signals.count.connect(self.progbar_dir.setValue)
 
     def reset(self) -> None:
         """Reset progress bars."""

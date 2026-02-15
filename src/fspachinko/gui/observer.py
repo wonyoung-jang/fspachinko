@@ -11,10 +11,10 @@ class WorkerSignals(QObject):
     """Qt worker signals."""
 
     progress_total = Signal(int)
-    count_total = Signal()
+    count_total = Signal(int)
     progress = Signal(int)
-    finished = Signal()
     count = Signal(int)
+    finished = Signal()
 
 
 @dataclass(slots=True)
@@ -27,18 +27,18 @@ class GuiObserver(Observer):
         """Emit total progress signal."""
         self.signals.progress_total.emit(maximum)
 
-    def on_count_total(self) -> None:
+    def on_count_total(self, count: int) -> None:
         """Emit total count signal."""
-        self.signals.count_total.emit()
+        self.signals.count_total.emit(count)
 
     def on_progress(self, maximum: int) -> None:
         """Emit progress signal."""
         self.signals.progress.emit(maximum)
 
-    def on_finished(self) -> None:
-        """Emit finished signal."""
-        self.signals.finished.emit()
-
     def on_count(self, count: int) -> None:
         """Emit count update signal."""
         self.signals.count.emit(count)
+
+    def on_finished(self) -> None:
+        """Emit finished signal."""
+        self.signals.finished.emit()
