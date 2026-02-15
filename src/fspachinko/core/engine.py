@@ -83,13 +83,11 @@ class Engine:
         """Process a single folder for file copying."""
         target, dest = request.target, request.dest
         count = 0
-        entries = self.entries
         while not self.context.should_stop(target):
-            entry = next(entries, None)
+            entry = next(self.entries, None)
             if entry is None:
                 if self.context.is_none_found():
                     break
-                entries = self.entries
                 continue
 
             new_filename = self.filename_fn(entry.path, dest, count)

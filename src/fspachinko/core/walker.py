@@ -26,8 +26,8 @@ class FSEntry:
     stem: str = field(init=False)
     ext: str = field(init=False)
     size: int = field(init=False)
-    entry: InitVar[os.DirEntry | None] = None
-    follow_symlink: InitVar[bool] = False
+    entry: InitVar[os.DirEntry]
+    follow_symlink: InitVar[bool]
 
     def __post_init__(self, entry: os.DirEntry, follow_symlink: bool) -> None:
         """Create a lightweight FSEntry from an os.DirEntry."""
@@ -118,6 +118,11 @@ class PachinkoFSWalker(FSWalker):
 
         while root in board:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
+            if pin.is_exhausted:
+                if curr == root:
+                    break
+                curr = root
+                continue
 
             if not pin.is_scanned:
                 pin.scan(follow=self.should_follow_symlink)

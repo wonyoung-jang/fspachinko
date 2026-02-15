@@ -143,8 +143,8 @@ class IconFilename(StrEnum):
     START = "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     STOP = "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     CLOSE = "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    BROWSE = "add_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    OPEN_DIR = "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    BROWSE = "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+    OPEN_DIR = "open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
 
 
 class DateTimeFormat(StrEnum):

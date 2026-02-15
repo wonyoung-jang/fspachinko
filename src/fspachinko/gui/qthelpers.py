@@ -81,7 +81,7 @@ def set_widget_value(widget: QWidget, val: Any) -> None:
                 index = int(val)
                 if 0 <= index < widget.count():
                     widget.setCurrentIndex(index)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         case QSpinBox():
             widget.setValue(int(val))

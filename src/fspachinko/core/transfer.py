@@ -5,7 +5,7 @@ from io import UnsupportedOperation
 from os import PathLike, link, symlink, unlink
 from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .constants import FileError, TransferMode
 
@@ -32,7 +32,7 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
         with TemporaryDirectory() as tmpdir:
             _test_link_creation(symlink)
         available.append(TransferMode.SYMLINK)
-    except (OSError, UnsupportedOperation, NotImplementedError):
+    except OSError, UnsupportedOperation, NotImplementedError:
         pass
 
     # HARDLINK availability
@@ -40,33 +40,35 @@ def get_available_transfer_modes() -> tuple[TransferMode, ...]:
         with TemporaryDirectory() as tmpdir:
             _test_link_creation(link)
         available.append(TransferMode.HARDLINK)
-    except (OSError, UnsupportedOperation, NotImplementedError):
+    except OSError, UnsupportedOperation, NotImplementedError:
         pass
 
     return tuple(available)
 
 
-def fetch_transfer_strategy(mode: str) -> Callable[[PathLike, str], None]:
+def fetch_transfer_strategy(mode: str) -> Callable[[PathLike[str], str], None]:
     """Return the appropriate transfer strategy instance.
 
     Falls back to SYMLINK if the requested mode is not available.
     Falls back to COPY if SYMLINK is not available.
     """
-    mapping = {
-        TransferMode.COPY: lambda src, dst: copy(src, dst),
-        TransferMode.COPY_PRESERVE: lambda src, dst: copy2(src, dst),
-        TransferMode.MOVE: lambda src, dst: move(src, dst),
-        TransferMode.SYMLINK: lambda src, dst: symlink(src, dst),
-        TransferMode.HARDLINK: lambda src, dst: hardlink(src, dst),
+    mapping: dict[TransferMode, Any] = {
+        TransferMode.COPY: copy,
+        TransferMode.COPY_PRESERVE: copy2,
+        TransferMode.MOVE: move,
+        TransferMode.SYMLINK: symlink,
+        TransferMode.HARDLINK: hardlink,
     }
     available = get_available_transfer_modes()
     requested = TransferMode(mode)
     if requested in available:
         return mapping[requested]
-    return mapping.get(TransferMode.SYMLINK, mapping[TransferMode.COPY])
+    if TransferMode.SYMLINK in available:
+        return mapping[TransferMode.SYMLINK]
+    return mapping[TransferMode.COPY]
 
 
-def hardlink(src: PathLike, dst: str) -> None:
+def hardlink(src: PathLike[str], dst: str) -> None:
     """Create a hardlink from source to destination.
 
     Falls back to symlink if hardlinking across filesystems fails.

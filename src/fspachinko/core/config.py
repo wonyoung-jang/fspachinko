@@ -131,7 +131,7 @@ class Filename:
         try:
             formatted_stem = self.template.format_map(mapping)
             new_stem = get_valid_filename_from_str(formatted_stem)
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             new_stem = stem
 
         name = new_stem + ext

@@ -183,8 +183,8 @@ class FileCountWidget(BaseGroupBox):
         self.spin_max_rand.valueChanged.connect(self.spin_min_rand.setMaximum)
 
         self.radio_fixed.toggled.connect(self.spin_fixed.setEnabled)
-        self.radio_fixed.toggled.connect(lambda c: self.spin_min_rand.setDisabled(c))
-        self.radio_fixed.toggled.connect(lambda c: self.spin_max_rand.setDisabled(c))
+        self.radio_fixed.toggled.connect(self.spin_min_rand.setDisabled)
+        self.radio_fixed.toggled.connect(self.spin_max_rand.setDisabled)
 
         # Initial state
         self.spin_min_rand.setDisabled(True)
