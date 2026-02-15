@@ -1,5 +1,6 @@
 """Engine Module."""
 
+import logging
 from dataclasses import dataclass
 from os import mkdir
 from os.path import exists, relpath
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
     from .context import EngineContext
     from .observer import Observer
     from .walker import FSEntry
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -76,7 +79,8 @@ class Engine:
         self.context.setup_logger(request.dest)
         self.transfer_dir(request)
         self.log(msg=self.context.msg)
-        self.log(msg=self.context.finalize(request))
+        self.log(msg=self.context.generate_report_header(request))
+        self.context.finalize(request)
         self.observer.on_count_total()
 
     def transfer_dir(self, request: JobRequest) -> None:
@@ -86,9 +90,7 @@ class Engine:
         while not self.context.should_stop(target):
             entry = next(self.entries, None)
             if entry is None:
-                if self.context.is_none_found():
-                    break
-                continue
+                break
 
             new_filename = self.filename_fn(entry.path, dest, count)
             if new_filename is None:
@@ -110,5 +112,5 @@ class Engine:
 
     def log(self, msg: str) -> None:
         """Report and log a message."""
-        self.observer.on_log(msg)
+        logger.info(msg)
         self.context.on_log(msg)

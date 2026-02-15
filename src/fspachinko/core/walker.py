@@ -51,30 +51,27 @@ class FSPachinkoPin:
 
     path: str
     subdirs: list[str] = field(default_factory=list)
-    files: list[FSEntry] = field(default_factory=list)
+    files: list[os.DirEntry] = field(default_factory=list)
     is_scanned: bool = False
     is_exhausted: bool = False
 
     def scan(self, *, follow: bool) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
         self.is_scanned = True
-        subdirs = self.subdirs.append
-        files = self.files.append
+        subdirs_append = self.subdirs.append
+        files_append = self.files.append
         try:
             with scandir(self.path) as it:
                 for e in it:
                     try:
                         if e.is_dir(follow_symlinks=follow):
-                            subdirs(e.path)
+                            subdirs_append(e.path)
                         elif e.is_file(follow_symlinks=follow):
-                            files(FSEntry(entry=e, follow_symlink=follow))
+                            files_append(e)
                     except OSError:
-                        logger.debug("Skipping entry due to OSError: %s", e.path)
                         continue
         except OSError:
             self.is_exhausted = True
-            logger.debug("Skipping pin scan due to OSError: %s", self.path)
-            return
 
 
 @dataclass(slots=True)
@@ -115,6 +112,7 @@ class PachinkoFSWalker(FSWalker):
         locked_dir, locked_file = quota.locked_dir, quota.locked_file
         lock_dir, lock_file = locked_dir.add, locked_file.add
         is_valid = self.validator.is_valid
+        follow = self.should_follow_symlink
 
         while root in board:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
@@ -125,7 +123,7 @@ class PachinkoFSWalker(FSWalker):
                 continue
 
             if not pin.is_scanned:
-                pin.scan(follow=self.should_follow_symlink)
+                pin.scan(follow=follow)
 
             subdirs = []
             for d in pin.subdirs:
@@ -136,24 +134,26 @@ class PachinkoFSWalker(FSWalker):
 
             pin.subdirs = subdirs
             pin.files = [f for f in pin.files if f.path not in locked_file]
-            has_subdirs, has_files = bool(pin.subdirs), bool(pin.files)
+            subdirs = pin.subdirs
+            files = pin.files
 
-            if not (has_subdirs or has_files):
+            if not (subdirs or files):
                 pin.is_exhausted = True
                 lock_dir(curr)
                 board_pop(curr, None)
                 curr = root
                 continue
 
-            should_descend = choice((True, False)) if has_subdirs and has_files else has_subdirs
+            should_descend = choice((True, False)) if subdirs and files else bool(subdirs)
             if should_descend:
-                curr = choice(pin.subdirs)
+                curr = choice(subdirs)
                 continue
 
-            entry = choice(pin.files)
-            lock_file(entry.path)
-            if not is_valid(entry):
+            entry = choice(files)
+            fsentry = FSEntry(entry=entry, follow_symlink=follow)
+            lock_file(fsentry.path)
+            if not is_valid(fsentry):
                 continue  # Continuing here keeps the current working directory the same
 
-            yield entry
+            yield fsentry
             curr = root

@@ -4,7 +4,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QUrl, Signal, Slot
+from PySide6.QtCore import QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -271,8 +271,7 @@ class FilenameWidget(BaseGroupBox):
 
     def get_config(self) -> FilenameModel:
         """Return clean data for the config."""
-        val = self.edit_template.text() or "{original}"
-        return FilenameModel(template=val)
+        return FilenameModel(template=self.edit_template.text().strip() or "{original}")
 
 
 class ListIncludeExcludeFilterWidget(BaseGroupBox):
@@ -448,6 +447,9 @@ class OptionsWidget(BaseGroupBox):
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
+    count = Signal(int)
+    finished = Signal()
+
     def __init__(self, name: str = "progress") -> None:
         """Post-initialize the progress widget."""
         super().__init__()
@@ -465,10 +467,24 @@ class ProgressWidget(QWidget):
         layout.addRow("Total", self.progbar_total)
         layout.addRow("Folder", self.progbar_dir)
 
+    def bind(self, signals: WorkerSignals) -> None:
+        """Bind worker signals to progress widget."""
+        signals.progress_total.connect(self.progbar_total.setMaximum)
+        signals.count_total.connect(self.update_total_prog)
+        signals.progress.connect(self.progbar_dir.setMaximum)
+        signals.count.connect(self.on_count)
+        signals.finished.connect(self.finished.emit)
+
     @Slot()
     def update_total_prog(self) -> None:
         """Update the total progress bar."""
         self.progbar_total.setValue(self.progbar_total.value() + 1)
+
+    @Slot(int)
+    def on_count(self, count: int) -> None:
+        """Handle directory progress count update."""
+        self.progbar_dir.setValue(count)
+        self.count.emit(count)
 
     def reset(self) -> None:
         """Reset progress bars."""
@@ -491,31 +507,3 @@ class LoggingWidget(QWidget):
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.textbrowser_log)
-
-
-class ProgressBinder(QObject):
-    """Class for binding progress widgets."""
-
-    count = Signal(int)
-    finished = Signal()
-
-    def __init__(self, progressw: ProgressWidget, loggingw: LoggingWidget) -> None:
-        """Initialize the ProgressBinder."""
-        super().__init__()
-        self.progress = progressw
-        self.logging = loggingw
-
-    def bind(self, signals: WorkerSignals) -> None:
-        """Bind worker signals to progress widget."""
-        signals.progress_total.connect(self.progress.progbar_total.setMaximum)
-        signals.count_total.connect(self.progress.update_total_prog)
-        signals.progress.connect(self.progress.progbar_dir.setMaximum)
-        signals.log.connect(self.logging.textbrowser_log.append)
-        signals.count.connect(self.on_count)
-        signals.finished.connect(self.finished.emit)
-
-    @Slot(int)
-    def on_count(self, count: int) -> None:
-        """Handle directory progress count update."""
-        self.progress.progbar_dir.setValue(count)
-        self.count.emit(count)

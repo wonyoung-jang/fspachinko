@@ -5,8 +5,9 @@ import logging
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
+from fspachinko.gui.loggers import QtLogHandler
+
 from ..core import PERCENTAGE_100, GUIName
-from .components import ProgressBinder
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
 from .workers import MainWorker
@@ -24,9 +25,17 @@ class CentralWidget(QWidget):
         self.original_window_title = ""
         self.thread_pool = QThreadPool()
         self.ui = UIBuilder()
-        layout = self.ui.build_layout()
-        self.setLayout(layout)
-        self.progress_binder = ProgressBinder(self.ui.progress, self.ui.logging)
+        self.setLayout(self.ui.build())
+        self.setup_qt_logger()
+
+    def setup_qt_logger(self) -> None:
+        """Set up the Qt logger."""
+        qt_log_handler = QtLogHandler(self.ui.logging.textbrowser_log.append)
+        root_logger = logging.getLogger()
+        for hndl in root_logger.handlers:
+            if hndl.name == "console":
+                root_logger.removeHandler(hndl)
+        root_logger.addHandler(qt_log_handler)
 
     @Slot()
     def on_start(self) -> None:
@@ -34,22 +43,23 @@ class CentralWidget(QWidget):
         try:
             config = self.ui.get_config()
         except Exception:
-            logger.exception("")
+            logger.exception("Failed to get configuration from UI.")
             return
 
         self.worker = MainWorker(config)
-        self.ui.progress.reset()
         self.original_window_title = self.window().windowTitle()
-        self.progress_binder.bind(self.worker.signals)
-        self.progress_binder.count.connect(self.update_title_progress)
-        self.progress_binder.finished.connect(self.on_finished)
+        self.ui.progress.reset()
+        self.ui.progress.bind(self.worker.signals)
+        self.ui.progress.count.connect(self.update_title_progress)
+        self.ui.progress.finished.connect(self.on_finished)
         self.toggle_ui(is_enabled=False)
         self.thread_pool.start(self.worker)
 
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
-        self.worker.stop()
+        if hasattr(self, "worker"):
+            self.worker.stop()
 
     @Slot(int)
     def update_title_progress(self, val: int) -> None:

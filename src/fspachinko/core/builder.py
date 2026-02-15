@@ -66,7 +66,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
 
     # Build Engine
-    filename = Filename(m.filename.template, dtstamp=dtstamp)
+    filename = Filename.from_model(m.filename, dtstamp=dtstamp)
 
     job_request_factory = JobRequestFactory(
         get_file_count=m.filecount.get_count_fn(),

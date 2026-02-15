@@ -40,7 +40,7 @@ class UIBuilder:
     progress: ProgressWidget = field(default_factory=ProgressWidget)
     logging: LoggingWidget = field(default_factory=LoggingWidget)
 
-    def build_layout(self) -> QVBoxLayout:
+    def build(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
         layout = QVBoxLayout()
         layout.addWidget(self.root)

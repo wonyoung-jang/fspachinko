@@ -48,6 +48,7 @@ class DirectoryModel(BaseModel):
 class FilenameModel(BaseModel):
     """Model for file renaming."""
 
+    is_enabled: bool = False
     template: str = "{original}"
 
 
@@ -141,6 +142,11 @@ class Filename:
         if are_paths_equal(chosen, target):
             return None
         return calc_unique_path_name(dest, new_stem, ext)
+
+    @classmethod
+    def from_model(cls, m: FilenameModel, dtstamp: DateTimeStamp) -> Filename:
+        """Create Filename from configuration model."""
+        return cls(template=m.template, dtstamp=dtstamp)
 
 
 @dataclass(slots=True)

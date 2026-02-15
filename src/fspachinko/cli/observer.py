@@ -26,9 +26,5 @@ class ConsoleObserver(Observer):
         """Handle finishing process."""
         logger.info("Processing finished.")
 
-    def on_log(self, msg: str) -> None:
-        """Handle log message."""
-        logger.info("%s", msg)
-
     def on_count(self, count: int) -> None:
         """Handle directory progress count update."""

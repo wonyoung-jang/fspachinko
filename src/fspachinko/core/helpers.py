@@ -3,11 +3,11 @@
 import contextlib
 import logging
 import shutil
+import subprocess
 from dataclasses import dataclass
 from filecmp import cmp
 from os import mkdir
 from os.path import basename, dirname, exists, join, splitext
-from subprocess import DEVNULL, CalledProcessError, check_output
 
 import fspachinko
 
@@ -119,18 +119,20 @@ def get_valid_filename_from_str(name: str) -> str:
 def get_duration(path: str) -> float:
     """Get the duration of a media file."""
     try:
-        out_bytes = check_output(
+        completed_proc = subprocess.run(
             [*DURATION_CMD, path],
-            stderr=DEVNULL,
-            timeout=10,
+            timeout=5,
+            check=True,
+            encoding="utf-8",
+            stdout=subprocess.PIPE,
         )
         try:
-            return float(out_bytes.decode().strip())
+            return float(completed_proc.stdout.strip())
         except ValueError:
-            logger.debug("ffprobe output could not be parsed as float: %s", out_bytes.decode(errors="ignore"))
+            logger.debug("ffprobe output could not be parsed as float: %s", completed_proc)
             return 0.0
-    except CalledProcessError as e:
-        out_bytes = e.output
+    except subprocess.CalledProcessError as e:
+        completed_proc = e.output
         code = e.returncode
-        logger.debug("ffprobe failed with code %d: %s", code, out_bytes.decode(errors="ignore"))
+        logger.debug("ffprobe failed with code %d: %s", code, completed_proc.decode(errors="ignore"))
         return 0.0

@@ -23,9 +23,5 @@ class Observer(ABC):
         """Call when processing is finished."""
 
     @abstractmethod
-    def on_log(self, msg: str) -> None:
-        """Call to log a message."""
-
-    @abstractmethod
     def on_count(self, count: int) -> None:
         """Call to update progress percentage."""

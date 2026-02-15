@@ -1,7 +1,5 @@
 """Main entry point for GUI."""
 
-import logging
-
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
@@ -9,8 +7,6 @@ from PySide6.QtWidgets import QApplication
 # from qt_material import apply_stylesheet
 from ..core import AppSetting, IconFilename, get_icon_path, initialize_logging
 from .mainwindow import MainWindow
-
-logger = logging.getLogger(__name__)
 
 QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)
@@ -29,7 +25,6 @@ except ImportError:
 def main() -> None:
     """Run the application."""
     initialize_logging()
-    logger.info("Start: fspachinko GUI")
 
     app = QApplication()
     app.setWindowIcon(QIcon(get_icon_path(IconFilename.WINDOW)))

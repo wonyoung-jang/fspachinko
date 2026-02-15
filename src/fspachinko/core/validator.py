@@ -42,4 +42,4 @@ class FileValidator:
 
     def is_valid(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return all(is_valid(entry) for is_valid in self.validators)
+        return all(validator(entry) for validator in self.validators)

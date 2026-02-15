@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Enter CLI."""
     initialize_logging()
-    logger.info("Start: fspachinko CLI")
     app()
 
 

@@ -185,12 +185,10 @@ class EngineContext:
         self.dir_stat.update(entry.size)
         self.quota.update(entry)
 
-    def finalize(self, request: JobRequest) -> str:
+    def finalize(self, request: JobRequest) -> None:
         """Finalize the context after processing."""
         if self.is_none_found():
             remove_directory(request.dest)
-            return ""
-        return self.generate_report(request)
 
     def on_log(self, message: str) -> None:
         """Log a message to the report file."""
@@ -209,7 +207,7 @@ class EngineContext:
         self._logger.addHandler(handler)
         self._logger.propagate = False
 
-    def generate_report(self, request: JobRequest) -> str:
+    def generate_report_header(self, request: JobRequest) -> str:
         """Generate the header report string."""
         return (
             f"{self.state}: {self.dir_stat.file_count}/{request.target} files copied"
