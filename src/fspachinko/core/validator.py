@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class FileValidatorBuilder:
     """Class for validating files based on configuration."""
 
-    directory_name: ListIncludeExclude
+    dirname: ListIncludeExclude
     keywords: ListIncludeExclude
     extensions: ListIncludeExclude
     filesize: MinMax
@@ -25,7 +25,7 @@ class FileValidatorBuilder:
     def build(self) -> tuple[Callable[[FSEntry], bool], ...]:
         """Gather validation functions based on enabled filters."""
         vmap: tuple[tuple[bool, Callable[[FSEntry], bool]], ...] = (
-            (self.directory_name.is_enabled, lambda e: self.directory_name.is_valid(e.parent)),
+            (self.dirname.is_enabled, lambda e: self.dirname.is_valid(e.parent)),
             (self.extensions.is_enabled, lambda e: self.extensions.is_valid(e.ext)),
             (self.keywords.is_enabled, lambda e: self.keywords.is_valid(e.stem)),
             (self.filesize.is_enabled, lambda e: self.filesize.is_valid(e.size)),

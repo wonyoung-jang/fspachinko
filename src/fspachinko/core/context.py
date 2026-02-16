@@ -4,14 +4,13 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from os.path import dirname
-from time import perf_counter
 from typing import TYPE_CHECKING
 
 from .constants import DateTimeFormat, StateStatus
-from .helpers import convert_byte_to_human_readable_size, remove_directory
+from .helpers import remove_directory
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from .engine import JobRequest
     from .walker import FSEntry
@@ -71,58 +70,6 @@ class DiversityQuota:
 
 
 @dataclass(slots=True)
-class OutputTotalStat:
-    """Dataclass for a single output directory statistics."""
-
-    total_size: int = 0
-    total_file_count: int = 0
-    start_time: float = 0.0
-
-
-@dataclass(slots=True)
-class OutputDirStat:
-    """Dataclass for a single output directory statistics."""
-
-    file_count: int = 0
-    curr_size: int = 0
-    start_time: float = 0.0
-    total_size: int = 0
-
-    def reset(self) -> None:
-        """Reset state variables for a new folder."""
-        self.file_count = 0
-        self.curr_size = 0
-        self.start_time = perf_counter()
-
-    def update(self, size: int) -> None:
-        """Update state on successful operation."""
-        self.file_count += 1
-        self.curr_size += size
-        self.total_size += size
-
-    @property
-    def runtime_str(self) -> str:
-        """Get the runtime as a formatted string."""
-        return f"{perf_counter() - self.start_time:.2f}s"
-
-    @property
-    def size_str(self) -> str:
-        """Get the current size as a human-readable string."""
-        return convert_byte_to_human_readable_size(self.curr_size)
-
-
-@dataclass(slots=True)
-class StaticEngineContext:
-    """Static context for the engine."""
-
-    root: str
-    dest: str
-    is_dry_run: bool
-    is_create_folder: bool
-    should_follow_symlink: bool
-
-
-@dataclass(slots=True)
 class EngineContext:
     """Class for engine state context."""
 
@@ -135,35 +82,35 @@ class EngineContext:
     state: str = field(default="")
     msg: str = field(default="")
     is_stop_requested: bool = field(default=False)
-    dir_stat: OutputDirStat = field(default_factory=OutputDirStat)
-    total_stat: OutputTotalStat = field(default_factory=OutputTotalStat)
 
-    def should_stop(self, target: int) -> bool:
+    def _check(self, request: JobRequest, gen_fn: Callable) -> bool:
         """Check and update state before file validation."""
-        self.state, self.msg = next(self.generate_state_msg(target), ("", ""))
-        return bool(self.state and self.msg)
-
-    def generate_state_msg(self, target: int) -> Iterator[tuple[str, str]]:
-        """Generate state and message for reporting."""
-        dir_stat = self.dir_stat
-        if self.is_stop_requested:
-            yield StateStatus.USER_STOPPED, "Stopped by user request"
-        elif dir_stat.file_count == target:
-            yield StateStatus.SUCCESS, f"Transferred {dir_stat.file_count}/{target} files"
-        elif self.root in self.quota.locked_dir:
-            yield StateStatus.ALL_FILES_SEARCHED, "All files locked by diversity quota"
-
-    def is_none_found(self) -> bool:
-        """Check if no files were found in the current folder."""
-        state, msg = next(self.generate_none_found_state_msg(), ("", ""))
-        if state and msg:
-            self.state, self.msg = state, msg
+        result = next(gen_fn(request), None)
+        if result is not None:
+            self.state, self.msg = result
             return True
         return False
 
-    def generate_none_found_state_msg(self) -> Iterator[tuple[str, str]]:
+    def should_stop(self, request: JobRequest) -> bool:
+        """Check and update state before file validation."""
+        return self._check(request, self.gen_stop_statemsg)
+
+    def is_none_found(self, request: JobRequest) -> bool:
+        """Check if no files were found in the current folder."""
+        return self._check(request, self.gen_none_statemsg)
+
+    def gen_stop_statemsg(self, request: JobRequest) -> Iterator[tuple[str, str]]:
+        """Generate state and message for reporting."""
+        if self.is_stop_requested:
+            yield StateStatus.USER_STOPPED, "Stopped by user request"
+        elif request.file_count == request.target:
+            yield StateStatus.SUCCESS, f"Transferred {request.file_count}/{request.target} files"
+        elif self.root in self.quota.locked_dir:
+            yield StateStatus.ALL_FILES_SEARCHED, "All files locked by diversity quota"
+
+    def gen_none_statemsg(self, request: JobRequest) -> Iterator[tuple[str, str]]:
         """Generate state and message for no files found scenario."""
-        none_found = self.dir_stat.file_count == 0 and self.is_create_folder
+        none_found = request.file_count == 0 and self.is_create_folder
         if none_found and self.root in self.quota.locked_dir:
             yield (
                 StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED,
@@ -175,29 +122,30 @@ class EngineContext:
     def prepare(self) -> None:
         """Prepare the context for a new folder processing."""
         self.dtstamp.reset()
-        self.dir_stat.reset()
         self.quota.reset()
 
     def update(self, entry: FSEntry) -> None:
         """Update context on successful file operation."""
-        self.dir_stat.update(entry.size)
         self.quota.update(entry)
 
     def finalize(self, request: JobRequest) -> None:
         """Finalize the context after processing."""
-        if self.is_none_found():
+        if self.is_none_found(request):
             remove_directory(request.dest)
 
     def generate_report_header(self, request: JobRequest) -> str:
         """Generate the header report string."""
+        r = request
         return (
-            f"{self.state}: {self.dir_stat.file_count}/{request.target} files copied"
-            "\n------------------------------------------------------------------------\n"
+            f"SUMMARY:\n"
+            f"{self.msg}\n"
+            f"{self.state}: {r.file_count}/{r.target} files transferred\n"
+            "------------------------------------------------------------------------\n"
             f"Timestamp:    {self.dtstamp.date_time_report_str}\n"
             f"Root:         {self.root}\n"
-            f"Destination:  {request.dest}\n"
-            f"Size:         {self.dir_stat.size_str}\n"
-            f"Runtime:      {self.dir_stat.runtime_str}\n"
+            f"Destination:  {r.dest}\n"
+            f"Size:         {r.size_str}\n"
+            f"Runtime:      {r.runtime_str}\n"
             f"Is Dry Run:   {self.is_dry_run}\n"
-            "\n========================================================================\n"
+            "========================================================================\n"
         )

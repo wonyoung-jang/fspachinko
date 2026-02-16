@@ -1,18 +1,31 @@
 """Main module."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
-from fspachinko.gui.loggers import QtLogHandler
-
 from ..core import PERCENTAGE_100, GUIName
+from .loggers import QtLogHandler
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
 from .workers import MainWorker
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 logger = logging.getLogger(__name__)
+
+
+def setup_qt_logger(slotfunc: Callable) -> None:
+    """Set up the Qt logger."""
+    qt_log_handler = QtLogHandler(slotfunc)
+    root_logger = logging.getLogger()
+    for hndl in root_logger.handlers:
+        if hndl.name == "console":
+            root_logger.removeHandler(hndl)
+    root_logger.addHandler(qt_log_handler)
 
 
 class CentralWidget(QWidget):
@@ -23,19 +36,11 @@ class CentralWidget(QWidget):
         super().__init__()
         set_qt_name(self, GUIName.CENTRAL_WIDGET)
         self.original_window_title = ""
+        self.worker = None
         self.thread_pool = QThreadPool()
         self.ui = UIBuilder()
         self.setLayout(self.ui.build())
-        self.setup_qt_logger()
-
-    def setup_qt_logger(self) -> None:
-        """Set up the Qt logger."""
-        qt_log_handler = QtLogHandler(self.ui.logging.textbrowser_log.append)
-        root_logger = logging.getLogger()
-        for hndl in root_logger.handlers:
-            if hndl.name == "console":
-                root_logger.removeHandler(hndl)
-        root_logger.addHandler(qt_log_handler)
+        setup_qt_logger(self.ui.logging.textbrowser_log.append)
 
     @Slot()
     def on_start(self) -> None:
@@ -58,7 +63,7 @@ class CentralWidget(QWidget):
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
-        if hasattr(self, "worker"):
+        if self.worker:
             self.worker.stop()
 
     @Slot(int)
