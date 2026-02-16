@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from os import mkdir
-from os.path import exists, relpath
+from os.path import basename, exists, join, relpath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,6 +28,16 @@ class JobRequest:
         """Post-initialization tasks."""
         if not exists(self.dest):
             mkdir(self.dest)
+
+    def get_log_handler(self) -> logging.FileHandler:
+        """Set up a logger for the job request."""
+        report_path = join(self.dest, f"!_{basename(self.dest)}_report.log")
+        formatter = logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
+        handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
+        handler.set_name(self.dest)
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(formatter)
+        return handler
 
 
 @dataclass(slots=True)
@@ -77,11 +87,16 @@ class Engine:
         """Run processing for a single folder."""
         self.observer.on_progress(request.target)
         self.context.prepare()
-        self.context.setup_logger(request.dest)
+        root_logger = logging.getLogger()
+        log_handler = request.get_log_handler()
+        root_logger.addHandler(log_handler)
+        # Actual work
         self.transfer_dir(request)
-        self.log(msg=self.context.msg)
-        self.log(msg=self.context.generate_report_header(request))
+        # Cleanup
+        logger.info(self.context.msg)
+        logger.info(self.context.generate_report_header(request))
         self.context.finalize(request)
+        root_logger.removeHandler(log_handler)
 
     def transfer_dir(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
@@ -102,15 +117,10 @@ class Engine:
                 try:
                     self.transfer_fn(entry, new_filename)
                 except PermissionError, OSError:
-                    self.log(f"FAILED - {msg}")
+                    logger.info("FAILED - %s", msg)
                     continue
 
-            self.log(msg)
+            logger.info(msg)
             count += 1
             self.context.update(entry)
             self.observer.on_count(count)
-
-    def log(self, msg: str) -> None:
-        """Report and log a message."""
-        logger.info(msg)
-        self.context.on_log(msg)

@@ -1,10 +1,9 @@
 """Engine state classes."""
 
-import logging
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from os.path import basename, dirname, join
+from os.path import dirname
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -138,7 +137,6 @@ class EngineContext:
     is_stop_requested: bool = field(default=False)
     dir_stat: OutputDirStat = field(default_factory=OutputDirStat)
     total_stat: OutputTotalStat = field(default_factory=OutputTotalStat)
-    _logger: logging.Logger | None = field(default=None)
 
     def should_stop(self, target: int) -> bool:
         """Check and update state before file validation."""
@@ -189,23 +187,6 @@ class EngineContext:
         """Finalize the context after processing."""
         if self.is_none_found():
             remove_directory(request.dest)
-
-    def on_log(self, message: str) -> None:
-        """Log a message to the report file."""
-        if self._logger:
-            self._logger.info(message)
-
-    def setup_logger(self, dest: str) -> None:
-        """Set up a file logger for the destination directory."""
-        report_path = join(dest, f"!_{basename(dest)}_report.log")
-        formatter = logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
-        handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(formatter)
-        self._logger = logging.getLogger(f"fspachinko.report.{id(handler)}")
-        self._logger.setLevel(logging.INFO)
-        self._logger.addHandler(handler)
-        self._logger.propagate = False
 
     def generate_report_header(self, request: JobRequest) -> str:
         """Generate the header report string."""

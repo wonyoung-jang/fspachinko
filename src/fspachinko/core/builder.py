@@ -35,20 +35,13 @@ def build_file_validator(m: ConfigModel) -> FileValidator:
 
 def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     """Build and return the engine based on the configuration."""
-    # Build main components
     seed(m.options.rng_seed)
     dtstamp = DateTimeStamp()
-
-    # Build FileValidator
     validator = build_file_validator(m)
-
-    # Build DiversityQuota
     quota = DiversityQuota(
         max_per_dir=m.options.max_per_folder,
         is_create_unique_folders=m.options.is_create_unique_folders,
     )
-
-    # Build EngineContext
     context = EngineContext(
         root=m.root,
         is_create_folder=m.folder.is_enabled,
@@ -56,18 +49,13 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         quota=quota,
         dtstamp=dtstamp,
     )
-
-    # Build Walker
     walker = PachinkoFSWalker(
         root=m.root,
         quota=quota,
         validator=validator,
         should_follow_symlink=m.options.should_follow_symlink,
     )
-
-    # Build Engine
     filename = Filename.from_model(m.filename, dtstamp=dtstamp)
-
     job_request_factory = JobRequestFactory(
         get_file_count=m.filecount.get_count_fn(),
         determine_dest_dirname=m.folder.get_dirname_fn(m.dest),
