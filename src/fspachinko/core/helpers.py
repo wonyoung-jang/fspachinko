@@ -25,11 +25,13 @@ class DataPaths:
     icons: str = join(data, DefaultPath.ICON_DIR)
     configs: str = join(data, DefaultPath.CONFIG_DIR)
     profiles: str = join(data, DefaultPath.GUI_PROFILE_DIR)
+    logs: str = join(data, DefaultPath.LOG_DIR)
 
     def __post_init__(self) -> None:
         """Ensure necessary directories exist."""
-        if not exists(self.profiles):
-            mkdir(self.profiles)
+        for path in (self.data, self.icons, self.configs, self.profiles, self.logs):
+            if not exists(path):
+                mkdir(path)
 
     def get_icon(self, path: str) -> str:
         """Get the full path to an icon."""
@@ -43,11 +45,16 @@ class DataPaths:
         """Get the full path to a profile file."""
         return join(self.profiles, path)
 
+    def get_log(self, path: str) -> str:
+        """Get the full path to a log file."""
+        return join(self.logs, path)
+
 
 _datapaths = DataPaths()
 get_icon_path = _datapaths.get_icon
 get_config_path = _datapaths.get_config
 get_profile_path = _datapaths.get_profile
+get_log_path = _datapaths.get_log
 
 
 class SafeDict(dict):

@@ -102,14 +102,13 @@ class Engine:
             self.observer.on_directory_start(request.target)
             self.context.prepare()
             log_handler = get_dest_log_filehandler(request.dest)
-            root_logger = logging.getLogger()
-            root_logger.addHandler(log_handler)
+            logger.addHandler(log_handler)
 
             self.transfer_dir(request)
 
             logger.info(self.context.generate_report_header(request))
+            logger.removeHandler(log_handler)
             self.context.finalize(request)
-            root_logger.removeHandler(log_handler)
             self.observer.on_directory_increment(dir_i)
         self.observer.on_finished()
 

@@ -25,6 +25,7 @@ class DefaultPath(StrEnum):
     ICON_DIR = "icons"
     CONFIG_DIR = "configs"
     GUI_PROFILE_DIR = "gui_profiles"
+    LOG_DIR = "logs"
 
 
 class ReStrFmt(StrEnum):

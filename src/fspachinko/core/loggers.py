@@ -3,6 +3,8 @@
 import logging
 import sys
 
+from .helpers import get_log_path
+
 
 def initialize_logging() -> logging.Logger:
     """Initialize logging for the application."""
@@ -13,7 +15,8 @@ def initialize_logging() -> logging.Logger:
     sh.setFormatter(lf)
     sh.setLevel(logging.INFO)
 
-    fh = logging.FileHandler(filename="fspachinko.log", mode="w", encoding="utf-8", delay=True)
+    logfile = get_log_path("fspachinko.log")
+    fh = logging.FileHandler(filename=logfile, mode="w", encoding="utf-8", delay=True)
     fh.set_name("file")
     fh.setFormatter(lf)
     fh.setLevel(logging.DEBUG)
