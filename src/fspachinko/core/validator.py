@@ -16,14 +16,13 @@ if TYPE_CHECKING:
 
 def build_file_validator(m: ConfigModel) -> FileValidator:
     """Build and return a FileValidator based on the configuration."""
-    validators = []
-
     dirname = ListIncludeExclude.from_model(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)
     keywords = ListIncludeExclude.from_model(m.keyword, re_fmt=ReStrFmt.KEYWORD)
     extensions = ListIncludeExclude.from_model(m.extension, re_fmt=ReStrFmt.EXTENSION)
     filesize = MinMax.from_model(m.filesize, mapping=SIZE_MAP)
     duration = MinMax.from_model(m.duration, mapping=TIME_MAP)
 
+    validators = []
     if dirname.is_enabled:
         validators.append(DirnameFilter(dirname))
     if keywords.is_enabled:
@@ -75,22 +74,22 @@ class ExtensionFilter:
 class FilesizeFilter:
     """Validator for file size."""
 
-    filesize_filter: MinMax
+    filesize: MinMax
 
     def __call__(self, entry: FSEntry) -> bool:
         """Validate the file size."""
-        return self.filesize_filter.is_valid(entry.size)
+        return self.filesize.is_valid(entry.size)
 
 
 @dataclass(slots=True)
 class DurationFilter:
     """Validator for file duration."""
 
-    duration_filter: MinMax
+    duration: MinMax
 
     def __call__(self, entry: FSEntry) -> bool:
         """Validate the file duration."""
-        return self.duration_filter.is_valid(get_duration(entry.path))
+        return self.duration.is_valid(get_duration(entry.path))
 
 
 @dataclass(slots=True)

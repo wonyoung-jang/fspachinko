@@ -1,6 +1,7 @@
 """File transfer strategies."""
 
 import os
+from dataclasses import dataclass
 from io import UnsupportedOperation
 from os import PathLike, link, symlink, unlink
 from shutil import copy, copy2, move
@@ -53,11 +54,11 @@ def fetch_transfer_strategy(mode: str) -> Callable[[PathLike[str], str], None]:
     Falls back to COPY if SYMLINK is not available.
     """
     mapping: dict[TransferMode, Any] = {
-        TransferMode.COPY: copy,
-        TransferMode.COPY_PRESERVE: copy2,
-        TransferMode.MOVE: move,
-        TransferMode.SYMLINK: symlink,
-        TransferMode.HARDLINK: hardlink,
+        TransferMode.COPY: CopyTransfer(),
+        TransferMode.COPY_PRESERVE: CopyPreserveTransfer(),
+        TransferMode.MOVE: MoveTransfer(),
+        TransferMode.SYMLINK: SymlinkTransfer(),
+        TransferMode.HARDLINK: HardlinkTransfer(),
     }
     available = get_available_transfer_modes()
     requested = TransferMode(mode)
@@ -80,3 +81,48 @@ def hardlink(src: PathLike[str], dst: str) -> None:
             symlink(src, dst)
         else:
             raise
+
+
+@dataclass(slots=True)
+class CopyTransfer:
+    """Represents a copy file transfer operation."""
+
+    def __call__(self, src: PathLike[str], dst: str) -> None:
+        """Copy the file from source to destination."""
+        copy(src, dst)
+
+
+@dataclass(slots=True)
+class CopyPreserveTransfer:
+    """Represents a copy with metadata preservation file transfer operation."""
+
+    def __call__(self, src: PathLike[str], dst: str) -> None:
+        """Copy the file from source to destination while preserving metadata."""
+        copy2(src, dst)
+
+
+@dataclass(slots=True)
+class MoveTransfer:
+    """Represents a move file transfer operation."""
+
+    def __call__(self, src: PathLike[str], dst: str) -> None:
+        """Move the file from source to destination."""
+        move(src, dst)
+
+
+@dataclass(slots=True)
+class SymlinkTransfer:
+    """Represents a symbolic link file transfer operation."""
+
+    def __call__(self, src: PathLike[str], dst: str) -> None:
+        """Create a symbolic link from source to destination."""
+        symlink(src, dst)
+
+
+@dataclass(slots=True)
+class HardlinkTransfer:
+    """Represents a hard link file transfer operation."""
+
+    def __call__(self, src: PathLike[str], dst: str) -> None:
+        """Create a hard link from source to destination."""
+        hardlink(src, dst)
