@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from .context import EngineContext
     from .observer import Observer
+    from .validator import FileValidator
     from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ class Engine:
     """Core engine class."""
 
     context: EngineContext
+    validator: FileValidator
     filename_fn: Callable[[str, str, int], str | None]
     transfer_fn: Callable[[os.PathLike, str], None]
     job_factory: JobRequestFactory
@@ -115,6 +117,9 @@ class Engine:
             entry = next(self.entries, None)
             if entry is None:
                 break
+
+            if not self.validator(entry):
+                continue
 
             new_filename = self.filename_fn(entry.path, request.dest, request.file_count)
             if new_filename is None:

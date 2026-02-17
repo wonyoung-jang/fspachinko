@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from .context import DiversityQuota
-    from .validator import FileValidator
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +92,6 @@ class PachinkoFSWalker(FSWalker):
 
     root: str
     quota: DiversityQuota
-    validator: FileValidator
     should_follow_symlink: bool
     board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
@@ -111,36 +109,22 @@ class PachinkoFSWalker(FSWalker):
         quota = self.quota
         locked_dir, locked_file = quota.locked_dir, quota.locked_file
         lock_dir, lock_file = locked_dir.add, locked_file.add
-        validator = self.validator
         follow = self.should_follow_symlink
 
         while root in board:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
-            if pin.is_exhausted:
-                if curr == root:
-                    break
-                curr = root
-                continue
-
             if not pin.is_scanned:
                 pin.scan(follow=follow)
 
-            subdirs = []
-            for d in pin.subdirs:
-                if d in locked_dir:
-                    board_pop(d, None)
-                else:
-                    subdirs.append(d)
-
-            pin.subdirs = subdirs
-            pin.files = [f for f in pin.files if f.path not in locked_file]
-            subdirs = pin.subdirs
-            files = pin.files
+            pin.subdirs = subdirs = [d for d in pin.subdirs if d not in locked_dir]
+            pin.files = files = [f for f in pin.files if f.path not in locked_file]
 
             if not (subdirs or files):
                 pin.is_exhausted = True
                 lock_dir(curr)
                 board_pop(curr, None)
+                if curr == root:
+                    break
                 curr = root
                 continue
 
@@ -150,10 +134,7 @@ class PachinkoFSWalker(FSWalker):
                 continue
 
             entry = choice(files)
+            lock_file(entry.path)
             fsentry = FSEntry(entry=entry, follow_symlink=follow)
-            lock_file(fsentry.path)
-            if not validator(fsentry):
-                continue  # Continuing here keeps the current working directory the same
-
             yield fsentry
             curr = root

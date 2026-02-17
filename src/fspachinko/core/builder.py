@@ -33,7 +33,6 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     walker = PachinkoFSWalker(
         root=m.root,
         quota=quota,
-        validator=build_file_validator(m),
         should_follow_symlink=m.options.should_follow_symlink,
     )
     filename_fn = Filename.from_model(
@@ -47,6 +46,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
     return Engine(
         context=context,
+        validator=build_file_validator(m),
         filename_fn=filename_fn,
         transfer_fn=fetch_transfer_strategy(m.options.transfer_mode),
         job_factory=job_request_factory,
