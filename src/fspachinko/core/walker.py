@@ -111,7 +111,7 @@ class PachinkoFSWalker(FSWalker):
         quota = self.quota
         locked_dir, locked_file = quota.locked_dir, quota.locked_file
         lock_dir, lock_file = locked_dir.add, locked_file.add
-        is_valid = self.validator.is_valid
+        validator = self.validator
         follow = self.should_follow_symlink
 
         while root in board:
@@ -152,7 +152,7 @@ class PachinkoFSWalker(FSWalker):
             entry = choice(files)
             fsentry = FSEntry(entry=entry, follow_symlink=follow)
             lock_file(fsentry.path)
-            if not is_valid(fsentry):
+            if not validator(fsentry):
                 continue  # Continuing here keeps the current working directory the same
 
             yield fsentry

@@ -3,34 +3,16 @@
 from random import seed
 from typing import TYPE_CHECKING
 
-from .config import Filename, ListIncludeExclude, MinMax
-from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from .config import Filename
 from .context import DateTimeStamp, DiversityQuota, EngineContext
 from .engine import Engine, JobRequestFactory
 from .transfer import fetch_transfer_strategy
-from .validator import FileValidator, FileValidatorBuilder
+from .validator import build_file_validator
 from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
     from .config import ConfigModel
     from .observer import Observer
-
-
-def build_file_validator(m: ConfigModel) -> FileValidator:
-    """Build and return a FileValidator based on the configuration."""
-    dirname = ListIncludeExclude.from_model(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)
-    keywords = ListIncludeExclude.from_model(m.keyword, re_fmt=ReStrFmt.KEYWORD)
-    extensions = ListIncludeExclude.from_model(m.extension, re_fmt=ReStrFmt.EXTENSION)
-    filesize = MinMax.from_model(m.filesize, mapping=SIZE_MAP)
-    duration = MinMax.from_model(m.duration, mapping=TIME_MAP)
-    validators = FileValidatorBuilder(
-        dirname=dirname,
-        keywords=keywords,
-        extensions=extensions,
-        filesize=filesize,
-        duration=duration,
-    ).build()
-    return FileValidator(validators=validators)
 
 
 def build_engine(m: ConfigModel, observer: Observer) -> Engine:
@@ -54,10 +36,10 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         validator=build_file_validator(m),
         should_follow_symlink=m.options.should_follow_symlink,
     )
-    filename = Filename.from_model(
+    filename_fn = Filename.from_model(
         m.filename,
         dtstamp=dtstamp,
-    )
+    ).determine_dest_filename
     job_request_factory = JobRequestFactory(
         get_file_count=m.filecount.get_count_fn(),
         determine_dest_dirname=m.folder.get_dirname_fn(m.dest),
@@ -65,9 +47,9 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
     return Engine(
         context=context,
-        filename_fn=filename.determine_dest_filename,
+        filename_fn=filename_fn,
         transfer_fn=fetch_transfer_strategy(m.options.transfer_mode),
-        job_request_factory=job_request_factory,
+        job_factory=job_request_factory,
         entries=walker.walk(),
         observer=observer,
     )

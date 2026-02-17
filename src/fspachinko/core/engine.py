@@ -34,6 +34,7 @@ def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
 class JobRequest:
     """Dataclass for job request."""
 
+    idx: int
     target: int
     dest: str
     file_count: int = 0
@@ -73,10 +74,11 @@ class JobRequestFactory:
         """Generate multiple job requests."""
         yield from (
             JobRequest(
+                idx=idx,
                 target=self.get_file_count(),
                 dest=self.determine_dest_dirname(),
             )
-            for _ in range(self.dir_count)
+            for idx in range(1, self.dir_count + 1)
         )
 
 
@@ -87,44 +89,42 @@ class Engine:
     context: EngineContext
     filename_fn: Callable[[str, str, int], str | None]
     transfer_fn: Callable[[os.PathLike, str], None]
-    job_request_factory: JobRequestFactory
+    job_factory: JobRequestFactory
     entries: Iterator[FSEntry]
     observer: Observer
 
-    def request_stop(self) -> None:
-        """Request to stop the engine."""
-        self.context.is_stop_requested = True
-
     def start(self) -> None:
         """Run the main file copying process."""
-        self.observer.on_total_start(self.job_request_factory.dir_count)
-        for dir_i, request in enumerate(self.job_request_factory.generate(), start=1):
-            self.observer.on_directory_start(request.target)
-            self.context.prepare()
-            log_handler = get_dest_log_filehandler(request.dest)
-            logger.addHandler(log_handler)
+        self.observer.on_total_start(self.job_factory.dir_count)
 
-            self.transfer_dir(request)
+        for request in self.job_factory.generate():
+            self.process(request)
 
-            logger.info(self.context.generate_report_header(request))
-            logger.removeHandler(log_handler)
-            self.context.finalize(request)
-            self.observer.on_directory_increment(dir_i)
         self.observer.on_finished()
 
-    def transfer_dir(self, request: JobRequest) -> None:
+    def process(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
-        count = 0
+        self.observer.on_directory_start(request.target)
+
+        self.context.prepare()
+
+        log_handler = get_dest_log_filehandler(request.dest)
+        logger.addHandler(log_handler)
+
         while not self.context.should_stop(request):
             entry = next(self.entries, None)
             if entry is None:
                 break
 
-            new_filename = self.filename_fn(entry.path, request.dest, count)
+            new_filename = self.filename_fn(entry.path, request.dest, request.file_count)
             if new_filename is None:
                 continue
 
-            msg = f"{count + 1}: {relpath(entry, self.context.root)} -> {relpath(new_filename, request.dest)}"
+            msg = (
+                f"{request.file_count + 1}:"
+                f" {relpath(entry, self.context.root)}"
+                f" -> {relpath(new_filename, request.dest)}"
+            )
 
             if not self.context.is_dry_run:
                 try:
@@ -136,5 +136,16 @@ class Engine:
             logger.info(msg)
             self.context.update(entry)
             request.update(entry.size)
-            count += 1
-            self.observer.on_file_increment(count)
+
+            self.observer.on_file_increment(request.file_count)
+
+        logger.info(self.context.generate_report_header(request))
+        logger.removeHandler(log_handler)
+
+        self.context.finalize(request)
+
+        self.observer.on_directory_increment(request.idx)
+
+    def request_stop(self) -> None:
+        """Request to stop the engine."""
+        self.context.is_stop_requested = True

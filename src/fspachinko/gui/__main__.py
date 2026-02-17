@@ -4,7 +4,6 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-# from qt_material import apply_stylesheet
 from ..core import AppSetting, IconFilename, get_icon_path, initialize_logging
 from .mainwindow import MainWindow
 
@@ -28,11 +27,8 @@ def main() -> None:
 
     app = QApplication()
     app.setWindowIcon(QIcon(get_icon_path(IconFilename.WINDOW)))
-    # apply_stylesheet(app, theme="dark_purple.xml", extra={"density_scale": "-2"})
-
     window = MainWindow()
     window.show()
-
     app.exec()
 
 
