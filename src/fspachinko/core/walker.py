@@ -52,7 +52,6 @@ class FSPachinkoPin:
     subdirs: list[str] = field(default_factory=list)
     files: list[os.DirEntry] = field(default_factory=list)
     is_scanned: bool = False
-    is_exhausted: bool = False
 
     def scan(self, *, follow: bool) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
@@ -70,7 +69,7 @@ class FSPachinkoPin:
                     except OSError:
                         continue
         except OSError:
-            self.is_exhausted = True
+            return
 
 
 @dataclass(slots=True)
@@ -104,10 +103,8 @@ class PachinkoFSWalker(FSWalker):
         root = self.root
         curr = self.root
         board = self.board
-        board_setdefault = board.setdefault
-        board_pop = board.pop
-        quota = self.quota
-        locked_dir, locked_file = quota.locked_dir, quota.locked_file
+        board_setdefault, board_pop = board.setdefault, board.pop
+        locked_dir, locked_file = self.quota.locked_dir, self.quota.locked_file
         lock_dir, lock_file = locked_dir.add, locked_file.add
         follow = self.should_follow_symlink
 
@@ -120,7 +117,6 @@ class PachinkoFSWalker(FSWalker):
             pin.files = files = [f for f in pin.files if f.path not in locked_file]
 
             if not (subdirs or files):
-                pin.is_exhausted = True
                 lock_dir(curr)
                 board_pop(curr, None)
                 if curr == root:
