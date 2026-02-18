@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .walker import FSEntry
 
 
-def build_file_validator(m: ConfigModel) -> FileValidator:
+def get_validator(m: ConfigModel) -> FileValidator:
     """Build and return a FileValidator based on the configuration."""
     dirname = ListIncludeExclude.from_model(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)
     keywords = ListIncludeExclude.from_model(m.keyword, re_fmt=ReStrFmt.KEYWORD)

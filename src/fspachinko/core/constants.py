@@ -3,7 +3,6 @@
 from enum import IntEnum, StrEnum
 
 # General constants
-WALKER_CACHE_LIMIT: int = 1000
 PERCENTAGE_100: float = 100.0
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
 DURATION_CMD = [

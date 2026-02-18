@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass, field
-from os import mkdir
+from os import makedirs
 from os.path import basename, exists, join, relpath
 from time import perf_counter
 from typing import TYPE_CHECKING
@@ -45,7 +45,7 @@ class JobRequest:
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
         if not exists(self.dest):
-            mkdir(self.dest)
+            makedirs(self.dest, exist_ok=True)
 
     def update(self, size: int) -> None:
         """Update the job request state."""
@@ -90,7 +90,7 @@ class Engine:
     context: EngineContext
     validator: FileValidator
     filenamer: Filename
-    transfer_fn: Callable[[os.PathLike, str], None]
+    transferer: Callable[[os.PathLike, str], None]
     job_factory: JobRequestFactory
     entries: Iterator[FSEntry]
     quota: DiversityQuota
@@ -131,7 +131,7 @@ class Engine:
             )
             if not self.context.is_dry_run:
                 try:
-                    self.transfer_fn(entry, new_filename)
+                    self.transferer(entry, new_filename)
                 except PermissionError, OSError:
                     logger.info("FAILED - %s", msg)
                     continue
@@ -142,6 +142,7 @@ class Engine:
 
         logger.info(self.context.generate_report_header(request, self.dtstamp.date_time_report_str))
         logger.removeHandler(log_handler)
+        log_handler.close()
         self.context.finalize(request, self.quota)
         self.observer.on_directory_increment(request.idx)
 
