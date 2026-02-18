@@ -1,6 +1,5 @@
 """Random file system navigator."""
 
-import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
@@ -11,9 +10,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

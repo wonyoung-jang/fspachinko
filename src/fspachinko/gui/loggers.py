@@ -9,6 +9,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+def setup_gui_logger(slotfunc: Callable) -> None:
+    """Set up the Qt logger."""
+    qt_log_handler = QtLogHandler(slotfunc)
+    logging.getLogger().addHandler(qt_log_handler)
+
+
 class QtLogHandlerSignals(QObject):
     """Signals for the LogHandler."""
 
