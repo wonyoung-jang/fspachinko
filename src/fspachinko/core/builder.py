@@ -27,17 +27,15 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         root=m.root,
         is_create_folder=m.folder.is_enabled,
         is_dry_run=m.options.is_dry_run,
-        quota=quota,
-        dtstamp=dtstamp,
     )
     walker = PachinkoFSWalker(
         root=m.root,
         should_follow_symlink=m.options.should_follow_symlink,
     )
-    filename_fn = Filename.from_model(
+    filenamer = Filename.from_model(
         m.filename,
         dtstamp=dtstamp,
-    ).determine_dest_filename
+    )
     job_request_factory = JobRequestFactory(
         get_file_count=m.filecount.get_count_fn(),
         determine_dest_dirname=m.folder.get_dirname_fn(m.dest),
@@ -46,9 +44,11 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     return Engine(
         context=context,
         validator=build_file_validator(m),
-        filename_fn=filename_fn,
+        filenamer=filenamer,
         transfer_fn=fetch_transfer_strategy(m.options.transfer_mode),
         job_factory=job_request_factory,
         entries=walker.walk(),
+        quota=quota,
+        dtstamp=dtstamp,
         observer=observer,
     )

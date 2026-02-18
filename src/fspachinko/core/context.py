@@ -68,6 +68,18 @@ class DiversityQuota:
         if self._dircount[parent] >= self.max_per_dir:
             self.locked_dir.add(parent)
 
+    def is_file_locked(self, entry: FSEntry) -> bool:
+        """Check if a file is locked by the uniqueness rule."""
+        return entry.path in self.locked_file
+
+    def is_dir_locked(self, entry: FSEntry) -> bool:
+        """Check if a directory is locked by the diversity rule."""
+        return dirname(entry.path) in self.locked_dir
+
+    def lock_file(self, entry: FSEntry) -> None:
+        """Lock a file by adding it to the locked_file set."""
+        self.locked_file.add(entry.path)
+
 
 @dataclass(slots=True)
 class EngineContext:
@@ -76,42 +88,40 @@ class EngineContext:
     root: str
     is_create_folder: bool
     is_dry_run: bool
-    quota: DiversityQuota
-    dtstamp: DateTimeStamp
 
     state: str = field(default="")
     msg: str = field(default="")
     is_stop_requested: bool = field(default=False)
 
-    def _check(self, request: JobRequest, gen_fn: Callable) -> bool:
+    def _check(self, request: JobRequest, quota: DiversityQuota, gen_fn: Callable) -> bool:
         """Check and update state before file validation."""
-        result = next(gen_fn(request), None)
+        result = next(gen_fn(request, quota), None)
         if result is not None:
             self.state, self.msg = result
             return True
         return False
 
-    def should_stop(self, request: JobRequest) -> bool:
+    def should_stop(self, request: JobRequest, quota: DiversityQuota) -> bool:
         """Check and update state before file validation."""
-        return self._check(request, self.gen_stop_statemsg)
+        return self._check(request, quota, self.gen_stop_statemsg)
 
-    def is_none_found(self, request: JobRequest) -> bool:
+    def is_none_found(self, request: JobRequest, quota: DiversityQuota) -> bool:
         """Check if no files were found in the current folder."""
-        return self._check(request, self.gen_none_statemsg)
+        return self._check(request, quota, self.gen_none_statemsg)
 
-    def gen_stop_statemsg(self, request: JobRequest) -> Iterator[tuple[str, str]]:
+    def gen_stop_statemsg(self, request: JobRequest, quota: DiversityQuota) -> Iterator[tuple[str, str]]:
         """Generate state and message for reporting."""
         if self.is_stop_requested:
             yield StateStatus.USER_STOPPED, "Stopped by user request"
         elif request.file_count == request.target:
             yield StateStatus.SUCCESS, f"Transferred {request.file_count}/{request.target} files"
-        elif self.root in self.quota.locked_dir:
+        elif self.root in quota.locked_dir:
             yield StateStatus.ALL_FILES_SEARCHED, "All files locked by diversity quota"
 
-    def gen_none_statemsg(self, request: JobRequest) -> Iterator[tuple[str, str]]:
+    def gen_none_statemsg(self, request: JobRequest, quota: DiversityQuota) -> Iterator[tuple[str, str]]:
         """Generate state and message for no files found scenario."""
         none_found = request.file_count == 0 and self.is_create_folder
-        if none_found and self.root in self.quota.locked_dir:
+        if none_found and self.root in quota.locked_dir:
             yield (
                 StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED,
                 "No files found and all files locked by diversity quota",
@@ -119,33 +129,23 @@ class EngineContext:
         elif none_found:
             yield StateStatus.NO_FILES_FOUND_FOLDER_DELETED, "No files found in the folder"
 
-    def prepare(self) -> None:
-        """Prepare the context for a new folder processing."""
-        self.dtstamp.reset()
-        self.quota.reset()
-
-    def update(self, entry: FSEntry) -> None:
-        """Update context on successful file operation."""
-        self.quota.update(entry)
-
-    def finalize(self, request: JobRequest) -> None:
+    def finalize(self, request: JobRequest, quota: DiversityQuota) -> None:
         """Finalize the context after processing."""
-        if self.is_none_found(request):
+        if self.is_none_found(request, quota):
             remove_directory(request.dest)
 
-    def generate_report_header(self, request: JobRequest) -> str:
+    def generate_report_header(self, request: JobRequest, timestamp: str) -> str:
         """Generate the header report string."""
-        r = request
         return (
             f"SUMMARY:\n"
             f"{self.msg}\n"
-            f"{self.state}: {r.file_count}/{r.target} files transferred\n"
+            f"{self.state}: {request.file_count}/{request.target} files transferred\n"
             "------------------------------------------------------------------------\n"
-            f"Timestamp:    {self.dtstamp.date_time_report_str}\n"
+            f"Timestamp:    {timestamp}\n"
             f"Root:         {self.root}\n"
-            f"Destination:  {r.dest}\n"
-            f"Size:         {r.size_str}\n"
-            f"Runtime:      {r.runtime_str}\n"
+            f"Destination:  {request.dest}\n"
+            f"Size:         {request.size_str}\n"
+            f"Runtime:      {request.runtime_str}\n"
             f"Is Dry Run:   {self.is_dry_run}\n"
             "========================================================================\n"
         )

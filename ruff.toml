@@ -1,6 +1,8 @@
 line-length = 120
 indent-width = 4
 target-version = "py314"
+fix = true
+unsafe-fixes = true
 exclude = [
     ".bzr",
     ".direnv",
@@ -37,16 +39,16 @@ extend-exclude = [
 
 [lint]
 ignore = [
-    "ANN401",  
-    "ARG002", 
-    "C901",  
-    "COM812", 
-    "D203",  
-    "D213",  
-    "ERA001",  
-    "PLR2004",  
-    "S", 
-    "TID252",  
+    "ANN401",
+    "ARG002",
+    "C901",
+    "COM812",
+    "D203",
+    "D213",
+    "ERA001",
+    "PLR2004",
+    "S",
+    "TID252",
     "T201",
     # OS Path to Pathlib warnings
     "PTH102",

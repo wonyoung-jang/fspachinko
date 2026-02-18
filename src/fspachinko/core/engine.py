@@ -13,7 +13,8 @@ if TYPE_CHECKING:
     import os
     from collections.abc import Callable, Iterator
 
-    from .context import EngineContext
+    from .config import Filename
+    from .context import DateTimeStamp, DiversityQuota, EngineContext
     from .observer import Observer
     from .validator import FileValidator
     from .walker import FSEntry
@@ -24,10 +25,9 @@ logger = logging.getLogger(__name__)
 def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
     """Set up a logger for the job request."""
     report_path = join(dest, f"!_{basename(dest)}_report.log")
-    formatter = logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
     handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
     handler.setLevel(logging.INFO)
-    handler.setFormatter(formatter)
+    handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
     return handler
 
 
@@ -89,74 +89,60 @@ class Engine:
 
     context: EngineContext
     validator: FileValidator
-    filename_fn: Callable[[str, str, int], str | None]
+    filenamer: Filename
     transfer_fn: Callable[[os.PathLike, str], None]
     job_factory: JobRequestFactory
     entries: Iterator[FSEntry]
+    quota: DiversityQuota
+    dtstamp: DateTimeStamp
     observer: Observer
 
     def start(self) -> None:
         """Run the main file copying process."""
         self.observer.on_total_start(self.job_factory.dir_count)
-
         for request in self.job_factory.generate():
             self.process(request)
-
         self.observer.on_finished()
 
     def process(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
         self.observer.on_directory_start(request.target)
-
-        self.context.prepare()
-
+        self.dtstamp.reset()
+        self.quota.reset()
         log_handler = get_dest_log_filehandler(request.dest)
         logger.addHandler(log_handler)
 
-        while not self.context.should_stop(request):
-            entry = next(self.entries, None)
-            if entry is None:
+        while not self.context.should_stop(request, self.quota):
+            if (entry := next(self.entries, None)) is None:
                 break
-
-            if entry.path in self.context.quota.locked_file:
+            if self.quota.is_file_locked(entry):
                 continue
-
-            self.context.quota.locked_file.add(entry.path)
-
-            if entry.parent in self.context.quota.locked_dir:
+            self.quota.lock_file(entry)
+            if (
+                self.quota.is_dir_locked(entry)
+                or not self.validator(entry)
+                or (new_filename := self.filenamer(entry.path, request.dest, request.file_count)) is None
+            ):
                 continue
-
-            if not self.validator(entry):
-                continue
-
-            new_filename = self.filename_fn(entry.path, request.dest, request.file_count)
-            if new_filename is None:
-                continue
-
             msg = (
                 f"{request.file_count + 1}:"
                 f" {relpath(entry, self.context.root)}"
                 f" -> {relpath(new_filename, request.dest)}"
             )
-
             if not self.context.is_dry_run:
                 try:
                     self.transfer_fn(entry, new_filename)
                 except PermissionError, OSError:
                     logger.info("FAILED - %s", msg)
                     continue
-
             logger.info(msg)
-            self.context.update(entry)
+            self.quota.update(entry)
             request.update(entry.size)
-
             self.observer.on_file_increment(request.file_count)
 
-        logger.info(self.context.generate_report_header(request))
+        logger.info(self.context.generate_report_header(request, self.dtstamp.date_time_report_str))
         logger.removeHandler(log_handler)
-
-        self.context.finalize(request)
-
+        self.context.finalize(request, self.quota)
         self.observer.on_directory_increment(request.idx)
 
     def request_stop(self) -> None:

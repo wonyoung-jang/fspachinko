@@ -43,18 +43,17 @@ class FSEntry:
 class FSPachinkoPin:
     """Represents a 'pin' on the Pachinko board."""
 
-    path: str
+    path: InitVar[str]
+    follow: InitVar[bool]
     subdirs: list[str] = field(default_factory=list)
     files: list[os.DirEntry] = field(default_factory=list)
-    is_scanned: bool = False
 
-    def scan(self, *, follow: bool) -> None:
+    def __post_init__(self, path: str, follow: bool) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
-        self.is_scanned = True
-        subdirs_append = self.subdirs.append
-        files_append = self.files.append
         try:
-            with scandir(self.path) as it:
+            with scandir(path) as it:
+                subdirs_append = self.subdirs.append
+                files_append = self.files.append
                 for e in it:
                     try:
                         if e.is_dir(follow_symlinks=follow):
@@ -90,7 +89,7 @@ class PachinkoFSWalker(FSWalker):
 
     def __post_init__(self) -> None:
         """Initialize the board with the root pin."""
-        self.board[self.root] = FSPachinkoPin(path=self.root)
+        self.board[self.root] = FSPachinkoPin(self.root, self.should_follow_symlink)
 
     def walk(self) -> Iterator[FSEntry]:
         """Iterate through FSEntry objects."""
@@ -100,10 +99,7 @@ class PachinkoFSWalker(FSWalker):
         follow = self.should_follow_symlink
 
         while root in self.board:
-            pin = board_setdefault(curr, FSPachinkoPin(path=curr))
-            if not pin.is_scanned:
-                pin.scan(follow=follow)
-
+            pin = board_setdefault(curr, FSPachinkoPin(curr, follow))
             subdirs, files = pin.subdirs, pin.files
 
             if not (subdirs or files):

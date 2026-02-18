@@ -119,7 +119,7 @@ class Filename:
     template: str
     dtstamp: DateTimeStamp
 
-    def determine_dest_filename(self, chosen: str, dest: str, index: int) -> str | None:
+    def __call__(self, chosen: str, dest: str, index: int) -> str | None:
         """Calculate the destination file path based on configuration."""
         stem, ext = get_stem_and_ext(chosen)
         mapping = SafeDict(
