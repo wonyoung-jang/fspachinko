@@ -118,6 +118,14 @@ class Engine:
             if entry is None:
                 break
 
+            if entry.path in self.context.quota.locked_file:
+                continue
+
+            self.context.quota.locked_file.add(entry.path)
+
+            if entry.parent in self.context.quota.locked_dir:
+                continue
+
             if not self.validator(entry):
                 continue
 

@@ -32,7 +32,6 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
     walker = PachinkoFSWalker(
         root=m.root,
-        quota=quota,
         should_follow_symlink=m.options.should_follow_symlink,
     )
     filename_fn = Filename.from_model(

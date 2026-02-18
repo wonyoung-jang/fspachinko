@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from .context import DiversityQuota
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +89,6 @@ class PachinkoFSWalker(FSWalker):
     """
 
     root: str
-    quota: DiversityQuota
     should_follow_symlink: bool
     board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
@@ -99,28 +97,24 @@ class PachinkoFSWalker(FSWalker):
         self.board[self.root] = FSPachinkoPin(path=self.root)
 
     def walk(self) -> Iterator[FSEntry]:
-        """Continuously drop balls until the board is empty."""
+        """Iterate through FSEntry objects."""
         root = self.root
         curr = self.root
-        board = self.board
-        board_setdefault, board_pop = board.setdefault, board.pop
-        locked_dir, locked_file = self.quota.locked_dir, self.quota.locked_file
-        lock_dir, lock_file = locked_dir.add, locked_file.add
+        board_setdefault, board_pop = self.board.setdefault, self.board.pop
         follow = self.should_follow_symlink
 
-        while root in board:
+        while root in self.board:
             pin = board_setdefault(curr, FSPachinkoPin(path=curr))
             if not pin.is_scanned:
                 pin.scan(follow=follow)
 
-            pin.subdirs = subdirs = [d for d in pin.subdirs if d not in locked_dir]
-            pin.files = files = [f for f in pin.files if f.path not in locked_file]
+            subdirs, files = pin.subdirs, pin.files
 
             if not (subdirs or files):
-                lock_dir(curr)
                 board_pop(curr, None)
                 if curr == root:
                     break
+
                 curr = root
                 continue
 
@@ -129,8 +123,7 @@ class PachinkoFSWalker(FSWalker):
                 curr = choice(subdirs)
                 continue
 
-            entry = choice(files)
-            lock_file(entry.path)
-            fsentry = FSEntry(entry=entry, follow_symlink=follow)
-            yield fsentry
+            if files:
+                yield FSEntry(entry=choice(files), follow_symlink=follow)
+
             curr = root
