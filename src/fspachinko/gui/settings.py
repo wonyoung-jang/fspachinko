@@ -61,4 +61,4 @@ class ProfileManager:
     @property
     def parent(self) -> str:
         """Get the parent directory of the current profile."""
-        return os.path.dirname(self.path)
+        return dirname(self.path)

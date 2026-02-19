@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
-    from .workers import WorkerSignals
 
 logger = logging.getLogger(__name__)
 
@@ -463,12 +462,6 @@ class ProgressWidget(QWidget):
         layout = QFormLayout(self)
         layout.addRow("Directories", self.progbar_dirs)
         layout.addRow("Files", self.progbar_files)
-
-    def bind(self, signals: WorkerSignals) -> None:
-        """Bind worker signals to progress widget."""
-        signals.start_process.connect(self.progbar_dirs.setMaximum)
-        signals.directory_start.connect(self.start_directory)
-        signals.file_transferred.connect(self.progbar_files.setValue)
 
     def reset(self) -> None:
         """Reset progress bars."""

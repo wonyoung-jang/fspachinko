@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
     from .config import Filename
     from .context import DateTimeStamp, DiversityQuota, EngineContext
+    from .filefilter import FileFilter
     from .observer import Observer
-    from .validator import FileValidator
     from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class Engine:
     """Core engine class."""
 
     context: EngineContext
-    validator: FileValidator
+    filterer: FileFilter
     filenamer: Filename
     transferer: Callable[[os.PathLike, str], None]
     job_factory: JobRequestFactory
@@ -120,7 +120,7 @@ class Engine:
             self.quota.lock_file(entry)
             if (
                 self.quota.is_dir_locked(entry)
-                or not self.validator(entry)
+                or not self.filterer(entry)
                 or (new_filename := self.filenamer(entry, request, self.dtstamp)) is None
             ):
                 continue

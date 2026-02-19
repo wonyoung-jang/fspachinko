@@ -157,44 +157,24 @@ class Filename:
         return cls(template=m.template)
 
 
-@dataclass(slots=True)
-class ListIncludeExclude:
-    """Dataclass for include-exclude list configuration."""
-
-    is_enabled: bool
-    is_valid: Callable[[str], bool]
-
-    @classmethod
-    def from_model(cls, m: ListIncludeExcludeModel, re_fmt: str) -> ListIncludeExclude:
-        """Create ListIncludeExclude from configuration model."""
-        if text := m.text.strip():
-            text_list = convert_string_to_list(text)
-            patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
-        else:
-            patterns = ()
-        return ListIncludeExclude(
-            is_enabled=m.is_enabled and bool(text),
-            is_valid=(
-                (lambda part: any(p.search(part) for p in patterns))
-                if m.should_include
-                else (lambda part: not any(p.search(part) for p in patterns))
-            ),
-        )
+def get_inc_exc_filter_fn(m: ListIncludeExcludeModel, re_fmt: str) -> Callable[[str], bool] | None:
+    """Create an include-exclude filter function from configuration model."""
+    text = m.text.strip()
+    if not (m.is_enabled and text):
+        return None
+    text_list = convert_string_to_list(text)
+    patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+    return (
+        (lambda part: any(p.search(part) for p in patterns))
+        if m.should_include
+        else (lambda part: not any(p.search(part) for p in patterns))
+    )
 
 
-@dataclass(slots=True)
-class MinMax:
-    """Dataclass for min-max limit configuration."""
-
-    is_enabled: bool
-    is_valid: Callable[[float], bool]
-
-    @classmethod
-    def from_model(cls, m: MinMaxModel, mapping: dict[str, float]) -> MinMax:
-        """Create MinMax from configuration model."""
-        minimum = m.minimum * mapping.get(m.unit, 1.0)
-        maximum = m.maximum * mapping.get(m.unit, 1.0)
-        return cls(
-            is_enabled=m.is_enabled,
-            is_valid=lambda val: minimum <= val <= maximum,
-        )
+def get_min_max_filter_fn(m: MinMaxModel, mapping: dict[str, float]) -> Callable[[float], bool] | None:
+    """Create a MinMax filter function from it's configuration model."""
+    if not m.is_enabled:
+        return None
+    minimum = m.minimum * mapping.get(m.unit, 1.0)
+    maximum = m.maximum * mapping.get(m.unit, 1.0)
+    return lambda val: minimum <= val <= maximum

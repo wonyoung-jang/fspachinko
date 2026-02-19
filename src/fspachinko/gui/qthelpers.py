@@ -21,9 +21,9 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QAction
 
 
-def get_qt_classname(obj: QObject) -> str:
+def get_qt_classname(o: QObject) -> str:
     """Get the class name of a QObject."""
-    return str(obj.metaObject().className())
+    return str(o.metaObject().className())
 
 
 def set_qt_name(w: QWidget | QAction, name: str) -> None:
@@ -40,55 +40,55 @@ def set_qt_tips(w: QWidget | QAction, tooltip: str, statustip: str = "") -> None
     w.setStatusTip(statustip)
 
 
-def get_widget_value(widget: QWidget) -> Any:
+def get_widget_value(w: QWidget) -> Any:
     """Retrieve the value of a widget based on its type.
 
     Args:
-        widget (QWidget): The widget to retrieve the value from.
+        w (QWidget): The widget to retrieve the value from.
 
     Returns:
         Any: The value of the widget, or None if not applicable.
 
     """
-    match widget:
+    match w:
         case QLineEdit() | QLabel():
-            return widget.text()
+            return w.text()
         case QComboBox():
-            return widget.currentIndex()
+            return w.currentIndex()
         case QSpinBox() | QDoubleSpinBox():
-            return widget.value()
-        case QGroupBox() if not widget.isCheckable():
+            return w.value()
+        case QGroupBox() if not w.isCheckable():
             return None
         case QCheckBox() | QRadioButton() | QGroupBox():
-            return widget.isChecked()
+            return w.isChecked()
         case _:
             return None
 
 
-def set_widget_value(widget: QWidget, val: Any) -> None:
+def set_widget_value(w: QWidget, val: Any) -> None:
     """Set the value of a widget based on its type.
 
     Args:
-        widget (QWidget): The widget to set the value for.
+        w (QWidget): The widget to set the value for.
         val (Any): The value to set.
 
     """
-    match widget:
+    match w:
         case QLineEdit() | QLabel():
-            widget.setText(val)
+            w.setText(val)
         case QComboBox():
             try:
                 index = int(val)
-                if 0 <= index < widget.count():
-                    widget.setCurrentIndex(index)
+                if 0 <= index < w.count():
+                    w.setCurrentIndex(index)
             except ValueError, TypeError:
                 pass
         case QSpinBox():
-            widget.setValue(int(val))
+            w.setValue(int(val))
         case QDoubleSpinBox():
-            widget.setValue(float(val))
+            w.setValue(float(val))
         case QCheckBox() | QRadioButton() | QGroupBox():
-            widget.setChecked(val)
+            w.setChecked(val)
         case _:
             return
 

@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from .config import Filename
 from .context import DateTimeStamp, DiversityQuota, EngineContext
 from .engine import Engine, JobRequestFactory
+from .filefilter import get_validator
 from .transfer import get_transfer_strategy
-from .validator import get_validator
 from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         is_create_folder=m.folder.is_enabled,
         is_dry_run=m.options.is_dry_run,
     )
-    validator = get_validator(m)
+    filterer = get_validator(m)
     filenamer = Filename.from_model(m.filename)
     transferer = get_transfer_strategy(m.options.transfer_mode)
     job_request_factory = JobRequestFactory(
@@ -42,7 +42,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
     return Engine(
         context=context,
-        validator=validator,
+        filterer=filterer,
         filenamer=filenamer,
         transferer=transferer,
         job_factory=job_request_factory,

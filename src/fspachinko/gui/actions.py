@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from PySide6.QtGui import QAction, QIcon
 
 from ..core import IconFilename, get_icon_path
-from .components import set_qt_tips
+from .qthelpers import set_qt_tips
 
 
 @dataclass(slots=True)

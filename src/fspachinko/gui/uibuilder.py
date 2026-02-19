@@ -56,7 +56,6 @@ class UIBuilder:
         layout.addWidget(self.options)
         layout.addWidget(self.logging)
         layout.addWidget(self.progress)
-        layout.setSpacing(2)
         return layout
 
     def get_config(self) -> ConfigModel:
