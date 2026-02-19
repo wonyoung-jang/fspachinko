@@ -7,20 +7,25 @@ class Observer(ABC):
     """Interface for Observer."""
 
     @abstractmethod
-    def on_total_start(self, maximum: int) -> None:
-        """Call when starting a new total progress cycle."""
+    def on_start_process(self, ndir_to_create: int) -> None:
+        """Call when starting a run of the engine.
+
+        Emit total number of directories to create or 1 if no directories are to be created.
+        """
 
     @abstractmethod
-    def on_directory_increment(self, count: int) -> None:
-        """Call to update total progress percentage."""
+    def on_directory_start(self, idx: int, nfiles_to_process: int) -> None:
+        """Call when starting to process a directory.
 
-    @abstractmethod
-    def on_directory_start(self, maximum: int) -> None:
-        """Call when starting a new progress cycle."""
+        Emit current directory index and number of files to transferred into the directory.
+        """
 
     @abstractmethod
     def on_file_increment(self, count: int) -> None:
-        """Call to update progress percentage."""
+        """Call when a file is processed.
+
+        Emit current count of transferred files in the current directory.
+        """
 
     @abstractmethod
     def on_finished(self) -> None:

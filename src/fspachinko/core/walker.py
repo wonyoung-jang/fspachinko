@@ -2,7 +2,7 @@
 
 import os
 from abc import ABC, abstractmethod
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from os import scandir
 from os.path import basename, dirname, splitext
 from random import choice
@@ -35,15 +35,16 @@ class FSEntry:
 class FSPachinkoPin:
     """Represents a 'pin' on the Pachinko board."""
 
-    path: InitVar[str]
-    follow: InitVar[bool]
+    path: str
+    follow: bool
     subdirs: list[str] = field(default_factory=list)
     files: list[os.DirEntry] = field(default_factory=list)
 
-    def __post_init__(self, path: str, follow: bool) -> None:
+    def __post_init__(self) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
         try:
-            with scandir(path) as it:
+            with scandir(self.path) as it:
+                follow = self.follow
                 subdirs_append = self.subdirs.append
                 files_append = self.files.append
                 for e in it:
@@ -87,18 +88,16 @@ class PachinkoFSWalker(FSWalker):
         """Iterate through FSEntry objects."""
         root = self.root
         curr = self.root
-        board_setdefault, board_pop = self.board.setdefault, self.board.pop
+        board_setdefault = self.board.setdefault
         follow = self.should_follow_symlink
 
         while root in self.board:
             pin = board_setdefault(curr, FSPachinkoPin(curr, follow))
             subdirs, files = pin.subdirs, pin.files
 
-            if not (subdirs or files):
-                board_pop(curr, None)
+            if not subdirs and not files:
                 if curr == root:
                     break
-
                 curr = root
                 continue
 

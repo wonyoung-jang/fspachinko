@@ -99,14 +99,14 @@ class Engine:
 
     def start(self) -> None:
         """Run the main file copying process."""
-        self.observer.on_total_start(self.job_factory.dir_count)
+        self.observer.on_start_process(self.job_factory.dir_count)
         for request in self.job_factory.generate():
             self.process(request)
         self.observer.on_finished()
 
     def process(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
-        self.observer.on_directory_start(request.target)
+        self.observer.on_directory_start(request.idx, request.target)
         self.dtstamp.reset()
         self.quota.reset()
         log_handler = get_dest_log_filehandler(request.dest)
@@ -144,7 +144,6 @@ class Engine:
         logger.removeHandler(log_handler)
         log_handler.close()
         self.context.finalize(request, self.quota)
-        self.observer.on_directory_increment(request.idx)
 
     def request_stop(self) -> None:
         """Request to stop the engine."""

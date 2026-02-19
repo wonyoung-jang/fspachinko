@@ -10,20 +10,18 @@ logger = logging.getLogger(__name__)
 class ConsoleObserver(Observer):
     """A simple console observer for fspachinko."""
 
-    def on_total_start(self, maximum: int) -> None:
-        """Handle starting total progress."""
-        logger.info("Starting total progress: %d directories(s)", maximum)
+    def on_start_process(self, ndir_to_create: int) -> None:
+        """Call when starting a run of the engine."""
+        logger.info("Starting process: %d directories(s)", ndir_to_create)
 
-    def on_directory_increment(self, count: int) -> None:
-        """Handle total progress count update."""
-
-    def on_directory_start(self, maximum: int) -> None:
-        """Handle starting directory progress."""
-        logger.info("Starting directory: %d file(s)", maximum)
+    def on_directory_start(self, idx: int, nfiles_to_process: int) -> None:
+        """Call when starting to process a directory."""
+        logger.info("Start directory %d: transfer %d file(s)", idx, nfiles_to_process)
 
     def on_file_increment(self, count: int) -> None:
-        """Handle directory progress count update."""
+        """Call when a file is processed."""
+        logger.debug("File %d processed", count)
 
     def on_finished(self) -> None:
-        """Handle finishing process."""
+        """Call when processing is finished."""
         logger.info("Processing finished.")

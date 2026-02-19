@@ -452,29 +452,34 @@ class ProgressWidget(QWidget):
         super().__init__()
         set_qt_name(self, name)
 
-        self.progbar_total = QProgressBar(textVisible=True)
-        set_qt_name(self.progbar_total, f"{name}_total")
-        set_qt_tips(self.progbar_total, "Total progress bar, max is set at number of output folders.")
+        self.progbar_dirs = QProgressBar(textVisible=True)
+        set_qt_name(self.progbar_dirs, f"{name}_directories")
+        set_qt_tips(self.progbar_dirs, "Total progress bar, max is set at number of output folders.")
 
-        self.progbar_dir = QProgressBar(textVisible=True)
-        set_qt_name(self.progbar_dir, f"{name}_dir")
-        set_qt_tips(self.progbar_dir, "Current folder progress bar, max is set at number of files to copy.")
+        self.progbar_files = QProgressBar(textVisible=True)
+        set_qt_name(self.progbar_files, f"{name}_files")
+        set_qt_tips(self.progbar_files, "Current folder progress bar, max is set at number of files to copy.")
 
         layout = QFormLayout(self)
-        layout.addRow("Folders", self.progbar_total)
-        layout.addRow("Current", self.progbar_dir)
+        layout.addRow("Directories", self.progbar_dirs)
+        layout.addRow("Files", self.progbar_files)
 
     def bind(self, signals: WorkerSignals) -> None:
         """Bind worker signals to progress widget."""
-        signals.progress_total.connect(self.progbar_total.setMaximum)
-        signals.count_total.connect(self.progbar_total.setValue)
-        signals.progress.connect(self.progbar_dir.setMaximum)
-        signals.count.connect(self.progbar_dir.setValue)
+        signals.start_process.connect(self.progbar_dirs.setMaximum)
+        signals.directory_start.connect(self.start_directory)
+        signals.file_increment.connect(self.progbar_files.setValue)
 
     def reset(self) -> None:
         """Reset progress bars."""
-        self.progbar_total.setValue(0)
-        self.progbar_dir.setValue(0)
+        self.progbar_dirs.setValue(0)
+        self.progbar_files.setValue(0)
+
+    @Slot(int, int)
+    def start_directory(self, idx: int, nfiles: int) -> None:
+        """Start processing a directory."""
+        self.progbar_dirs.setValue(idx)
+        self.progbar_files.setMaximum(nfiles)
 
 
 class LoggingWidget(QWidget):

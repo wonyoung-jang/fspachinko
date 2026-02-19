@@ -10,10 +10,9 @@ from ..core import Observer
 class WorkerSignals(QObject):
     """Qt worker signals."""
 
-    progress_total = Signal(int)
-    count_total = Signal(int)
-    progress = Signal(int)
-    count = Signal(int)
+    start_process = Signal(int)
+    directory_start = Signal(int, int)
+    file_increment = Signal(int)
     finished = Signal()
 
 
@@ -23,22 +22,18 @@ class GuiObserver(Observer):
 
     signals: WorkerSignals
 
-    def on_total_start(self, maximum: int) -> None:
-        """Emit total progress signal."""
-        self.signals.progress_total.emit(maximum)
+    def on_start_process(self, ndir_to_create: int) -> None:
+        """Call when starting a run of the engine."""
+        self.signals.start_process.emit(ndir_to_create)
 
-    def on_directory_increment(self, count: int) -> None:
-        """Emit total count signal."""
-        self.signals.count_total.emit(count)
-
-    def on_directory_start(self, maximum: int) -> None:
-        """Emit progress signal."""
-        self.signals.progress.emit(maximum)
+    def on_directory_start(self, idx: int, nfiles_to_process: int) -> None:
+        """Call when starting to process a directory."""
+        self.signals.directory_start.emit(idx, nfiles_to_process)
 
     def on_file_increment(self, count: int) -> None:
-        """Emit count update signal."""
-        self.signals.count.emit(count)
+        """Call when a file is processed."""
+        self.signals.file_increment.emit(count)
 
     def on_finished(self) -> None:
-        """Emit finished signal."""
+        """Call when processing is finished."""
         self.signals.finished.emit()

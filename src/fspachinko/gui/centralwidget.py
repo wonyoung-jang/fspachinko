@@ -41,7 +41,7 @@ class CentralWidget(QWidget):
         self.original_window_title = self.window().windowTitle()
         self.ui.progress.reset()
         self.ui.progress.bind(self.worker.signals)
-        self.worker.signals.count.connect(self.update_title_progress)
+        self.worker.signals.file_increment.connect(self.update_title_progress)
         self.worker.signals.finished.connect(self.on_finished)
         self.toggle_ui(is_enabled=False)
         self.thread_pool.start(self.worker)
@@ -55,7 +55,7 @@ class CentralWidget(QWidget):
     @Slot(int)
     def update_title_progress(self, val: int) -> None:
         """Update window title with progress percentage."""
-        pct = int(val * PERCENTAGE_100 / self.ui.progress.progbar_dir.maximum())
+        pct = int(val * PERCENTAGE_100 / self.ui.progress.progbar_files.maximum())
         self.window().setWindowTitle(f"[{pct}%] {self.original_window_title}")
 
     @Slot()
