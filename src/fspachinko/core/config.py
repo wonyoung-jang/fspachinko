@@ -3,7 +3,7 @@
 import os
 import re
 from dataclasses import dataclass
-from os.path import basename, dirname, exists, isabs, join, realpath
+from os.path import exists, isabs, join, realpath
 from random import randint
 from typing import TYPE_CHECKING
 
@@ -15,14 +15,16 @@ from .helpers import (
     are_paths_equal,
     calc_unique_path_name,
     convert_string_to_list,
-    get_stem_and_ext,
     get_valid_filename_from_str,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from fspachinko.core.walker import FSEntry
+
     from .context import DateTimeStamp
+    from .engine import JobRequest
 
 
 class FilecountModel(BaseModel):
@@ -117,20 +119,20 @@ class Filename:
     """Dataclass for file renaming."""
 
     template: str
-    dtstamp: DateTimeStamp
 
-    def __call__(self, chosen: str, dest: str, index: int) -> str | None:
+    def __call__(self, entry: FSEntry, request: JobRequest, dtstamp: DateTimeStamp) -> str | None:
         """Calculate the destination file path based on configuration."""
-        stem, ext = get_stem_and_ext(chosen)
+        dest, index = request.dest, request.file_count
+        path, stem, ext = entry.path, entry.stem, entry.ext
         mapping = SafeDict(
             {
-                FilenameTemplateMapKey.DATE: self.dtstamp.date,
-                FilenameTemplateMapKey.TIME: self.dtstamp.time,
-                FilenameTemplateMapKey.DATETIME: self.dtstamp.date_time,
+                FilenameTemplateMapKey.DATE: dtstamp.date,
+                FilenameTemplateMapKey.TIME: dtstamp.time,
+                FilenameTemplateMapKey.DATETIME: dtstamp.date_time,
                 FilenameTemplateMapKey.ORIGINAL: stem,
                 FilenameTemplateMapKey.INDEX: index + 1,
-                FilenameTemplateMapKey.PARENT: basename(dirname(chosen)),
-                FilenameTemplateMapKey.PARENTS_TO_ROOT: "_".join(chosen.split(os.sep)[:-1]),
+                FilenameTemplateMapKey.PARENT: entry.parent,
+                FilenameTemplateMapKey.PARENTS_TO_ROOT: "_".join(path.split(os.sep)[:-1]),
             }
         )
 
@@ -144,14 +146,16 @@ class Filename:
         target = join(dest, name)
         if not exists(target):
             return target
-        if are_paths_equal(chosen, target):
+
+        if are_paths_equal(path, target):
             return None
+
         return calc_unique_path_name(dest, new_stem, ext)
 
     @classmethod
-    def from_model(cls, m: FilenameModel, dtstamp: DateTimeStamp) -> Filename:
+    def from_model(cls, m: FilenameModel) -> Filename:
         """Create Filename from configuration model."""
-        return cls(template=m.template, dtstamp=dtstamp)
+        return cls(template=m.template)
 
 
 @dataclass(slots=True)

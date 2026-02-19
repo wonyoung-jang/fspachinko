@@ -121,7 +121,7 @@ class Engine:
             if (
                 self.quota.is_dir_locked(entry)
                 or not self.validator(entry)
-                or (new_filename := self.filenamer(entry.path, request.dest, request.file_count)) is None
+                or (new_filename := self.filenamer(entry, request, self.dtstamp)) is None
             ):
                 continue
             msg = (

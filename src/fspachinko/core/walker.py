@@ -12,22 +12,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class FSEntry:
     """Lightweight wrapper for os.DirEntry."""
 
-    path: str = field(init=False)
-    stem: str = field(init=False)
-    ext: str = field(init=False)
-    size: int = field(init=False)
-    entry: InitVar[os.DirEntry]
-    follow_symlink: InitVar[bool]
-
-    def __post_init__(self, entry: os.DirEntry, follow_symlink: bool) -> None:
-        """Create a lightweight FSEntry from an os.DirEntry."""
-        self.path = entry.path
-        self.stem, self.ext = splitext(entry.name)
-        self.size = entry.stat(follow_symlinks=follow_symlink).st_size
+    path: str
+    stem: str
+    ext: str
+    size: int
 
     def __fspath__(self) -> str:
         """Return the file system path representation."""
@@ -116,6 +108,10 @@ class PachinkoFSWalker(FSWalker):
                 continue
 
             if files:
-                yield FSEntry(entry=choice(files), follow_symlink=follow)
+                entry = choice(files)
+                path = entry.path
+                stem, ext = splitext(entry.name)
+                size = entry.stat(follow_symlinks=follow).st_size
+                yield FSEntry(path, stem, ext, size)
 
             curr = root

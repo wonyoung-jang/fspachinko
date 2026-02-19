@@ -25,10 +25,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         is_dry_run=m.options.is_dry_run,
     )
     validator = get_validator(m)
-    filenamer = Filename.from_model(
-        m.filename,
-        dtstamp=dtstamp,
-    )
+    filenamer = Filename.from_model(m.filename)
     transferer = get_transfer_strategy(m.options.transfer_mode)
     job_request_factory = JobRequestFactory(
         get_file_count=m.filecount.get_count_fn(),
