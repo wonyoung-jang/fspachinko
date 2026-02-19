@@ -6,8 +6,8 @@ from .config import (
     DirectoryModel,
     FilecountModel,
     FilenameModel,
-    ListIncludeExcludeModel,
-    MinMaxModel,
+    IncludeExcludeFilterModel,
+    MinMaxFilterModel,
     OptionsModel,
 )
 from .constants import (
@@ -47,8 +47,8 @@ __all__ = [
     "GUISettingsKey",
     "GUITitle",
     "IconFilename",
-    "ListIncludeExcludeModel",
-    "MinMaxModel",
+    "IncludeExcludeFilterModel",
+    "MinMaxFilterModel",
     "Observer",
     "OptionsModel",
     "TimeUnit",

@@ -20,28 +20,24 @@ class FileFilter:
 
     filters: tuple[Callable[[FSEntry], bool], ...]
 
+    @classmethod
+    def from_model(cls, m: ConfigModel) -> FileFilter:
+        """Create a FileFilter instance from the configuration model."""
+        inc_exc = get_inc_exc_filter_fn
+        min_max = get_min_max_filter_fn
+        fmap: list[tuple[type, Callable[[Any], bool] | None]] = [
+            (DirnameFilter, inc_exc(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
+            (KeywordFilter, inc_exc(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
+            (ExtensionFilter, inc_exc(m.extension, re_fmt=ReStrFmt.EXTENSION)),
+            (FilesizeFilter, min_max(m.filesize, mapping=SIZE_MAP)),
+            (DurationFilter, min_max(m.duration, mapping=TIME_MAP)),
+        ]
+        filters = (c(is_valid=fn) for c, fn in fmap if fn is not None)
+        return FileFilter(filters=tuple(filters))
+
     def __call__(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
         return all(f(entry) for f in self.filters)
-
-
-def get_validator(m: ConfigModel) -> FileFilter:
-    """Build and return a FileValidator based on the configuration."""
-    dirname = get_inc_exc_filter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)
-    keyword = get_inc_exc_filter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)
-    extension = get_inc_exc_filter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)
-    filesize = get_min_max_filter_fn(m.filesize, mapping=SIZE_MAP)
-    duration = get_min_max_filter_fn(m.duration, mapping=TIME_MAP)
-
-    fmap: list[tuple[type, Callable[[Any], bool] | None]] = [
-        (DirnameFilter, dirname),
-        (KeywordFilter, keyword),
-        (ExtensionFilter, extension),
-        (FilesizeFilter, filesize),
-        (DurationFilter, duration),
-    ]
-    filters = tuple(c(is_valid=fn) for c, fn in fmap if fn is not None)
-    return FileFilter(filters=filters)
 
 
 @dataclass(slots=True)

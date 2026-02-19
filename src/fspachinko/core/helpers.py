@@ -1,6 +1,5 @@
 """Utility functions."""
 
-import contextlib
 import logging
 import shutil
 import subprocess
@@ -104,13 +103,29 @@ def convert_byte_to_human_readable_size(nbytes: int) -> str:
 
 def remove_directory(path: str) -> None:
     """Remove a directory and its contents."""
-    with contextlib.suppress(OSError):
+    try:
         shutil.rmtree(path)
+    except FileNotFoundError:
+        logger.warning("Directory not found for removal: %s", path)
+    except OSError:
+        logger.exception("Error occurred while removing directory: %s", path)
 
 
-def are_paths_equal(path1: str, path2: str) -> bool:
+def get_new_fpath(dest: str, path: str, stem: str, ext: str) -> str | None:
+    """Get a new file path, ensuring it doesn't already exist."""
+    target = join(dest, f"{stem}{ext}")
+    if not exists(target):
+        return target
+    if are_files_equal(path, target):
+        return None
+    return calc_unique_path_name(dest, stem, ext)
+
+
+def are_files_equal(path1: str, path2: str) -> bool:
     """Compare two paths for equality, accounting for case sensitivity."""
-    return cmp(path1, path2, shallow=True) and cmp(path1, path2, shallow=False)
+    if cmp(path1, path2):
+        return cmp(path1, path2, shallow=False)
+    return False
 
 
 def get_stem_and_ext(path: str) -> tuple[str, str]:
@@ -138,10 +153,8 @@ def get_duration(path: str) -> float:
         except ValueError:
             logger.exception("ffprobe output could not be parsed as float: %s", completed_proc)
             return 0.0
-    except subprocess.CalledProcessError as e:
-        completed_proc = e.output
-        code = e.returncode
-        logger.exception("ffprobe failed with code %d: %s", code, completed_proc.decode(errors="ignore"))
+    except subprocess.CalledProcessError:
+        logger.exception("ffprobe failed")
         return 0.0
     except subprocess.TimeoutExpired:
         logger.exception("ffprobe timed out for file: %s", path)

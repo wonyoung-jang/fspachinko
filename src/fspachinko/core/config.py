@@ -3,7 +3,7 @@
 import os
 import re
 from dataclasses import dataclass
-from os.path import exists, isabs, join, realpath
+from os.path import isabs, realpath
 from random import randint
 from typing import TYPE_CHECKING
 
@@ -12,7 +12,6 @@ from pydantic import BaseModel, field_validator
 from .constants import FilenameTemplateMapKey, TransferMode
 from .helpers import (
     SafeDict,
-    are_paths_equal,
     calc_unique_path_name,
     convert_string_to_list,
     get_valid_filename_from_str,
@@ -34,10 +33,6 @@ class FilecountModel(BaseModel):
     rand_min: int = 0
     rand_max: int = 0
 
-    def get_count_fn(self) -> Callable[[], int]:
-        """Return a function that determines the number of files to transfer based on the configuration."""
-        return (lambda: randint(self.rand_min, self.rand_max)) if self.is_rand_enabled else (lambda: self.count)
-
 
 class DirectoryModel(BaseModel):
     """Model for directory creation configuration."""
@@ -45,10 +40,6 @@ class DirectoryModel(BaseModel):
     is_enabled: bool = False
     name: str = ""
     count: int = 1
-
-    def get_dirname_fn(self, dest: str) -> Callable[[], str]:
-        """Return a function that determines the destination folder name based on the configuration."""
-        return (lambda: calc_unique_path_name(dest, self.name)) if self.is_enabled else (lambda: dest)
 
 
 class FilenameModel(BaseModel):
@@ -58,16 +49,16 @@ class FilenameModel(BaseModel):
     template: str = "{original}"
 
 
-class ListIncludeExcludeModel(BaseModel):
-    """Model for list filtering."""
+class IncludeExcludeFilterModel(BaseModel):
+    """Model for list search filtering."""
 
     is_enabled: bool = True
     should_include: bool = True
     text: str = ""
 
 
-class MinMaxModel(BaseModel):
-    """Model for size filter."""
+class MinMaxFilterModel(BaseModel):
+    """Model for range filter."""
 
     is_enabled: bool = False
     minimum: float = 0.0
@@ -87,18 +78,18 @@ class OptionsModel(BaseModel):
 
 
 class ConfigModel(BaseModel):
-    """Model for  configuration."""
+    """Model for configuration."""
 
     root: str
     dest: str
     filecount: FilecountModel
     folder: DirectoryModel
     filename: FilenameModel
-    directory_name: ListIncludeExcludeModel
-    keyword: ListIncludeExcludeModel
-    extension: ListIncludeExcludeModel
-    filesize: MinMaxModel
-    duration: MinMaxModel
+    directory_name: IncludeExcludeFilterModel
+    keyword: IncludeExcludeFilterModel
+    extension: IncludeExcludeFilterModel
+    filesize: MinMaxFilterModel
+    duration: MinMaxFilterModel
     options: OptionsModel
 
     @field_validator("root", "dest")
@@ -114,50 +105,47 @@ class ConfigModel(BaseModel):
 
 
 @dataclass(slots=True)
-class Filename:
-    """Dataclass for file renaming."""
+class Filenamer:
+    """Dataclass for file naming."""
 
     template: str
 
+    @classmethod
+    def from_model(cls, m: FilenameModel) -> Filenamer:
+        """Create Filename from configuration model."""
+        return Filenamer(template=m.template)
+
     def __call__(self, entry: FSEntry, request: JobRequest, dtstamp: DateTimeStamp) -> str | None:
-        """Calculate the destination file path based on configuration."""
-        dest, index = request.dest, request.file_count
-        path, stem, ext = entry.path, entry.stem, entry.ext
+        """Calculate the destination file stem based on template configuration."""
         mapping = SafeDict(
             {
+                FilenameTemplateMapKey.ORIGINAL: entry.stem,
                 FilenameTemplateMapKey.DATE: dtstamp.date,
                 FilenameTemplateMapKey.TIME: dtstamp.time,
                 FilenameTemplateMapKey.DATETIME: dtstamp.date_time,
-                FilenameTemplateMapKey.ORIGINAL: stem,
-                FilenameTemplateMapKey.INDEX: index + 1,
+                FilenameTemplateMapKey.INDEX: request.file_count + 1,
                 FilenameTemplateMapKey.PARENT: entry.parent,
-                FilenameTemplateMapKey.PARENTS_TO_ROOT: "_".join(path.split(os.sep)[:-1]),
+                FilenameTemplateMapKey.PARENTS_TO_ROOT: "_".join(entry.path.split(os.sep)[:-1]),
             }
         )
-
         try:
             formatted_stem = self.template.format_map(mapping)
-            new_stem = get_valid_filename_from_str(formatted_stem)
+            return get_valid_filename_from_str(formatted_stem)
         except KeyError, ValueError:
-            new_stem = stem
-
-        name = new_stem + ext
-        target = join(dest, name)
-        if not exists(target):
-            return target
-
-        if are_paths_equal(path, target):
-            return None
-
-        return calc_unique_path_name(dest, new_stem, ext)
-
-    @classmethod
-    def from_model(cls, m: FilenameModel) -> Filename:
-        """Create Filename from configuration model."""
-        return cls(template=m.template)
+            return entry.stem
 
 
-def get_inc_exc_filter_fn(m: ListIncludeExcludeModel, re_fmt: str) -> Callable[[str], bool] | None:
+def get_filecount_fn(m: FilecountModel) -> Callable[[], int]:
+    """Return a function that determines the number of files to transfer based on the configuration."""
+    return (lambda: randint(m.rand_min, m.rand_max)) if m.is_rand_enabled else (lambda: m.count)
+
+
+def get_dirname_fn(m: DirectoryModel, dest: str) -> Callable[[], str]:
+    """Return a function that determines the destination folder name based on the configuration."""
+    return (lambda: calc_unique_path_name(dest, m.name)) if m.is_enabled else (lambda: dest)
+
+
+def get_inc_exc_filter_fn(m: IncludeExcludeFilterModel, re_fmt: str) -> Callable[[str], bool] | None:
     """Create an include-exclude filter function from configuration model."""
     text = m.text.strip()
     if not (m.is_enabled and text):
@@ -171,7 +159,7 @@ def get_inc_exc_filter_fn(m: ListIncludeExcludeModel, re_fmt: str) -> Callable[[
     )
 
 
-def get_min_max_filter_fn(m: MinMaxModel, mapping: dict[str, float]) -> Callable[[float], bool] | None:
+def get_min_max_filter_fn(m: MinMaxFilterModel, mapping: dict[str, float]) -> Callable[[float], bool] | None:
     """Create a MinMax filter function from it's configuration model."""
     if not m.is_enabled:
         return None

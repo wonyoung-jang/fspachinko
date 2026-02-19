@@ -3,10 +3,10 @@
 from random import seed
 from typing import TYPE_CHECKING
 
-from .config import Filename
+from .config import Filenamer, get_dirname_fn, get_filecount_fn
 from .context import DateTimeStamp, DiversityQuota, EngineContext
 from .engine import Engine, JobRequestFactory
-from .filefilter import get_validator
+from .filefilter import FileFilter
 from .transfer import get_transfer_strategy
 from .walker import PachinkoFSWalker
 
@@ -24,12 +24,12 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         is_create_folder=m.folder.is_enabled,
         is_dry_run=m.options.is_dry_run,
     )
-    filterer = get_validator(m)
-    filenamer = Filename.from_model(m.filename)
+    filterer = FileFilter.from_model(m)
+    filenamer = Filenamer.from_model(m.filename)
     transferer = get_transfer_strategy(m.options.transfer_mode)
     job_request_factory = JobRequestFactory(
-        get_file_count=m.filecount.get_count_fn(),
-        determine_dest_dirname=m.folder.get_dirname_fn(m.dest),
+        filecount_fn=get_filecount_fn(m.filecount),
+        dirname_fn=get_dirname_fn(m.folder, m.dest),
         dir_count=m.folder.count,
     )
     walker = PachinkoFSWalker(

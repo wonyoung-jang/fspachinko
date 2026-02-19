@@ -35,8 +35,8 @@ from ..core import (
     FilenameModel,
     FilenameTemplate,
     IconFilename,
-    ListIncludeExcludeModel,
-    MinMaxModel,
+    IncludeExcludeFilterModel,
+    MinMaxFilterModel,
     OptionsModel,
     TimeUnit,
     get_available_transfer_modes,
@@ -300,9 +300,9 @@ class IncludeExcludeFilterWidget(BaseGroupBox):
         layout.addWidget(self.filter_include_radio)
         layout.addWidget(self.filter_exclude_radio)
 
-    def get_config(self) -> ListIncludeExcludeModel:
+    def get_config(self) -> IncludeExcludeFilterModel:
         """Return clean data for the config."""
-        return ListIncludeExcludeModel(
+        return IncludeExcludeFilterModel(
             is_enabled=self.isChecked(),
             should_include=self.filter_include_radio.isChecked(),
             text=self.filter_edit.text(),
@@ -361,9 +361,9 @@ class MinMaxFilterWidget(BaseGroupBox):
         layout.addWidget(self.spin_max)
         layout.addWidget(self.combo_unit)
 
-    def get_config(self) -> MinMaxModel:
+    def get_config(self) -> MinMaxFilterModel:
         """Return clean data for the config."""
-        return MinMaxModel(
+        return MinMaxFilterModel(
             is_enabled=self.isChecked(),
             minimum=self.spin_min.value(),
             maximum=self.spin_max.value(),
