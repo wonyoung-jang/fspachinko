@@ -12,7 +12,7 @@ class WorkerSignals(QObject):
 
     start_process = Signal(int)
     directory_start = Signal(int, int)
-    file_increment = Signal(int)
+    file_transferred = Signal(int)
     finished = Signal()
 
 
@@ -30,9 +30,9 @@ class GuiObserver(Observer):
         """Call when starting to process a directory."""
         self.signals.directory_start.emit(idx, nfiles_to_process)
 
-    def on_file_increment(self, count: int) -> None:
-        """Call when a file is processed."""
-        self.signals.file_increment.emit(count)
+    def on_file_transferred(self, count: int) -> None:
+        """Call when a file is transferred."""
+        self.signals.file_transferred.emit(count)
 
     def on_finished(self) -> None:
         """Call when processing is finished."""

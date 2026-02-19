@@ -21,10 +21,9 @@ from .helpers import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fspachinko.core.walker import FSEntry
-
     from .context import DateTimeStamp
     from .engine import JobRequest
+    from .walker import FSEntry
 
 
 class FilecountModel(BaseModel):

@@ -207,14 +207,14 @@ class FileCountWidget(BaseGroupBox):
         )
 
 
-class FolderCreatorWidget(BaseGroupBox):
+class DirectoryCreateWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    def __init__(self, title: str = "Create Folders", name: str = "folder") -> None:
+    def __init__(self, title: str = "Create directories", name: str = "directory") -> None:
         """Initialize the create folders widget."""
         super().__init__(title=title, name=name, checkable=True)
 
-        self.spinbox_folder_count = QSpinBox(suffix=" folders", minimum=1)
+        self.spinbox_folder_count = QSpinBox(suffix=" directories", minimum=1)
         set_qt_name(self.spinbox_folder_count, f"{name}_count")
         set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
 
@@ -235,10 +235,10 @@ class FolderCreatorWidget(BaseGroupBox):
         )
 
 
-class FilenameWidget(BaseGroupBox):
+class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
 
-    def __init__(self, title: str = "Filename", name: str = "filename") -> None:
+    def __init__(self, title: str = "Filenamer", name: str = "filenamer") -> None:
         """Initialize the filename template settings widget."""
         super().__init__(title=title, name=name)
 
@@ -274,7 +274,7 @@ class FilenameWidget(BaseGroupBox):
         return FilenameModel(template=self.edit_template.text().strip() or "{original}")
 
 
-class ListIncludeExcludeFilterWidget(BaseGroupBox):
+class IncludeExcludeFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude pattern for Keywords and Extensions."""
 
     def __init__(self, title: str, name: str) -> None:
@@ -310,15 +310,15 @@ class ListIncludeExcludeFilterWidget(BaseGroupBox):
         )
 
 
-class DirectoryFilterWidget(ListIncludeExcludeFilterWidget):
+class DirnameFilterWidget(IncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for directory names."""
 
     def __init__(self) -> None:
         """Initialize the directory filter widget."""
-        super().__init__(title="Directory Name", name="directory_name_filter")
+        super().__init__(title="Directory name", name="directory_name_filter")
 
 
-class ExtensionsFilterWidget(ListIncludeExcludeFilterWidget):
+class ExtensionFilterWidget(IncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for file extensions."""
 
     def __init__(self) -> None:
@@ -326,7 +326,7 @@ class ExtensionsFilterWidget(ListIncludeExcludeFilterWidget):
         super().__init__(title="Extensions", name="extension")
 
 
-class KeywordsFilterWidget(ListIncludeExcludeFilterWidget):
+class KeywordFilterWidget(IncludeExcludeFilterWidget):
     """Handles the Include/Exclude pattern for keywords."""
 
     def __init__(self) -> None:
@@ -427,11 +427,11 @@ class OptionsWidget(BaseGroupBox):
 
         layout = QFormLayout(self)
         layout.addRow("Transfer mode", self.combo_mode)
-        layout.addRow("Max from one folder", self.spin_max_per_folder)
-        layout.addRow("Ensure unique folders", self.chk_unique_folders)
+        layout.addRow("Max from one directory", self.spin_max_per_folder)
+        layout.addRow("Ensure unique directories", self.chk_unique_folders)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
-        layout.addRow("Dry run (simulation)", self.chk_dry_run)
-        layout.addRow("RNG seed", self.rng_seed)
+        layout.addRow("Dry run", self.chk_dry_run)
+        layout.addRow("Random seed", self.rng_seed)
 
     def get_config(self) -> OptionsModel:
         """Return clean data for the config."""
@@ -468,7 +468,7 @@ class ProgressWidget(QWidget):
         """Bind worker signals to progress widget."""
         signals.start_process.connect(self.progbar_dirs.setMaximum)
         signals.directory_start.connect(self.start_directory)
-        signals.file_increment.connect(self.progbar_files.setValue)
+        signals.file_transferred.connect(self.progbar_files.setValue)
 
     def reset(self) -> None:
         """Reset progress bars."""
@@ -482,11 +482,11 @@ class ProgressWidget(QWidget):
         self.progbar_files.setMaximum(nfiles)
 
 
-class LoggingWidget(QWidget):
-    """Logging widget."""
+class LogWidget(QWidget):
+    """Log widget."""
 
     def __init__(self, name: str = "logging") -> None:
-        """Post-initialize the logging widget."""
+        """Initiralize the log widget."""
         super().__init__()
         set_qt_name(self, name)
 

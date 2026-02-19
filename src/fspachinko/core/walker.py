@@ -1,9 +1,8 @@
 """Random file system navigator."""
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from os import scandir
+from os import DirEntry, scandir
 from os.path import basename, dirname, splitext
 from random import choice
 from typing import TYPE_CHECKING
@@ -38,7 +37,7 @@ class FSPachinkoPin:
     path: str
     follow: bool
     subdirs: list[str] = field(default_factory=list)
-    files: list[os.DirEntry] = field(default_factory=list)
+    files: list[DirEntry] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""

@@ -18,9 +18,9 @@ class ConsoleObserver(Observer):
         """Call when starting to process a directory."""
         logger.info("Start directory %d: transfer %d file(s)", idx, nfiles_to_process)
 
-    def on_file_increment(self, count: int) -> None:
-        """Call when a file is processed."""
-        logger.debug("File %d processed", count)
+    def on_file_transferred(self, count: int) -> None:
+        """Call when a file is transferred."""
+        logger.debug("File %d transferred", count)
 
     def on_finished(self) -> None:
         """Call when processing is finished."""

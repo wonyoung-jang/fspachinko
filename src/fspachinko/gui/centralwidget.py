@@ -41,7 +41,7 @@ class CentralWidget(QWidget):
         self.original_window_title = self.window().windowTitle()
         self.ui.progress.reset()
         self.ui.progress.bind(self.worker.signals)
-        self.worker.signals.file_increment.connect(self.update_title_progress)
+        self.worker.signals.file_transferred.connect(self.update_title_progress)
         self.worker.signals.finished.connect(self.on_finished)
         self.toggle_ui(is_enabled=False)
         self.thread_pool.start(self.worker)

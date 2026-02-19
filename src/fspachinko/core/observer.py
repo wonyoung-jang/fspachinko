@@ -21,8 +21,8 @@ class Observer(ABC):
         """
 
     @abstractmethod
-    def on_file_increment(self, count: int) -> None:
-        """Call when a file is processed.
+    def on_file_transferred(self, count: int) -> None:
+        """Call when a file is transferred.
 
         Emit current count of transferred files in the current directory.
         """

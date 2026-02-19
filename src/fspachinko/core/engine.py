@@ -138,7 +138,7 @@ class Engine:
             logger.info(msg)
             self.quota.update(entry)
             request.update(entry.size)
-            self.observer.on_file_increment(request.file_count)
+            self.observer.on_file_transferred(request.file_count)
 
         logger.info(self.context.generate_report_header(request, self.dtstamp.date_time_report_str))
         logger.removeHandler(log_handler)
