@@ -11,9 +11,11 @@ from .helpers import convert_byte_to_human_readable_size, get_new_fpath
 from .loggers import get_dest_log_filehandler
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
 
     from .context import Context, DateTimeStamp, DiversityQuota
+    from .dirname import DirectoryNamer
+    from .filecount import FileCountGenerator
     from .filefilter import FileFilter
     from .filenamer import Filenamer
     from .observer import Observer
@@ -59,8 +61,8 @@ class JobRequest:
 class JobRequestFactory:
     """Factory for creating job requests."""
 
-    filecount_fn: Callable[[], int]
-    dirname_fn: Callable[[], str]
+    filecount_fn: FileCountGenerator
+    dirname_fn: DirectoryNamer
     dir_count: int
 
     def generate(self) -> Iterator[JobRequest]:

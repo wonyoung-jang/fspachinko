@@ -1,41 +1,17 @@
 """Config validation functions."""
 
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
-from .helpers import convert_string_to_tuple, get_duration
+from .filterrange import RangeFilterFn, get_rangefilter_fn
+from .filtertext import TextFilterFn, get_textfilter_fn
+from .helpers import get_duration
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from .config import ConfigModel, IncludeExcludeFilterModel, MinMaxFilterModel
+    from .config import ConfigModel
     from .walker import FSEntry
-
-
-def get_inc_exc_filter_fn(m: IncludeExcludeFilterModel, re_fmt: str) -> Callable[[str], bool] | None:
-    """Create an include-exclude filter function from configuration model."""
-    text = m.text.strip()
-    if not (m.is_enabled and text):
-        return None
-    text_list = convert_string_to_tuple(text)
-    patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
-    return (
-        (lambda part, patterns=patterns: any(p.search(part) for p in patterns))
-        if m.should_include
-        else (lambda part, patterns=patterns: not any(p.search(part) for p in patterns))
-    )
-
-
-def get_min_max_filter_fn(m: MinMaxFilterModel, mapping: dict[str, float]) -> Callable[[float], bool] | None:
-    """Create a MinMax filter function from it's configuration model."""
-    if not m.is_enabled:
-        return None
-    minimum = m.minimum * mapping.get(m.unit, 1.0)
-    maximum = m.maximum * mapping.get(m.unit, 1.0)
-    return lambda val, minimum=minimum, maximum=maximum: minimum <= val <= maximum
 
 
 @dataclass(slots=True)
@@ -47,28 +23,28 @@ class FileFilter:
     @classmethod
     def from_model(cls, m: ConfigModel) -> FileFilter:
         """Create a FileFilter instance from the configuration model."""
-        fmap: list[tuple[type[Filter], Callable[[Any], bool] | None]] = [
-            (DirnameFilter, get_inc_exc_filter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
-            (KeywordFilter, get_inc_exc_filter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
-            (ExtensionFilter, get_inc_exc_filter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
-            (FilesizeFilter, get_min_max_filter_fn(m.filesize, mapping=SIZE_MAP)),
-            (DurationFilter, get_min_max_filter_fn(m.duration, mapping=TIME_MAP)),
+        fmap: list[tuple[type[Filter], TextFilterFn | RangeFilterFn | None]] = [
+            (DirnameFilter, get_textfilter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
+            (KeywordFilter, get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
+            (ExtensionFilter, get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
+            (FilesizeFilter, get_rangefilter_fn(m.filesize, mapping=SIZE_MAP)),
+            (DurationFilter, get_rangefilter_fn(m.duration, mapping=TIME_MAP)),
         ]
-        filters = (filter_c(is_valid=fn) for filter_c, fn in fmap if fn is not None)
+        filters = (filter_c(call=fn) for filter_c, fn in fmap if fn is not None)
         return cls(filters=tuple(filters))
 
     def __call__(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        if not self.filters:
-            return True
-        return all(f(entry) for f in self.filters)
+        if self.filters:
+            return all(f(entry) for f in self.filters)
+        return True
 
 
 @dataclass(slots=True)
 class Filter(ABC):
     """Class for filtering files based on filter configuration."""
 
-    is_valid: Callable[[str | float], bool]
+    call: TextFilterFn | RangeFilterFn
 
     @abstractmethod
     def __call__(self, entry: FSEntry) -> bool:
@@ -76,45 +52,59 @@ class Filter(ABC):
 
 
 @dataclass(slots=True)
-class DirnameFilter(Filter):
+class TextFilter(Filter):
+    """Filter for text-based criteria."""
+
+    call: TextFilterFn
+
+
+@dataclass(slots=True)
+class DirnameFilter(TextFilter):
     """Filter for parent directory names."""
 
     def __call__(self, entry: FSEntry) -> bool:
         """Filter the parent directory name."""
-        return self.is_valid(entry.parent)
+        return self.call(entry.parent)
 
 
 @dataclass(slots=True)
-class KeywordFilter(Filter):
+class KeywordFilter(TextFilter):
     """Filter for filename keywords."""
 
     def __call__(self, entry: FSEntry) -> bool:
         """Filter the filename stem against keywords."""
-        return self.is_valid(entry.stem)
+        return self.call(entry.stem)
 
 
 @dataclass(slots=True)
-class ExtensionFilter(Filter):
+class ExtensionFilter(TextFilter):
     """Filter for file extensions."""
 
     def __call__(self, entry: FSEntry) -> bool:
         """Filter the file extension."""
-        return self.is_valid(entry.ext)
+        return self.call(entry.ext)
 
 
 @dataclass(slots=True)
-class FilesizeFilter(Filter):
+class RangeFilter(Filter):
+    """Filter for file size."""
+
+    call: RangeFilterFn
+
+
+@dataclass(slots=True)
+class FilesizeFilter(RangeFilter):
     """Filter for file size."""
 
     def __call__(self, entry: FSEntry) -> bool:
         """Filter the file size."""
-        return self.is_valid(entry.size)
+        return self.call(entry.size)
 
 
 @dataclass(slots=True)
-class DurationFilter(Filter):
+class DurationFilter(RangeFilter):
     """Filter for file duration."""
 
     def __call__(self, entry: FSEntry) -> bool:
         """Filter the file duration."""
-        return self.is_valid(get_duration(entry.path))
+        return self.call(get_duration(entry.path))

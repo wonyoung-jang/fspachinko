@@ -1,35 +1,20 @@
 """Builder module for core functionality."""
 
-from random import randint, seed
+from random import seed
 from typing import TYPE_CHECKING
 
 from .context import Context, DateTimeStamp, DiversityQuota
+from .dirname import get_dirname_fn
 from .engine import Engine, JobRequestFactory
+from .filecount import get_filecount_fn
 from .filefilter import FileFilter
 from .filenamer import Filenamer
-from .helpers import calc_unique_path_name
 from .transfer import get_transfer_fn
 from .walker import PachinkoFSWalker
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from .config import ConfigModel, DirectoryModel, FilecountModel
+    from .config import ConfigModel
     from .observer import Observer
-
-
-def get_filecount_fn(m: FilecountModel) -> Callable[[], int]:
-    """Return a function that determines the number of files to transfer based on the configuration."""
-    return (
-        (lambda rmin=m.rand_min, rmax=m.rand_max: randint(rmin, rmax))
-        if m.is_rand_enabled
-        else (lambda count=m.count: count)
-    )
-
-
-def get_dirname_fn(m: DirectoryModel, dest: str) -> Callable[[], str]:
-    """Return a function that determines the destination folder name based on the configuration."""
-    return (lambda name=m.name: calc_unique_path_name(dest, name)) if m.is_enabled else (lambda: dest)
 
 
 def build_engine(m: ConfigModel, observer: Observer) -> Engine:
