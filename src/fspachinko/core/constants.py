@@ -62,6 +62,7 @@ class BytesIn(IntEnum):
 class TransferMode(StrEnum):
     """Enumeration for file transfer modes."""
 
+    DRY_RUN = "Dry Run"
     COPY = "Copy"
     COPY_PRESERVE = "Copy (Preserve)"
     MOVE = "Move"
