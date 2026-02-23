@@ -1,8 +1,7 @@
 """Random file system navigator."""
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from os import DirEntry, scandir
+from os import scandir
 from os.path import basename, dirname, splitext
 from random import choice
 from typing import TYPE_CHECKING
@@ -18,16 +17,12 @@ class FSEntry:
     path: str
     stem: str
     ext: str
+    parent: str
     size: int
 
     def __fspath__(self) -> str:
         """Return the file system path representation."""
         return self.path
-
-    @property
-    def parent(self) -> str:
-        """Return the parent directory name."""
-        return basename(dirname(self.path))
 
 
 @dataclass(slots=True)
@@ -37,7 +32,7 @@ class FSPachinkoPin:
     path: str
     follow: bool
     subdirs: list[str] = field(default_factory=list)
-    files: list[DirEntry] = field(default_factory=list)
+    files: list[FSEntry] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
@@ -51,20 +46,29 @@ class FSPachinkoPin:
                         if e.is_dir(follow_symlinks=follow):
                             subdirs_append(e.path)
                         elif e.is_file(follow_symlinks=follow):
-                            files_append(e)
+                            stem, ext = splitext(e.name)
+                            files_append(
+                                FSEntry(
+                                    path=e.path,
+                                    stem=stem,
+                                    ext=ext,
+                                    parent=basename(dirname(e.path)),
+                                    size=e.stat(follow_symlinks=follow).st_size,
+                                )
+                            )
                     except OSError:
                         continue
         except OSError:
             return
 
 
-@dataclass(slots=True)
-class FSWalker(ABC):
+class FSWalker:
     """Abstract file system walker."""
 
-    @abstractmethod
-    def walk(self) -> Iterator[FSEntry]:
+    def __call__(self) -> Iterator[FSEntry]:
         """Generate candidates for a given directory."""
+        msg = "FSWalker is an abstract class and cannot be called directly."
+        raise NotImplementedError(msg)
 
 
 @dataclass(slots=True)
@@ -83,7 +87,7 @@ class PachinkoFSWalker(FSWalker):
         """Initialize the board with the root pin."""
         self.board[self.root] = FSPachinkoPin(self.root, self.should_follow_symlink)
 
-    def walk(self) -> Iterator[FSEntry]:
+    def __call__(self) -> Iterator[FSEntry]:
         """Iterate through FSEntry objects."""
         root = self.root
         curr = self.root
@@ -106,10 +110,6 @@ class PachinkoFSWalker(FSWalker):
                 continue
 
             if files:
-                entry = choice(files)
-                path = entry.path
-                stem, ext = splitext(entry.name)
-                size = entry.stat(follow_symlinks=follow).st_size
-                yield FSEntry(path, stem, ext, size)
+                yield choice(files)
 
             curr = root
