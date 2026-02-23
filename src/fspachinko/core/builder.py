@@ -7,7 +7,7 @@ from .context import Context, DateTimeStamp, DiversityQuota
 from .dirname import get_dirname_fn
 from .engine import Engine, JobRequestFactory
 from .filecount import get_filecount_fn
-from .filefilter import FileFilter
+from .filefilter import get_filefilter_fn
 from .filenamer import get_filenamer_fn
 from .transfer import get_transfer_fn
 from .walker import PachinkoFSWalker
@@ -34,7 +34,7 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
         dir_count=m.folder.count,
     )
 
-    filterer = FileFilter.from_model(m)
+    filterer = get_filefilter_fn(m)
     filenamer = get_filenamer_fn(m.filename)
     transferer = get_transfer_fn(mode=m.options.transfer_mode)
 

@@ -14,30 +14,50 @@ if TYPE_CHECKING:
     from .walker import FSEntry
 
 
+def get_filefilter_fn(m: ConfigModel) -> FileFilter:
+    """Create a FileFilter instance from the configuration model."""
+    fmap: list[tuple[type[Filter], TextFilterFn | RangeFilterFn | None]] = [
+        (DirnameFilter, get_textfilter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
+        (KeywordFilter, get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
+        (ExtensionFilter, get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
+        (FilesizeFilter, get_rangefilter_fn(m.filesize, mapping=SIZE_MAP)),
+        (DurationFilter, get_rangefilter_fn(m.duration, mapping=TIME_MAP)),
+    ]
+    filters = tuple(filter_c(call=fn) for filter_c, fn in fmap if fn is not None)
+    if filters:
+        return ValidFileFilter(filters=filters)
+    return NoOpFileFilter()
+
+
+class FileFilter(ABC):
+    """Class for validating files based on filter configuration."""
+
+    @abstractmethod
+    def __call__(self, entry: FSEntry) -> bool:
+        """Check if a file is valid based on the current filters."""
+
+
 @dataclass(slots=True)
-class FileFilter:
+class NoOpFileFilter(FileFilter):
+    """Class for validating files based on filter configuration."""
+
+    def __call__(self, entry: FSEntry) -> bool:
+        """Check if a file is valid based on the current filters."""
+        return True
+
+
+@dataclass(slots=True)
+class ValidFileFilter(FileFilter):
     """Class for validating files based on filter configuration."""
 
     filters: tuple[Filter, ...]
 
-    @classmethod
-    def from_model(cls, m: ConfigModel) -> FileFilter:
-        """Create a FileFilter instance from the configuration model."""
-        fmap: list[tuple[type[Filter], TextFilterFn | RangeFilterFn | None]] = [
-            (DirnameFilter, get_textfilter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
-            (KeywordFilter, get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
-            (ExtensionFilter, get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
-            (FilesizeFilter, get_rangefilter_fn(m.filesize, mapping=SIZE_MAP)),
-            (DurationFilter, get_rangefilter_fn(m.duration, mapping=TIME_MAP)),
-        ]
-        filters = (filter_c(call=fn) for filter_c, fn in fmap if fn is not None)
-        return cls(filters=tuple(filters))
-
     def __call__(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        if self.filters:
-            return all(f(entry) for f in self.filters)
-        return True
+        return all(f(entry) for f in self.filters)
+
+
+# Individual filter classes
 
 
 @dataclass(slots=True)
