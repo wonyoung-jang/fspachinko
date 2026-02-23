@@ -72,11 +72,11 @@ class PathSelectorWidget(BaseGroupBox):
         super().__init__(title=title, name=name)
         self.setAcceptDrops(True)
 
-        title_lower = self.title().casefold()
+        titlenorm = self.title().casefold()
 
-        self.label = QLabel()
-        set_qt_name(self.label, f"{name}_label")
-        set_qt_tips(self.label, f"Select the {title_lower} folder.")
+        self.lbl_selected = QLabel()
+        set_qt_name(self.lbl_selected, f"{name}_label")
+        set_qt_tips(self.lbl_selected, f"Select the {titlenorm} folder.")
 
         icon_browse = QIcon(get_icon_path(IconFilename.BROWSE))
         icon_open = QIcon(get_icon_path(IconFilename.OPEN_DIR))
@@ -85,16 +85,16 @@ class PathSelectorWidget(BaseGroupBox):
         self.btn_browse.setIcon(icon_browse)
         self.btn_browse.clicked.connect(self.browse)
         set_qt_name(self.btn_browse, f"{name}_browse_btn")
-        set_qt_tips(self.btn_browse, f"Browse for {title_lower} folder.")
+        set_qt_tips(self.btn_browse, f"Browse for {titlenorm} folder.")
 
         self.btn_open = QPushButton()
         self.btn_open.setIcon(icon_open)
         self.btn_open.clicked.connect(self.open)
         set_qt_name(self.btn_open, f"{name}_open_btn")
-        set_qt_tips(self.btn_open, f"Open current {title_lower} folder in file explorer.")
+        set_qt_tips(self.btn_open, f"Open current {titlenorm} folder in file explorer.")
 
         layout = QHBoxLayout(self)
-        layout.addWidget(self.label, stretch=1)
+        layout.addWidget(self.lbl_selected, stretch=1)
         layout.addWidget(self.btn_browse)
         layout.addWidget(self.btn_open)
 
@@ -108,7 +108,7 @@ class PathSelectorWidget(BaseGroupBox):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if os.path.isdir(path):
-                self.label.setText(path)
+                self.lbl_selected.setText(path)
 
     @Slot()
     def browse(self) -> None:
@@ -116,22 +116,22 @@ class PathSelectorWidget(BaseGroupBox):
         d = QFileDialog.getExistingDirectory(
             parent=self,
             caption=f"Select {self.title()}",
-            dir=self.label.text(),
+            dir=self.lbl_selected.text(),
         )
         if d:
-            self.label.setText(d)
+            self.lbl_selected.setText(d)
 
     @Slot()
     def open(self) -> None:
         """Open the currently selected path in file explorer."""
         try:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(self.label.text()))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self.lbl_selected.text()))
         except Exception:
-            logger.exception("Failed to open path %s", self.label.text())
+            logger.exception("Failed to open path %s", self.lbl_selected.text())
 
     def get_config(self) -> str:
         """Return clean data for the config."""
-        return self.label.text()
+        return self.lbl_selected.text()
 
 
 class RootPathSelectorWidget(PathSelectorWidget):
@@ -239,7 +239,7 @@ class FilenamerWidget(BaseGroupBox):
 
     def __init__(self, title: str = "Filenamer", name: str = "filenamer") -> None:
         """Initialize the filename template settings widget."""
-        super().__init__(title=title, name=name)
+        super().__init__(title=title, name=name, checkable=True)
 
         self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}", clearButtonEnabled=True)
         set_qt_name(self.edit_template, f"{name}_template")
@@ -270,7 +270,10 @@ class FilenamerWidget(BaseGroupBox):
 
     def get_config(self) -> FilenameModel:
         """Return clean data for the config."""
-        return FilenameModel(template=self.edit_template.text().strip() or "{original}")
+        return FilenameModel(
+            is_enabled=self.isChecked(),
+            template=self.edit_template.text().strip() or "{original}",
+        )
 
 
 class IncludeExcludeFilterWidget(BaseGroupBox):
@@ -395,8 +398,8 @@ class OptionsWidget(BaseGroupBox):
         super().__init__(title=title, name=name)
 
         self.combo_mode = QComboBox()
-        self.combo_mode.addItems(get_available_transfer_modes())
-        set_qt_name(self.combo_mode, f"{name}_mode")
+        self.combo_mode.addItems(list(get_available_transfer_modes().keys()))
+        set_qt_name(self.combo_mode, f"{name}_transfer_mode")
         set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
 
         self.spin_max_per_folder = QSpinBox()
@@ -407,10 +410,6 @@ class OptionsWidget(BaseGroupBox):
         self.chk_follow_symlink = QCheckBox()
         set_qt_name(self.chk_follow_symlink, f"{name}_should_follow_symlink")
         set_qt_tips(self.chk_follow_symlink, "If checked, symbolic links will be followed during file traversal.")
-
-        self.chk_dry_run = QCheckBox()
-        set_qt_name(self.chk_dry_run, f"{name}_dry_run")
-        set_qt_tips(self.chk_dry_run, "If checked, no files will actually be copied.")
 
         self.rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
         set_qt_name(self.rng_seed, f"{name}_rng_seed")
@@ -429,16 +428,15 @@ class OptionsWidget(BaseGroupBox):
         layout.addRow("Max from one directory", self.spin_max_per_folder)
         layout.addRow("Ensure unique directories", self.chk_unique_folders)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
-        layout.addRow("Dry run", self.chk_dry_run)
         layout.addRow("Random seed", self.rng_seed)
 
     def get_config(self) -> OptionsModel:
         """Return clean data for the config."""
         return OptionsModel(
+            transfer_mode=self.combo_mode.currentText(),
             max_per_folder=self.spin_max_per_folder.value(),
             is_create_unique_folders=self.chk_unique_folders.isChecked(),
             should_follow_symlink=self.chk_follow_symlink.isChecked(),
-            is_dry_run=self.chk_dry_run.isChecked(),
             rng_seed=self.rng_seed.text() or None,
         )
 
