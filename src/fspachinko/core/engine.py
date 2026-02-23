@@ -3,32 +3,24 @@
 import logging
 from dataclasses import dataclass, field
 from os import makedirs
-from os.path import basename, exists, join, relpath
+from os.path import exists, relpath
 from time import perf_counter
 from typing import TYPE_CHECKING
 
 from .helpers import convert_byte_to_human_readable_size, get_new_fpath
+from .loggers import get_dest_log_filehandler
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Callable, Iterator
 
-    from .config import Filenamer
-    from .context import DateTimeStamp, DiversityQuota, EngineContext
+    from .context import Context, DateTimeStamp, DiversityQuota
     from .filefilter import FileFilter
+    from .filenamer import Filenamer
     from .observer import Observer
+    from .transfer import Transfer
     from .walker import FSEntry
 
 logger = logging.getLogger(__name__)
-
-
-def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
-    """Set up a logger for the job request."""
-    report_path = join(dest, f"!_{basename(dest)}_report.log")
-    handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
-    return handler
 
 
 @dataclass(slots=True)
@@ -87,10 +79,10 @@ class JobRequestFactory:
 class Engine:
     """Core engine class."""
 
-    context: EngineContext
+    context: Context
     filterer: FileFilter
     filenamer: Filenamer
-    transferer: Callable[[os.PathLike, str], None]
+    transfer: Transfer
     job_factory: JobRequestFactory
     entries: Iterator[FSEntry]
     quota: DiversityQuota
@@ -104,42 +96,46 @@ class Engine:
             self.process(request)
         self.observer.on_finished()
 
-    def process(self, r: JobRequest) -> None:
+    def process(self, request: JobRequest) -> None:
         """Process a single folder for file copying."""
-        self.observer.on_directory_start(r.idx, r.target)
+        self.observer.on_directory_start(request.idx, request.target)
         self.dtstamp.reset()
         self.quota.reset()
-        log_handler = get_dest_log_filehandler(r.dest)
+        log_handler = get_dest_log_filehandler(request.dest)
         logger.addHandler(log_handler)
 
-        while not self.context.should_stop(r, self.quota):
+        while not self.context.should_stop(request, self.quota):
             if (e := next(self.entries, None)) is None:
                 break
+
             if self.quota.is_file_locked(e):
                 continue
-            self.quota.lock_file(e)
-            if self.quota.is_dir_locked(e) or not self.filterer(e):
-                continue
-            new_stem = self.filenamer(e, r, self.dtstamp)
-            new_filename = get_new_fpath(r.dest, e.path, new_stem, e.ext)
-            if new_filename is None:
-                continue
-            logmsg = f"{r.file_count + 1}: {relpath(e, self.context.root)} -> {relpath(new_filename, r.dest)}"
-            if not self.context.is_dry_run:
-                try:
-                    self.transferer(e, new_filename)
-                except PermissionError, OSError:
-                    logger.info("FAILED - %s", logmsg)
-                    continue
-            logger.info(logmsg)
-            self.quota.update(e)
-            r.update(e.size)
-            self.observer.on_file_transferred(r.file_count)
 
-        logger.info(self.context.generate_report_header(r, self.dtstamp.date_time_report_str))
+            self.quota.lock_file(e)
+
+            if self.quota.is_dir_locked_from_file(e) or not self.filterer(e):
+                continue
+
+            newstem = self.filenamer(e, request, self.dtstamp)
+            if (newname := get_new_fpath(request.dest, e.path, newstem, e.ext)) is None:
+                continue
+
+            try:
+                self.transfer(e, newname)
+            except PermissionError, OSError:
+                continue
+
+            msg = f"{request.file_count + 1}: {relpath(e.path, self.context.root)} -> {relpath(newname, request.dest)}"
+            logger.info(msg)
+            self.quota.update(e)
+            request.update(e.size)
+            self.observer.on_file_transferred(request.file_count)
+
+        summary = self.context.generate_summary(request, self.dtstamp.date_time_report_str)
+        logger.info(summary)
         logger.removeHandler(log_handler)
         log_handler.close()
-        self.context.finalize(r, self.quota)
+        self.context.finalize(request, self.quota)
 
     def request_stop(self) -> None:
         """Request to stop the engine."""

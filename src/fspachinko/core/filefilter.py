@@ -1,5 +1,6 @@
 """Config validation functions."""
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -18,78 +19,79 @@ if TYPE_CHECKING:
 class FileFilter:
     """Class for validating files based on filter configuration."""
 
-    filters: tuple[Callable[[FSEntry], bool], ...]
+    filters: tuple[Filter, ...]
 
     @classmethod
     def from_model(cls, m: ConfigModel) -> FileFilter:
         """Create a FileFilter instance from the configuration model."""
-        inc_exc = get_inc_exc_filter_fn
-        min_max = get_min_max_filter_fn
-        fmap: list[tuple[type, Callable[[Any], bool] | None]] = [
-            (DirnameFilter, inc_exc(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
-            (KeywordFilter, inc_exc(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
-            (ExtensionFilter, inc_exc(m.extension, re_fmt=ReStrFmt.EXTENSION)),
-            (FilesizeFilter, min_max(m.filesize, mapping=SIZE_MAP)),
-            (DurationFilter, min_max(m.duration, mapping=TIME_MAP)),
+        fmap: list[tuple[type[Filter], Callable[[Any], bool] | None]] = [
+            (DirnameFilter, get_inc_exc_filter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
+            (KeywordFilter, get_inc_exc_filter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
+            (ExtensionFilter, get_inc_exc_filter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
+            (FilesizeFilter, get_min_max_filter_fn(m.filesize, mapping=SIZE_MAP)),
+            (DurationFilter, get_min_max_filter_fn(m.duration, mapping=TIME_MAP)),
         ]
-        filters = (c(is_valid=fn) for c, fn in fmap if fn is not None)
-        return FileFilter(filters=tuple(filters))
+        filters = (filter_c(is_valid=fn) for filter_c, fn in fmap if fn is not None)
+        return cls(filters=tuple(filters))
 
     def __call__(self, entry: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
+        if not self.filters:
+            return True
         return all(f(entry) for f in self.filters)
 
 
 @dataclass(slots=True)
-class DirnameFilter:
-    """Validator for parent directory names."""
+class Filter(ABC):
+    """Class for filtering files based on filter configuration."""
 
-    is_valid: Callable[[str], bool]
+    is_valid: Callable[[str | float], bool]
+
+    @abstractmethod
+    def __call__(self, entry: FSEntry) -> bool:
+        """Check if a file is valid based on the current filter."""
+
+
+@dataclass(slots=True)
+class DirnameFilter(Filter):
+    """Filter for parent directory names."""
 
     def __call__(self, entry: FSEntry) -> bool:
-        """Validate the parent directory name."""
+        """Filter the parent directory name."""
         return self.is_valid(entry.parent)
 
 
 @dataclass(slots=True)
-class KeywordFilter:
-    """Validator for filename keywords."""
-
-    is_valid: Callable[[str], bool]
+class KeywordFilter(Filter):
+    """Filter for filename keywords."""
 
     def __call__(self, entry: FSEntry) -> bool:
-        """Validate the filename stem against keywords."""
+        """Filter the filename stem against keywords."""
         return self.is_valid(entry.stem)
 
 
 @dataclass(slots=True)
-class ExtensionFilter:
-    """Validator for file extensions."""
-
-    is_valid: Callable[[str], bool]
+class ExtensionFilter(Filter):
+    """Filter for file extensions."""
 
     def __call__(self, entry: FSEntry) -> bool:
-        """Validate the file extension."""
+        """Filter the file extension."""
         return self.is_valid(entry.ext)
 
 
 @dataclass(slots=True)
-class FilesizeFilter:
-    """Validator for file size."""
-
-    is_valid: Callable[[float], bool]
+class FilesizeFilter(Filter):
+    """Filter for file size."""
 
     def __call__(self, entry: FSEntry) -> bool:
-        """Validate the file size."""
+        """Filter the file size."""
         return self.is_valid(entry.size)
 
 
 @dataclass(slots=True)
-class DurationFilter:
-    """Validator for file duration."""
-
-    is_valid: Callable[[float], bool]
+class DurationFilter(Filter):
+    """Filter for file duration."""
 
     def __call__(self, entry: FSEntry) -> bool:
-        """Validate the file duration."""
+        """Filter the file duration."""
         return self.is_valid(get_duration(entry.path))
