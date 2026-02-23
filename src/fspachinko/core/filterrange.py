@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .config import MinMaxFilterModel
+    from .config import RangeFilterModel
 
 
-def get_rangefilter_fn(m: MinMaxFilterModel, mapping: dict[str, float]) -> RangeFilterFn | None:
-    """Create a MinMax filter function from it's configuration model."""
+def get_rangefilter_fn(m: RangeFilterModel, mapping: dict[str, float]) -> RangeFilterFn | None:
+    """Create a range filter function from it's configuration model."""
     if m.is_enabled:
         minimum = m.minimum * mapping.get(m.unit, 1.0)
         maximum = m.maximum * mapping.get(m.unit, 1.0)

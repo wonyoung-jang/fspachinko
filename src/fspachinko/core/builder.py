@@ -38,10 +38,11 @@ def build_engine(m: ConfigModel, observer: Observer) -> Engine:
     )
 
     filterer = get_filefilter_fn(m)
-    logger.info("File filter created: %s", filterer)
-
     filenamer = get_filenamer_fn(m.filename)
     transferer = get_transfer_fn(m.options.transfer_mode)
+    logger.info("FileFilter created: %s", filterer)
+    logger.info("Filenamer created: %s", filenamer)
+    logger.info("Transfer created: %s", transferer)
 
     walker = PachinkoFSWalker(
         root=m.root,

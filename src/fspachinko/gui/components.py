@@ -35,9 +35,9 @@ from ..core import (
     FilenameModel,
     FilenameTemplate,
     IconFilename,
-    IncludeExcludeFilterModel,
-    MinMaxFilterModel,
     OptionsModel,
+    RangeFilterModel,
+    TextFilterModel,
     TimeUnit,
     get_available_transfer_modes,
     get_icon_path,
@@ -276,8 +276,8 @@ class FilenamerWidget(BaseGroupBox):
         )
 
 
-class IncludeExcludeFilterWidget(BaseGroupBox):
-    """Handles the Include/Exclude pattern for Keywords and Extensions."""
+class TextFilterWidget(BaseGroupBox):
+    """Handles the Include/Exclude text pattern."""
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the dual list widget."""
@@ -303,16 +303,16 @@ class IncludeExcludeFilterWidget(BaseGroupBox):
         layout.addWidget(self.filter_include_radio)
         layout.addWidget(self.filter_exclude_radio)
 
-    def get_config(self) -> IncludeExcludeFilterModel:
+    def get_config(self) -> TextFilterModel:
         """Return clean data for the config."""
-        return IncludeExcludeFilterModel(
+        return TextFilterModel(
             is_enabled=self.isChecked(),
             should_include=self.filter_include_radio.isChecked(),
             text=self.filter_edit.text(),
         )
 
 
-class DirnameFilterWidget(IncludeExcludeFilterWidget):
+class DirnameFilterWidget(TextFilterWidget):
     """Handles the Include/Exclude pattern for directory names."""
 
     def __init__(self) -> None:
@@ -320,7 +320,7 @@ class DirnameFilterWidget(IncludeExcludeFilterWidget):
         super().__init__(title="Directory name", name="directory_name_filter")
 
 
-class ExtensionFilterWidget(IncludeExcludeFilterWidget):
+class ExtensionFilterWidget(TextFilterWidget):
     """Handles the Include/Exclude pattern for file extensions."""
 
     def __init__(self) -> None:
@@ -328,7 +328,7 @@ class ExtensionFilterWidget(IncludeExcludeFilterWidget):
         super().__init__(title="Extensions", name="extension")
 
 
-class KeywordFilterWidget(IncludeExcludeFilterWidget):
+class KeywordFilterWidget(TextFilterWidget):
     """Handles the Include/Exclude pattern for keywords."""
 
     def __init__(self) -> None:
@@ -336,8 +336,8 @@ class KeywordFilterWidget(IncludeExcludeFilterWidget):
         super().__init__(title="Keywords", name="keyword")
 
 
-class MinMaxFilterWidget(BaseGroupBox):
-    """Handles logic for ranges (Min/Max), e.g., Size or Duration."""
+class RangeFilterWidget(BaseGroupBox):
+    """Handles logic for ranges (min/max), e.g., Size or Duration."""
 
     def __init__(self, title: str, name: str, items: Sequence[str | ByteUnit | TimeUnit]) -> None:
         """Initialize the range filter widget."""
@@ -364,9 +364,9 @@ class MinMaxFilterWidget(BaseGroupBox):
         layout.addWidget(self.spin_max)
         layout.addWidget(self.combo_unit)
 
-    def get_config(self) -> MinMaxFilterModel:
+    def get_config(self) -> RangeFilterModel:
         """Return clean data for the config."""
-        return MinMaxFilterModel(
+        return RangeFilterModel(
             is_enabled=self.isChecked(),
             minimum=self.spin_min.value(),
             maximum=self.spin_max.value(),
@@ -374,7 +374,7 @@ class MinMaxFilterWidget(BaseGroupBox):
         )
 
 
-class SizeFilterWidget(MinMaxFilterWidget):
+class SizeFilterWidget(RangeFilterWidget):
     """Handles logic for size range filter."""
 
     def __init__(self) -> None:
@@ -382,7 +382,7 @@ class SizeFilterWidget(MinMaxFilterWidget):
         super().__init__(title="File Size", name="filesize", items=tuple(ByteUnit))
 
 
-class DurationFilterWidget(MinMaxFilterWidget):
+class DurationFilterWidget(RangeFilterWidget):
     """Handles logic for duration range filter."""
 
     def __init__(self) -> None:

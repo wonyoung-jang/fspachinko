@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 from .helpers import convert_string_to_tuple
 
 if TYPE_CHECKING:
-    from .config import IncludeExcludeFilterModel
+    from .config import TextFilterModel
 
 
-def get_textfilter_fn(m: IncludeExcludeFilterModel, re_fmt: str) -> TextFilterFn | None:
+def get_textfilter_fn(m: TextFilterModel, re_fmt: str) -> TextFilterFn | None:
     """Create an include-exclude filter function from configuration model."""
     text = m.text.strip()
     enabled = m.is_enabled and text

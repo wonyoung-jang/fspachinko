@@ -73,8 +73,11 @@ class CompositeFileFilter(FileFilter):
 # Individual filter classes
 
 
+@dataclass(slots=True)
 class Filter(ABC):
     """Class for filtering files based on filter configuration."""
+
+    call: TextFilterFn | RangeFilterFn
 
     @abstractmethod
     def __call__(self, entry: FSEntry) -> bool:

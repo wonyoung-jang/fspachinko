@@ -31,7 +31,7 @@ class FilenameModel(BaseModel):
     template: str = FilenameTemplate.ORIGINAL
 
 
-class IncludeExcludeFilterModel(BaseModel):
+class TextFilterModel(BaseModel):
     """Model for list search filtering."""
 
     is_enabled: bool = False
@@ -39,7 +39,7 @@ class IncludeExcludeFilterModel(BaseModel):
     text: str = ""
 
 
-class MinMaxFilterModel(BaseModel):
+class RangeFilterModel(BaseModel):
     """Model for range filter."""
 
     is_enabled: bool = False
@@ -66,11 +66,11 @@ class ConfigModel(BaseModel):
     filecount: FilecountModel
     directory: DirectoryModel
     filename: FilenameModel
-    dirname: IncludeExcludeFilterModel
-    keyword: IncludeExcludeFilterModel
-    extension: IncludeExcludeFilterModel
-    filesize: MinMaxFilterModel
-    duration: MinMaxFilterModel
+    dirname: TextFilterModel
+    keyword: TextFilterModel
+    extension: TextFilterModel
+    filesize: RangeFilterModel
+    duration: RangeFilterModel
     options: OptionsModel
 
     @field_validator("root", "dest")
