@@ -434,8 +434,8 @@ class OptionsWidget(BaseGroupBox):
         """Return clean data for the config."""
         return OptionsModel(
             transfer_mode=self.combo_mode.currentText(),
-            max_per_folder=self.spin_max_per_folder.value(),
-            is_create_unique_folders=self.chk_unique_folders.isChecked(),
+            max_per_dir=self.spin_max_per_folder.value(),
+            is_create_unique_dirs=self.chk_unique_folders.isChecked(),
             should_follow_symlink=self.chk_follow_symlink.isChecked(),
             rng_seed=self.rng_seed.text() or None,
         )

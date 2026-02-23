@@ -13,6 +13,8 @@ from .loggers import get_dest_log_filehandler
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from fspachinko.core.walker import FSWalker
+
     from .context import Context, DateTimeStamp, DiversityQuota
     from .dirname import DirectoryNamer
     from .filecount import FileCountGenerator
@@ -82,14 +84,19 @@ class Engine:
     """Core engine class."""
 
     context: Context
+    job_factory: JobRequestFactory
     filterer: FileFilter
     filenamer: Filenamer
     transfer: Transfer
-    job_factory: JobRequestFactory
-    entries: Iterator[FSEntry]
+    walker: FSWalker
     quota: DiversityQuota
     dtstamp: DateTimeStamp
     observer: Observer
+    _entries: Iterator[FSEntry] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization tasks."""
+        self._entries = self.walker()
 
     def start(self) -> None:
         """Run the main file copying process."""
@@ -107,7 +114,7 @@ class Engine:
         logger.addHandler(log_handler)
 
         while not self.context.should_stop(request, self.quota):
-            if (e := next(self.entries, None)) is None:
+            if (e := next(self._entries, None)) is None:
                 break
 
             if self.quota.is_file_locked(e):

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def get_filefilter_fn(m: ConfigModel) -> FileFilter:
     """Create a FileFilter instance from the configuration model."""
     fmap: list[tuple[type[Filter], TextFilterFn | RangeFilterFn | None]] = [
-        (DirnameFilter, get_textfilter_fn(m.directory_name, re_fmt=ReStrFmt.DIRECTORY)),
+        (DirnameFilter, get_textfilter_fn(m.dirname, re_fmt=ReStrFmt.DIRECTORY)),
         (KeywordFilter, get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
         (ExtensionFilter, get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
         (FilesizeFilter, get_rangefilter_fn(m.filesize, mapping=SIZE_MAP)),
@@ -25,12 +25,14 @@ def get_filefilter_fn(m: ConfigModel) -> FileFilter:
     ]
     filters = tuple(filter_c(call=fn) for filter_c, fn in fmap if fn is not None)
     if filters:
-        return ValidFileFilter(filters=filters)
+        if len(filters) == 1:
+            return SingularFileFilter(filter=filters[0])
+        return CompositeFileFilter(filters=filters)
     return NoOpFileFilter()
 
 
 class FileFilter(ABC):
-    """Class for validating files based on filter configuration."""
+    """Abstract class for validating files based on filter configuration."""
 
     @abstractmethod
     def __call__(self, entry: FSEntry) -> bool:
@@ -47,8 +49,19 @@ class NoOpFileFilter(FileFilter):
 
 
 @dataclass(slots=True)
-class ValidFileFilter(FileFilter):
-    """Class for validating files based on filter configuration."""
+class SingularFileFilter(FileFilter):
+    """Class for validating files based on a single enabled filter."""
+
+    filter: Filter
+
+    def __call__(self, entry: FSEntry) -> bool:
+        """Check if a file is valid based on the current filters."""
+        return self.filter(entry)
+
+
+@dataclass(slots=True)
+class CompositeFileFilter(FileFilter):
+    """Class for validating files based on multiple enabled filters."""
 
     filters: tuple[Filter, ...]
 
@@ -60,11 +73,8 @@ class ValidFileFilter(FileFilter):
 # Individual filter classes
 
 
-@dataclass(slots=True)
 class Filter(ABC):
     """Class for filtering files based on filter configuration."""
-
-    call: TextFilterFn | RangeFilterFn
 
     @abstractmethod
     def __call__(self, entry: FSEntry) -> bool:

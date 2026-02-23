@@ -4,23 +4,23 @@ from os.path import isabs, realpath
 
 from pydantic import BaseModel, field_validator
 
-from .constants import TransferMode
+from .constants import FilenameTemplate, TransferMode
 
 
 class FilecountModel(BaseModel):
     """Model for file count configuration."""
 
-    count: int = 0
+    count: int = 10
     is_rand_enabled: bool = False
-    rand_min: int = 0
-    rand_max: int = 0
+    rand_min: int = 1
+    rand_max: int = 10
 
 
 class DirectoryModel(BaseModel):
     """Model for directory creation configuration."""
 
     is_enabled: bool = False
-    name: str = ""
+    name: str = "fsp_output"
     count: int = 1
 
 
@@ -28,7 +28,7 @@ class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     is_enabled: bool = False
-    template: str = "{original}"
+    template: str = FilenameTemplate.ORIGINAL
 
 
 class IncludeExcludeFilterModel(BaseModel):
@@ -44,7 +44,7 @@ class MinMaxFilterModel(BaseModel):
 
     is_enabled: bool = False
     minimum: float = 0.0
-    maximum: float = 0.0
+    maximum: float = 10.0
     unit: str = ""
 
 
@@ -52,8 +52,8 @@ class OptionsModel(BaseModel):
     """Model for additional options."""
 
     transfer_mode: str = TransferMode.DRY_RUN
-    max_per_folder: int = 0
-    is_create_unique_folders: bool = False
+    max_per_dir: int = 0
+    is_create_unique_dirs: bool = False
     should_follow_symlink: bool = False
     rng_seed: int | str | bytes | None = None
 
@@ -64,9 +64,9 @@ class ConfigModel(BaseModel):
     root: str
     dest: str
     filecount: FilecountModel
-    folder: DirectoryModel
+    directory: DirectoryModel
     filename: FilenameModel
-    directory_name: IncludeExcludeFilterModel
+    dirname: IncludeExcludeFilterModel
     keyword: IncludeExcludeFilterModel
     extension: IncludeExcludeFilterModel
     filesize: MinMaxFilterModel

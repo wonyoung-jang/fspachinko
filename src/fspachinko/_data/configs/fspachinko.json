@@ -2,20 +2,21 @@
     "root": "E:/",
     "dest": "fspachinko_output/",
     "filecount": {
-        "count": 20,
+        "count": 10,
         "is_rand_enabled": false,
         "rand_min": 1,
-        "rand_max": 12
+        "rand_max": 10
     },
-    "folder": {
-        "is_enabled": true,
-        "name": "test_folder_output",
-        "count": 5
+    "directory": {
+        "is_enabled": false,
+        "name": "fsp_output",
+        "count": 1
     },
     "filename": {
+        "is_enabled": false,
         "template": "{original}"
     },
-    "directory_name": {
+    "dirname": {
         "is_enabled": false,
         "should_include": true,
         "text": ""
@@ -26,28 +27,27 @@
         "text": ""
     },
     "extension": {
-        "is_enabled": true,
+        "is_enabled": false,
         "should_include": true,
-        "text": "wav, mp3"
+        "text": ""
     },
     "filesize": {
-        "is_enabled": true,
+        "is_enabled": false,
         "minimum": 0.0,
-        "maximum": 1.0,
+        "maximum": 10.0,
         "unit": "MB"
     },
     "duration": {
         "is_enabled": false,
         "minimum": 0.0,
-        "maximum": 8.0,
+        "maximum": 10.0,
         "unit": "m"
     },
     "options": {
-        "transfer_mode": "Symlink",
-        "max_per_folder": 1,
+        "transfer_mode": "Dry Run",
+        "max_per_dir": 0,
         "is_create_unique_folders": true,
         "should_follow_symlink": true,
-        "is_dry_run": true,
         "rng_seed": null
     }
 }
