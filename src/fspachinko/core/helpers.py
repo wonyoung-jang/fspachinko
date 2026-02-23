@@ -110,14 +110,14 @@ def convert_string_to_tuple(string: str, sep: str = ",") -> tuple[str, ...]:
 
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
-    result_map = {
+    conversion: dict[BytesIn, str] = {
         BytesIn.KILOBYTE: f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}",
         BytesIn.MEGABYTE: f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}",
         BytesIn.GIGABYTE: f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}",
     }
-    for size_threshold, result in result_map.items():
-        if nbytes < size_threshold:
-            return result
+    for threshold, r_str in conversion.items():
+        if nbytes < threshold:
+            return r_str
     return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
 
 

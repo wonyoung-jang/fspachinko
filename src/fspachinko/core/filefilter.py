@@ -1,18 +1,41 @@
 """Config validation functions."""
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from .config import get_inc_exc_filter_fn, get_min_max_filter_fn
 from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
-from .helpers import get_duration
+from .helpers import convert_string_to_tuple, get_duration
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .config import ConfigModel
+    from .config import ConfigModel, IncludeExcludeFilterModel, MinMaxFilterModel
     from .walker import FSEntry
+
+
+def get_inc_exc_filter_fn(m: IncludeExcludeFilterModel, re_fmt: str) -> Callable[[str], bool] | None:
+    """Create an include-exclude filter function from configuration model."""
+    text = m.text.strip()
+    if not (m.is_enabled and text):
+        return None
+    text_list = convert_string_to_tuple(text)
+    patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+    return (
+        (lambda part, patterns=patterns: any(p.search(part) for p in patterns))
+        if m.should_include
+        else (lambda part, patterns=patterns: not any(p.search(part) for p in patterns))
+    )
+
+
+def get_min_max_filter_fn(m: MinMaxFilterModel, mapping: dict[str, float]) -> Callable[[float], bool] | None:
+    """Create a MinMax filter function from it's configuration model."""
+    if not m.is_enabled:
+        return None
+    minimum = m.minimum * mapping.get(m.unit, 1.0)
+    maximum = m.maximum * mapping.get(m.unit, 1.0)
+    return lambda val, minimum=minimum, maximum=maximum: minimum <= val <= maximum
 
 
 @dataclass(slots=True)
