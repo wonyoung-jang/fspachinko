@@ -78,29 +78,6 @@ def calc_unique_path_name(dest: str, stem_or_name: str, ext: str = "") -> str:
     return target
 
 
-def convert_string_to_list(string: str, sep: str = ",") -> tuple[str, ...]:
-    """Convert a comma-separated string to a list."""
-    if not string:
-        return ()
-    li = tuple(s.strip() for s in string.split(sep))
-    if len(li) == 1 and li[0] == "":
-        return ()
-    return li
-
-
-def convert_byte_to_human_readable_size(nbytes: int) -> str:
-    """Convert bytes to human readable string."""
-    if nbytes < BytesIn.KILOBYTE:
-        result = f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}"
-    elif nbytes < BytesIn.MEGABYTE:
-        result = f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}"
-    elif nbytes < BytesIn.GIGABYTE:
-        result = f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}"
-    else:
-        result = f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
-    return result
-
-
 def remove_directory(path: str) -> None:
     """Remove a directory and its contents."""
     try:
@@ -116,16 +93,32 @@ def get_new_fpath(dest: str, path: str, stem: str, ext: str) -> str | None:
     target = join(dest, f"{stem}{ext}")
     if not exists(target):
         return target
-    if are_files_equal(path, target):
+    if cmp(path, target) and cmp(path, target, shallow=False):
         return None
     return calc_unique_path_name(dest, stem, ext)
 
 
-def are_files_equal(path1: str, path2: str) -> bool:
-    """Compare two paths for equality, accounting for case sensitivity."""
-    if cmp(path1, path2):
-        return cmp(path1, path2, shallow=False)
-    return False
+def convert_string_to_tuple(string: str, sep: str = ",") -> tuple[str, ...]:
+    """Convert a comma-separated string to a tuple."""
+    if not string:
+        return ()
+    li = tuple(s.strip() for s in string.split(sep))
+    if len(li) == 1 and li[0] == "":
+        return ()
+    return li
+
+
+def convert_byte_to_human_readable_size(nbytes: int) -> str:
+    """Convert bytes to human readable string."""
+    result_map = {
+        BytesIn.KILOBYTE: f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}",
+        BytesIn.MEGABYTE: f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}",
+        BytesIn.GIGABYTE: f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}",
+    }
+    for size_threshold, result in result_map.items():
+        if nbytes < size_threshold:
+            return result
+    return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
 
 
 def get_stem_and_ext(path: str) -> tuple[str, str]:
