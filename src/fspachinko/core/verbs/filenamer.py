@@ -6,7 +6,6 @@ from os.path import basename, split
 from typing import TYPE_CHECKING
 
 from ..constants import INVALID_FILENAME_CHARS, FilenameTemplate, FilenameTemplateMapKey
-from ..helpers import SafeDict
 
 if TYPE_CHECKING:
     from ..config import FilenameModel
@@ -46,7 +45,7 @@ class TemplateFilenamer(AbstractFilenamer):
 
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Calculate the destination file stem based on template configuration."""
-        mapping = SafeDict(
+        mapping = self.SafeDict(
             {
                 FilenameTemplateMapKey.INDEX: count + 1,
                 FilenameTemplateMapKey.ORIGINAL: entry.stem,
@@ -59,3 +58,14 @@ class TemplateFilenamer(AbstractFilenamer):
             return "".join(c for c in formatted_stem if c not in INVALID_FILENAME_CHARS)
         except KeyError, ValueError:
             return entry.stem
+
+    class SafeDict(dict):
+        """A helper class for string formatting.
+
+        If a key is missing, it returns the key wrapped in braces
+        instead of raising a KeyError.
+        """
+
+        def __missing__(self, key: str) -> str:
+            """Return the key wrapped in braces if missing."""
+            return "{" + key + "}"

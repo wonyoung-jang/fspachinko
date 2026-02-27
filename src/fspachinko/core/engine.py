@@ -5,12 +5,18 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from os import makedirs
-from os.path import exists, relpath
+from os.path import exists, join, relpath
 from time import perf_counter
 from typing import TYPE_CHECKING
 
 from .constants import DateTimeFormat, StateStatus
-from .helpers import calc_unique_path_name_joined, convert_byte_to_human_readable_size, get_new_fpath, remove_directory
+from .helpers import (
+    are_files_equal,
+    calc_unique_path_name_joined,
+    convert_byte_to_human_readable_size,
+    get_new_fpath,
+    remove_directory,
+)
 from .loggers import get_dest_log_filehandler
 from .model import ProcessFinishedEvent
 
@@ -110,7 +116,9 @@ class Engine:
         datetime_now = datetime.now(tz=UTC)
         self.timestamp = datetime_now.strftime(DateTimeFormat.DATETIME)
 
-        self.reset_quota()
+        self.locked_dir.clear()
+        if not self.is_create_unique_dirs:
+            self.locked_file.clear()
 
         log_handler = get_dest_log_filehandler(self.dest)
         logger.addHandler(log_handler)
@@ -130,57 +138,38 @@ class Engine:
 
     def process_entry(self, e: FSEntry) -> None:
         """Process a single file entry."""
-        if self.check_quota_lock(e):
+        if (path := e.path) in self.locked_file:
             return
 
-        if not self.filefilter_fn(e):
+        self.locked_file.add(path)
+
+        if (parent := e.parent) in self.locked_dir and self.locked_dir[parent] >= self.max_per_dir:
+            return
+
+        if not self.filefilter_fn(e):  # I/O if duration
             return
 
         newstem = self.filenamer_fn(e, self.file_count)
-        if (newname := get_new_fpath(self.dest, e.path, newstem, e.ext)) is None:
+        target = join(self.dest, f"{newstem}{e.ext}")
+        if exists(target) and are_files_equal(path, target):  # I/O
             return
+        newname = get_new_fpath(self.dest, newstem, e.ext)  # I/O
 
         try:
-            self.transfer_fn(e.path, newname)
+            self.transfer_fn(path, newname)  # I/O if not dry run
         except PermissionError, OSError:
             return
         else:
-            _msg = f"{self.file_count + 1}: {relpath(e.path, self.root)} -> {relpath(newname, self.dest)}"
-            logger.info(_msg)
+            msg = f"{self.file_count + 1}: {relpath(path, self.root)} -> {relpath(newname, self.dest)}"
+            logger.info(msg)
 
-            self.update_quota(e)
+            self.locked_dir[parent] += 1
 
             self.curr_size += e.size
             self.file_count += 1
 
             self.observer.on_file_transferred(self.file_count)
             return
-
-    ###############
-    # Quota methods
-    ###############
-
-    def reset_quota(self) -> None:
-        """Reset the quota state for a new folder."""
-        self.locked_dir.clear()
-        if not self.is_create_unique_dirs:
-            self.locked_file.clear()
-
-    def update_quota(self, entry: FSEntry) -> None:
-        """Update the quota state after processing a file."""
-        self.locked_dir[entry.parent] += 1
-
-    def check_quota_lock(self, entry: FSEntry) -> bool:
-        """Check if a file is locked by either rule."""
-        if entry.path in self.locked_file:
-            return True
-
-        self.locked_file.add(entry.path)
-        parent = entry.parent
-        if parent in self.locked_dir:
-            return self.locked_dir[parent] >= self.max_per_dir
-
-        return False
 
     #################
     # Context methods

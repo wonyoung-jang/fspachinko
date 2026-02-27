@@ -35,7 +35,7 @@ class AbstractFileFilter(ABC):
     """Abstract class for validating files based on filter configuration."""
 
     @abstractmethod
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
 
 
@@ -43,7 +43,7 @@ class AbstractFileFilter(ABC):
 class NoOpFileFilter(AbstractFileFilter):
     """Class for validating files based on filter configuration."""
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
         return True
 
@@ -54,9 +54,9 @@ class SingularFileFilter(AbstractFileFilter):
 
     filter: Filter
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.filter(entry)
+        return self.filter(e)
 
 
 @dataclass(slots=True)
@@ -65,9 +65,9 @@ class CompositeFileFilter(AbstractFileFilter):
 
     filters: tuple[Filter, ...]
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return all(f(entry) for f in self.filters)
+        return all(f(e) for f in self.filters)
 
 
 # Individual filter classes
@@ -80,7 +80,7 @@ class Filter(ABC):
     call: TextFilterFn | RangeFilterFn
 
     @abstractmethod
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filter."""
 
 
@@ -95,27 +95,27 @@ class TextFilter(Filter):
 class DirnameFilter(TextFilter):
     """Filter for parent directory names."""
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Filter the parent directory name."""
-        return self.call(entry.parent)
+        return self.call(e.parent)
 
 
 @dataclass(slots=True)
 class KeywordFilter(TextFilter):
     """Filter for filename keywords."""
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Filter the filename stem against keywords."""
-        return self.call(entry.stem)
+        return self.call(e.stem)
 
 
 @dataclass(slots=True)
 class ExtensionFilter(TextFilter):
     """Filter for file extensions."""
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Filter the file extension."""
-        return self.call(entry.ext)
+        return self.call(e.ext)
 
 
 @dataclass(slots=True)
@@ -129,15 +129,15 @@ class RangeFilter(Filter):
 class FilesizeFilter(RangeFilter):
     """Filter for file size."""
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Filter the file size."""
-        return self.call(entry.size)
+        return self.call(e.size)
 
 
 @dataclass(slots=True)
 class DurationFilter(RangeFilter):
     """Filter for file duration."""
 
-    def __call__(self, entry: FSEntry) -> bool:
+    def __call__(self, e: FSEntry) -> bool:
         """Filter the file duration."""
-        return self.call(get_duration(entry.path))
+        return self.call(get_duration(e.path))

@@ -66,16 +66,6 @@ def calc_unique_path_name_joined(name: str) -> str:
     return target
 
 
-def calc_unique_path_name(dest: str, stem: str, ext: str = "") -> str:
-    """Calculate a unique path name in the destination."""
-    target = join(dest, f"{stem}{ext}")
-    x = 2
-    while exists(target):
-        target = join(dest, f"{stem} ({x}){ext}")
-        x += 1
-    return target
-
-
 def remove_directory(path: str) -> None:
     """Remove a directory and its contents."""
     try:
@@ -86,14 +76,21 @@ def remove_directory(path: str) -> None:
         logger.exception("Error occurred while removing directory: %s", path)
 
 
-def get_new_fpath(dest: str, path: str, stem: str, ext: str) -> str | None:
+def are_files_equal(src: str, dest: str) -> bool:
+    """Check if two files are the same by comparing their contents."""
+    if cmp(src, dest, shallow=True):
+        return cmp(src, dest, shallow=False)
+    return False
+
+
+def get_new_fpath(dest: str, stem: str, ext: str) -> str:
     """Get a new file path, ensuring it doesn't already exist."""
     target = join(dest, f"{stem}{ext}")
-    if not exists(target):
-        return target
-    if cmp(path, target, shallow=True) and cmp(path, target, shallow=False):
-        return None
-    return calc_unique_path_name(dest, stem, ext)
+    x = 2
+    while exists(target):
+        target = join(dest, f"{stem} ({x}){ext}")
+        x += 1
+    return target
 
 
 def get_duration(path: str) -> float:
@@ -117,18 +114,6 @@ def get_duration(path: str) -> float:
     except subprocess.TimeoutExpired:
         logger.exception("ffprobe timed out for file: %s", path)
         return 0.0
-
-
-class SafeDict(dict):
-    """A helper class for string formatting.
-
-    If a key is missing, it returns the key wrapped in braces
-    instead of raising a KeyError.
-    """
-
-    def __missing__(self, key: str) -> str:
-        """Return the key wrapped in braces if missing."""
-        return "{" + key + "}"
 
 
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
