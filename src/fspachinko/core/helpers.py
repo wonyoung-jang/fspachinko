@@ -6,11 +6,11 @@ import subprocess
 from dataclasses import dataclass
 from filecmp import cmp
 from os import mkdir
-from os.path import basename, dirname, exists, join, splitext
+from os.path import dirname, exists, join
 
 import fspachinko
 
-from .constants import DURATION_CMD, INVALID_FILENAME_CHARS, BytesIn, ByteUnit, DefaultPath
+from .constants import DURATION_CMD, BytesIn, ByteUnit, DefaultPath
 
 logger = logging.getLogger(__name__)
 
@@ -56,24 +56,22 @@ get_profile_path = _datapaths.get_profile
 get_log_path = _datapaths.get_log
 
 
-class SafeDict(dict):
-    """A helper class for string formatting.
-
-    If a key is missing, it returns the key wrapped in braces
-    instead of raising a KeyError.
-    """
-
-    def __missing__(self, key: str) -> str:
-        """Return the key wrapped in braces if missing."""
-        return "{" + key + "}"
-
-
-def calc_unique_path_name(dest: str, stem_or_name: str, ext: str = "") -> str:
+def calc_unique_path_name_joined(name: str) -> str:
     """Calculate a unique path name in the destination."""
-    target = join(dest, f"{stem_or_name}{ext}")
+    target = name
     x = 2
     while exists(target):
-        target = join(dest, f"{stem_or_name} ({x}){ext}")
+        target = f"{name} ({x})"
+        x += 1
+    return target
+
+
+def calc_unique_path_name(dest: str, stem: str, ext: str = "") -> str:
+    """Calculate a unique path name in the destination."""
+    target = join(dest, f"{stem}{ext}")
+    x = 2
+    while exists(target):
+        target = join(dest, f"{stem} ({x}){ext}")
         x += 1
     return target
 
@@ -83,7 +81,7 @@ def remove_directory(path: str) -> None:
     try:
         shutil.rmtree(path)
     except FileNotFoundError:
-        logger.warning("Directory not found for removal: %s", path)
+        logger.exception("Directory not found for removal: %s", path)
     except OSError:
         logger.exception("Error occurred while removing directory: %s", path)
 
@@ -93,42 +91,9 @@ def get_new_fpath(dest: str, path: str, stem: str, ext: str) -> str | None:
     target = join(dest, f"{stem}{ext}")
     if not exists(target):
         return target
-    if cmp(path, target) and cmp(path, target, shallow=False):
+    if cmp(path, target, shallow=True) and cmp(path, target, shallow=False):
         return None
     return calc_unique_path_name(dest, stem, ext)
-
-
-def convert_string_to_tuple(string: str, sep: str = ",") -> tuple[str, ...]:
-    """Convert a comma-separated string to a tuple."""
-    if not string:
-        return ()
-    li = tuple(s.strip() for s in string.split(sep))
-    if len(li) == 1 and li[0] == "":
-        return ()
-    return li
-
-
-def convert_byte_to_human_readable_size(nbytes: int) -> str:
-    """Convert bytes to human readable string."""
-    conversion: dict[BytesIn, str] = {
-        BytesIn.KILOBYTE: f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}",
-        BytesIn.MEGABYTE: f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}",
-        BytesIn.GIGABYTE: f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}",
-    }
-    for threshold, r_str in conversion.items():
-        if nbytes < threshold:
-            return r_str
-    return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
-
-
-def get_stem_and_ext(path: str) -> tuple[str, str]:
-    """Get the stem and extension of a file path."""
-    return splitext(basename(path))
-
-
-def get_valid_filename_from_str(name: str) -> str:
-    """Remove invalid characters from a filename."""
-    return "".join(c for c in name if c not in INVALID_FILENAME_CHARS)
 
 
 def get_duration(path: str) -> float:
@@ -152,3 +117,28 @@ def get_duration(path: str) -> float:
     except subprocess.TimeoutExpired:
         logger.exception("ffprobe timed out for file: %s", path)
         return 0.0
+
+
+class SafeDict(dict):
+    """A helper class for string formatting.
+
+    If a key is missing, it returns the key wrapped in braces
+    instead of raising a KeyError.
+    """
+
+    def __missing__(self, key: str) -> str:
+        """Return the key wrapped in braces if missing."""
+        return "{" + key + "}"
+
+
+def convert_byte_to_human_readable_size(nbytes: int) -> str:
+    """Convert bytes to human readable string."""
+    conversion: dict[BytesIn, str] = {
+        BytesIn.KILOBYTE: f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}",
+        BytesIn.MEGABYTE: f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}",
+        BytesIn.GIGABYTE: f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}",
+    }
+    for threshold, r_str in conversion.items():
+        if nbytes < threshold:
+            return r_str
+    return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"

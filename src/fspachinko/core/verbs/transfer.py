@@ -3,19 +3,19 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import UnsupportedOperation
-from os import PathLike, link, symlink, unlink
+from os import link, symlink, unlink
 from os.path import join
 from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from .constants import FileError, TransferMode
+from ..constants import FileError, TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def get_available_transfer_modes() -> dict[TransferMode, Transfer]:
+def get_available_transfer_modes() -> dict[TransferMode, AbstractTransfer]:
     """Return the set of available transfer modes based on the current environment."""
     available = TRANSFER_STRATEGIES
 
@@ -37,74 +37,72 @@ def get_available_transfer_modes() -> dict[TransferMode, Transfer]:
     return available
 
 
-def get_transfer_fn(mode: str) -> Transfer:
+def get_transfer_fn(mode: str) -> AbstractTransfer:
     """Return the appropriate transfer strategy instance.
 
     Falls back to DRY_RUN if the requested mode is not available.
     """
     available = get_available_transfer_modes()
-    if (transfer_fn := available.get(TransferMode(mode))) is not None:
-        return transfer_fn
-    return available[TransferMode.DRY_RUN]
+    return available.get(TransferMode(mode), available[TransferMode.DRY_RUN])
 
 
-class Transfer(ABC):
-    """Class for handling file transfers based on the selected strategy."""
+class AbstractTransfer(ABC):
+    """Abstract base class for file transfer strategies."""
 
     @abstractmethod
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Perform the file transfer operation."""
 
 
 @dataclass(slots=True)
-class DryRunTransfer(Transfer):
+class DryRunTransfer(AbstractTransfer):
     """Represents a dry-run file transfer operation."""
 
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Do nothing (dry-run)."""
 
 
 @dataclass(slots=True)
-class CopyTransfer(Transfer):
+class CopyTransfer(AbstractTransfer):
     """Represents a copy file transfer operation."""
 
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Copy the file from source to destination."""
         copy(src, dst)
 
 
 @dataclass(slots=True)
-class CopyPreserveTransfer(Transfer):
+class CopyPreserveTransfer(AbstractTransfer):
     """Represents a copy with metadata preservation file transfer operation."""
 
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Copy the file from source to destination while preserving metadata."""
         copy2(src, dst)
 
 
 @dataclass(slots=True)
-class MoveTransfer(Transfer):
+class MoveTransfer(AbstractTransfer):
     """Represents a move file transfer operation."""
 
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Move the file from source to destination."""
         move(src, dst)
 
 
 @dataclass(slots=True)
-class SymlinkTransfer(Transfer):
+class SymlinkTransfer(AbstractTransfer):
     """Represents a symbolic link file transfer operation."""
 
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Create a symbolic link from source to destination."""
         symlink(src, dst)
 
 
 @dataclass(slots=True)
-class HardlinkTransfer(Transfer):
+class HardlinkTransfer(AbstractTransfer):
     """Represents a hard link file transfer operation."""
 
-    def __call__(self, src: PathLike[str], dst: str) -> None:
+    def __call__(self, src: str, dst: str) -> None:
         """Create a hardlink from source to destination.
 
         Falls back to symlink if hardlinking across filesystems fails.
@@ -120,7 +118,7 @@ class HardlinkTransfer(Transfer):
                 raise
 
 
-TRANSFER_STRATEGIES: dict[TransferMode, Transfer] = {
+TRANSFER_STRATEGIES: dict[TransferMode, AbstractTransfer] = {
     TransferMode.DRY_RUN: DryRunTransfer(),
     TransferMode.COPY: CopyTransfer(),
     TransferMode.COPY_PRESERVE: CopyPreserveTransfer(),

@@ -6,17 +6,18 @@ from random import randint
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .config import FilecountModel
+    from ..config import FilecountModel
 
 
-def get_filecount_fn(m: FilecountModel) -> FileCountGenerator:
+def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:
     """Return a function that determines the number of files to transfer based on the configuration."""
     if m.is_rand_enabled:
-        return RandomFileCount(rand_min=m.rand_min, rand_max=m.rand_max)
-    return FixedFileCount(count=m.count)
+        return RandomFileCounter(rand_min=m.rand_min, rand_max=m.rand_max)
+    return FixedFileCounter(count=m.count)
 
 
-class FileCountGenerator(ABC):
+@dataclass(slots=True)
+class AbstractFileCounter(ABC):
     """Class for generating file counts based on configuration."""
 
     @abstractmethod
@@ -25,7 +26,7 @@ class FileCountGenerator(ABC):
 
 
 @dataclass(slots=True)
-class FixedFileCount(FileCountGenerator):
+class FixedFileCounter(AbstractFileCounter):
     """Generates a fixed file count."""
 
     count: int
@@ -36,7 +37,7 @@ class FixedFileCount(FileCountGenerator):
 
 
 @dataclass(slots=True)
-class RandomFileCount(FileCountGenerator):
+class RandomFileCounter(AbstractFileCounter):
     """Generates a random file count within a specified range."""
 
     rand_min: int

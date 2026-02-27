@@ -5,27 +5,26 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .helpers import convert_string_to_tuple
-
 if TYPE_CHECKING:
-    from .config import TextFilterModel
+    from ..config import TextFilterModel
 
 
 def get_textfilter_fn(m: TextFilterModel, re_fmt: str) -> TextFilterFn | None:
     """Create an include-exclude filter function from configuration model."""
-    text = m.text.strip()
-    enabled = m.is_enabled and text
-    if enabled:
-        text_list = convert_string_to_tuple(text)
-        patterns = tuple(re.compile(re_fmt.format(re.escape(i)), re.IGNORECASE) for i in text_list)
+    if not (m.is_enabled and m.text):
+        return None
+
+    text = set(m.text.split(","))
+    patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in text)
+
+    if m.should_include:
         if len(patterns) == 1:
-            if m.should_include:
-                return IncludeTextFilterSingular(pattern=patterns[0])
-            return ExcludeTextFilterSingular(pattern=patterns[0])
-        if m.should_include:
-            return IncludeTextFilter(patterns=patterns)
-        return ExcludeTextFilter(patterns=patterns)
-    return None
+            return IncludeTextFilterSingular(pattern=patterns[0])
+        return IncludeTextFilter(patterns=patterns)
+
+    if len(patterns) == 1:
+        return ExcludeTextFilterSingular(pattern=patterns[0])
+    return ExcludeTextFilter(patterns=patterns)
 
 
 class TextFilterFn(ABC):

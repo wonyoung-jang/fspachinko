@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Signal
 
-from ..core import Observer
+from ..core import AbstractObserver
 
 
 class WorkerSignals(QObject):
@@ -17,18 +17,18 @@ class WorkerSignals(QObject):
 
 
 @dataclass(slots=True)
-class GuiObserver(Observer):
+class GuiObserver(AbstractObserver):
     """GUI observer."""
 
     signals: WorkerSignals
 
-    def on_start_process(self, ndir_to_create: int) -> None:
+    def on_start_process(self, dir_count: int) -> None:
         """Call when starting a run of the engine."""
-        self.signals.start_process.emit(ndir_to_create)
+        self.signals.start_process.emit(dir_count)
 
-    def on_directory_start(self, idx: int, nfiles_to_process: int) -> None:
+    def on_directory_start(self, idx: int, target: int) -> None:
         """Call when starting to process a directory."""
-        self.signals.directory_start.emit(idx, nfiles_to_process)
+        self.signals.directory_start.emit(idx, target)
 
     def on_file_transferred(self, count: int) -> None:
         """Call when a file is transferred."""

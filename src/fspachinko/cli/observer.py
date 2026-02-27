@@ -2,21 +2,21 @@
 
 import logging
 
-from ..core import Observer
+from ..core import AbstractObserver
 
 logger = logging.getLogger(__name__)
 
 
-class ConsoleObserver(Observer):
+class ConsoleObserver(AbstractObserver):
     """A simple console observer for fspachinko."""
 
-    def on_start_process(self, ndir_to_create: int) -> None:
+    def on_start_process(self, dir_count: int) -> None:
         """Call when starting a run of the engine."""
-        logger.info("Starting process: %d directories(s)", ndir_to_create)
+        logger.info("Starting process: %d directories(s)", dir_count)
 
-    def on_directory_start(self, idx: int, nfiles_to_process: int) -> None:
+    def on_directory_start(self, idx: int, target: int) -> None:
         """Call when starting to process a directory."""
-        logger.info("Start directory %d: transfer %d file(s)", idx, nfiles_to_process)
+        logger.info("Start directory %d: transfer %d file(s)", idx, target)
 
     def on_file_transferred(self, count: int) -> None:
         """Call when a file is transferred."""

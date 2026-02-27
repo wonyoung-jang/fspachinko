@@ -4,17 +4,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from ..constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from ..helpers import get_duration
 from .filterrange import RangeFilterFn, get_rangefilter_fn
 from .filtertext import TextFilterFn, get_textfilter_fn
-from .helpers import get_duration
 
 if TYPE_CHECKING:
-    from .config import ConfigModel
-    from .walker import FSEntry
+    from ..config import ConfigModel
+    from ..model import FSEntry
 
 
-def get_filefilter_fn(m: ConfigModel) -> FileFilter:
+def get_filefilter_fn(m: ConfigModel) -> AbstractFileFilter:
     """Create a FileFilter instance from the configuration model."""
     fmap: list[tuple[type[Filter], TextFilterFn | RangeFilterFn | None]] = [
         (DirnameFilter, get_textfilter_fn(m.dirname, re_fmt=ReStrFmt.DIRECTORY)),
@@ -31,7 +31,7 @@ def get_filefilter_fn(m: ConfigModel) -> FileFilter:
     return NoOpFileFilter()
 
 
-class FileFilter(ABC):
+class AbstractFileFilter(ABC):
     """Abstract class for validating files based on filter configuration."""
 
     @abstractmethod
@@ -40,7 +40,7 @@ class FileFilter(ABC):
 
 
 @dataclass(slots=True)
-class NoOpFileFilter(FileFilter):
+class NoOpFileFilter(AbstractFileFilter):
     """Class for validating files based on filter configuration."""
 
     def __call__(self, entry: FSEntry) -> bool:
@@ -49,7 +49,7 @@ class NoOpFileFilter(FileFilter):
 
 
 @dataclass(slots=True)
-class SingularFileFilter(FileFilter):
+class SingularFileFilter(AbstractFileFilter):
     """Class for validating files based on a single enabled filter."""
 
     filter: Filter
@@ -60,7 +60,7 @@ class SingularFileFilter(FileFilter):
 
 
 @dataclass(slots=True)
-class CompositeFileFilter(FileFilter):
+class CompositeFileFilter(AbstractFileFilter):
     """Class for validating files based on multiple enabled filters."""
 
     filters: tuple[Filter, ...]

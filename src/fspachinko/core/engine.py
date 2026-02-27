@@ -1,151 +1,230 @@
 """Engine Module."""
 
 import logging
+from collections import Counter
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from os import makedirs
 from os.path import exists, relpath
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from .helpers import convert_byte_to_human_readable_size, get_new_fpath
+from .constants import DateTimeFormat, StateStatus
+from .helpers import calc_unique_path_name_joined, convert_byte_to_human_readable_size, get_new_fpath, remove_directory
 from .loggers import get_dest_log_filehandler
+from .model import ProcessFinishedEvent
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from fspachinko.core.walker import FSWalker
-
-    from .context import Context, DateTimeStamp, DiversityQuota
-    from .dirname import DirectoryNamer
-    from .filecount import FileCountGenerator
-    from .filefilter import FileFilter
-    from .filenamer import Filenamer
-    from .observer import Observer
-    from .transfer import Transfer
-    from .walker import FSEntry
+    from .model import FSEntry
+    from .observer import AbstractObserver
+    from .verbs.dirnamer import AbstractDirectoryNamer
+    from .verbs.filecounter import AbstractFileCounter
+    from .verbs.filefilter import AbstractFileFilter
+    from .verbs.filenamer import AbstractFilenamer
+    from .verbs.transfer import AbstractTransfer
+    from .verbs.walker import AbstractFSWalker
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class JobRequest:
-    """Dataclass for job request."""
-
-    idx: int
-    target: int
-    dest: str
-    file_count: int = 0
-    curr_size: int = 0
-    start_time: float = field(default_factory=perf_counter)
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        if not exists(self.dest):
-            makedirs(self.dest, exist_ok=True)
-
-    def update(self, size: int) -> None:
-        """Update the job request state."""
-        self.file_count += 1
-        self.curr_size += size
-
-    @property
-    def runtime_str(self) -> str:
-        """Get the runtime as a formatted string."""
-        return f"{perf_counter() - self.start_time:.2f}s"
-
-    @property
-    def size_str(self) -> str:
-        """Get the current size as a human-readable string."""
-        return convert_byte_to_human_readable_size(self.curr_size)
-
-
-@dataclass(slots=True)
-class JobRequestFactory:
-    """Factory for creating job requests."""
-
-    filecount_fn: FileCountGenerator
-    dirname_fn: DirectoryNamer
-    dir_count: int
-
-    def generate(self) -> Iterator[JobRequest]:
-        """Generate multiple job requests."""
-        yield from (
-            JobRequest(
-                idx=idx,
-                target=self.filecount_fn(),
-                dest=self.dirname_fn(),
-            )
-            for idx in range(1, self.dir_count + 1)
-        )
 
 
 @dataclass(slots=True)
 class Engine:
     """Core engine class."""
 
-    context: Context
-    job_factory: JobRequestFactory
-    filterer: FileFilter
-    filenamer: Filenamer
-    transfer: Transfer
-    walker: FSWalker
-    quota: DiversityQuota
-    dtstamp: DateTimeStamp
-    observer: Observer
-    _entries: Iterator[FSEntry] = field(init=False)
+    root: str
+    is_create_folder: bool
+    dir_count: int
+    max_per_dir: int | float
+    is_create_unique_dirs: bool
+
+    filecount_fn: AbstractFileCounter
+    dirname_fn: AbstractDirectoryNamer
+    filefilter_fn: AbstractFileFilter
+    filenamer_fn: AbstractFilenamer
+    transfer_fn: AbstractTransfer
+    walker_fn: AbstractFSWalker
+    observer: AbstractObserver
+
+    locked_file: set[str] = field(default_factory=set)
+    locked_dir: Counter[str] = field(default_factory=Counter)
+
+    timestamp: str = ""
+
+    is_stop_requested: bool = field(default=False)
+
+    dest: str = ""
+    target: int = 0
+    file_count: int = 0
+    curr_size: int = 0
+    start_time: float = 0.0
 
     def __post_init__(self) -> None:
         """Post-initialization tasks."""
-        self._entries = self.walker()
+        if self.max_per_dir <= 0:
+            self.max_per_dir = float("inf")
+
+    @property
+    def is_success(self) -> bool:
+        """Check if the process finished successfully."""
+        return self.file_count == self.target
+
+    @property
+    def is_stopped(self) -> bool:
+        """Check if the process should be stopped."""
+        return self.is_stop_requested or self.is_success or self.is_root_locked
+
+    @property
+    def is_none_found(self) -> bool:
+        """Check if no valid files were found."""
+        return self.file_count == 0 and self.is_create_folder
+
+    @property
+    def is_root_locked(self) -> bool:
+        """Check if the root directory is locked by the diversity quota."""
+        return self.root in self.locked_dir
 
     def start(self) -> None:
         """Run the main file copying process."""
-        self.observer.on_start_process(self.job_factory.dir_count)
-        for request in self.job_factory.generate():
-            self.process(request)
+        self.observer.on_start_process(self.dir_count)
+
+        for idx in range(1, self.dir_count + 1):
+            # Perform "resets"
+            self.target = self.filecount_fn()
+            d = self.dirname_fn()
+            dest = calc_unique_path_name_joined(d)
+            if not exists(dest):
+                makedirs(dest, exist_ok=True)
+            self.dest = dest
+            self.file_count = 0
+            self.curr_size = 0
+            self.start_time = perf_counter()
+            # Process
+            self.process(idx)
+
         self.observer.on_finished()
 
-    def process(self, request: JobRequest) -> None:
+    def process(self, idx: int) -> None:
         """Process a single folder for file copying."""
-        self.observer.on_directory_start(request.idx, request.target)
-        self.dtstamp.reset()
-        self.quota.reset()
-        log_handler = get_dest_log_filehandler(request.dest)
+        self.observer.on_directory_start(idx, self.target)
+
+        datetime_now = datetime.now(tz=UTC)
+        self.timestamp = datetime_now.strftime(DateTimeFormat.DATETIME)
+
+        self.reset_quota()
+
+        log_handler = get_dest_log_filehandler(self.dest)
         logger.addHandler(log_handler)
 
-        while not self.context.should_stop(request, self.quota):
-            if (e := next(self._entries, None)) is None:
-                break
+        _entries = self.walker_fn()
+        while not self.is_stopped and (e := next(_entries, None)) is not None:
+            self.process_entry(e)
 
-            if self.quota.is_file_locked(e):
-                continue
+        summary = self.generate_summary()
 
-            self.quota.lock_file(e)
-
-            if self.quota.is_dir_locked_from_file(e) or not self.filterer(e):
-                continue
-
-            newstem = self.filenamer(e, request, self.dtstamp)
-            if (newname := get_new_fpath(request.dest, e.path, newstem, e.ext)) is None:
-                continue
-
-            try:
-                self.transfer(e, newname)
-            except PermissionError, OSError:
-                continue
-
-            msg = f"{request.file_count + 1}: {relpath(e.path, self.context.root)} -> {relpath(newname, request.dest)}"
-            logger.info(msg)
-            self.quota.update(e)
-            request.update(e.size)
-            self.observer.on_file_transferred(request.file_count)
-
-        summary = self.context.generate_summary(request, self.dtstamp.date_time_report_str)
         logger.info(summary)
         logger.removeHandler(log_handler)
         log_handler.close()
-        self.context.finalize(request, self.quota)
+
+        if self.is_none_found:
+            remove_directory(self.dest)
+
+    def process_entry(self, e: FSEntry) -> None:
+        """Process a single file entry."""
+        if self.check_quota_lock(e):
+            return
+
+        if not self.filefilter_fn(e):
+            return
+
+        newstem = self.filenamer_fn(e, self.file_count)
+        if (newname := get_new_fpath(self.dest, e.path, newstem, e.ext)) is None:
+            return
+
+        try:
+            self.transfer_fn(e.path, newname)
+        except PermissionError, OSError:
+            return
+        else:
+            _msg = f"{self.file_count + 1}: {relpath(e.path, self.root)} -> {relpath(newname, self.dest)}"
+            logger.info(_msg)
+
+            self.update_quota(e)
+
+            self.curr_size += e.size
+            self.file_count += 1
+
+            self.observer.on_file_transferred(self.file_count)
+            return
+
+    ###############
+    # Quota methods
+    ###############
+
+    def reset_quota(self) -> None:
+        """Reset the quota state for a new folder."""
+        self.locked_dir.clear()
+        if not self.is_create_unique_dirs:
+            self.locked_file.clear()
+
+    def update_quota(self, entry: FSEntry) -> None:
+        """Update the quota state after processing a file."""
+        self.locked_dir[entry.parent] += 1
+
+    def check_quota_lock(self, entry: FSEntry) -> bool:
+        """Check if a file is locked by either rule."""
+        if entry.path in self.locked_file:
+            return True
+
+        self.locked_file.add(entry.path)
+        parent = entry.parent
+        if parent in self.locked_dir:
+            return self.locked_dir[parent] >= self.max_per_dir
+
+        return False
+
+    #################
+    # Context methods
+    #################
 
     def request_stop(self) -> None:
         """Request to stop the engine."""
-        self.context.is_stop_requested = True
+        self.is_stop_requested = True
+
+    def get_report_state(self) -> ProcessFinishedEvent:
+        """Get the state and message for reporting."""
+        status, msg = "UNDEFINED", "UNDEFINED"
+
+        if self.is_success:
+            status = StateStatus.SUCCESS
+            msg = "Transferred all requested files."
+        elif self.is_stop_requested:
+            status = StateStatus.USER_STOPPED
+            msg = "Stopped by user."
+        elif self.is_root_locked:
+            status = StateStatus.ALL_FILES_SEARCHED
+            msg = "Locked all files by diversity quota."
+        elif self.is_none_found:
+            if self.is_root_locked:
+                status = StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
+                msg = "Found no valid files in root and locked all files by diversity quota."
+            else:
+                status = StateStatus.NO_FILES_FOUND_FOLDER_DELETED
+                msg = "Found no valid files in root."
+
+        return ProcessFinishedEvent(status=status, msg=msg)
+
+    def generate_summary(self) -> str:
+        """Generate the summary report."""
+        state = self.get_report_state()
+        return (
+            f"SUMMARY:\n"
+            f"{state.msg}\n"
+            f"{state.status}: {self.file_count}/{self.target} files transferred\n"
+            "------------------------------------------------------------------------\n"
+            f"Timestamp:    {self.timestamp}\n"
+            f"Root:         {self.root}\n"
+            f"Destination:  {self.dest}\n"
+            f"Size:         {convert_byte_to_human_readable_size(self.curr_size)}\n"
+            f"Runtime:      {perf_counter() - self.start_time:.2f}s\n"
+            "========================================================================\n"
+        )

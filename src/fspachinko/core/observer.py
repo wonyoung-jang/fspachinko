@@ -3,18 +3,18 @@
 from abc import ABC, abstractmethod
 
 
-class Observer(ABC):
+class AbstractObserver(ABC):
     """Interface for Observer."""
 
     @abstractmethod
-    def on_start_process(self, ndir_to_create: int) -> None:
+    def on_start_process(self, dir_count: int) -> None:
         """Call when starting a run of the engine.
 
         Emit total number of directories to create or 1 if no directories are to be created.
         """
 
     @abstractmethod
-    def on_directory_start(self, idx: int, nfiles_to_process: int) -> None:
+    def on_directory_start(self, idx: int, target: int) -> None:
         """Call when starting to process a directory.
 
         Emit current directory index and number of files to transferred into the directory.

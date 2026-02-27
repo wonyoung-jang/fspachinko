@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .config import RangeFilterModel
+    from ..config import RangeFilterModel
 
 
 def get_rangefilter_fn(m: RangeFilterModel, mapping: dict[str, float]) -> RangeFilterFn | None:
@@ -13,13 +13,11 @@ def get_rangefilter_fn(m: RangeFilterModel, mapping: dict[str, float]) -> RangeF
     if m.is_enabled:
         minimum = m.minimum * mapping.get(m.unit, 1.0)
         maximum = m.maximum * mapping.get(m.unit, 1.0)
-        is_valid_min = minimum >= 0
-        is_valid_max = maximum < float("inf")
-        if is_valid_min and is_valid_max:
+        if minimum >= 0 and maximum < float("inf"):
             return RangeMinMaxFilterFn(minimum=minimum, maximum=maximum)
-        if is_valid_min:
+        if minimum >= 0:
             return RangeMinFilterFn(minimum=minimum)
-        if is_valid_max:
+        if maximum < float("inf"):
             return RangeMaxFilterFn(maximum=maximum)
     return None
 

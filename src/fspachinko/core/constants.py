@@ -32,7 +32,7 @@ class ReStrFmt(StrEnum):
 
     DIRECTORY = r"(.*){}(.*)"
     KEYWORD = r"(.*){}(.*)"
-    EXTENSION = r".{}$"
+    EXTENSION = r"{}$"
 
 
 class FileError(IntEnum):
@@ -114,9 +114,6 @@ class FilenameTemplate(StrEnum):
 
     ORIGINAL = "{original}"
     INDEX = "{index}"
-    DATE = "{date}"
-    TIME = "{time}"
-    DATETIME = "{datetime}"
     PARENT = "{parent}"
     PARENTS_TO_ROOT = "{parentstoroot}"
 
@@ -126,9 +123,6 @@ class FilenameTemplateMapKey(StrEnum):
 
     ORIGINAL = "original"
     INDEX = "index"
-    DATE = "date"
-    TIME = "time"
-    DATETIME = "datetime"
     PARENT = "parent"
     PARENTS_TO_ROOT = "parentstoroot"
 
@@ -151,8 +145,6 @@ class IconFilename(StrEnum):
 class DateTimeFormat(StrEnum):
     """Enumeration for date and time formats."""
 
-    DATE = "%Y-%m-%d"
-    TIME = "%H-%M-%S"
     DATETIME = "%Y-%m-%d %H:%M:%S"
 
 

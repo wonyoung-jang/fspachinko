@@ -11,8 +11,8 @@ QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)
 QCoreApplication.setApplicationName(AppSetting.APPLICATION_NAME)
 
-
-try:  # Windows only for taskbar icon
+# Windows only for taskbar icon
+try:
     from ctypes import windll
 
     myappid = "wonyoungjang.fspachinko.random_file_transfer_utility.0.0.1"
@@ -24,7 +24,6 @@ except ImportError:
 def main() -> None:
     """Run the application."""
     initialize_logging()
-
     app = QApplication()
     app.setWindowIcon(QIcon(get_icon_path(IconFilename.WINDOW)))
     window = MainWindow()

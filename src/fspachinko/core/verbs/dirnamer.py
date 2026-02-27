@@ -2,22 +2,21 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from os.path import join
 from typing import TYPE_CHECKING
 
-from .helpers import calc_unique_path_name
-
 if TYPE_CHECKING:
-    from .config import DirectoryModel
+    from ..config import DirectoryModel
 
 
-def get_dirname_fn(m: DirectoryModel, dest: str) -> DirectoryNamer:
+def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
     """Return a function that determines the destination folder name based on the configuration."""
     if m.is_enabled:
         return UniqueDirectoryNamer(name=m.name, dest=dest)
     return StaticDirectoryNamer(dest=dest)
 
 
-class DirectoryNamer(ABC):
+class AbstractDirectoryNamer(ABC):
     """Class for determining the destination folder name based on the configuration."""
 
     @abstractmethod
@@ -26,19 +25,19 @@ class DirectoryNamer(ABC):
 
 
 @dataclass(slots=True)
-class UniqueDirectoryNamer(DirectoryNamer):
+class UniqueDirectoryNamer(AbstractDirectoryNamer):
     """Directory namer that generates unique folder names."""
 
-    name: str
     dest: str
+    name: str
 
     def __call__(self) -> str:
         """Return a unique destination folder name."""
-        return calc_unique_path_name(self.dest, self.name)
+        return join(self.dest, self.name)
 
 
 @dataclass(slots=True)
-class StaticDirectoryNamer(DirectoryNamer):
+class StaticDirectoryNamer(AbstractDirectoryNamer):
     """Directory namer that returns a static folder name."""
 
     dest: str

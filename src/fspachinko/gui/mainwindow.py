@@ -1,12 +1,13 @@
 """Main module."""
 
 import logging
+from os.path import basename, splitext
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
-from ..core import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, get_stem_and_ext
+from ..core import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
 from .actions import Actions
 from .centralwidget import CentralWidget
 from .qthelpers import set_qt_name
@@ -136,7 +137,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def reset_window_title(self) -> None:
         """Update the window title based on the current profile."""
-        profile_stem, _ = get_stem_and_ext(self.profiles.path)
+        profile_stem, _ = splitext(basename(self.profiles.path))
         self.setWindowTitle(f"{profile_stem} - {GUITitle.WINDOW}")
 
     def save_settings(self) -> None:
