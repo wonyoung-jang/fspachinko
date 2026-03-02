@@ -51,6 +51,10 @@ class AbstractFilesystemPort(ABC):
     def get_dest_dir_path(self, dest: str) -> str:
         """Get the destination directory path."""
 
+    @abstractmethod
+    def remove_directory(self, path: str) -> None:
+        """Remove a directory and its contents, with error handling."""
+
 
 @dataclass(slots=True)
 class ConcreteFilesystemPort(AbstractFilesystemPort):
@@ -78,3 +82,12 @@ class ConcreteFilesystemPort(AbstractFilesystemPort):
         new_dest = self.get_unique_path(*split(dest))
         makedirs(new_dest, exist_ok=True)
         return new_dest
+
+    def remove_directory(self, path: str) -> None:
+        """Remove a directory and its contents, with error handling."""
+        try:
+            shutil.rmtree(path)
+        except FileNotFoundError:
+            logger.exception("Directory not found for removal: %s", path)
+        except OSError:
+            logger.exception("Error occurred while removing directory: %s", path)

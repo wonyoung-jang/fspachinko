@@ -7,7 +7,7 @@ from ..domain.commands import StartProcess, StopProcess
 from ..domain.events import DirectoryStarted, Event, FileTransferred, ProcessStarted, ProcessStopped
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from ..domain.commands import Command
     from .uow import AbstractUnitOfWork
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def start_process(_: StartProcess, uow: AbstractUnitOfWork) -> None:
+def start_process(_: StartProcess, uow: AbstractUnitOfWork) -> Iterator:
     """Handle the StartProcessCommand."""
     with uow:
-        uow.engine.process()
+        yield from uow.engine.process()
         uow.commit()
 
 
@@ -31,12 +31,12 @@ def stop_process(_: StopProcess, uow: AbstractUnitOfWork) -> None:
 
 def handle_process_started(event: ProcessStarted, _: AbstractUnitOfWork) -> None:
     """Handle the StartProcessEvent."""
-    logger.info("Starting process:  with %s directories to transfer.", event.dir_count)
+    logger.debug("Starting process:  with %s directories to transfer.", event.dir_count)
 
 
 def handle_directory_started(event: DirectoryStarted, _: AbstractUnitOfWork) -> None:
     """Handle the DirectoryStartEvent."""
-    logger.info("Starting directory %s with target %s files.", event.idx, event.target)
+    logger.debug("Starting directory %s with target %s files.", event.idx, event.target)
 
 
 def handle_file_transferred(event: FileTransferred, _: AbstractUnitOfWork) -> None:
@@ -46,7 +46,7 @@ def handle_file_transferred(event: FileTransferred, _: AbstractUnitOfWork) -> No
 
 def handle_finished(_: ProcessStopped, __: AbstractUnitOfWork) -> None:
     """Handle the FinishedEvent."""
-    logger.info("Processing finished.")
+    logger.debug("Processing finished.")
 
 
 EVENT_HANDLERS: dict[type[Event], list[Callable]] = {
