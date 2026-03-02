@@ -31,12 +31,7 @@ class CentralWidget(QWidget):
     @Slot()
     def on_start(self) -> None:
         """Start the process and disable UI elements."""
-        try:
-            config = self.ui.get_config()
-        except Exception:
-            logger.exception("Failed to get configuration from UI.")
-            return
-
+        config = self.ui.get_config()
         self.worker = MainWorker(config)
         self.original_window_title = self.window().windowTitle()
         signals = self.worker.signals

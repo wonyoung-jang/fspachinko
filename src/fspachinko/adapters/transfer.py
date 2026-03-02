@@ -9,7 +9,7 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from ..constants import FileError, TransferMode
+from ..core.constants import FileError, TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,6 +46,22 @@ def get_transfer_fn(mode: str) -> AbstractTransfer:
     return available.get(TransferMode(mode), available[TransferMode.DRY_RUN])
 
 
+def hardlink(src: str, dst: str) -> None:
+    """Create a hardlink from source to destination.
+
+    Falls back to symlink if hardlinking across filesystems fails.
+    """
+    try:
+        link(src, dst)
+    except OSError as e:
+        is_win_x_error = e.winerror == FileError.WINDOWS_CROSS_DRIVE_ERROR
+        is_unix_x_error = e.errno == FileError.UNIX_CROSS_FILESYSTEM_ERROR
+        if is_win_x_error or is_unix_x_error:
+            symlink(src, dst)
+        else:
+            raise
+
+
 class AbstractTransfer(ABC):
     """Abstract base class for file transfer strategies."""
 
@@ -68,7 +84,10 @@ class CopyTransfer(AbstractTransfer):
 
     def __call__(self, src: str, dst: str) -> None:
         """Copy the file from source to destination."""
-        copy(src, dst)
+        try:
+            copy(src, dst)
+        except PermissionError, OSError, NotImplementedError, UnsupportedOperation:
+            return
 
 
 @dataclass(slots=True)
@@ -77,7 +96,10 @@ class CopyPreserveTransfer(AbstractTransfer):
 
     def __call__(self, src: str, dst: str) -> None:
         """Copy the file from source to destination while preserving metadata."""
-        copy2(src, dst)
+        try:
+            copy2(src, dst)
+        except PermissionError, OSError, NotImplementedError, UnsupportedOperation:
+            return
 
 
 @dataclass(slots=True)
@@ -86,7 +108,10 @@ class MoveTransfer(AbstractTransfer):
 
     def __call__(self, src: str, dst: str) -> None:
         """Move the file from source to destination."""
-        move(src, dst)
+        try:
+            move(src, dst)
+        except PermissionError, OSError, NotImplementedError, UnsupportedOperation:
+            return
 
 
 @dataclass(slots=True)
@@ -95,7 +120,10 @@ class SymlinkTransfer(AbstractTransfer):
 
     def __call__(self, src: str, dst: str) -> None:
         """Create a symbolic link from source to destination."""
-        symlink(src, dst)
+        try:
+            symlink(src, dst)
+        except PermissionError, OSError, NotImplementedError, UnsupportedOperation:
+            return
 
 
 @dataclass(slots=True)
@@ -103,19 +131,8 @@ class HardlinkTransfer(AbstractTransfer):
     """Represents a hard link file transfer operation."""
 
     def __call__(self, src: str, dst: str) -> None:
-        """Create a hardlink from source to destination.
-
-        Falls back to symlink if hardlinking across filesystems fails.
-        """
-        try:
-            link(src, dst)
-        except OSError as e:
-            is_win_x_error = e.winerror == FileError.WINDOWS_CROSS_DRIVE_ERROR
-            is_unix_x_error = e.errno == FileError.UNIX_CROSS_FILESYSTEM_ERROR
-            if is_win_x_error or is_unix_x_error:
-                symlink(src, dst)
-            else:
-                raise
+        """Create a hardlink from source to destination."""
+        hardlink(src, dst)
 
 
 TRANSFER_STRATEGIES: dict[TransferMode, AbstractTransfer] = {

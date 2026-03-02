@@ -11,9 +11,11 @@ if TYPE_CHECKING:
 
 def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:
     """Return a function that determines the number of files to transfer based on the configuration."""
-    if m.is_rand_enabled:
-        return RandomFileCounter(rand_min=m.rand_min, rand_max=m.rand_max)
-    return FixedFileCounter(count=m.count)
+    match m.is_rand_enabled:
+        case True:
+            return RandomFileCounter(rand_min=m.rand_min, rand_max=m.rand_max)
+        case False:
+            return StaticFileCounter(count=m.count)
 
 
 @dataclass(slots=True)
@@ -26,7 +28,7 @@ class AbstractFileCounter(ABC):
 
 
 @dataclass(slots=True)
-class FixedFileCounter(AbstractFileCounter):
+class StaticFileCounter(AbstractFileCounter):
     """Generates a fixed file count."""
 
     count: int

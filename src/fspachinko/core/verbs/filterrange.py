@@ -10,16 +10,19 @@ if TYPE_CHECKING:
 
 def get_rangefilter_fn(m: RangeFilterModel, mapping: dict[str, float]) -> RangeFilterFn | None:
     """Create a range filter function from it's configuration model."""
-    if m.is_enabled:
-        minimum = m.minimum * mapping.get(m.unit, 1.0)
-        maximum = m.maximum * mapping.get(m.unit, 1.0)
-        if minimum >= 0 and maximum < float("inf"):
+    if not m.is_enabled:
+        return None
+
+    minimum = m.minimum * mapping.get(m.unit, 1.0)
+    maximum = m.maximum * mapping.get(m.unit, 1.0)
+
+    match minimum >= 0, maximum < float("inf"):
+        case (True, True):
             return RangeMinMaxFilterFn(minimum=minimum, maximum=maximum)
-        if minimum >= 0:
+        case (True, False):
             return RangeMinFilterFn(minimum=minimum)
-        if maximum < float("inf"):
+        case (False, True):
             return RangeMaxFilterFn(maximum=maximum)
-    return None
 
 
 @dataclass(slots=True)

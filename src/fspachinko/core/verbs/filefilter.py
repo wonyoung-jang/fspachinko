@@ -1,29 +1,32 @@
 """Config validation functions."""
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ...adapters.media import get_duration
 from ..constants import SIZE_MAP, TIME_MAP, ReStrFmt
-from ..helpers import get_duration
 from .filterrange import RangeFilterFn, get_rangefilter_fn
 from .filtertext import TextFilterFn, get_textfilter_fn
 
 if TYPE_CHECKING:
+    from ...domain.model import FSEntry
     from ..config import ConfigModel
-    from ..model import FSEntry
+
+logger = logging.getLogger(__name__)
 
 
 def get_filefilter_fn(m: ConfigModel) -> AbstractFileFilter:
     """Create a FileFilter instance from the configuration model."""
-    fmap: list[tuple[type[Filter], TextFilterFn | RangeFilterFn | None]] = [
-        (DirnameFilter, get_textfilter_fn(m.dirname, re_fmt=ReStrFmt.DIRECTORY)),
-        (KeywordFilter, get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD)),
-        (ExtensionFilter, get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION)),
-        (FilesizeFilter, get_rangefilter_fn(m.filesize, mapping=SIZE_MAP)),
-        (DurationFilter, get_rangefilter_fn(m.duration, mapping=TIME_MAP)),
-    ]
-    filters = tuple(filter_c(call=fn) for filter_c, fn in fmap if fn is not None)
+    fmap: dict[type[Filter], TextFilterFn | RangeFilterFn | None] = {
+        DirnameFilter: get_textfilter_fn(m.dirname, re_fmt=ReStrFmt.DIRECTORY),
+        KeywordFilter: get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD),
+        ExtensionFilter: get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION),
+        FilesizeFilter: get_rangefilter_fn(m.filesize, mapping=SIZE_MAP),
+        DurationFilter: get_rangefilter_fn(m.duration, mapping=TIME_MAP),
+    }
+    filters = tuple(filter_c(call=fn) for filter_c, fn in fmap.items() if fn is not None)
     if filters:
         if len(filters) == 1:
             return SingularFileFilter(filter=filters[0])

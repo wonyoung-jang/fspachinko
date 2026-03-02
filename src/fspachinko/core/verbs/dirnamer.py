@@ -11,9 +11,11 @@ if TYPE_CHECKING:
 
 def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
     """Return a function that determines the destination folder name based on the configuration."""
-    if m.is_enabled:
-        return UniqueDirectoryNamer(name=m.name, dest=dest)
-    return StaticDirectoryNamer(dest=dest)
+    match m.is_enabled:
+        case True:
+            return UniqueDirectoryNamer(dest=dest, name=m.name)
+        case False:
+            return StaticDirectoryNamer(dest=dest)
 
 
 class AbstractDirectoryNamer(ABC):

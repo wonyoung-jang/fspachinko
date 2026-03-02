@@ -1,16 +1,13 @@
 """Utility functions."""
 
 import logging
-import shutil
-import subprocess
 from dataclasses import dataclass
-from filecmp import cmp
-from os import mkdir
-from os.path import dirname, exists, join
+from os.path import dirname, join
 
 import fspachinko
 
-from .constants import DURATION_CMD, BytesIn, ByteUnit, DefaultPath
+from ..adapters.filesystemport import ensure_datapaths
+from .constants import BytesIn, ByteUnit, DefaultPath, StateStatus
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +16,11 @@ logger = logging.getLogger(__name__)
 class DataPaths:
     """Dataclass for general directories used."""
 
-    pkg: str = dirname(fspachinko.__file__)
-    data: str = join(pkg, DefaultPath.DATA_DIR)
+    data: str = join(dirname(fspachinko.__file__), DefaultPath.DATA_DIR)
     icons: str = join(data, DefaultPath.ICON_DIR)
     configs: str = join(data, DefaultPath.CONFIG_DIR)
     profiles: str = join(data, DefaultPath.GUI_PROFILE_DIR)
     logs: str = join(data, DefaultPath.LOG_DIR)
-
-    def __post_init__(self) -> None:
-        """Ensure necessary directories exist."""
-        for path in (self.data, self.icons, self.configs, self.profiles, self.logs):
-            if not exists(path):
-                mkdir(path)
 
     def get_icon(self, path: str) -> str:
         """Get the full path to an icon."""
@@ -50,70 +40,11 @@ class DataPaths:
 
 
 _datapaths = DataPaths()
+ensure_datapaths(_datapaths)
 get_icon_path = _datapaths.get_icon
 get_config_path = _datapaths.get_config
 get_profile_path = _datapaths.get_profile
 get_log_path = _datapaths.get_log
-
-
-def calc_unique_path_name_joined(name: str) -> str:
-    """Calculate a unique path name in the destination."""
-    target = name
-    x = 2
-    while exists(target):
-        target = f"{name} ({x})"
-        x += 1
-    return target
-
-
-def remove_directory(path: str) -> None:
-    """Remove a directory and its contents."""
-    try:
-        shutil.rmtree(path)
-    except FileNotFoundError:
-        logger.exception("Directory not found for removal: %s", path)
-    except OSError:
-        logger.exception("Error occurred while removing directory: %s", path)
-
-
-def are_files_equal(src: str, dest: str) -> bool:
-    """Check if two files are the same by comparing their contents."""
-    if cmp(src, dest, shallow=True):
-        return cmp(src, dest, shallow=False)
-    return False
-
-
-def get_new_fpath(dest: str, stem: str, ext: str) -> str:
-    """Get a new file path, ensuring it doesn't already exist."""
-    target = join(dest, f"{stem}{ext}")
-    x = 2
-    while exists(target):
-        target = join(dest, f"{stem} ({x}){ext}")
-        x += 1
-    return target
-
-
-def get_duration(path: str) -> float:
-    """Get the duration of a media file."""
-    try:
-        completed_proc = subprocess.run(
-            [*DURATION_CMD, path],
-            timeout=5,
-            check=True,
-            encoding="utf-8",
-            stdout=subprocess.PIPE,
-        )
-        try:
-            return float(completed_proc.stdout.strip())
-        except ValueError:
-            logger.exception("ffprobe output could not be parsed as float: %s", completed_proc)
-            return 0.0
-    except subprocess.CalledProcessError:
-        logger.exception("ffprobe failed")
-        return 0.0
-    except subprocess.TimeoutExpired:
-        logger.exception("ffprobe timed out for file: %s", path)
-        return 0.0
 
 
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
@@ -127,3 +58,33 @@ def convert_byte_to_human_readable_size(nbytes: int) -> str:
         if nbytes < threshold:
             return r_str
     return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
+
+
+def get_status(
+    *, is_success: bool, is_none_found: bool, is_stop_requested: bool, is_create_dir: bool, is_root_locked: bool
+) -> str | StateStatus:
+    """Get the state and message for reporting."""
+    if is_success:
+        return StateStatus.SUCCESS
+    if is_stop_requested:
+        return StateStatus.USER_STOPPED
+    if is_none_found and is_create_dir and is_root_locked:
+        return StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
+    if is_none_found and is_create_dir:
+        return StateStatus.NO_FILES_FOUND_FOLDER_DELETED
+    if is_root_locked:
+        return StateStatus.ALL_FILES_SEARCHED
+    return StateStatus.UNDEFINED
+
+
+def get_report(path: str, size_str: str, runtime_str: str, count: int, target_qty: int) -> str:
+    """Generate a summary report string."""
+    return (
+        "------------------------------------------------------------------------\n"
+        f"{count}/{target_qty} files transferred\n"
+        "------------------------------------------------------------------------\n"
+        f"Destination:  {path}\n"
+        f"Size:         {size_str}\n"
+        f"Runtime:      {runtime_str}\n"
+        "========================================================================\n"
+    )

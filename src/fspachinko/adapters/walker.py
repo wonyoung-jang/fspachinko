@@ -7,7 +7,7 @@ from os.path import dirname, splitext
 from random import choice
 from typing import TYPE_CHECKING
 
-from ..model import FSEntry, FSPachinkoPin
+from ..domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -92,6 +92,7 @@ class PachinkoFSWalker(AbstractFSWalker):
                         if e.is_dir(follow_symlinks=follow):
                             subdirs_append(e.path)
                         elif e.is_file(follow_symlinks=follow):
+                            stat = e.stat(follow_symlinks=follow)
                             stem, ext = splitext(e.name)
                             files_append(
                                 FSEntry(
@@ -99,7 +100,8 @@ class PachinkoFSWalker(AbstractFSWalker):
                                     stem=stem,
                                     ext=ext,
                                     parent=dirname(e.path),
-                                    size=e.stat(follow_symlinks=follow).st_size,
+                                    size=stat.st_size,
+                                    mtime=stat.st_mtime,
                                 )
                             )
                     except OSError:

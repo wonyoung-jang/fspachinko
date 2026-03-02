@@ -2,7 +2,7 @@
 
 import logging
 
-from ..core import initialize_logging
+from ..adapters import initialize_logging
 from .app import app
 from .loggers import setup_cli_logger
 

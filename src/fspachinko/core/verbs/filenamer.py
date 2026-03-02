@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from ..constants import INVALID_FILENAME_CHARS, FilenameTemplate, FilenameTemplateMapKey
 
 if TYPE_CHECKING:
+    from ...domain.model import FSEntry
     from ..config import FilenameModel
-    from ..model import FSEntry
 
 
 def get_filenamer_fn(m: FilenameModel) -> AbstractFilenamer:

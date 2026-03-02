@@ -1,5 +1,6 @@
 """Main module."""
 
+import logging
 from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QVBoxLayout
@@ -20,6 +21,8 @@ from .components import (
     RootPathSelectorWidget,
     SizeFilterWidget,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -60,16 +63,20 @@ class UIBuilder:
 
     def get_config(self) -> ConfigModel:
         """Get the current configuration from all widgets."""
-        return ConfigModel(
-            root=self.root.get_config(),
-            dest=self.dest.get_config(),
-            filecount=self.filecount.get_config(),
-            directory=self.dircreator.get_config(),
-            filename=self.filenamer.get_config(),
-            dirname=self.dirname_filter.get_config(),
-            keyword=self.keyword_filter.get_config(),
-            extension=self.extension_filter.get_config(),
-            filesize=self.filesize_filter.get_config(),
-            duration=self.duration_filter.get_config(),
-            options=self.options.get_config(),
-        )
+        try:
+            return ConfigModel(
+                root=self.root.get_config(),
+                dest=self.dest.get_config(),
+                filecount=self.filecount.get_config(),
+                directory=self.dircreator.get_config(),
+                filename=self.filenamer.get_config(),
+                dirname=self.dirname_filter.get_config(),
+                keyword=self.keyword_filter.get_config(),
+                extension=self.extension_filter.get_config(),
+                filesize=self.filesize_filter.get_config(),
+                duration=self.duration_filter.get_config(),
+                options=self.options.get_config(),
+            )
+        except Exception:
+            logger.exception("Failed to get configuration from UI.")
+            raise

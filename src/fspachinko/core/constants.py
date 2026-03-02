@@ -5,15 +5,6 @@ from enum import IntEnum, StrEnum
 # General constants
 PERCENTAGE_100: float = 100.0
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
-DURATION_CMD = [
-    "ffprobe",
-    "-v",
-    "error",
-    "-show_entries",
-    "format=duration",
-    "-of",
-    "default=noprint_wrappers=1:nokey=1",
-]
 
 
 class DefaultPath(StrEnum):
@@ -142,15 +133,10 @@ class IconFilename(StrEnum):
     OPEN_DIR = "open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
 
 
-class DateTimeFormat(StrEnum):
-    """Enumeration for date and time formats."""
-
-    DATETIME = "%Y-%m-%d %H:%M:%S"
-
-
 class StateStatus(StrEnum):
     """Enumeration for engine state statuses."""
 
+    UNDEFINED = "UNDEFINED"
     USER_STOPPED = "USER STOPPED"
     SUCCESS = "SUCCESS"
     ALL_FILES_SEARCHED = "ALL FILES SEARCHED"

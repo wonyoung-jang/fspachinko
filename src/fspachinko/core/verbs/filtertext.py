@@ -14,17 +14,18 @@ def get_textfilter_fn(m: TextFilterModel, re_fmt: str) -> TextFilterFn | None:
     if not (m.is_enabled and m.text):
         return None
 
-    text = set(m.text.split(","))
-    patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in text)
+    split_text = set(m.text.split(","))
+    patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in split_text)
 
-    if m.should_include:
-        if len(patterns) == 1:
+    match m.should_include, len(patterns) == 1:
+        case (True, True):
             return IncludeTextFilterSingular(pattern=patterns[0])
-        return IncludeTextFilter(patterns=patterns)
-
-    if len(patterns) == 1:
-        return ExcludeTextFilterSingular(pattern=patterns[0])
-    return ExcludeTextFilter(patterns=patterns)
+        case (True, False):
+            return IncludeTextFilter(patterns=patterns)
+        case (False, True):
+            return ExcludeTextFilterSingular(pattern=patterns[0])
+        case (False, False):
+            return ExcludeTextFilter(patterns=patterns)
 
 
 class TextFilterFn(ABC):

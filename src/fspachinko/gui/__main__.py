@@ -4,7 +4,8 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from ..core import AppSetting, IconFilename, get_icon_path, initialize_logging
+from ..adapters import initialize_logging
+from ..core import AppSetting, IconFilename, get_icon_path
 from .mainwindow import MainWindow
 
 QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)

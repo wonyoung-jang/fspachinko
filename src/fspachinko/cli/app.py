@@ -4,8 +4,9 @@ import logging
 
 from cyclopts import App
 
-from ..core import ConfigModel, DefaultPath, build_engine, get_config_path
-from .observer import ConsoleObserver
+from ..builder import bootstrap
+from ..core import ConfigModel, DefaultPath, get_config_path
+from ..domain.commands import StartProcess
 
 logger = logging.getLogger(__name__)
 app = App(
@@ -14,23 +15,23 @@ app = App(
 
 
 @app.default
-def run(config: str = "") -> None:
+def run(config_path: str = "") -> None:
     """Run the fspachinko CLI.
 
     Args:
-        config (str): Path to configuration file.
+        config_path (str): Path to configuration file.
 
     """
-    if not config:
-        config = get_config_path(DefaultPath.CONFIG)
+    if not config_path:
+        config_path = get_config_path(DefaultPath.CONFIG)
 
     try:
-        with open(config, encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             data = f.read()
     except FileNotFoundError:
-        logger.exception("Configuration file not found: %s", config)
+        logger.exception("Configuration file not found: %s", config_path)
         return
 
-    config_model = ConfigModel.model_validate_json(data)
-    engine = build_engine(config_model, observer=ConsoleObserver())
-    engine.start()
+    config = ConfigModel.model_validate_json(data)
+    bus = bootstrap(m=config)
+    bus.handle(StartProcess())
