@@ -33,3 +33,6 @@ def get_duration(path: str) -> float:
     except subprocess.TimeoutExpired:
         logger.exception("ffprobe timed out for file: %s", path)
         return 0.0
+    except Exception:
+        logger.exception("Unexpected error while getting duration for file: %s", path)
+        return 0.0

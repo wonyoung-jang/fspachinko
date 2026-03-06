@@ -1,142 +1,84 @@
 """Model classes for the domain."""
 
-from collections import Counter, deque
+from collections import Counter
 from dataclasses import dataclass, field
 from os.path import join
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..adapters.filesystemport import remove_directory
-from ..core.helpers import convert_byte_to_human_readable_size, get_report, get_status
-from .events import DirectoryStarted, FileTransferred, ProcessStarted, ProcessStopped
+from ..helpers import convert_byte_to_human_readable_size, get_report
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from ..adapters.filesystemport import AbstractFilesystemPort
-    from ..adapters.loggers import AbstractLoggingPort
     from ..adapters.transfer import AbstractTransfer
+    from ..adapters.verbs.dirnamer import AbstractDirectoryNamer
+    from ..adapters.verbs.filecounter import AbstractFileCounter
+    from ..adapters.verbs.filefilter import AbstractFileFilter
+    from ..adapters.verbs.filenamer import AbstractFilenamer
     from ..adapters.walker import AbstractFSWalker
-    from ..core.verbs.dirnamer import AbstractDirectoryNamer
-    from ..core.verbs.filecounter import AbstractFileCounter
-    from ..core.verbs.filefilter import AbstractFileFilter
-    from ..core.verbs.filenamer import AbstractFilenamer
-    from .events import Event
 
 
 @dataclass(slots=True)
-class Engine:
-    """Core engine class."""
+class TransferPipeline:
+    """Owns the strategy objects — Engine delegates to this."""
 
-    root: str
-    dir_count: int
     is_create_dir: bool
-
-    filecount_fn: AbstractFileCounter
-    dirname_fn: AbstractDirectoryNamer
+    fs: AbstractFilesystemPort
     filefilter_fn: AbstractFileFilter
     filenamer_fn: AbstractFilenamer
     transfer_fn: AbstractTransfer
     walker_fn: AbstractFSWalker
+    filecount_fn: AbstractFileCounter
+    dirname_fn: AbstractDirectoryNamer
 
-    filesystem: AbstractFilesystemPort
-    logging: AbstractLoggingPort
+    def walk(self) -> Iterator[FSEntry]:
+        """Walk the file system and yield FSEntry objects."""
+        return self.walker_fn()
 
-    quota: DiversityQuota
+    def get_file_count(self) -> int:
+        """Count the number of files to be transferred."""
+        return self.filecount_fn()
 
-    is_stop_requested: bool = False
+    def get_dir_name(self) -> str:
+        """Get the name for the current directory."""
+        return self.dirname_fn()
 
-    events: deque[Event] = field(default_factory=deque)
+    def filter_file(self, e: FSEntry) -> bool:
+        """Check if a file should be transferred."""
+        return self.filefilter_fn(e)
 
-    def process(self) -> Iterator[Event]:
-        """Run the main file transfer process."""
-        yield ProcessStarted(self.dir_count)
+    def get_new_file_stem(self, e: FSEntry, count: int) -> str:
+        """Get the new name for a file."""
+        return self.filenamer_fn(e, count)
 
-        for dir_i in range(1, self.dir_count + 1):
-            target_qty = self.filecount_fn()
-
-            yield DirectoryStarted(dir_i, target_qty)
-            dst = DestinationDirectory(
-                path=self.get_currdir_dest(),  # I/O
-                target_qty=target_qty,
-                count=0,
-                size=0,
-                start_time=perf_counter(),
-            )
-            yield from self.process_dir(dst)
-            self.post_process_dir(dst)
-
-        yield ProcessStopped()
-
-    def process_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
-        """Process one directory."""
-        self.quota.reset()
-        self.logging.add_handler(dst.path)
-        for e in self.walker_fn():
-            if dst.is_success or self.is_stop_requested or self.root in self.quota.locked_dir:
-                break
-
-            if not self.can_transfer_file(e) or (newpath := self.get_new_path(e, dst)) is None:
-                continue
-
-            if self.transfer_file(e.path, newpath):
-                self.quota.update(e)
-                dst.count += 1
-                dst.size += e.size
-                self.logging.info("%s: %s -> %s", dst.count, e.path, newpath)
-                yield FileTransferred(dst.count)
-
-    def post_process_dir(self, dst: DestinationDirectory) -> None:
-        """Post-process after finishing a directory."""
-        status = get_status(
-            is_success=dst.is_success,
-            is_none_found=dst.is_none_found,
-            is_stop_requested=self.is_stop_requested,
-            is_create_dir=self.is_create_dir,
-            is_root_locked=self.root in self.quota.locked_dir,
-        )
-        report = get_report(
-            dst.path,
-            dst.size_str,
-            dst.runtime_str,
-            dst.count,
-            dst.target_qty,
-        )
-
-        self.logging.info("%s\n%s", status, report)
-        self.logging.remove_handler()
-
-        remove_directory(
-            dst.path,
-            is_create_dir=self.is_create_dir,
-            is_none_found=dst.is_none_found,
-        )
-
-    def can_transfer_file(self, e: FSEntry) -> bool:
-        """Check if a file can be transferred."""
-        return self.quota.can_accept(e) and self.filefilter_fn(e)
-
-    def get_new_path(self, e: FSEntry, dst: DestinationDirectory) -> str | None:
-        """Check if the original file name can be used without transfer."""
-        ext = e.ext.casefold()
-        new_stem = self.filenamer_fn(e, dst.count)
-        target = join(dst.path, f"{new_stem}{ext}")
-        if self.filesystem.are_files_equal(e.path, target):  # I/O
-            return None
-        return self.filesystem.get_unique_path(dst.path, new_stem, ext)  # I/O
-
-    def transfer_file(self, src: str, dst: str) -> bool:
+    def transfer_file(self, src: str, dst: str) -> None:
         """Transfer a file from src to dst."""
-        try:
-            self.transfer_fn(src, dst)
-        except PermissionError, OSError:
-            return False
-        return True
+        self.transfer_fn(src, dst)
 
     def get_currdir_dest(self) -> str:
         """Get the current directory destination."""
-        d = self.dirname_fn()
-        return d if not self.is_create_dir else self.filesystem.get_dest_dir_path(d)
+        d = self.get_dir_name()
+        match self.is_create_dir:
+            case False:
+                return d
+            case True:
+                return self.fs.get_dest_dir_path(d)
+
+    def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
+        """Check if the original file name can be used without transfer."""
+        ext = e.ext.casefold()
+        new_stem = self.get_new_file_stem(e, dst.count)
+        target = join(dst.path, f"{new_stem}{ext}")
+        if self.fs.are_files_equal(e.path, target):
+            return None
+        return self.fs.get_unique_path(dst.path, new_stem, ext)
+
+    def remove_dst_dir_if_empty(self, path: str, *, none_found: bool) -> None:
+        """Remove the destination directory if it is empty."""
+        if none_found:
+            self.fs.remove_directory(path)
 
 
 @dataclass(slots=True)
@@ -145,9 +87,9 @@ class DestinationDirectory:
 
     path: str
     target_qty: int
-    count: int
-    size: int
-    start_time: float
+    count: int = 0
+    size: int = 0
+    start_time: float = field(default_factory=perf_counter)
 
     @property
     def is_success(self) -> bool:
@@ -168,6 +110,16 @@ class DestinationDirectory:
     def runtime_str(self) -> str:
         """Get the runtime string."""
         return f"{perf_counter() - self.start_time:.2f}s"
+
+    @property
+    def report_str(self) -> str:
+        """Get the report string."""
+        return get_report(self.path, self.size_str, self.runtime_str, self.count, self.target_qty)
+
+    def accept(self, e: FSEntry) -> None:
+        """Update the directory stats after accepting a file."""
+        self.count += 1
+        self.size += e.size
 
 
 @dataclass(slots=True, frozen=True)

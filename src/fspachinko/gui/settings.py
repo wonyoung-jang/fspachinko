@@ -8,7 +8,7 @@ from os.path import dirname, exists, isfile
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
-from ..core import get_profile_path
+from ..datapaths import get_profile_path
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 
 

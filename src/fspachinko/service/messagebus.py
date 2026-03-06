@@ -2,16 +2,13 @@
 
 import logging
 from collections import deque
-from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..domain.commands import Command
 from ..domain.events import Event
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from .uow import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -24,8 +21,8 @@ class MessageBus:
     """A simple message bus for handling commands and events."""
 
     uow: AbstractUnitOfWork
-    event_handlers: dict[type[Event], list[Callable]] = field(default_factory=dict)
-    command_handlers: dict[type[Command], Callable] = field(default_factory=dict)
+    event_handlers: dict[type[Event], list[Any]] = field(default_factory=dict)
+    command_handlers: dict[type[Command], Any] = field(default_factory=dict)
     queue: deque = field(default_factory=deque)
 
     def handle(self, message: Message) -> None:
@@ -54,10 +51,7 @@ class MessageBus:
         logger.debug("Handling command %s", command)
         try:
             handler = self.command_handlers[type(command)]
-            result = handler(command, self.uow)
-            if isinstance(result, Iterator):
-                for event in result:
-                    self.handle(event)
+            handler(command, self.uow)
             self.queue.extend(self.uow.yield_new_events())
         except Exception:
             logger.exception("Exception handling command %s", command)

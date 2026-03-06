@@ -3,11 +3,11 @@
 import os
 
 from fspachinko.adapters.transfer import AbstractTransfer, TransferMode, get_transfer_fn
-from fspachinko.core.config import DirectoryModel, FilecountModel, FilenameModel
-from fspachinko.core.constants import FilenameTemplate
-from fspachinko.core.verbs.dirnamer import StaticDirectoryNamer, UniqueDirectoryNamer, get_dirname_fn
-from fspachinko.core.verbs.filecounter import RandomFileCounter, StaticFileCounter, get_filecount_fn
-from fspachinko.core.verbs.filenamer import StaticFilenamer, TemplateFilenamer, get_filenamer_fn
+from fspachinko.adapters.verbs.dirnamer import StaticDirectoryNamer, UniqueDirectoryNamer, get_dirname_fn
+from fspachinko.adapters.verbs.filecounter import RandomFileCounter, StaticFileCounter, get_filecount_fn
+from fspachinko.adapters.verbs.filenamer import StaticFilenamer, TemplateFilenamer, get_filenamer_fn
+from fspachinko.config import DirectoryModel, FilecountModel, FilenameModel
+from fspachinko.constants import FilenameTemplate
 
 
 def test_get_filenamer_fn() -> None:

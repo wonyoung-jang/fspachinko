@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
-from ..builder import bootstrap
+from ..bootstrap import bootstrap
 from ..domain.commands import StartProcess, StopProcess
 from ..domain.events import DirectoryStarted, FileTransferred, ProcessStarted, ProcessStopped
 
 if TYPE_CHECKING:
-    from ..core import ConfigModel
+    from ..config import ConfigModel
     from ..service.messagebus import MessageBus
     from ..service.uow import AbstractUnitOfWork
 

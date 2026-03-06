@@ -33,3 +33,23 @@ class FileTransferred(Event):
 @dataclass(slots=True, frozen=True)
 class ProcessStopped(Event):
     """Event for finishing the process."""
+
+
+# Other
+
+
+@dataclass(slots=True, frozen=True)
+class FileTransferLogged(Event):
+    """Event for logging a file transfer."""
+
+    count: int
+    src: str
+    dst: str
+
+
+@dataclass(slots=True, frozen=True)
+class DirectoryLogged(Event):
+    """Event for logging a directory transfer."""
+
+    status: str
+    report: str

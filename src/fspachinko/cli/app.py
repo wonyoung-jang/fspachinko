@@ -4,27 +4,27 @@ import logging
 
 from cyclopts import App
 
-from ..builder import bootstrap
-from ..core import ConfigModel, DefaultPath, get_config_path
+from ..bootstrap import bootstrap
+from ..config import ConfigModel
+from ..constants import DefaultPath
+from ..datapaths import get_config_path
 from ..domain.commands import StartProcess
 
 logger = logging.getLogger(__name__)
 app = App(
     help="fspachinko - Random file transfer utility.",
 )
+default_config_path = get_config_path(DefaultPath.CONFIG)
 
 
 @app.default
-def run(config_path: str = "") -> None:
+def run(config_path: str = default_config_path) -> None:
     """Run the fspachinko CLI.
 
     Args:
         config_path (str): Path to configuration file.
 
     """
-    if not config_path:
-        config_path = get_config_path(DefaultPath.CONFIG)
-
     try:
         with open(config_path, encoding="utf-8") as f:
             data = f.read()

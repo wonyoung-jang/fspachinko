@@ -2,7 +2,7 @@
 
 from os.path import isabs, realpath
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from .constants import FilenameTemplate, TransferMode
 
@@ -10,10 +10,10 @@ from .constants import FilenameTemplate, TransferMode
 class FilecountModel(BaseModel):
     """Model for file count configuration."""
 
-    count: int = 10
+    count: int = Field(default=10, ge=1)
     is_rand_enabled: bool = False
-    rand_min: int = 1
-    rand_max: int = 10
+    rand_min: int = Field(default=1, ge=1)
+    rand_max: int = Field(default=10, ge=1)
 
 
 class DirectoryModel(BaseModel):

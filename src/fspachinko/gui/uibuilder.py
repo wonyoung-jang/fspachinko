@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QVBoxLayout
 
-from ..core import ConfigModel
+from ..config import ConfigModel
 from .components import (
     DestPathSelectorWidget,
     DirectoryCreateWidget,

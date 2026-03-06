@@ -9,7 +9,7 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from ..core.constants import FileError, TransferMode
+from ..constants import FileError, TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable

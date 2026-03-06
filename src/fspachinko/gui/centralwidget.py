@@ -5,7 +5,7 @@ import logging
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
-from ..core import PERCENTAGE_100, GUIName
+from ..constants import PERCENTAGE_100, GUIName
 from .loggers import setup_gui_logger
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder

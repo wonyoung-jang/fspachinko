@@ -6,7 +6,7 @@ from random import randint
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..config import FilecountModel
+    from ...config import FilecountModel
 
 
 def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:

@@ -10,7 +10,7 @@ from os.path import exists, join, split
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..core.helpers import DataPaths
+    from ..datapaths import DataPaths
 
 logger = logging.getLogger(__name__)
 
@@ -20,19 +20,6 @@ def ensure_datapaths(dp: DataPaths) -> None:
     for path in (dp.data, dp.icons, dp.configs, dp.profiles, dp.logs):
         if not exists(path):
             mkdir(path)
-
-
-def remove_directory(path: str, *, is_create_dir: bool, is_none_found: bool) -> None:
-    """Remove a directory and its contents, with error handling."""
-    if not (is_create_dir and is_none_found):
-        return
-
-    try:
-        shutil.rmtree(path)
-    except FileNotFoundError:
-        logger.exception("Directory not found for removal: %s", path)
-    except OSError:
-        logger.exception("Error occurred while removing directory: %s", path)
 
 
 @dataclass(slots=True)

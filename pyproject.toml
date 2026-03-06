@@ -7,10 +7,7 @@ license = "MIT"
 license-files = ["LICEN[CS]E*"]
 requires-python = ">=3.14"
 dependencies = [
-    "cyclopts>=4.4.5",
     "pydantic>=2.12.5",
-    "pyinstaller>=6.18.0",
-    "pyside6>=6.10.2",
 ]
 authors = [
     {name = "Wonyoung Jang"},
@@ -25,6 +22,7 @@ Issues = "https://github.com/wonyoung-jang/fspachinko/issues"
 fspachinko = "fspachinko.gui.__main__:main"
 fspachinko-gui = "fspachinko.gui.__main__:main"
 fspachinko-cli = "fspachinko.cli.__main__:main"
+fspachinko-web = "fspachinko.web.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.9.27,<0.10.0"]
@@ -37,6 +35,9 @@ min_confidence = 40
 verbose = false
 
 [dependency-groups]
+cli = [
+    "cyclopts>=4.6.0",
+]
 dev = [
     "line-profiler>=5.0.0",
     "tprof>=1.1.0",
@@ -45,7 +46,15 @@ docs = [
     "mkdocstrings-python>=2.0.1",
     "zensical>=0.0.19",
 ]
+gui = [
+    "pyinstaller>=6.19.0",
+    "pyside6>=6.10.2",
+]
 tests = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+]
+web = [
+    "fastapi[standard]>=0.135.1",
+    "uvicorn>=0.41.0",
 ]

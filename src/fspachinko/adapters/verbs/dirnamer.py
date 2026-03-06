@@ -6,7 +6,7 @@ from os.path import join
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..config import DirectoryModel
+    from ...config import DirectoryModel
 
 
 def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
@@ -18,6 +18,7 @@ def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
             return StaticDirectoryNamer(dest=dest)
 
 
+@dataclass(slots=True)
 class AbstractDirectoryNamer(ABC):
     """Class for determining the destination folder name based on the configuration."""
 

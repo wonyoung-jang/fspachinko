@@ -29,19 +29,16 @@ from PySide6.QtWidgets import (
 )
 
 from ..adapters import get_available_transfer_modes
-from ..core import (
-    ByteUnit,
+from ..config import (
     DirectoryModel,
     FilecountModel,
     FilenameModel,
-    FilenameTemplate,
-    IconFilename,
     OptionsModel,
     RangeFilterModel,
     TextFilterModel,
-    TimeUnit,
-    get_icon_path,
 )
+from ..constants import ByteUnit, FilenameTemplate, IconFilename, TimeUnit
+from ..datapaths import get_icon_path
 from .qthelpers import set_qt_name, set_qt_tips
 
 if TYPE_CHECKING:
@@ -230,7 +227,7 @@ class DirectoryCreateWidget(BaseGroupBox):
         return DirectoryModel(
             is_enabled=self.isChecked(),
             name=self.lineedit_folder_name.text(),
-            count=self.spinbox_folder_count.value() if self.isChecked() else 1,
+            count=self.spinbox_folder_count.value(),
         )
 
 

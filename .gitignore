@@ -128,3 +128,6 @@ output/
 .github/**/*.md
 tach.toml
 prek.toml
+
+# Temporary ignores
+src/*/web/

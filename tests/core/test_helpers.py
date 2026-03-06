@@ -1,7 +1,7 @@
 """Test helper functions."""
 
-from fspachinko.core.constants import StateStatus
-from fspachinko.core.helpers import convert_byte_to_human_readable_size, get_report, get_status
+from fspachinko.constants import StateStatus
+from fspachinko.helpers import convert_byte_to_human_readable_size, get_report, get_status
 
 
 def test_convert_byte_to_human_readable_size() -> None:
@@ -17,9 +17,8 @@ def test_get_status() -> None:
     assert (
         get_status(
             is_success=True,
-            is_none_found=False,
+            is_none_found_and_create_dir=False,
             is_stop_requested=False,
-            is_create_dir=False,
             is_root_locked=False,
         )
         == StateStatus.SUCCESS
@@ -28,9 +27,8 @@ def test_get_status() -> None:
     assert (
         get_status(
             is_success=False,
-            is_none_found=True,
+            is_none_found_and_create_dir=True,
             is_stop_requested=False,
-            is_create_dir=True,
             is_root_locked=False,
         )
         == StateStatus.NO_FILES_FOUND_FOLDER_DELETED
@@ -39,9 +37,8 @@ def test_get_status() -> None:
     assert (
         get_status(
             is_success=False,
-            is_none_found=True,
+            is_none_found_and_create_dir=True,
             is_stop_requested=False,
-            is_create_dir=True,
             is_root_locked=True,
         )
         == StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
@@ -50,9 +47,8 @@ def test_get_status() -> None:
     assert (
         get_status(
             is_success=False,
-            is_none_found=False,
+            is_none_found_and_create_dir=False,
             is_stop_requested=True,
-            is_create_dir=False,
             is_root_locked=False,
         )
         == StateStatus.USER_STOPPED
@@ -61,9 +57,8 @@ def test_get_status() -> None:
     assert (
         get_status(
             is_success=False,
-            is_none_found=False,
+            is_none_found_and_create_dir=False,
             is_stop_requested=False,
-            is_create_dir=False,
             is_root_locked=True,
         )
         == StateStatus.ALL_FILES_SEARCHED
@@ -72,20 +67,8 @@ def test_get_status() -> None:
     assert (
         get_status(
             is_success=False,
-            is_none_found=False,
+            is_none_found_and_create_dir=False,
             is_stop_requested=False,
-            is_create_dir=True,
-            is_root_locked=False,
-        )
-        == StateStatus.UNDEFINED
-    )
-
-    assert (
-        get_status(
-            is_success=False,
-            is_none_found=True,
-            is_stop_requested=False,
-            is_create_dir=False,
             is_root_locked=False,
         )
         == StateStatus.UNDEFINED
