@@ -49,14 +49,11 @@ def handle_finished(_: ProcessStopped, __: AbstractUnitOfWork) -> None:
     logger.debug("Processing finished.")
 
 
-EVENT_HANDLERS: dict[type[Event], list[Callable]] = {
-    ProcessStarted: [handle_process_started],
-    DirectoryStarted: [handle_directory_started],
-    FileTransferred: [handle_file_transferred],
-    ProcessStopped: [handle_finished],
-}
-
-COMMAND_HANDLERS: dict[type[Command], Callable] = {
-    StartProcess: start_process,
-    StopProcess: stop_process,
+EVENT_HANDLERS: dict[type[Event], list[type[AbstractHandler]]] = {
+    ProcessStarted: [ProcessStartedHandler],
+    DirectoryStarted: [DirectoryStartedHandler],
+    FileTransferred: [FileTransferredHandler],
+    ProcessStopped: [ProcessStoppedHandler],
+    FileTransferLogged: [FileTransferLoggedHandler],
+    DirectoryLogged: [DirectoryLoggedHandler],
 }
