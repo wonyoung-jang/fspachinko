@@ -2,6 +2,7 @@
 
 import logging
 from collections import deque
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -51,7 +52,10 @@ class MessageBus:
         logger.debug("Handling command %s", command)
         try:
             handler = self.command_handlers[type(command)]
-            handler(command, self.uow)
+            result = handler(command, self.uow)
+            if isinstance(result, Iterator):
+                for msg in result:
+                    self.handle(msg)
             self.queue.extend(self.uow.yield_new_events())
         except Exception:
             logger.exception("Exception handling command %s", command)

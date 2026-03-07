@@ -2,17 +2,17 @@
 
 import os
 
+from fspachinko.adapters.dirnamer import StaticDirectoryNamer, UniqueDirectoryNamer, get_dirname_fn
+from fspachinko.adapters.filecounter import RandomFileCounter, StaticFileCounter, get_filecount_fn
+from fspachinko.adapters.filenamer import StaticFilenamer, TemplateFilenamer, get_filenamer_fn
 from fspachinko.adapters.transfer import AbstractTransfer, TransferMode, get_transfer_fn
-from fspachinko.adapters.verbs.dirnamer import StaticDirectoryNamer, UniqueDirectoryNamer, get_dirname_fn
-from fspachinko.adapters.verbs.filecounter import RandomFileCounter, StaticFileCounter, get_filecount_fn
-from fspachinko.adapters.verbs.filenamer import StaticFilenamer, TemplateFilenamer, get_filenamer_fn
 from fspachinko.config import DirectoryModel, FilecountModel, FilenameModel
 from fspachinko.constants import FilenameTemplate
 
 
 def test_get_filenamer_fn() -> None:
     """Test get_filenamer_fn."""
-    m = FilenameModel(is_enabled=False, template="")
+    m = FilenameModel(is_enabled=False, template=" ")
     filenamer = get_filenamer_fn(m)
     assert isinstance(filenamer, StaticFilenamer)
 
@@ -30,12 +30,12 @@ def test_get_dirname_fn() -> None:
     m = DirectoryModel(is_enabled=False, name="")
     dirname_fn = get_dirname_fn(m, dest="dest")
     assert isinstance(dirname_fn, StaticDirectoryNamer)
-    assert dirname_fn() == "dest"
+    assert dirname_fn.gen_dir_name() == "dest"
 
     m = DirectoryModel(is_enabled=True, name="test")
     dirname_fn = get_dirname_fn(m, dest="dest")
     assert isinstance(dirname_fn, UniqueDirectoryNamer)
-    assert dirname_fn() == os.path.join("dest", "test")
+    assert dirname_fn.gen_dir_name() == os.path.join("dest", "test")
 
 
 def test_get_filecount_fn() -> None:
@@ -43,12 +43,12 @@ def test_get_filecount_fn() -> None:
     m = FilecountModel(is_rand_enabled=False, count=5, rand_min=1, rand_max=10)
     filecount_fn = get_filecount_fn(m)
     assert isinstance(filecount_fn, StaticFileCounter)
-    assert filecount_fn() == 5
+    assert filecount_fn.gen_file_count() == 5
 
     m = FilecountModel(is_rand_enabled=True, count=5, rand_min=1, rand_max=10)
     filecount_fn = get_filecount_fn(m)
     assert isinstance(filecount_fn, RandomFileCounter)
-    assert 1 <= filecount_fn() <= 10
+    assert 1 <= filecount_fn.gen_file_count() <= 10
 
 
 def test_get_transfer_fn() -> None:

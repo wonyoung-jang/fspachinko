@@ -5,15 +5,16 @@ from random import seed
 from typing import TYPE_CHECKING
 
 from .adapters import ConcreteLoggingPort
+from .adapters.dirnamer import get_dirname_fn
+from .adapters.filecounter import get_filecount_fn
+from .adapters.filefilter import get_filefilter_fn
+from .adapters.filenamer import get_filenamer_fn
 from .adapters.filesystemport import ConcreteFilesystemPort
+from .adapters.pipeline import TransferPipeline
 from .adapters.transfer import get_transfer_fn
-from .adapters.verbs.dirnamer import get_dirname_fn
-from .adapters.verbs.filecounter import get_filecount_fn
-from .adapters.verbs.filefilter import get_filefilter_fn
-from .adapters.verbs.filenamer import get_filenamer_fn
 from .adapters.walker import get_walker_fn
-from .domain.model import DiversityQuota, TransferPipeline
-from .service.handlers import COMMAND_HANDLERS, EVENT_HANDLERS, MultipleDirectoryProcess
+from .domain.model import DiversityQuota
+from .service.handlers import COMMAND_HANDLERS, EVENT_HANDLERS, Engine
 from .service.messagebus import MessageBus
 from .service.uow import AbstractUnitOfWork, InMemoryUnitOfWork
 
@@ -32,6 +33,7 @@ def bootstrap(
     seed(m.options.rng_seed)
 
     quota = DiversityQuota(
+        root=m.root,
         max_per_dir=m.options.max_per_dir,
         unique_files_only=m.options.is_create_unique_dirs,
     )
@@ -47,8 +49,7 @@ def bootstrap(
         transfer_fn=get_transfer_fn(m.options.transfer_mode),
         walker_fn=get_walker_fn(m.root, should_follow_symlink=m.options.should_follow_symlink),
     )
-    engine = MultipleDirectoryProcess(
-        root=m.root,
+    engine = Engine(
         dir_count=m.directory.count if is_create_dir else 1,
         is_create_dir=is_create_dir,
         pipeline=pipeline,

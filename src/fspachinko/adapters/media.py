@@ -13,16 +13,19 @@ DURATION_CMD = [
     "format=duration",
     "-of",
     "default=noprint_wrappers=1:nokey=1",
-    "",
 ]
 
 
 def get_duration(path: str) -> float:
     """Get the duration of a media file."""
     try:
-        cmd = DURATION_CMD
-        cmd[-1] = path
-        completed_proc = subprocess.run(cmd, timeout=5, check=True, encoding="utf-8", stdout=subprocess.PIPE)
+        completed_proc = subprocess.run(
+            [*DURATION_CMD, path],
+            timeout=5,
+            check=True,
+            encoding="utf-8",
+            stdout=subprocess.PIPE,
+        )
         return float(completed_proc.stdout.strip())
     except ValueError:
         logger.exception("ffprobe output could not be parsed as float: %s", completed_proc)

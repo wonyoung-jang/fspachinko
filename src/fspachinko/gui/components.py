@@ -269,7 +269,7 @@ class FilenamerWidget(BaseGroupBox):
         """Return clean data for the config."""
         return FilenameModel(
             is_enabled=self.isChecked(),
-            template=self.edit_template.text().strip() or "{original}",
+            template=self.edit_template.text() or "{original}",
         )
 
 

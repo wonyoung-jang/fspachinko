@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from os.path import basename, split
 from typing import TYPE_CHECKING
 
-from ...constants import INVALID_FILENAME_CHARS, FilenameTemplate, FilenameTemplateMapKey
+from ..constants import INVALID_FILENAME_CHARS, FilenameTemplate, FilenameTemplateMapKey
 
 if TYPE_CHECKING:
-    from ...config import FilenameModel
-    from ...domain.model import FSEntry
+    from ..config import FilenameModel
+    from ..domain.model import FSEntry
 
 
 def get_filenamer_fn(m: FilenameModel) -> AbstractFilenamer:
@@ -26,7 +26,7 @@ class AbstractFilenamer(ABC):
     """Abstract class for file naming."""
 
     @abstractmethod
-    def __call__(self, entry: FSEntry, count: int) -> str:
+    def gen_name(self, entry: FSEntry, count: int) -> str:
         """Calculate the destination file stem based on template configuration."""
 
 
@@ -34,7 +34,7 @@ class AbstractFilenamer(ABC):
 class StaticFilenamer(AbstractFilenamer):
     """Filenamer that returns the original file name."""
 
-    def __call__(self, entry: FSEntry, count: int) -> str:
+    def gen_name(self, entry: FSEntry, count: int) -> str:
         """Return the original file name."""
         return entry.stem
 
@@ -45,7 +45,7 @@ class TemplateFilenamer(AbstractFilenamer):
 
     template: str
 
-    def __call__(self, entry: FSEntry, count: int) -> str:
+    def gen_name(self, entry: FSEntry, count: int) -> str:
         """Calculate the destination file stem based on template configuration."""
         mapping = self.SafeDict(
             {

@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import logging
+from time import perf_counter
 
 from .constants import BytesIn, ByteUnit, StateStatus
 
@@ -37,8 +38,10 @@ def get_status(
     return StateStatus.UNDEFINED
 
 
-def get_report(path: str, size_str: str, runtime_str: str, count: int, target_qty: int) -> str:
+def get_report(path: str, size: int, start_time: float, count: int, target_qty: int) -> str:
     """Generate a summary report string."""
+    runtime_str = f"{perf_counter() - start_time:.2f}s"
+    size_str = convert_byte_to_human_readable_size(size)
     return (
         "------------------------------------------------------------------------\n"
         f"{count}/{target_qty} files transferred\n"

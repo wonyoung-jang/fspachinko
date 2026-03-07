@@ -8,14 +8,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from ..domain.events import Event
-    from ..service.handlers import MultipleDirectoryProcess
+    from ..service.handlers import Engine
 
 
 @dataclass(slots=True)
 class AbstractUnitOfWork(ABC):
     """Abstract Unit of Work."""
 
-    engine: MultipleDirectoryProcess
+    engine: Engine
 
     def __enter__(self) -> Self:
         """Enter the runtime context related to this object."""
@@ -54,7 +54,6 @@ class InMemoryUnitOfWork(AbstractUnitOfWork):
     def __exit__(self, *args: object) -> None:
         """Exit the runtime context related to this object."""
         super().__exit__(*args)
-        self.rollback()
 
     def _commit(self) -> None:
         """Commit the transaction."""

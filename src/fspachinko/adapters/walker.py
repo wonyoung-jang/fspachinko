@@ -26,7 +26,7 @@ class AbstractFSWalker(ABC):
     """Abstract file system walker."""
 
     @abstractmethod
-    def __call__(self) -> Iterator[FSEntry]:
+    def walk(self) -> Iterator[FSEntry]:
         """Generate candidates for a given directory."""
 
 
@@ -46,7 +46,7 @@ class PachinkoFSWalker(AbstractFSWalker):
         """Initialize the board with the root pin."""
         self.get(self.root)
 
-    def __call__(self) -> Iterator[FSEntry]:
+    def walk(self) -> Iterator[FSEntry]:
         """Iterate through FSEntry objects."""
         root = self.root
         curr = self.root

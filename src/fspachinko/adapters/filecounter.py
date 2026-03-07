@@ -6,7 +6,7 @@ from random import randint
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...config import FilecountModel
+    from ..config import FilecountModel
 
 
 def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:
@@ -23,7 +23,7 @@ class AbstractFileCounter(ABC):
     """Class for generating file counts based on configuration."""
 
     @abstractmethod
-    def __call__(self) -> int:
+    def gen_file_count(self) -> int:
         """Generate a file count."""
 
 
@@ -33,7 +33,7 @@ class StaticFileCounter(AbstractFileCounter):
 
     count: int
 
-    def __call__(self) -> int:
+    def gen_file_count(self) -> int:
         """Return the fixed file count."""
         return self.count
 
@@ -45,6 +45,6 @@ class RandomFileCounter(AbstractFileCounter):
     rand_min: int
     rand_max: int
 
-    def __call__(self) -> int:
+    def gen_file_count(self) -> int:
         """Return a random file count within the specified range."""
         return randint(self.rand_min, self.rand_max)

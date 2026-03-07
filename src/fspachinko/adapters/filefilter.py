@@ -6,12 +6,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ...constants import SIZE_MAP, TIME_MAP, ReStrFmt
-from ..media import get_duration
+from ..constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from .media import get_duration
 
 if TYPE_CHECKING:
-    from ...config import ConfigModel, RangeFilterModel, TextFilterModel
-    from ...domain.model import FSEntry
+    from ..config import ConfigModel, RangeFilterModel, TextFilterModel
+    from ..domain.model import FSEntry
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class AbstractFileFilter(ABC):
     """Abstract class for validating files based on filter configuration."""
 
     @abstractmethod
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
 
 
@@ -52,7 +52,7 @@ class AbstractFileFilter(ABC):
 class NoOpFileFilter(AbstractFileFilter):
     """Class for validating files based on filter configuration."""
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
         return True
 
@@ -63,9 +63,9 @@ class SingularFileFilter(AbstractFileFilter):
 
     filter: Filter
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return self.filter(e)
+        return self.filter.is_valid(e)
 
 
 @dataclass(slots=True)
@@ -74,9 +74,9 @@ class CompositeFileFilter(AbstractFileFilter):
 
     filters: tuple[Filter, ...]
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filters."""
-        return all(f(e) for f in self.filters)
+        return all(f.is_valid(e) for f in self.filters)
 
 
 # Individualized filter classes
@@ -89,7 +89,7 @@ class Filter(ABC):
     call: TextFilterFn | RangeFilterFn
 
     @abstractmethod
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Check if a file is valid based on the current filter."""
 
 
@@ -104,27 +104,27 @@ class TextFilter(Filter):
 class DirnameFilter(TextFilter):
     """Filter for parent directory names."""
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Filter the parent directory name."""
-        return self.call(e.parent)
+        return self.call.is_valid(e.parent)
 
 
 @dataclass(slots=True)
 class KeywordFilter(TextFilter):
     """Filter for filename keywords."""
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Filter the filename stem against keywords."""
-        return self.call(e.stem)
+        return self.call.is_valid(e.stem)
 
 
 @dataclass(slots=True)
 class ExtensionFilter(TextFilter):
     """Filter for file extensions."""
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Filter the file extension."""
-        return self.call(e.ext)
+        return self.call.is_valid(e.ext)
 
 
 @dataclass(slots=True)
@@ -138,18 +138,18 @@ class RangeFilter(Filter):
 class FilesizeFilter(RangeFilter):
     """Filter for file size."""
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Filter the file size."""
-        return self.call(e.size)
+        return self.call.is_valid(e.size)
 
 
 @dataclass(slots=True)
 class DurationFilter(RangeFilter):
     """Filter for file duration."""
 
-    def __call__(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Filter the file duration."""
-        return self.call(get_duration(e.path))
+        return self.call.is_valid(get_duration(e.path))
 
 
 # Text based filter classes
@@ -179,7 +179,7 @@ class TextFilterFn(ABC):
     """Class for filtering files based on text criteria."""
 
     @abstractmethod
-    def __call__(self, part: str) -> bool:
+    def is_valid(self, part: str) -> bool:
         """Filter based on text criteria."""
 
 
@@ -194,7 +194,7 @@ class MultipleTextFilterFn(TextFilterFn):
 class IncludeTextFilter(MultipleTextFilterFn):
     """Include filter for text criteria."""
 
-    def __call__(self, part: str) -> bool:
+    def is_valid(self, part: str) -> bool:
         """Return True if any pattern matches the text part."""
         return any(p.search(part) for p in self.patterns)
 
@@ -203,7 +203,7 @@ class IncludeTextFilter(MultipleTextFilterFn):
 class ExcludeTextFilter(MultipleTextFilterFn):
     """Exclude filter for text criteria."""
 
-    def __call__(self, part: str) -> bool:
+    def is_valid(self, part: str) -> bool:
         """Return True if no patterns match the text part."""
         return not any(p.search(part) for p in self.patterns)
 
@@ -219,7 +219,7 @@ class SingularTextFilterFn(TextFilterFn):
 class IncludeTextFilterSingular(SingularTextFilterFn):
     """Include filter for a single text criteria."""
 
-    def __call__(self, part: str) -> bool:
+    def is_valid(self, part: str) -> bool:
         """Return True if the pattern matches the text part."""
         return self.pattern.search(part) is not None
 
@@ -228,7 +228,7 @@ class IncludeTextFilterSingular(SingularTextFilterFn):
 class ExcludeTextFilterSingular(SingularTextFilterFn):
     """Exclude filter for a single text criteria."""
 
-    def __call__(self, part: str) -> bool:
+    def is_valid(self, part: str) -> bool:
         """Return True if the pattern does not match the text part."""
         return self.pattern.search(part) is None
 
@@ -258,7 +258,7 @@ class RangeFilterFn(ABC):
     """Class for filtering files based on a minimum and maximum value."""
 
     @abstractmethod
-    def __call__(self, val: float) -> bool:
+    def is_valid(self, val: float) -> bool:
         """Check if a value is within the minimum and maximum range."""
 
 
@@ -269,7 +269,7 @@ class RangeMinMaxFilterFn(RangeFilterFn):
     minimum: float
     maximum: float
 
-    def __call__(self, val: float) -> bool:
+    def is_valid(self, val: float) -> bool:
         """Check if a value is within the minimum and maximum range."""
         return self.minimum <= val <= self.maximum
 
@@ -280,7 +280,7 @@ class RangeMinFilterFn(RangeFilterFn):
 
     minimum: float
 
-    def __call__(self, val: float) -> bool:
+    def is_valid(self, val: float) -> bool:
         """Check if a value is greater than or equal to the minimum."""
         return val >= self.minimum
 
@@ -291,6 +291,6 @@ class RangeMaxFilterFn(RangeFilterFn):
 
     maximum: float
 
-    def __call__(self, val: float) -> bool:
+    def is_valid(self, val: float) -> bool:
         """Check if a value is less than or equal to the maximum."""
         return val <= self.maximum

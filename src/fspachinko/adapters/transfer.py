@@ -57,7 +57,7 @@ class AbstractTransfer(ABC):
     """Abstract base class for file transfer strategies."""
 
     @abstractmethod
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Perform the file transfer operation."""
 
 
@@ -65,7 +65,7 @@ class AbstractTransfer(ABC):
 class DryRunTransfer(AbstractTransfer):
     """Represents a dry-run file transfer operation."""
 
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Do nothing (dry-run)."""
 
 
@@ -73,7 +73,7 @@ class DryRunTransfer(AbstractTransfer):
 class CopyTransfer(AbstractTransfer):
     """Represents a copy file transfer operation."""
 
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Copy the file from source to destination."""
         copy(src, dst)
 
@@ -82,7 +82,7 @@ class CopyTransfer(AbstractTransfer):
 class CopyPreserveTransfer(AbstractTransfer):
     """Represents a copy with metadata preservation file transfer operation."""
 
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Copy the file from source to destination while preserving metadata."""
         copy2(src, dst)
 
@@ -91,7 +91,7 @@ class CopyPreserveTransfer(AbstractTransfer):
 class MoveTransfer(AbstractTransfer):
     """Represents a move file transfer operation."""
 
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Move the file from source to destination."""
         move(src, dst)
 
@@ -100,7 +100,7 @@ class MoveTransfer(AbstractTransfer):
 class SymlinkTransfer(AbstractTransfer):
     """Represents a symbolic link file transfer operation."""
 
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Create a symbolic link from source to destination."""
         symlink(src, dst)
 
@@ -109,7 +109,7 @@ class SymlinkTransfer(AbstractTransfer):
 class HardlinkTransfer(AbstractTransfer):
     """Represents a hard link file transfer operation."""
 
-    def __call__(self, src: str, dst: str) -> None:
+    def transfer(self, src: str, dst: str) -> None:
         """Create a hardlink from source to destination."""
         try:
             link(src, dst)

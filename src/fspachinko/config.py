@@ -28,7 +28,7 @@ class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     is_enabled: bool = False
-    template: str = FilenameTemplate.ORIGINAL
+    template: str = Field(default=FilenameTemplate.ORIGINAL, min_length=1)
 
 
 class TextFilterModel(BaseModel):

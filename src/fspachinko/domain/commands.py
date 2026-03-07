@@ -16,11 +16,3 @@ class StartProcess(Command):
 @dataclass(slots=True, frozen=True)
 class StopProcess(Command):
     """Command to stop the file transfer process."""
-
-
-@dataclass(slots=True, frozen=True)
-class CreateFilenamer(Command):
-    """Command to create a filenamer instance."""
-
-    is_enabled: bool
-    template: str

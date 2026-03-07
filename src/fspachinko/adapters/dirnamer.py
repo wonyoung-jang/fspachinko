@@ -6,7 +6,7 @@ from os.path import join
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...config import DirectoryModel
+    from ..config import DirectoryModel
 
 
 def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
@@ -23,7 +23,7 @@ class AbstractDirectoryNamer(ABC):
     """Class for determining the destination folder name based on the configuration."""
 
     @abstractmethod
-    def __call__(self) -> str:
+    def gen_dir_name(self) -> str:
         """Return the destination folder name."""
 
 
@@ -34,7 +34,7 @@ class UniqueDirectoryNamer(AbstractDirectoryNamer):
     dest: str
     name: str
 
-    def __call__(self) -> str:
+    def gen_dir_name(self) -> str:
         """Return a unique destination folder name."""
         return join(self.dest, self.name)
 
@@ -45,6 +45,6 @@ class StaticDirectoryNamer(AbstractDirectoryNamer):
 
     dest: str
 
-    def __call__(self) -> str:
+    def gen_dir_name(self) -> str:
         """Return the static destination folder name."""
         return self.dest
