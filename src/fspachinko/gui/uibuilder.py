@@ -1,47 +1,43 @@
 """Main module."""
 
 import logging
-from dataclasses import dataclass, field
 
 from PySide6.QtWidgets import QVBoxLayout
 
-from ..config import ConfigModel
+from ..constants import ByteUnit, TimeUnit
 from .components import (
-    DestPathSelectorWidget,
     DirectoryCreateWidget,
-    DirnameFilterWidget,
-    DurationFilterWidget,
-    ExtensionFilterWidget,
     FileCountWidget,
     FilenamerWidget,
-    KeywordFilterWidget,
     LogWidget,
     OptionsWidget,
+    PathSelectorWidget,
     ProgressWidget,
-    RootPathSelectorWidget,
-    SizeFilterWidget,
+    RangeFilterWidget,
+    TextFilterWidget,
 )
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
 class UIBuilder:
     """Main Widget Builder."""
 
-    root: RootPathSelectorWidget = field(default_factory=RootPathSelectorWidget)
-    dest: DestPathSelectorWidget = field(default_factory=DestPathSelectorWidget)
-    filecount: FileCountWidget = field(default_factory=FileCountWidget)
-    dircreator: DirectoryCreateWidget = field(default_factory=DirectoryCreateWidget)
-    filenamer: FilenamerWidget = field(default_factory=FilenamerWidget)
-    dirname_filter: DirnameFilterWidget = field(default_factory=DirnameFilterWidget)
-    keyword_filter: KeywordFilterWidget = field(default_factory=KeywordFilterWidget)
-    extension_filter: ExtensionFilterWidget = field(default_factory=ExtensionFilterWidget)
-    filesize_filter: SizeFilterWidget = field(default_factory=SizeFilterWidget)
-    duration_filter: DurationFilterWidget = field(default_factory=DurationFilterWidget)
-    options: OptionsWidget = field(default_factory=OptionsWidget)
-    progress: ProgressWidget = field(default_factory=ProgressWidget)
-    logging: LogWidget = field(default_factory=LogWidget)
+    def __init__(self) -> None:
+        """Initialize the main widget builder."""
+        self.root = PathSelectorWidget("Root", "root")
+        self.dest = PathSelectorWidget("Destination", "dest")
+        self.filecount = FileCountWidget()
+        self.dircreator = DirectoryCreateWidget()
+        self.filenamer = FilenamerWidget()
+        self.dirname_filter = TextFilterWidget("Directory name", "dirname_filter")
+        self.keyword_filter = TextFilterWidget("Keyword", "keyword_filter")
+        self.extension_filter = TextFilterWidget("Extension", "extension_filter")
+        self.filesize_filter = RangeFilterWidget("File Size", "filesize", tuple(ByteUnit))
+        self.duration_filter = RangeFilterWidget("Duration", "duration", tuple(TimeUnit))
+        self.options = OptionsWidget()
+        self.logging = LogWidget()
+        self.progress = ProgressWidget()
 
     def build(self) -> QVBoxLayout:
         """Set up the main UI layouts."""
@@ -60,23 +56,3 @@ class UIBuilder:
         layout.addWidget(self.logging)
         layout.addWidget(self.progress)
         return layout
-
-    def get_config(self) -> ConfigModel:
-        """Get the current configuration from all widgets."""
-        try:
-            return ConfigModel(
-                root=self.root.get_config(),
-                dest=self.dest.get_config(),
-                filecount=self.filecount.get_config(),
-                directory=self.dircreator.get_config(),
-                filename=self.filenamer.get_config(),
-                dirname=self.dirname_filter.get_config(),
-                keyword=self.keyword_filter.get_config(),
-                extension=self.extension_filter.get_config(),
-                filesize=self.filesize_filter.get_config(),
-                duration=self.duration_filter.get_config(),
-                options=self.options.get_config(),
-            )
-        except Exception:
-            logger.exception("Failed to get configuration from UI.")
-            raise

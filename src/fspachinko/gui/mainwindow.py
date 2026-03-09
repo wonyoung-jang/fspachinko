@@ -43,7 +43,6 @@ class MainWindow(QMainWindow):
         self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
         self._actions.file.load.triggered.connect(self.open_profile_dialog)
         self._actions.file.exit.triggered.connect(self.close)
-
         self._actions.run.start.triggered.connect(self.central_widget.on_start)
         self._actions.run.stop.triggered.connect(self.central_widget.on_stop)
 
@@ -54,7 +53,6 @@ class MainWindow(QMainWindow):
 
         file_menu = menubar.addMenu(GUILabel.FILEMENU)
         set_qt_name(file_menu, GUIName.FILEMENU)
-
         file_menu.addAction(self._actions.file.save)
         file_menu.addAction(self._actions.file.save_as)
         file_menu.addAction(self._actions.file.load)
@@ -65,7 +63,6 @@ class MainWindow(QMainWindow):
 
         run_menu = menubar.addMenu(GUILabel.RUNMENU)
         set_qt_name(run_menu, GUIName.RUNMENU)
-
         run_menu.addAction(self._actions.run.start)
         run_menu.addAction(self._actions.run.stop)
 
@@ -73,7 +70,6 @@ class MainWindow(QMainWindow):
         """Initialize the toolbar."""
         toolbar = QToolBar(GUIName.TOOLBAR)
         set_qt_name(toolbar, GUIName.TOOLBAR)
-
         toolbar.addAction(self._actions.file.save)
         toolbar.addAction(self._actions.file.save_as)
         toolbar.addAction(self._actions.file.load)
@@ -83,14 +79,12 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._actions.run.stop)
         toolbar.addSeparator()
         toolbar.addAction(self._actions.file.exit)
-
         self.addToolBar(toolbar)
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
         statusbar = QStatusBar(self, sizeGripEnabled=True)
         set_qt_name(statusbar, GUIName.STATUSBAR)
-
         self.setStatusBar(statusbar)
 
     def init_settings(self) -> None:
@@ -99,7 +93,7 @@ class MainWindow(QMainWindow):
         self.restoreState(self.qsettings.value(GUISettingsKey.STATE))
         self.profiles.set(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
         self.profiles.open(self)
-        self.reset_window_title()
+        self.setWindowTitle(get_window_title(self.profiles.path))
 
     @Slot()
     def save_profile(self) -> None:
@@ -118,7 +112,7 @@ class MainWindow(QMainWindow):
         if filename:
             self.profiles.set(filename)
             self.save_profile()
-            self.reset_window_title()
+            self.setWindowTitle(get_window_title(self.profiles.path))
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -132,13 +126,7 @@ class MainWindow(QMainWindow):
         if filename:
             self.profiles.set(filename)
             self.profiles.open(self)
-            self.reset_window_title()
-
-    @Slot()
-    def reset_window_title(self) -> None:
-        """Update the window title based on the current profile."""
-        profile_stem, _ = splitext(basename(self.profiles.path))
-        self.setWindowTitle(f"{profile_stem} - {GUITitle.WINDOW}")
+            self.setWindowTitle(get_window_title(self.profiles.path))
 
     def save_settings(self) -> None:
         """Save GUI settings on close."""
@@ -152,3 +140,11 @@ class MainWindow(QMainWindow):
         if self._actions.file.autosave.isChecked():
             self.save_profile()
         super().closeEvent(event)
+
+
+def get_window_title(path: str, title: str = GUITitle.WINDOW) -> str:
+    """Generate a window title based on the profile path."""
+    if path:
+        profile_stem, _ = splitext(basename(path))
+        return f"{profile_stem} - {title}"
+    return title

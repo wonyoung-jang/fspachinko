@@ -29,14 +29,6 @@ from PySide6.QtWidgets import (
 )
 
 from ..adapters import get_available_transfer_modes
-from ..config import (
-    DirectoryModel,
-    FilecountModel,
-    FilenameModel,
-    OptionsModel,
-    RangeFilterModel,
-    TextFilterModel,
-)
 from ..constants import ByteUnit, FilenameTemplate, IconFilename, TimeUnit
 from ..datapaths import get_icon_path
 from .qthelpers import set_qt_name, set_qt_tips
@@ -126,25 +118,10 @@ class PathSelectorWidget(BaseGroupBox):
         except Exception:
             logger.exception("Failed to open path %s", self.lbl_selected.text())
 
-    def get_config(self) -> str:
+    @property
+    def config(self) -> str:
         """Return clean data for the config."""
         return self.lbl_selected.text()
-
-
-class RootPathSelectorWidget(PathSelectorWidget):
-    """Handles logic for selecting a root path."""
-
-    def __init__(self) -> None:
-        """Initialize the root path selector widget."""
-        super().__init__(title="Root", name="root")
-
-
-class DestPathSelectorWidget(PathSelectorWidget):
-    """Handles logic for selecting a destination path."""
-
-    def __init__(self) -> None:
-        """Initialize the destination path selector widget."""
-        super().__init__(title="Destination", name="dest")
 
 
 class FileCountWidget(BaseGroupBox):
@@ -193,14 +170,15 @@ class FileCountWidget(BaseGroupBox):
         layout.addWidget(self.spin_min_rand, 1, 1)
         layout.addWidget(self.spin_max_rand, 2, 1)
 
-    def get_config(self) -> FilecountModel:
+    @property
+    def config(self) -> dict:
         """Return clean data for the config."""
-        return FilecountModel(
-            count=self.spin_fixed.value(),
-            is_rand_enabled=self.radio_rand.isChecked(),
-            rand_min=self.spin_min_rand.value(),
-            rand_max=self.spin_max_rand.value(),
-        )
+        return {
+            "count": self.spin_fixed.value(),
+            "is_rand_enabled": self.radio_rand.isChecked(),
+            "rand_min": self.spin_min_rand.value(),
+            "rand_max": self.spin_max_rand.value(),
+        }
 
 
 class DirectoryCreateWidget(BaseGroupBox):
@@ -222,13 +200,14 @@ class DirectoryCreateWidget(BaseGroupBox):
         layout.addWidget(self.spinbox_folder_count)
         layout.addWidget(self.lineedit_folder_name)
 
-    def get_config(self) -> DirectoryModel:
+    @property
+    def config(self) -> dict:
         """Return clean data for the config."""
-        return DirectoryModel(
-            is_enabled=self.isChecked(),
-            name=self.lineedit_folder_name.text(),
-            count=self.spinbox_folder_count.value(),
-        )
+        return {
+            "is_enabled": self.isChecked(),
+            "name": self.lineedit_folder_name.text(),
+            "count": self.spinbox_folder_count.value(),
+        }
 
 
 class FilenamerWidget(BaseGroupBox):
@@ -265,12 +244,13 @@ class FilenamerWidget(BaseGroupBox):
         self.edit_template.insert(tag)
         self.edit_template.setFocus()
 
-    def get_config(self) -> FilenameModel:
+    @property
+    def config(self) -> dict:
         """Return clean data for the config."""
-        return FilenameModel(
-            is_enabled=self.isChecked(),
-            template=self.edit_template.text() or "{original}",
-        )
+        return {
+            "is_enabled": self.isChecked(),
+            "template": self.edit_template.text() or "{original}",
+        }
 
 
 class TextFilterWidget(BaseGroupBox):
@@ -300,37 +280,14 @@ class TextFilterWidget(BaseGroupBox):
         layout.addWidget(self.filter_include_radio)
         layout.addWidget(self.filter_exclude_radio)
 
-    def get_config(self) -> TextFilterModel:
+    @property
+    def config(self) -> dict:
         """Return clean data for the config."""
-        return TextFilterModel(
-            is_enabled=self.isChecked(),
-            should_include=self.filter_include_radio.isChecked(),
-            text=self.filter_edit.text(),
-        )
-
-
-class DirnameFilterWidget(TextFilterWidget):
-    """Handles the Include/Exclude pattern for directory names."""
-
-    def __init__(self) -> None:
-        """Initialize the directory filter widget."""
-        super().__init__(title="Directory name", name="directory_name_filter")
-
-
-class ExtensionFilterWidget(TextFilterWidget):
-    """Handles the Include/Exclude pattern for file extensions."""
-
-    def __init__(self) -> None:
-        """Initialize the extensions filter widget."""
-        super().__init__(title="Extensions", name="extension")
-
-
-class KeywordFilterWidget(TextFilterWidget):
-    """Handles the Include/Exclude pattern for keywords."""
-
-    def __init__(self) -> None:
-        """Initialize the keywords filter widget."""
-        super().__init__(title="Keywords", name="keyword")
+        return {
+            "is_enabled": self.isChecked(),
+            "should_include": self.filter_include_radio.isChecked(),
+            "text": self.filter_edit.text(),
+        }
 
 
 class RangeFilterWidget(BaseGroupBox):
@@ -361,30 +318,15 @@ class RangeFilterWidget(BaseGroupBox):
         layout.addWidget(self.spin_max)
         layout.addWidget(self.combo_unit)
 
-    def get_config(self) -> RangeFilterModel:
+    @property
+    def config(self) -> dict:
         """Return clean data for the config."""
-        return RangeFilterModel(
-            is_enabled=self.isChecked(),
-            minimum=self.spin_min.value(),
-            maximum=self.spin_max.value(),
-            unit=self.combo_unit.currentText(),
-        )
-
-
-class SizeFilterWidget(RangeFilterWidget):
-    """Handles logic for size range filter."""
-
-    def __init__(self) -> None:
-        """Initialize the size filter widget."""
-        super().__init__(title="File Size", name="filesize", items=tuple(ByteUnit))
-
-
-class DurationFilterWidget(RangeFilterWidget):
-    """Handles logic for duration range filter."""
-
-    def __init__(self) -> None:
-        """Initialize the duration filter widget."""
-        super().__init__(title="Duration", name="duration", items=tuple(TimeUnit))
+        return {
+            "is_enabled": self.isChecked(),
+            "minimum": self.spin_min.value(),
+            "maximum": self.spin_max.value(),
+            "unit": self.combo_unit.currentText(),
+        }
 
 
 class OptionsWidget(BaseGroupBox):
@@ -427,15 +369,33 @@ class OptionsWidget(BaseGroupBox):
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
         layout.addRow("Random seed", self.rng_seed)
 
-    def get_config(self) -> OptionsModel:
+    @property
+    def config(self) -> dict:
         """Return clean data for the config."""
-        return OptionsModel(
-            transfer_mode=self.combo_mode.currentText(),
-            max_per_dir=self.spin_max_per_folder.value(),
-            is_create_unique_dirs=self.chk_unique_folders.isChecked(),
-            should_follow_symlink=self.chk_follow_symlink.isChecked(),
-            rng_seed=self.rng_seed.text() or None,
-        )
+        return {
+            "transfer_mode": self.combo_mode.currentText(),
+            "max_per_dir": self.spin_max_per_folder.value(),
+            "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
+            "should_follow_symlink": self.chk_follow_symlink.isChecked(),
+            "rng_seed": self.rng_seed.text() or None,
+        }
+
+
+class LogWidget(QWidget):
+    """Log widget."""
+
+    def __init__(self, name: str = "logging") -> None:
+        """Initiralize the log widget."""
+        super().__init__()
+        set_qt_name(self, name)
+
+        self.textbrowser_log = QTextBrowser()
+        self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        set_qt_name(self.textbrowser_log, f"{name}_log")
+        set_qt_tips(self.textbrowser_log, "Log for output messages.")
+
+        layout = QHBoxLayout(self)
+        layout.addWidget(self.textbrowser_log)
 
 
 class ProgressWidget(QWidget):
@@ -468,20 +428,3 @@ class ProgressWidget(QWidget):
         """Start processing a directory."""
         self.progbar_dirs.setValue(idx)
         self.progbar_files.setMaximum(nfiles)
-
-
-class LogWidget(QWidget):
-    """Log widget."""
-
-    def __init__(self, name: str = "logging") -> None:
-        """Initiralize the log widget."""
-        super().__init__()
-        set_qt_name(self, name)
-
-        self.textbrowser_log = QTextBrowser()
-        self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-        set_qt_name(self.textbrowser_log, f"{name}_log")
-        set_qt_tips(self.textbrowser_log, "Log for output messages.")
-
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.textbrowser_log)
