@@ -1,5 +1,6 @@
 """Random file system navigator."""
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import scandir
@@ -11,6 +12,8 @@ from ..domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+logger = logging.getLogger(__name__)
 
 
 def get_walker_fn(root: str, *, should_follow_symlink: bool) -> AbstractFSWalker:
@@ -105,6 +108,8 @@ class PachinkoFSWalker(AbstractFSWalker):
                                 )
                             )
                     except OSError:
+                        logger.debug("Error accessing entry %s, skipping.", e.path)
                         continue
         except OSError:
+            logger.debug("Error scanning directory %s, skipping.", pin.path)
             return

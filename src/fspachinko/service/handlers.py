@@ -1,11 +1,9 @@
 """Handlers module."""
 
 import logging
-from collections import deque
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..domain.commands import StartProcess, StopProcess
+from ..domain.commands import ProcessDirectory, StartProcess, StopProcess
 from ..domain.events import (
     DirectoryLogged,
     DirectoryStarted,
@@ -15,13 +13,12 @@ from ..domain.events import (
     ProcessStarted,
     ProcessStopped,
 )
-from ..domain.model import DestinationDirectory, DiversityQuota
+from ..domain.model import DestinationDirectory
 from ..helpers import get_status
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from ..adapters.pipeline import TransferPipeline
     from ..domain.commands import Command
     from .uow import AbstractUnitOfWork
 
@@ -30,23 +27,66 @@ logger = logging.getLogger(__name__)
 type Message = Command | Event
 
 
-def start_process(_: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Message]:
+def start_process(cmd: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Message]:
     """Handle the StartProcessCommand."""
-    with uow:
-        yield from uow.engine.start_process()
-        uow.commit()
+    yield ProcessStarted(dir_count=cmd.dir_count)
+    for di in range(1, cmd.dir_count + 1):
+        target_qty = uow.pipeline.get_file_count()
+        yield ProcessDirectory(di=di, target_qty=target_qty)
+    yield ProcessStopped()
 
 
 def stop_process(_: StopProcess, uow: AbstractUnitOfWork) -> None:
     """Handle the StopProcessCommand."""
+    uow.job.request_stop()
+
+
+def process_directory(cmd: ProcessDirectory, uow: AbstractUnitOfWork) -> Iterator[Message]:
+    """Handle the ProcessDirectoryCommand."""
     with uow:
-        uow.engine.stop_engine()
+        job = uow.job
+        pipeline = uow.pipeline
+
+        if job.is_stop_requested or job.quota.is_root_locked:
+            return
+
+        yield DirectoryStarted(idx=cmd.di, target=cmd.target_qty)
+
+        dst = DestinationDirectory(path=pipeline.get_currdir_dest(), target_qty=cmd.target_qty)
+        job.quota.reset()
+        pipeline.add_handler(dst.path)
+
+        for e in pipeline.walk():
+            if dst.is_success or job.is_stop_requested or job.quota.is_root_locked:
+                break
+            if not job.process_file(e):
+                continue
+            if not pipeline.is_valid(e):
+                continue
+            new_path = pipeline.get_new_path(dst=dst, e=e)
+            if new_path:
+                uow.register_transfer(e.path, new_path)
+                job.update(dst, e)
+                yield FileTransferLogged(count=dst.count, src=e.path, dst=new_path)
+
         uow.commit()
+
+        is_empty_creation = dst.is_none_found and pipeline.is_create_dir
+        pipeline.remove_dst_dir_if_empty(dst.path, none_found=is_empty_creation)
+        pipeline.remove_handler()
+        status = get_status(
+            is_success=dst.is_success,
+            is_none_found_and_create_dir=is_empty_creation,
+            is_stop_requested=job.is_stop_requested,
+            is_root_locked=job.quota.is_root_locked,
+        )
+        yield DirectoryLogged(status=status, report=dst.report_str)
 
 
 COMMAND_HANDLERS: dict[type[Command], Callable] = {
     StartProcess: start_process,
     StopProcess: stop_process,
+    ProcessDirectory: process_directory,
 }
 
 
@@ -88,65 +128,3 @@ EVENT_HANDLERS: dict[type[Event], list[Callable]] = {
     FileTransferLogged: [handle_file_transfer_logged],
     DirectoryLogged: [handle_directory_logged],
 }
-
-
-@dataclass(slots=True)
-class Engine:
-    """Core engine class."""
-
-    dir_count: int
-    pipeline: TransferPipeline
-    quota: DiversityQuota
-    is_stop_requested: bool = False
-    messages: deque[Message] = field(default_factory=deque)
-
-    def start_process(self) -> Iterator[Message]:
-        """Process."""
-        yield ProcessStarted(dir_count=self.dir_count)
-        di = 1
-        while di <= self.dir_count and not self.is_stop_requested:
-            target_qty = self.pipeline.get_file_count()
-            yield from self.process_dir(di=di, target_qty=target_qty)
-            di += 1
-        yield ProcessStopped()
-
-    def process_dir(self, di: int, target_qty: int) -> Iterator[Message]:
-        """Process."""
-        yield DirectoryStarted(di, target_qty)
-        dst = DestinationDirectory(self.pipeline.get_currdir_dest(), target_qty)
-        self.quota.reset()
-        self.pipeline.add_handler(dst.path)
-        entries = self.pipeline.walk()
-        while not self.is_stop_condition(dst) and (e := next(entries, None)) is not None:
-            if not self.quota.can_accept(e):
-                continue
-            if not self.pipeline.is_valid(e):
-                continue
-            newpath = self.pipeline.get_new_path(dst=dst, e=e)
-            if newpath is None:
-                continue
-            try:
-                self.pipeline.transfer_file(e.path, newpath)  # I/O
-            except PermissionError, OSError, FileNotFoundError:
-                continue
-            self.quota.update(e)
-            dst.accept(e)
-            yield from (FileTransferLogged(dst.count, e.path, newpath), FileTransferred(dst.count))
-        is_none_found_and_create_dir = dst.is_none_found and self.pipeline.is_create_dir
-        status = get_status(
-            is_success=dst.is_success,
-            is_none_found_and_create_dir=is_none_found_and_create_dir,
-            is_stop_requested=self.is_stop_requested,
-            is_root_locked=self.quota.is_root_locked,
-        )
-        yield DirectoryLogged(status, dst.report_str)
-        self.pipeline.remove_dst_dir_if_empty(dst.path, none_found=is_none_found_and_create_dir)
-        self.pipeline.remove_handler()
-
-    def is_stop_condition(self, dst: DestinationDirectory) -> bool:
-        """Check if the stop condition is met."""
-        return dst.is_success or self.is_stop_requested or self.quota.is_root_locked
-
-    def stop_engine(self) -> None:
-        """Stop the engine."""
-        self.is_stop_requested = True

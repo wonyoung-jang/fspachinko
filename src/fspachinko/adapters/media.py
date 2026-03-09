@@ -14,6 +14,7 @@ DURATION_CMD = [
     "-of",
     "default=noprint_wrappers=1:nokey=1",
 ]
+TIMEOUT = 2
 
 
 def get_duration(path: str) -> float:
@@ -21,7 +22,7 @@ def get_duration(path: str) -> float:
     try:
         completed_proc = subprocess.run(
             [*DURATION_CMD, path],
-            timeout=5,
+            timeout=TIMEOUT,
             check=True,
             encoding="utf-8",
             stdout=subprocess.PIPE,

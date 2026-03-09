@@ -1,10 +1,38 @@
 """Model classes for the domain."""
 
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass, field
 from time import perf_counter
+from typing import TYPE_CHECKING
 
 from ..helpers import get_report
+from .events import FileTransferred
+
+if TYPE_CHECKING:
+    from .events import Event
+
+
+@dataclass(slots=True)
+class TransferJob:
+    """The Root Aggregate for a file transfer process."""
+
+    quota: DiversityQuota
+    is_stop_requested: bool = False
+    events: deque[Event] = field(default_factory=deque)
+
+    def process_file(self, entry: FSEntry) -> bool:
+        """Process a file transfer, checking the diversity quota and updating the destination directory stats."""
+        return self.quota.can_accept(entry)
+
+    def update(self, dst: DestinationDirectory, entry: FSEntry) -> None:
+        """Update the job state after processing a directory."""
+        self.quota.update(entry)
+        dst.accept(entry)
+        self.events.append(FileTransferred(count=dst.count))
+
+    def request_stop(self) -> None:
+        """Request to stop the process."""
+        self.is_stop_requested = True
 
 
 @dataclass(slots=True)
@@ -47,11 +75,6 @@ class DiversityQuota:
     unique_files_only: bool
     locked_file: set[str] = field(default_factory=set)
     locked_dir: Counter[str] = field(default_factory=Counter)
-
-    def __post_init__(self) -> None:
-        """Post-initialization tasks."""
-        if self.max_per_dir <= 0:
-            self.max_per_dir = float("inf")
 
     @property
     def is_root_locked(self) -> bool:

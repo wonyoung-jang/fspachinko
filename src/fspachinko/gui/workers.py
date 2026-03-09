@@ -29,8 +29,9 @@ class MainWorker(QRunnable):
     def __init__(self, config: ConfigModel) -> None:
         """Initialize the worker."""
         super().__init__()
+        self.config = config
         self.signals = WorkerSignals()
-        self.bus: MessageBus = bootstrap(m=config)
+        self.bus: MessageBus = bootstrap(m=self.config)
 
     @Slot()
     def run(self) -> None:
@@ -53,7 +54,7 @@ class MainWorker(QRunnable):
         self.bus.event_handlers[DirectoryStarted].append(update_directory_started)
         self.bus.event_handlers[ProcessStopped].append(update_finished)
 
-        self.bus.handle(StartProcess())
+        self.bus.handle(StartProcess(self.config.directory.count if self.config.directory.is_enabled else 1))
 
     def stop(self) -> None:
         """Stop the process."""

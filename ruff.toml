@@ -53,6 +53,7 @@ ignore = [
     # OS Path to Pathlib warnings
     "PTH102",
     "PTH103",
+    "PTH107",
     "PTH108",
     "PTH110",
     "PTH112",

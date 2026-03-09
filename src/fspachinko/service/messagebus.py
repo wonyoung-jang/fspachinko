@@ -29,33 +29,33 @@ class MessageBus:
         """Handle a message, which can be either a command or an event."""
         self.queue.append(message)
         while self.queue:
-            message = self.queue.popleft()
-            if isinstance(message, Event):
-                self.handle_event(message)
-            elif isinstance(message, Command):
-                self.handle_command(message)
+            msg = self.queue.popleft()
+            if isinstance(msg, Event):
+                self.handle_event(msg)
+            elif isinstance(msg, Command):
+                self.handle_command(msg)
 
     def handle_event(self, event: Event) -> None:
         """Handle an event by calling its handlers and collecting any new events that are generated."""
         for handler in self.event_handlers[type(event)]:
             try:
-                logger.debug("Handling event %s with handler %s", event, handler)
+                logger.debug("Event: %s with handler %s", event, handler)
                 handler(event, self.uow)
-                self.queue.extend(self.uow.yield_new_events())
+                self.queue.extend(self.uow.collect_new_events())
             except Exception:
                 logger.exception("Exception handling event %s", event)
                 continue
 
     def handle_command(self, command: Command) -> None:
         """Handle a command by calling its handler and collecting any new events that are generated."""
-        logger.debug("Handling command %s", command)
+        logger.debug("Command: %s", command)
         try:
             handler = self.command_handlers[type(command)]
             result = handler(command, self.uow)
             if isinstance(result, Iterator):
                 for msg in result:
                     self.handle(msg)
-            self.queue.extend(self.uow.yield_new_events())
+            self.queue.extend(self.uow.collect_new_events())
         except Exception:
             logger.exception("Exception handling command %s", command)
             raise

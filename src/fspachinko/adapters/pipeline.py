@@ -1,5 +1,6 @@
 """Model classes for the domain."""
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from os.path import join
 from typing import TYPE_CHECKING
@@ -19,8 +20,8 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class TransferPipeline:
-    """Owns the strategy objects — Engine delegates to this."""
+class AbstractPipeline(ABC):
+    """Abstract pipeline."""
 
     is_create_dir: bool
     fs: AbstractFilesystemPort
@@ -31,6 +32,55 @@ class TransferPipeline:
     walker_fn: AbstractFSWalker
     filecount_fn: AbstractFileCounter
     dirname_fn: AbstractDirectoryNamer
+
+    @abstractmethod
+    def walk(self) -> Iterator[FSEntry]:
+        """Walk the file system and yield FSEntry objects."""
+
+    @abstractmethod
+    def get_file_count(self) -> int:
+        """Count the number of files to be transferred."""
+
+    @abstractmethod
+    def get_dir_name(self) -> str:
+        """Get the name for the current directory."""
+
+    @abstractmethod
+    def is_valid(self, e: FSEntry) -> bool:
+        """Check if a file should be transferred."""
+
+    @abstractmethod
+    def get_new_file_stem(self, e: FSEntry, count: int) -> str:
+        """Get the new name for a file."""
+
+    @abstractmethod
+    def transfer_file(self, src: str, dst: str) -> None:
+        """Transfer a file from src to dst."""
+
+    @abstractmethod
+    def add_handler(self, path: str) -> None:
+        """Add a logging handler for the current directory."""
+
+    @abstractmethod
+    def remove_handler(self) -> None:
+        """Remove the logging handler for the current directory."""
+
+    @abstractmethod
+    def get_currdir_dest(self) -> str:
+        """Get the current directory destination."""
+
+    @abstractmethod
+    def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
+        """Check if the original file name can be used without transfer."""
+
+    @abstractmethod
+    def remove_dst_dir_if_empty(self, path: str, *, none_found: bool) -> None:
+        """Remove the destination directory if it is empty."""
+
+
+@dataclass(slots=True)
+class TransferPipeline(AbstractPipeline):
+    """Owns the strategy objects — Engine delegates to this."""
 
     def walk(self) -> Iterator[FSEntry]:
         """Walk the file system and yield FSEntry objects."""
