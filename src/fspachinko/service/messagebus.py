@@ -10,11 +10,10 @@ from ..domain.commands import Command
 from ..domain.events import Event
 
 if TYPE_CHECKING:
+    from .handlers import Message
     from .uow import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
-
-type Message = Command | Event
 
 
 @dataclass(slots=True)

@@ -26,10 +26,11 @@ def get_duration(path: str) -> float:
             encoding="utf-8",
             stdout=subprocess.PIPE,
         )
-        return float(completed_proc.stdout.strip())
-    except ValueError:
-        logger.exception("ffprobe output could not be parsed as float: %s", completed_proc)
-        return 0.0
+        try:
+            return float(completed_proc.stdout.strip())
+        except ValueError:
+            logger.exception("ffprobe output could not be parsed as float: %s", completed_proc)
+            return 0.0
     except subprocess.CalledProcessError:
         logger.exception("ffprobe failed")
         return 0.0

@@ -42,6 +42,7 @@ def bootstrap(
     pipeline = TransferPipeline(
         is_create_dir=is_create_dir,
         fs=ConcreteFilesystemPort(),
+        logging=ConcreteLoggingPort(),
         filecount_fn=get_filecount_fn(m.filecount),
         dirname_fn=get_dirname_fn(m.directory, m.dest),
         filefilter_fn=get_filefilter_fn(m),
@@ -51,10 +52,8 @@ def bootstrap(
     )
     engine = Engine(
         dir_count=m.directory.count if is_create_dir else 1,
-        is_create_dir=is_create_dir,
         pipeline=pipeline,
         quota=quota,
-        logging=ConcreteLoggingPort(),
     )
 
     if uow is None:

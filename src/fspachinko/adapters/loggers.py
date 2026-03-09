@@ -36,10 +36,6 @@ class AbstractLoggingPort(ABC):
     """Abstract port for logging operations."""
 
     @abstractmethod
-    def info(self, message: str, *args: object) -> None:
-        """Log an informational message."""
-
-    @abstractmethod
     def add_handler(self, dest: str) -> None:
         """Add a logging handler."""
 
@@ -54,10 +50,6 @@ class ConcreteLoggingPort(AbstractLoggingPort):
 
     logger: logging.Logger = field(default_factory=logging.getLogger)
     handler: logging.FileHandler | None = None
-
-    def info(self, message: str, *args: object) -> None:
-        """Log an informational message."""
-        self.logger.info(message, *args)
 
     def add_handler(self, dest: str) -> None:
         """Add a logging handler."""

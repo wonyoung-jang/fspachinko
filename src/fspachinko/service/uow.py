@@ -31,8 +31,8 @@ class AbstractUnitOfWork(ABC):
 
     def yield_new_events(self) -> Iterator[Event]:
         """Collect new events generated during the transaction."""
-        while self.engine.events:
-            yield self.engine.events.popleft()
+        while self.engine.messages:
+            yield self.engine.messages.popleft()
 
     @abstractmethod
     def _commit(self) -> None:

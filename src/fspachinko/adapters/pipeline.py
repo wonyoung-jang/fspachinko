@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from ..adapters.walker import AbstractFSWalker
     from ..domain.model import DestinationDirectory, FSEntry
     from .filefilter import AbstractFileFilter
+    from .loggers import AbstractLoggingPort
 
 
 @dataclass(slots=True)
@@ -23,6 +24,7 @@ class TransferPipeline:
 
     is_create_dir: bool
     fs: AbstractFilesystemPort
+    logging: AbstractLoggingPort
     filefilter_fn: AbstractFileFilter
     filenamer_fn: AbstractFilenamer
     transfer_fn: AbstractTransfer
@@ -42,7 +44,7 @@ class TransferPipeline:
         """Get the name for the current directory."""
         return self.dirname_fn.gen_dir_name()
 
-    def filter_file(self, e: FSEntry) -> bool:
+    def is_valid(self, e: FSEntry) -> bool:
         """Check if a file should be transferred."""
         return self.filefilter_fn.is_valid(e)
 
@@ -53,6 +55,14 @@ class TransferPipeline:
     def transfer_file(self, src: str, dst: str) -> None:
         """Transfer a file from src to dst."""
         self.transfer_fn.transfer(src, dst)
+
+    def add_handler(self, path: str) -> None:
+        """Add a logging handler for the current directory."""
+        self.logging.add_handler(path)
+
+    def remove_handler(self) -> None:
+        """Remove the logging handler for the current directory."""
+        self.logging.remove_handler()
 
     def get_currdir_dest(self) -> str:
         """Get the current directory destination."""

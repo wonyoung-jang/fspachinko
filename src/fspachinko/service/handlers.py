@@ -21,15 +21,16 @@ from ..helpers import get_status
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from ..adapters.loggers import AbstractLoggingPort
     from ..adapters.pipeline import TransferPipeline
     from ..domain.commands import Command
     from .uow import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
 
+type Message = Command | Event
 
-def start_process(_: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Event | Command]:
+
+def start_process(_: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Message]:
     """Handle the StartProcessCommand."""
     with uow:
         yield from uow.engine.start_process()
@@ -94,71 +95,53 @@ class Engine:
     """Core engine class."""
 
     dir_count: int
-    is_create_dir: bool
     pipeline: TransferPipeline
-    logging: AbstractLoggingPort
     quota: DiversityQuota
     is_stop_requested: bool = False
-    events: deque[Event | Command] = field(default_factory=deque)
+    messages: deque[Message] = field(default_factory=deque)
 
-    def start_process(self) -> Iterator[Event | Command]:
+    def start_process(self) -> Iterator[Message]:
         """Process."""
         yield ProcessStarted(dir_count=self.dir_count)
-
-        for di in range(1, self.dir_count + 1):
-            if self.is_stop_requested:
-                break
+        di = 1
+        while di <= self.dir_count and not self.is_stop_requested:
             target_qty = self.pipeline.get_file_count()
             yield from self.process_dir(di=di, target_qty=target_qty)
-
+            di += 1
         yield ProcessStopped()
 
-    def process_dir(self, di: int, target_qty: int) -> Iterator[Event | Command]:
+    def process_dir(self, di: int, target_qty: int) -> Iterator[Message]:
         """Process."""
         yield DirectoryStarted(di, target_qty)
-        dst = DestinationDirectory(
-            path=self.pipeline.get_currdir_dest(),
-            target_qty=target_qty,
-        )
+        dst = DestinationDirectory(self.pipeline.get_currdir_dest(), target_qty)
         self.quota.reset()
-        self.logging.add_handler(dst.path)
-
+        self.pipeline.add_handler(dst.path)
         entries = self.pipeline.walk()
         while not self.is_stop_condition(dst) and (e := next(entries, None)) is not None:
             if not self.quota.can_accept(e):
                 continue
-
-            if not self.pipeline.filter_file(e):
+            if not self.pipeline.is_valid(e):
                 continue
-
             newpath = self.pipeline.get_new_path(dst=dst, e=e)
             if newpath is None:
                 continue
-
             try:
                 self.pipeline.transfer_file(e.path, newpath)  # I/O
             except PermissionError, OSError, FileNotFoundError:
                 continue
-
             self.quota.update(e)
             dst.accept(e)
-            yield FileTransferLogged(count=dst.count, src=e.path, dst=newpath)
-            yield FileTransferred(count=dst.count)
-
-        is_none_found_and_create_dir = dst.is_none_found and self.is_create_dir
+            yield from (FileTransferLogged(dst.count, e.path, newpath), FileTransferred(dst.count))
+        is_none_found_and_create_dir = dst.is_none_found and self.pipeline.is_create_dir
         status = get_status(
             is_success=dst.is_success,
             is_none_found_and_create_dir=is_none_found_and_create_dir,
             is_stop_requested=self.is_stop_requested,
             is_root_locked=self.quota.is_root_locked,
         )
-        yield DirectoryLogged(status=status, report=dst.report_str)
-        self.pipeline.remove_dst_dir_if_empty(
-            dst.path,
-            none_found=is_none_found_and_create_dir,
-        )
-
-        self.logging.remove_handler()
+        yield DirectoryLogged(status, dst.report_str)
+        self.pipeline.remove_dst_dir_if_empty(dst.path, none_found=is_none_found_and_create_dir)
+        self.pipeline.remove_handler()
 
     def is_stop_condition(self, dst: DestinationDirectory) -> bool:
         """Check if the stop condition is met."""

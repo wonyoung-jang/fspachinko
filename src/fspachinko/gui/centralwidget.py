@@ -31,18 +31,21 @@ class CentralWidget(QWidget):
     @Slot()
     def on_start(self) -> None:
         """Start the process and disable UI elements."""
-        config = self.ui.get_config()
-        self.worker = MainWorker(config)
-        self.original_window_title = self.window().windowTitle()
-        signals = self.worker.signals
-        progress = self.ui.progress
-        progress.reset()
-        signals.start_process.connect(progress.progbar_dirs.setMaximum)
-        signals.file_transferred.connect(progress.progbar_files.setValue)
-        signals.directory_start.connect(progress.start_directory)
-        signals.file_transferred.connect(self.update_title_progress)
-        signals.finished.connect(self.on_finished)
         self.toggle_ui(is_enabled=False)
+        self.worker = MainWorker(self.ui.get_config())
+        self.original_window_title = self.window().windowTitle()
+        self.ui.progress.reset()
+        self.worker.signals.start_process.connect(self.ui.progress.progbar_dirs.setMaximum)
+        self.worker.signals.file_transferred.connect(self.ui.progress.progbar_files.setValue)
+        self.worker.signals.directory_start.connect(self.ui.progress.start_directory)
+        self.worker.signals.file_transferred.connect(
+            lambda val: self.window().setWindowTitle(
+                f"[{int(val * PERCENTAGE_100 / self.ui.progress.progbar_files.maximum())}%] "
+                f"{self.original_window_title}"
+            )
+        )
+        self.worker.signals.finished.connect(lambda: self.toggle_ui(is_enabled=True))
+        self.worker.signals.finished.connect(lambda: self.window().setWindowTitle(self.original_window_title))
         self.thread_pool.start(self.worker)
 
     @Slot()
@@ -50,18 +53,6 @@ class CentralWidget(QWidget):
         """Stop the process."""
         if self.worker:
             self.worker.stop()
-
-    @Slot(int)
-    def update_title_progress(self, val: int) -> None:
-        """Update window title with progress percentage."""
-        pct = int(val * PERCENTAGE_100 / self.ui.progress.progbar_files.maximum())
-        self.window().setWindowTitle(f"[{pct}%] {self.original_window_title}")
-
-    @Slot()
-    def on_finished(self) -> None:
-        """Handle worker finished signal."""
-        self.toggle_ui(is_enabled=True)
-        self.window().setWindowTitle(self.original_window_title)
 
     def toggle_ui(self, *, is_enabled: bool) -> None:
         """Lock or unlock UI elements."""
