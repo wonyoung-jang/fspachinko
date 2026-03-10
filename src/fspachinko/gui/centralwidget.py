@@ -34,14 +34,10 @@ class CentralWidget(QWidget):
         """Start the process and disable UI elements."""
         self.original_window_title = self.window().windowTitle()
         self.worker = MainWorker(get_config(self.ui))
-        self.worker.signals.start_process.connect(lambda: self.toggle_ui(is_enabled=False))
-        self.worker.signals.start_process.connect(self.ui.progress.reset)
-        self.worker.signals.start_process.connect(self.ui.progress.progbar_dirs.setMaximum)
-        self.worker.signals.file_transferred.connect(self.ui.progress.progbar_files.setValue)
-        self.worker.signals.directory_start.connect(self.ui.progress.start_directory)
-        self.worker.signals.file_transferred.connect(self.update_window_title_progress)
-        self.worker.signals.finished.connect(lambda: self.toggle_ui(is_enabled=True))
-        self.worker.signals.finished.connect(self.reset_window_title)
+        self.worker.signals.start_process.connect(self.start_process_handler)
+        self.worker.signals.directory_start.connect(self.directory_start_handler)
+        self.worker.signals.file_transferred.connect(self.file_transferred_handler)
+        self.worker.signals.finished.connect(self.finished_handler)
         self.thread_pool.start(self.worker)
 
     @Slot()
@@ -56,13 +52,29 @@ class CentralWidget(QWidget):
             child.setEnabled(is_enabled)
 
     @Slot(int)
-    def update_window_title_progress(self, val: int) -> None:
+    def start_process_handler(self, dir_count: int) -> None:
+        """Handle the start of the process."""
+        self.toggle_ui(is_enabled=False)
+        self.ui.progress.progbar_dirs.setValue(0)
+        self.ui.progress.progbar_files.setValue(0)
+        self.ui.progress.progbar_dirs.setMaximum(dir_count)
+
+    @Slot(int, int)
+    def directory_start_handler(self, idx: int, target: int) -> None:
+        """Update the directory progress bar."""
+        self.ui.progress.progbar_dirs.setValue(idx)
+        self.ui.progress.progbar_files.setMaximum(target)
+
+    @Slot(int)
+    def file_transferred_handler(self, val: int) -> None:
         """Update the window title with the current progress."""
+        self.ui.progress.progbar_files.setValue(val)
         if self.ui.progress.progbar_files.maximum() > 0:
             percentage = int(val * PERCENTAGE_100 / self.ui.progress.progbar_files.maximum())
             self.window().setWindowTitle(f"[{percentage}%] {self.original_window_title}")
 
     @Slot()
-    def reset_window_title(self) -> None:
+    def finished_handler(self) -> None:
         """Reset the window title to the original."""
+        self.toggle_ui(is_enabled=True)
         self.window().setWindowTitle(self.original_window_title)

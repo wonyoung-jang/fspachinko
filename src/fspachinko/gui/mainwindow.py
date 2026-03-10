@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
 
     def init_connections(self) -> None:
         """Initialize connections."""
-        self._actions.file.save.triggered.connect(self.save_profile)
+        self._actions.file.save.triggered.connect(lambda: self.profiles.set(self))
         self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
         self._actions.file.load.triggered.connect(self.open_profile_dialog)
         self._actions.file.exit.triggered.connect(self.close)
@@ -87,14 +87,8 @@ class MainWindow(QMainWindow):
         """Initialize GUI settings manager."""
         self.restoreGeometry(self.qsettings.value(GUISettingsKey.GEOMETRY))
         self.restoreState(self.qsettings.value(GUISettingsKey.STATE))
-        self.profiles.set(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
-        self.profiles.open(self)
-        self.setWindowTitle(get_window_title(self.profiles.path))
-
-    @Slot()
-    def save_profile(self) -> None:
-        """Save the current GUI profile."""
-        self.profiles.save(self)
+        self.update_profile_path(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
+        self.profiles.get(self)
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -106,9 +100,8 @@ class MainWindow(QMainWindow):
             filter=GUIFileDialogFilter.JSON,
         )
         if filename:
-            self.profiles.set(filename)
-            self.save_profile()
-            self.setWindowTitle(get_window_title(self.profiles.path))
+            self.update_profile_path(filename)
+            self.profiles.set(self)
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -120,21 +113,21 @@ class MainWindow(QMainWindow):
             filter=GUIFileDialogFilter.JSON,
         )
         if filename:
-            self.profiles.set(filename)
-            self.profiles.open(self)
-            self.setWindowTitle(get_window_title(self.profiles.path))
+            self.update_profile_path(filename)
+            self.profiles.get(self)
 
-    def save_settings(self) -> None:
-        """Save GUI settings on close."""
-        self.qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
-        self.qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        self.qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
+    def update_profile_path(self, path: str) -> None:
+        """Set the current profile path."""
+        self.profiles.path = path
+        self.setWindowTitle(get_window_title(self.profiles.path))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
-        self.save_settings()
+        self.qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
+        self.qsettings.setValue(GUISettingsKey.STATE, self.saveState())
+        self.qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
         if self._actions.file.autosave.isChecked():
-            self.save_profile()
+            self.profiles.set(self)
         super().closeEvent(event)
 
 

@@ -417,14 +417,3 @@ class ProgressWidget(QWidget):
         layout = QFormLayout(self)
         layout.addRow("Directories", self.progbar_dirs)
         layout.addRow("Files", self.progbar_files)
-
-    def reset(self) -> None:
-        """Reset progress bars."""
-        self.progbar_dirs.setValue(0)
-        self.progbar_files.setValue(0)
-
-    @Slot(int, int)
-    def start_directory(self, idx: int, nfiles: int) -> None:
-        """Start processing a directory."""
-        self.progbar_dirs.setValue(idx)
-        self.progbar_files.setMaximum(nfiles)

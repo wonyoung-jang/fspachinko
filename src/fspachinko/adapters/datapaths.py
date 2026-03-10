@@ -1,6 +1,5 @@
 """Datapaths."""
 
-import logging
 from dataclasses import dataclass
 from os.path import dirname, join
 
@@ -8,8 +7,6 @@ import fspachinko
 
 from ..constants import DefaultPath
 from .filesystemport import ensure_datapaths
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
