@@ -3,7 +3,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from ..domain.commands import ProcessDirectory, StartProcess, StopProcess
+from ..domain.commands import StartProcess, StartProcessingDirectory, StopProcess
 from ..domain.events import (
     DirectoryLogged,
     DirectoryStarted,
@@ -32,7 +32,7 @@ def start_process(cmd: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Messag
     yield ProcessStarted(dir_count=cmd.dir_count)
     for di in range(1, cmd.dir_count + 1):
         target_qty = uow.pipeline.get_file_count()
-        yield ProcessDirectory(di=di, target_qty=target_qty)
+        yield StartProcessingDirectory(di=di, target_qty=target_qty)
     yield ProcessStopped()
 
 
@@ -41,7 +41,7 @@ def stop_process(_: StopProcess, uow: AbstractUnitOfWork) -> None:
     uow.job.request_stop()
 
 
-def process_directory(cmd: ProcessDirectory, uow: AbstractUnitOfWork) -> Iterator[Message]:
+def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) -> Iterator[Message]:
     """Handle the ProcessDirectoryCommand."""
     with uow:
         job = uow.job
@@ -69,8 +69,6 @@ def process_directory(cmd: ProcessDirectory, uow: AbstractUnitOfWork) -> Iterato
                 job.update(dst, e)
                 yield FileTransferLogged(count=dst.count, src=e.path, dst=new_path)
 
-        uow.commit()
-
         is_empty_creation = dst.is_none_found and pipeline.is_create_dir
         pipeline.remove_dst_dir_if_empty(dst.path, none_found=is_empty_creation)
         pipeline.remove_handler()
@@ -82,11 +80,13 @@ def process_directory(cmd: ProcessDirectory, uow: AbstractUnitOfWork) -> Iterato
         )
         yield DirectoryLogged(status=status, report=dst.report_str)
 
+        uow.commit()
+
 
 COMMAND_HANDLERS: dict[type[Command], Callable] = {
     StartProcess: start_process,
     StopProcess: stop_process,
-    ProcessDirectory: process_directory,
+    StartProcessingDirectory: process_directory,
 }
 
 

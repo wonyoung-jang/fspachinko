@@ -35,9 +35,6 @@ class ProcessStopped(Event):
     """Event for finishing the process."""
 
 
-# Other
-
-
 @dataclass(slots=True, frozen=True)
 class FileTransferLogged(Event):
     """Event for logging a file transfer."""

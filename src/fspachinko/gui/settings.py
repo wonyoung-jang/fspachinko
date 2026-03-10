@@ -1,14 +1,13 @@
 """Settings handling for GUI."""
 
 import json
-import os
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from os.path import dirname, exists, isfile
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
-from ..datapaths import get_profile_path
+from ..adapters.datapaths import get_profile_path
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 
 
@@ -34,7 +33,6 @@ class ProfileManager:
                 items = [child.itemText(i) for i in range(child.count())]
                 data[f"{key}_items"] = items
 
-        os.makedirs(dirname(self.path) or ".", exist_ok=True)
         with open(self.path, "w", encoding="utf-8") as f:
             data = dict(sorted(data.items(), key=lambda x: x[0]))
             json.dump(data, f, indent=4)

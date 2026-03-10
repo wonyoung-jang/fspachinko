@@ -21,7 +21,7 @@ class StopProcess(Command):
 
 
 @dataclass(slots=True, frozen=True)
-class ProcessDirectory(Command):
+class StartProcessingDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 
     di: int

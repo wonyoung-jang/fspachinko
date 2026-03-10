@@ -6,8 +6,8 @@ from os.path import dirname, join
 
 import fspachinko
 
-from .adapters.filesystemport import ensure_datapaths
-from .constants import DefaultPath
+from ..constants import DefaultPath
+from .filesystemport import ensure_datapaths
 
 logger = logging.getLogger(__name__)
 

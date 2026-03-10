@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os.path import basename, join
 
-from ..datapaths import get_log_path
+from .datapaths import get_log_path
 
 
 def initialize_logging() -> logging.Logger:

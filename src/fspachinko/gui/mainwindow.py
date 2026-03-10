@@ -1,6 +1,5 @@
 """Main module."""
 
-import logging
 from os.path import basename, splitext
 from typing import TYPE_CHECKING
 
@@ -16,8 +15,6 @@ from .settings import ProfileManager
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
-logger = logging.getLogger(__name__)
-
 
 class MainWindow(QMainWindow):
     """Main application window."""
@@ -25,7 +22,6 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        logger.debug("Initializing GUI")
         self.central_widget = CentralWidget()
         self.profiles = ProfileManager()
         self.qsettings = QSettings()

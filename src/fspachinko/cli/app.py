@@ -4,10 +4,10 @@ import logging
 
 from cyclopts import App
 
+from ..adapters.datapaths import get_config_path
 from ..bootstrap import bootstrap
 from ..config import ConfigModel
 from ..constants import DefaultPath
-from ..datapaths import get_config_path
 from ..domain.commands import StartProcess
 
 logger = logging.getLogger(__name__)

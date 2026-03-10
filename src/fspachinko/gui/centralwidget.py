@@ -32,10 +32,10 @@ class CentralWidget(QWidget):
     @Slot()
     def on_start(self) -> None:
         """Start the process and disable UI elements."""
-        self.toggle_ui(is_enabled=False)
-        self.worker = MainWorker(get_config(self.ui))
         self.original_window_title = self.window().windowTitle()
-        self.ui.progress.reset()
+        self.worker = MainWorker(get_config(self.ui))
+        self.worker.signals.start_process.connect(lambda: self.toggle_ui(is_enabled=False))
+        self.worker.signals.start_process.connect(self.ui.progress.reset)
         self.worker.signals.start_process.connect(self.ui.progress.progbar_dirs.setMaximum)
         self.worker.signals.file_transferred.connect(self.ui.progress.progbar_files.setValue)
         self.worker.signals.directory_start.connect(self.ui.progress.start_directory)

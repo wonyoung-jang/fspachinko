@@ -10,7 +10,7 @@ from os.path import exists, join, split
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..datapaths import DataPaths
+    from .datapaths import DataPaths
 
 logger = logging.getLogger(__name__)
 

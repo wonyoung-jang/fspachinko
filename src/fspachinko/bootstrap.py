@@ -35,7 +35,7 @@ def bootstrap(
 
     quota = DiversityQuota(
         root=m.root,
-        max_per_dir=m.options.max_per_dir if m.options.max_per_dir > 0 else float("inf"),
+        max_per_dir=m.options.max_per_dir,
         unique_files_only=m.options.is_create_unique_dirs,
     )
     job = TransferJob(quota=quota)
