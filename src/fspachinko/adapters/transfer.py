@@ -2,55 +2,10 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from io import UnsupportedOperation
-from os import link, symlink, unlink
-from os.path import join
+from os import link, symlink
 from shutil import copy, copy2, move
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
 
-from ..constants import FileError, TransferMode
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-
-def get_available_transfer_modes() -> dict[TransferMode, AbstractTransfer]:
-    """Return the set of available transfer modes based on the current environment."""
-    available = {
-        TransferMode.DRY_RUN: DryRunTransfer(),
-        TransferMode.COPY: CopyTransfer(),
-        TransferMode.COPY_PRESERVE: CopyPreserveTransfer(),
-        TransferMode.MOVE: MoveTransfer(),
-        TransferMode.SYMLINK: SymlinkTransfer(),
-        TransferMode.HARDLINK: HardlinkTransfer(),
-    }
-
-    def _verify_link_fn(link_func: Callable[[str, str], None], transfer_mode: TransferMode) -> None:
-        """Test link creation."""
-        try:
-            with TemporaryDirectory() as tmpdir:
-                test_src = join(tmpdir, "test_src")
-                test_link = join(tmpdir, "test_link")
-                open(test_src, "w").close()
-                link_func(test_src, test_link)
-                unlink(test_link)
-                unlink(test_src)
-        except OSError, UnsupportedOperation, NotImplementedError:
-            available.pop(transfer_mode)
-
-    _verify_link_fn(symlink, TransferMode.SYMLINK)
-    _verify_link_fn(link, TransferMode.HARDLINK)
-    return available
-
-
-def get_transfer_fn(mode: str) -> AbstractTransfer:
-    """Return the appropriate transfer strategy instance.
-
-    Falls back to DRY_RUN if the requested mode is not available.
-    """
-    available = get_available_transfer_modes()
-    return available.get(TransferMode(mode), available[TransferMode.DRY_RUN])
+from ..constants import FileError
 
 
 class AbstractTransfer(ABC):

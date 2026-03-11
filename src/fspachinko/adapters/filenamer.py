@@ -5,20 +5,10 @@ from dataclasses import dataclass
 from os.path import basename, split
 from typing import TYPE_CHECKING
 
-from ..constants import INVALID_FILENAME_CHARS, FilenameTemplate, FilenameTemplateMapKey
+from ..constants import INVALID_FILENAME_CHARS, FilenameTemplateMapKey
 
 if TYPE_CHECKING:
-    from ..config import FilenameModel
     from ..domain.model import FSEntry
-
-
-def get_filenamer_fn(m: FilenameModel) -> AbstractFilenamer:
-    """Return a function that determines the destination file name based on the configuration."""
-    match not m.is_enabled or m.template == FilenameTemplate.ORIGINAL:
-        case True:
-            return StaticFilenamer()
-        case False:
-            return TemplateFilenamer(m.template)
 
 
 @dataclass(slots=True)

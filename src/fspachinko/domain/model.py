@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from ..helpers import get_report
 from .events import FileTransferred
 
 if TYPE_CHECKING:
@@ -54,11 +53,6 @@ class DestinationDirectory:
     def is_none_found(self) -> bool:
         """Check if no valid files were found."""
         return self.count == 0
-
-    @property
-    def report_str(self) -> str:
-        """Get the report string."""
-        return get_report(self.path, self.size, self.start_time, self.count, self.target_qty)
 
     def accept(self, e: FSEntry) -> None:
         """Update the directory stats after accepting a file."""

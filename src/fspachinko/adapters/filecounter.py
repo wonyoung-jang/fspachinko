@@ -3,19 +3,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from random import randint
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..config import FilecountModel
-
-
-def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:
-    """Return a function that determines the number of files to transfer based on the configuration."""
-    match m.is_rand_enabled:
-        case True:
-            return RandomFileCounter(rand_min=m.rand_min, rand_max=m.rand_max)
-        case False:
-            return StaticFileCounter(count=m.count)
 
 
 @dataclass(slots=True)

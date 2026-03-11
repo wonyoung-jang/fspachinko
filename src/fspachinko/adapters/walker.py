@@ -16,14 +16,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def get_walker_fn(root: str, *, should_follow_symlink: bool) -> AbstractFSWalker:
-    """Return a function that generates candidates for a given directory."""
-    return PachinkoFSWalker(
-        root=root,
-        should_follow_symlink=should_follow_symlink,
-    )
-
-
 @dataclass(slots=True)
 class AbstractFSWalker(ABC):
     """Abstract file system walker."""

@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os.path import basename, join
 
 from .datapaths import get_log_path
@@ -48,17 +48,16 @@ class AbstractLoggingPort(ABC):
 class ConcreteLoggingPort(AbstractLoggingPort):
     """Adapter for logging operations."""
 
-    logger: logging.Logger = field(default_factory=logging.getLogger)
     handler: logging.FileHandler | None = None
 
     def add_handler(self, dest: str) -> None:
         """Add a logging handler."""
         self.handler = get_dest_log_filehandler(dest)
-        self.logger.addHandler(self.handler)
+        logging.getLogger().addHandler(self.handler)
 
     def remove_handler(self) -> None:
         """Remove the logging handler."""
         if self.handler:
-            self.logger.removeHandler(self.handler)
+            logging.getLogger().removeHandler(self.handler)
             self.handler.close()
             self.handler = None

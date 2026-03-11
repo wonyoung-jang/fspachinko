@@ -3,19 +3,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from os.path import join
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..config import DirectoryModel
-
-
-def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
-    """Return a function that determines the destination folder name based on the configuration."""
-    match m.is_enabled:
-        case True:
-            return UniqueDirectoryNamer(dest=dest, name=m.name)
-        case False:
-            return StaticDirectoryNamer(dest=dest)
 
 
 @dataclass(slots=True)

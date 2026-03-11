@@ -1,8 +1,48 @@
 """Handlers module."""
 
 import logging
+import re
+from io import UnsupportedOperation
+from os import link, symlink, unlink
+from os.path import join
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
+from ..adapters.dirnamer import AbstractDirectoryNamer, StaticDirectoryNamer, UniqueDirectoryNamer
+from ..adapters.filecounter import AbstractFileCounter, RandomFileCounter, StaticFileCounter
+from ..adapters.filefilter import (
+    AbstractFileFilter,
+    CompositeFileFilter,
+    DirnameFilter,
+    DurationFilter,
+    ExcludeTextFilter,
+    ExcludeTextFilterSingular,
+    ExtensionFilter,
+    FilesizeFilter,
+    Filter,
+    IncludeTextFilter,
+    IncludeTextFilterSingular,
+    KeywordFilter,
+    NoOpFileFilter,
+    RangeFilterFn,
+    RangeMaxFilterFn,
+    RangeMinFilterFn,
+    RangeMinMaxFilterFn,
+    SingularFileFilter,
+    TextFilterFn,
+)
+from ..adapters.filenamer import AbstractFilenamer, StaticFilenamer, TemplateFilenamer
+from ..adapters.transfer import (
+    AbstractTransfer,
+    CopyPreserveTransfer,
+    CopyTransfer,
+    DryRunTransfer,
+    HardlinkTransfer,
+    MoveTransfer,
+    SymlinkTransfer,
+)
+from ..adapters.walker import AbstractFSWalker, PachinkoFSWalker
+from ..constants import SIZE_MAP, TIME_MAP, FilenameTemplate, ReStrFmt, TransferMode
 from ..domain.commands import StartProcess, StartProcessingDirectory, StopProcess
 from ..domain.events import (
     DirectoryLogged,
@@ -14,17 +54,22 @@ from ..domain.events import (
     ProcessStopped,
 )
 from ..domain.model import DestinationDirectory
-from ..helpers import get_status
+from ..helpers import get_report, get_status
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
+    from ..config import ConfigModel, DirectoryModel, FilecountModel, FilenameModel, RangeFilterModel, TextFilterModel
     from ..domain.commands import Command
     from .uow import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
 
 type Message = Command | Event
+
+######################
+## COMMAND HANDLERS ##
+######################
 
 
 def start_process(cmd: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Message]:
@@ -59,9 +104,7 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
         for e in pipeline.walk():
             if dst.is_success or job.is_stop_requested or job.quota.is_root_locked:
                 break
-            if not job.process_file(e):
-                continue
-            if not pipeline.is_valid(e):
+            if not job.process_file(e) or not pipeline.is_valid(e):
                 continue
             new_path = pipeline.get_new_path(dst=dst, e=e)
             if new_path:
@@ -78,7 +121,14 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
             is_stop_requested=job.is_stop_requested,
             is_root_locked=job.quota.is_root_locked,
         )
-        yield DirectoryLogged(status=status, report=dst.report_str)
+        report = get_report(
+            dst.path,
+            dst.size,
+            dst.start_time,
+            dst.count,
+            dst.target_qty,
+        )
+        yield DirectoryLogged(status=status, report=report)
 
         uow.commit()
 
@@ -88,6 +138,10 @@ COMMAND_HANDLERS: dict[type[Command], Callable] = {
     StopProcess: stop_process,
     StartProcessingDirectory: process_directory,
 }
+
+####################
+## EVENT HANDLERS ##
+####################
 
 
 def handle_process_started(event: ProcessStarted, _: AbstractUnitOfWork) -> None:
@@ -128,3 +182,136 @@ EVENT_HANDLERS: dict[type[Event], list[Callable]] = {
     FileTransferLogged: [handle_file_transfer_logged],
     DirectoryLogged: [handle_directory_logged],
 }
+
+####################
+## OTHER HANDLERS ##
+####################
+
+
+def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:
+    """Return a function that determines the number of files to transfer based on the configuration."""
+    match m.is_rand_enabled:
+        case True:
+            return RandomFileCounter(rand_min=m.rand_min, rand_max=m.rand_max)
+        case False:
+            return StaticFileCounter(count=m.count)
+
+
+def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
+    """Return a function that determines the destination folder name based on the configuration."""
+    match m.is_enabled:
+        case True:
+            return UniqueDirectoryNamer(dest=dest, name=m.name)
+        case False:
+            return StaticDirectoryNamer(dest=dest)
+
+
+def get_textfilter_fn(m: TextFilterModel, re_fmt: str) -> TextFilterFn | None:
+    """Create an include-exclude filter function from configuration model."""
+    if not (m.is_enabled and m.text):
+        return None
+
+    split_text = set(m.text.split(","))
+    patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in split_text)
+
+    match m.should_include, len(patterns) == 1:
+        case (True, True):
+            return IncludeTextFilterSingular(pattern=patterns[0])
+        case (True, False):
+            return IncludeTextFilter(patterns=patterns)
+        case (False, True):
+            return ExcludeTextFilterSingular(pattern=patterns[0])
+        case (False, False):
+            return ExcludeTextFilter(patterns=patterns)
+
+
+def get_rangefilter_fn(m: RangeFilterModel, mapping: dict[str, int | float]) -> RangeFilterFn | None:
+    """Create a range filter function from it's configuration model."""
+    if not m.is_enabled:
+        return None
+
+    minimum = m.minimum * mapping.get(m.unit, 1.0)
+    maximum = m.maximum * mapping.get(m.unit, 1.0)
+
+    match minimum >= 0, maximum < float("inf"):
+        case (True, True):
+            return RangeMinMaxFilterFn(minimum=minimum, maximum=maximum)
+        case (True, False):
+            return RangeMinFilterFn(minimum=minimum)
+        case (False, True):
+            return RangeMaxFilterFn(maximum=maximum)
+
+
+def get_filefilter_fn(m: ConfigModel) -> AbstractFileFilter:
+    """Create a FileFilter instance from the configuration model."""
+    fmap: dict[type[Filter], TextFilterFn | RangeFilterFn | None] = {
+        DirnameFilter: get_textfilter_fn(m.dirname, re_fmt=ReStrFmt.DIRECTORY),
+        KeywordFilter: get_textfilter_fn(m.keyword, re_fmt=ReStrFmt.KEYWORD),
+        ExtensionFilter: get_textfilter_fn(m.extension, re_fmt=ReStrFmt.EXTENSION),
+        FilesizeFilter: get_rangefilter_fn(m.filesize, mapping=SIZE_MAP),
+        DurationFilter: get_rangefilter_fn(m.duration, mapping=TIME_MAP),
+    }
+    filters = tuple(filter_c(call=fn) for filter_c, fn in fmap.items() if fn is not None)
+
+    match len(filters) > 0, len(filters) == 1:
+        case True, True:
+            return SingularFileFilter(filter=filters[0])
+        case True, False:
+            return CompositeFileFilter(filters=filters)
+        case _:
+            return NoOpFileFilter()
+
+
+def get_filenamer_fn(m: FilenameModel) -> AbstractFilenamer:
+    """Return a function that determines the destination file name based on the configuration."""
+    match not m.is_enabled or m.template == FilenameTemplate.ORIGINAL:
+        case True:
+            return StaticFilenamer()
+        case False:
+            return TemplateFilenamer(m.template)
+
+
+def get_available_transfer_modes() -> dict[TransferMode, AbstractTransfer]:
+    """Return the set of available transfer modes based on the current environment."""
+    available = {
+        TransferMode.DRY_RUN: DryRunTransfer(),
+        TransferMode.COPY: CopyTransfer(),
+        TransferMode.COPY_PRESERVE: CopyPreserveTransfer(),
+        TransferMode.MOVE: MoveTransfer(),
+        TransferMode.SYMLINK: SymlinkTransfer(),
+        TransferMode.HARDLINK: HardlinkTransfer(),
+    }
+
+    def _verify_link_fn(link_func: Callable[[str, str], None], transfer_mode: TransferMode) -> None:
+        """Test link creation."""
+        try:
+            with TemporaryDirectory() as tmpdir:
+                test_src = join(tmpdir, "test_src")
+                test_link = join(tmpdir, "test_link")
+                open(test_src, "w").close()
+                link_func(test_src, test_link)
+                unlink(test_link)
+                unlink(test_src)
+        except OSError, UnsupportedOperation, NotImplementedError:
+            available.pop(transfer_mode)
+
+    _verify_link_fn(symlink, TransferMode.SYMLINK)
+    _verify_link_fn(link, TransferMode.HARDLINK)
+    return available
+
+
+def get_transfer_fn(mode: str) -> AbstractTransfer:
+    """Return the appropriate transfer strategy instance.
+
+    Falls back to DRY_RUN if the requested mode is not available.
+    """
+    available = get_available_transfer_modes()
+    return available.get(TransferMode(mode), available[TransferMode.DRY_RUN])
+
+
+def get_walker_fn(root: str, *, should_follow_symlink: bool) -> AbstractFSWalker:
+    """Return a function that generates candidates for a given directory."""
+    return PachinkoFSWalker(
+        root=root,
+        should_follow_symlink=should_follow_symlink,
+    )
