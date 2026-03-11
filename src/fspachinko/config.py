@@ -39,12 +39,27 @@ class DirectoryModel(BaseModel):
             return 1
         return val
 
+    @model_validator(mode="after")
+    def validate_directory_model(self) -> DirectoryModel:
+        """Validate."""
+        if not self.is_enabled:
+            self.count = 1
+        return self
+
 
 class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     is_enabled: bool = False
-    template: str = Field(default=FilenameTemplate.ORIGINAL, min_length=1)
+    template: str = Field(default=FilenameTemplate.ORIGINAL)
+
+    @field_validator("template")
+    @classmethod
+    def validate_template(cls, val: str) -> str:
+        """Validate that the template is not empty."""
+        if val.strip() == "":
+            return FilenameTemplate.ORIGINAL
+        return val
 
 
 class TextFilterModel(BaseModel):
@@ -95,6 +110,16 @@ class OptionsModel(BaseModel):
         """Validate that max_per_dir is non-negative."""
         if val <= 0:
             return float("inf")
+        return val
+
+    @field_validator("rng_seed")
+    @classmethod
+    def validate_rng_seed(cls, val: int | str | bytes | None) -> int | str | bytes | None:
+        """Validate rng_seed."""
+        if isinstance(val, int) and val < 0:
+            return 0
+        if isinstance(val, str) and val.strip() == "":
+            return None
         return val
 
 

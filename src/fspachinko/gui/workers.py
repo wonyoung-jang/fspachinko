@@ -54,7 +54,7 @@ class MainWorker(QRunnable):
         self.bus.event_handlers[DirectoryStarted].append(update_directory_started)
         self.bus.event_handlers[ProcessStopped].append(update_finished)
 
-        self.bus.handle(StartProcess(self.config.directory.count if self.config.directory.is_enabled else 1))
+        self.bus.handle(StartProcess(self.config.directory.count))
 
     def stop(self) -> None:
         """Stop the process."""

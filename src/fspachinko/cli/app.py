@@ -34,4 +34,4 @@ def run(config_path: str = default_config_path) -> None:
 
     m = ConfigModel.model_validate_json(data)
     bus = bootstrap(m=m)
-    bus.handle(StartProcess(dir_count=m.directory.count if m.directory.is_enabled else 1))
+    bus.handle(StartProcess(dir_count=m.directory.count))

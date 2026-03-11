@@ -32,6 +32,7 @@ class FileActions:
         self.autosave = QAction(
             icon=QIcon(get_icon_path(IconFilename.AUTOSAVE)),
             text="A&utosave Profile",
+            shortcut=QKeySequence.fromString("Ctrl+U"),
             checkable=True,
             checked=True,
         )

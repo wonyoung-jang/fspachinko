@@ -1,14 +1,17 @@
 """Settings handling for GUI."""
 
 import json
-from collections.abc import Sequence
 from dataclasses import dataclass
 from os.path import dirname, exists, isfile
-
-from PySide6.QtWidgets import QComboBox, QWidget
+from typing import TYPE_CHECKING
 
 from ..adapters.datapaths import get_profile_path
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from PySide6.QtWidgets import QWidget
 
 
 @dataclass(slots=True)
@@ -34,46 +37,39 @@ class ProfileManager:
 
     def set(self, parent: QWidget) -> None:
         """Recursively save settings for all child widgets."""
-        data = {}
-        for key, child in iter_custom_widget(parent):
-            if (val := get_widget_value(child)) is None:
-                continue
-
-            data[key] = val
-            if isinstance(child, QComboBox):
-                items = [child.itemText(i) for i in range(child.count())]
-                data[f"{key}_items"] = items
-
-        self._save(data)
+        data = dict(self.set_generator(parent))
+        save_json(self.path, data, sort=True)
 
     def get(self, parent: QWidget) -> None:
         """Recursively load settings for all child widgets."""
-        if not self._check_exists():
-            return
+        data = load_json(self.path)
+        for child, val in self.get_generator(parent, data):
+            set_widget_value(child, val)
 
-        data = self._load()
-
+    def set_generator(self, parent: QWidget) -> Iterator[tuple[str, object]]:
+        """Recursively save settings for all child widgets."""
         for key, child in iter_custom_widget(parent):
-            if isinstance(child, QComboBox):
-                items = data.get(f"{key}_items")
-                if isinstance(items, Sequence):
-                    child.clear()
-                    child.addItems([str(i) for i in items])
+            if (val := get_widget_value(child)) is not None:
+                yield key, val
 
+    def get_generator(self, parent: QWidget, data: dict) -> Iterator[tuple[QWidget, object]]:
+        """Recursively load settings for all child widgets."""
+        for key, child in iter_custom_widget(parent):
             if (val := data.get(key)) is not None:
-                set_widget_value(child, val)
+                yield child, val
 
-    def _save(self, data: dict) -> None:
-        """Save the profile data to the file."""
-        with open(self.path, "w", encoding="utf-8") as f:
+
+def save_json(path: str, data: dict, *, sort: bool = False) -> None:
+    """Save JSON data to a file."""
+    with open(path, "w", encoding="utf-8") as f:
+        if sort:
             data = dict(sorted(data.items(), key=lambda x: x[0]))
-            json.dump(data, f, indent=4)
+        json.dump(data, f, indent=4)
 
-    def _load(self) -> dict:
-        """Load the profile data from the file."""
-        with open(self.path, encoding="utf-8") as f:
-            return json.load(f)
 
-    def _check_exists(self) -> bool:
-        """Check if the profile file exists."""
-        return exists(self.path) and isfile(self.path)
+def load_json(path: str) -> dict:
+    """Load JSON data from a file."""
+    if not (exists(path) and isfile(path)):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)

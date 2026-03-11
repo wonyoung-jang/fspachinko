@@ -87,17 +87,10 @@ class PathSelectorWidget(BaseGroupBox):
         layout.addWidget(self.btn_browse)
         layout.addWidget(self.btn_open)
 
-    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
-        """Handle drag enter event for folder paths."""
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
-        """Handle drop event for folder paths."""
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            if os.path.isdir(path):
-                self.lbl_selected.setText(path)
+    @property
+    def config(self) -> str:
+        """Return clean data for the config."""
+        return self.lbl_selected.text()
 
     @Slot()
     def browse(self) -> None:
@@ -118,16 +111,23 @@ class PathSelectorWidget(BaseGroupBox):
         except Exception:
             logger.exception("Failed to open path %s", self.lbl_selected.text())
 
-    @property
-    def config(self) -> str:
-        """Return clean data for the config."""
-        return self.lbl_selected.text()
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
+        """Handle drag enter event for folder paths."""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
+        """Handle drop event for folder paths."""
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if os.path.isdir(path):
+                self.lbl_selected.setText(path)
 
 
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    def __init__(self, title: str = "File count", name: str = "filecount") -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the file count widget."""
         super().__init__(title=title, name=name)
 
@@ -184,7 +184,7 @@ class FileCountWidget(BaseGroupBox):
 class DirectoryCreateWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    def __init__(self, title: str = "Create directories", name: str = "directory") -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
         super().__init__(title=title, name=name, checkable=True)
 
@@ -213,7 +213,7 @@ class DirectoryCreateWidget(BaseGroupBox):
 class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
 
-    def __init__(self, title: str = "Filenamer", name: str = "filenamer") -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the filename template settings widget."""
         super().__init__(title=title, name=name, checkable=True)
 
@@ -249,7 +249,7 @@ class FilenamerWidget(BaseGroupBox):
         """Return clean data for the config."""
         return {
             "is_enabled": self.isChecked(),
-            "template": self.edit_template.text() or "{original}",
+            "template": self.edit_template.text(),
         }
 
 
@@ -332,7 +332,7 @@ class RangeFilterWidget(BaseGroupBox):
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    def __init__(self, title: str = "Options", name: str = "options") -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the options widget."""
         super().__init__(title=title, name=name)
 
@@ -377,14 +377,14 @@ class OptionsWidget(BaseGroupBox):
             "max_per_dir": self.spin_max_per_folder.value(),
             "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
             "should_follow_symlink": self.chk_follow_symlink.isChecked(),
-            "rng_seed": self.rng_seed.text() or None,
+            "rng_seed": self.rng_seed.text(),
         }
 
 
 class LogWidget(QWidget):
     """Log widget."""
 
-    def __init__(self, name: str = "logging") -> None:
+    def __init__(self, name: str) -> None:
         """Initiralize the log widget."""
         super().__init__()
         set_qt_name(self, name)
@@ -401,7 +401,7 @@ class LogWidget(QWidget):
 class ProgressWidget(QWidget):
     """Progress bars and execution controls."""
 
-    def __init__(self, name: str = "progress") -> None:
+    def __init__(self, name: str) -> None:
         """Post-initialize the progress widget."""
         super().__init__()
         set_qt_name(self, name)

@@ -34,10 +34,10 @@ class CentralWidget(QWidget):
         """Start the process and disable UI elements."""
         self.original_window_title = self.window().windowTitle()
         self.worker = MainWorker(get_config(self.ui))
-        self.worker.signals.start_process.connect(self.start_process_handler)
-        self.worker.signals.directory_start.connect(self.directory_start_handler)
-        self.worker.signals.file_transferred.connect(self.file_transferred_handler)
-        self.worker.signals.finished.connect(self.finished_handler)
+        self.worker.signals.start_process.connect(self.handle_start_process)
+        self.worker.signals.directory_start.connect(self.handle_directory_start)
+        self.worker.signals.file_transferred.connect(self.handle_file_transfer)
+        self.worker.signals.finished.connect(self.handle_finished)
         self.thread_pool.start(self.worker)
 
     @Slot()
@@ -52,7 +52,7 @@ class CentralWidget(QWidget):
             child.setEnabled(is_enabled)
 
     @Slot(int)
-    def start_process_handler(self, dir_count: int) -> None:
+    def handle_start_process(self, dir_count: int) -> None:
         """Handle the start of the process."""
         self.toggle_ui(is_enabled=False)
         self.ui.progress.progbar_dirs.setValue(0)
@@ -60,13 +60,13 @@ class CentralWidget(QWidget):
         self.ui.progress.progbar_dirs.setMaximum(dir_count)
 
     @Slot(int, int)
-    def directory_start_handler(self, idx: int, target: int) -> None:
+    def handle_directory_start(self, idx: int, target: int) -> None:
         """Update the directory progress bar."""
         self.ui.progress.progbar_dirs.setValue(idx)
         self.ui.progress.progbar_files.setMaximum(target)
 
     @Slot(int)
-    def file_transferred_handler(self, val: int) -> None:
+    def handle_file_transfer(self, val: int) -> None:
         """Update the window title with the current progress."""
         self.ui.progress.progbar_files.setValue(val)
         if self.ui.progress.progbar_files.maximum() > 0:
@@ -74,7 +74,7 @@ class CentralWidget(QWidget):
             self.window().setWindowTitle(f"[{percentage}%] {self.original_window_title}")
 
     @Slot()
-    def finished_handler(self) -> None:
+    def handle_finished(self) -> None:
         """Reset the window title to the original."""
         self.toggle_ui(is_enabled=True)
         self.window().setWindowTitle(self.original_window_title)
