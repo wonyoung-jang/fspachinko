@@ -4,7 +4,7 @@ import logging
 
 from ..adapters import initialize_logging
 from .app import app
-from .loggers import setup_cli_logger
+from .loggers_cli import setup_cli_logger
 
 logger = logging.getLogger(__name__)
 

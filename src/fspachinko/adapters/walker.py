@@ -46,6 +46,7 @@ class PachinkoFSWalker(AbstractFSWalker):
         root = self.root
         curr = self.root
         get = self.get
+        pop = self.board.pop
 
         while True:
             pin = get(curr)
@@ -57,6 +58,7 @@ class PachinkoFSWalker(AbstractFSWalker):
             if not subdirs and not files:
                 if curr == root:
                     break
+                pop(curr)
                 curr = root
                 continue
 

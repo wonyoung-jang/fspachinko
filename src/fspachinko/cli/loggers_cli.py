@@ -5,7 +5,8 @@ import logging
 
 def setup_cli_logger() -> None:
     """Set up the CLI logger."""
-    logging.getLogger().addHandler(get_cli_log_handler())
+    cli_handler = get_cli_log_handler()
+    logging.getLogger().addHandler(cli_handler)
 
 
 def get_cli_log_handler() -> logging.Handler:

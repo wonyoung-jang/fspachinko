@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QGroupBox, QWidget
 
 from ..constants import PERCENTAGE_100, GUIName
 from .configadapter import get_config
-from .loggers import setup_gui_logger
+from .loggers_gui import setup_gui_logger
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
 from .workers import MainWorker

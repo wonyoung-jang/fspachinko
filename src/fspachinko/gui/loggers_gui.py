@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 
 def setup_gui_logger(slotfunc: Callable) -> None:
     """Set up the Qt logger."""
-    qt_log_handler = QtLogHandler(slotfunc)
-    logging.getLogger().addHandler(qt_log_handler)
+    gui_handler = QtLogHandler(slotfunc)
+    logging.getLogger().addHandler(gui_handler)
 
 
 class QtLogHandlerSignals(QObject):
