@@ -6,6 +6,7 @@ from io import UnsupportedOperation
 from os import link, symlink, unlink
 from os.path import join
 from tempfile import TemporaryDirectory
+from time import perf_counter
 from typing import TYPE_CHECKING
 
 from ..adapters.dirnamer import AbstractDirectoryNamer, StaticDirectoryNamer, UniqueDirectoryNamer
@@ -43,24 +44,15 @@ from ..adapters.transfer import (
 )
 from ..adapters.walker import AbstractFSWalker, PachinkoFSWalker
 from ..constants import SIZE_MAP, TIME_MAP, FilenameTemplate, ReStrFmt, TransferMode
-from ..domain.commands import StartProcess, StartProcessingDirectory, StopProcess
-from ..domain.events import (
-    DirectoryLogged,
-    DirectoryStarted,
-    Event,
-    FileTransferLogged,
-    FileTransferred,
-    ProcessStarted,
-    ProcessStopped,
-)
+from ..domain.events import DirectoryTransferred, Event, FileTransferred
 from ..domain.model import DestinationDirectory
 from ..helpers import get_report, get_status
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
     from ..config import ConfigModel, RangeFilterModel, TextFilterModel
-    from ..domain.commands import Command
+    from ..domain.commands import Command, StartProcessingDirectory, StopProcess
     from .uow import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -72,54 +64,47 @@ type Message = Command | Event
 ######################
 
 
-def start_process(cmd: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Message]:
-    """Handle the StartProcessCommand."""
-    yield ProcessStarted(dir_count=cmd.dir_count)
-    for di in range(1, cmd.dir_count + 1):
-        target_qty = uow.pipeline.get_file_count()
-        yield StartProcessingDirectory(dir_idx=di, target_qty=target_qty)
-    yield ProcessStopped()
-
-
 def stop_process(_: StopProcess, uow: AbstractUnitOfWork) -> None:
     """Handle the StopProcessCommand."""
     uow.job.request_stop()
 
 
-def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) -> Iterator[Message]:
+def process_directory(
+    cmd: StartProcessingDirectory, uow: AbstractUnitOfWork, *, publish: Callable = lambda _: None
+) -> None:
     """Handle the ProcessDirectoryCommand."""
     with uow:
-        job = uow.job
-        pipeline = uow.pipeline
-
-        if job.is_stop_requested or job.quota.is_root_locked:
+        if uow.job.is_stop_requested or uow.job.quota.is_root_locked:
             return
 
-        yield DirectoryStarted(idx=cmd.dir_idx, target=cmd.target_qty)
+        dst = DestinationDirectory(
+            path=uow.pipeline.get_currdir_dest(),
+            target_qty=cmd.target_qty,
+            start_time=perf_counter(),
+        )
+        uow.job.quota.reset()
+        uow.pipeline.add_handler(dst.path)
 
-        dst = DestinationDirectory(path=pipeline.get_currdir_dest(), target_qty=cmd.target_qty)
-        job.quota.reset()
-        pipeline.add_handler(dst.path)
-
-        for e in pipeline.walk():
-            if dst.is_success or job.is_stop_requested or job.quota.is_root_locked:
+        for e in uow.pipeline.walk():
+            if dst.is_success or uow.job.is_stop_requested or uow.job.quota.is_root_locked:
                 break
-            if not job.process_file(e) or not pipeline.is_valid(e):
+            if not uow.job.process_file(e) or not uow.pipeline.is_valid(e):
                 continue
-            new_path = pipeline.get_new_path(dst=dst, e=e)
+            new_path = uow.pipeline.get_new_path(dst=dst, e=e)
             if new_path:
                 uow.register_transfer(e.path, new_path)
-                job.update(dst, e)
-                yield FileTransferLogged(count=dst.count, src=e.path, dst=new_path)
+                uow.job.update(dst, e)
 
-        is_empty_creation = dst.is_none_found and pipeline.is_create_dir
-        pipeline.remove_dst_dir_if_empty(dst.path, none_found=is_empty_creation)
-        pipeline.remove_handler()
+                publish(FileTransferred(dst.count, e.path, new_path))
+
+        is_empty_creation = dst.is_none_found and uow.pipeline.is_create_dir
+        uow.pipeline.remove_dst_dir_if_empty(dst.path, none_found=is_empty_creation)
+        uow.pipeline.remove_handler()
         status = get_status(
             is_success=dst.is_success,
             is_none_found_and_create_dir=is_empty_creation,
-            is_stop_requested=job.is_stop_requested,
-            is_root_locked=job.quota.is_root_locked,
+            is_stop_requested=uow.job.is_stop_requested,
+            is_root_locked=uow.job.quota.is_root_locked,
         )
         report = get_report(
             dst.path,
@@ -128,60 +113,16 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
             dst.count,
             dst.target_qty,
         )
-        yield DirectoryLogged(status=status, report=report)
+
+        publish(DirectoryTransferred(status, report))
 
         uow.commit()
 
-
-COMMAND_HANDLERS: dict[type[Command], Callable] = {
-    StartProcess: start_process,
-    StopProcess: stop_process,
-    StartProcessingDirectory: process_directory,
-}
 
 ####################
 ## EVENT HANDLERS ##
 ####################
 
-
-def handle_process_started(event: ProcessStarted, _: AbstractUnitOfWork) -> None:
-    """Handle the StartProcessEvent."""
-    logger.debug("%s", event)
-
-
-def handle_directory_started(event: DirectoryStarted, _: AbstractUnitOfWork) -> None:
-    """Handle the DirectoryStartEvent."""
-    logger.debug("%s", event)
-
-
-def handle_file_transferred(event: FileTransferred, _: AbstractUnitOfWork) -> None:
-    """Handle the FileTransferredEvent."""
-    logger.debug("%s", event)
-
-
-def handle_finished(event: ProcessStopped, __: AbstractUnitOfWork) -> None:
-    """Handle the FinishedEvent."""
-    logger.debug("%s", event)
-
-
-def handle_file_transfer_logged(event: FileTransferLogged, _: AbstractUnitOfWork) -> None:
-    """Handle the FileTransferLogged event."""
-    logger.info("%s: %s -> %s", event.count, event.src, event.dst)
-
-
-def handle_directory_logged(event: DirectoryLogged, _: AbstractUnitOfWork) -> None:
-    """Handle the DirectoryLogged event."""
-    logger.info("%s\n%s", event.status, event.report)
-
-
-EVENT_HANDLERS: dict[type[Event], list[Callable]] = {
-    ProcessStarted: [handle_process_started],
-    DirectoryStarted: [handle_directory_started],
-    FileTransferred: [handle_file_transferred],
-    ProcessStopped: [handle_finished],
-    FileTransferLogged: [handle_file_transfer_logged],
-    DirectoryLogged: [handle_directory_logged],
-}
 
 ####################
 ## OTHER HANDLERS ##

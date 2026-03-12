@@ -125,7 +125,6 @@ class IconFilename(StrEnum):
     SAVE = "save_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     SAVE_AS = "save_as_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     OPEN = "file_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    AUTOSAVE = "sync_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     START = "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     STOP = "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
     CLOSE = "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"

@@ -9,35 +9,8 @@ class Event:
 
 
 @dataclass(slots=True, frozen=True)
-class ProcessStarted(Event):
-    """Event for starting a process."""
-
-    dir_count: int
-
-
-@dataclass(slots=True, frozen=True)
-class DirectoryStarted(Event):
-    """Event for starting to process a directory."""
-
-    idx: int
-    target: int
-
-
-@dataclass(slots=True, frozen=True)
 class FileTransferred(Event):
-    """Event for a file being transferred."""
-
-    count: int
-
-
-@dataclass(slots=True, frozen=True)
-class ProcessStopped(Event):
-    """Event for finishing the process."""
-
-
-@dataclass(slots=True, frozen=True)
-class FileTransferLogged(Event):
-    """Event for logging a file transfer."""
+    """Event after file is transferred."""
 
     count: int
     src: str
@@ -45,8 +18,8 @@ class FileTransferLogged(Event):
 
 
 @dataclass(slots=True, frozen=True)
-class DirectoryLogged(Event):
-    """Event for logging a directory transfer."""
+class DirectoryTransferred(Event):
+    """Event after directory is transferred."""
 
     status: str
     report: str

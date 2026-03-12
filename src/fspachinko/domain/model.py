@@ -1,14 +1,7 @@
 """Model classes for the domain."""
 
-from collections import Counter, deque
+from collections import Counter
 from dataclasses import dataclass, field
-from time import perf_counter
-from typing import TYPE_CHECKING
-
-from .events import FileTransferred
-
-if TYPE_CHECKING:
-    from .events import Event
 
 
 @dataclass(slots=True)
@@ -17,7 +10,6 @@ class TransferJob:
 
     quota: DiversityQuota
     is_stop_requested: bool = False
-    events: deque[Event] = field(default_factory=deque)
 
     def process_file(self, entry: FSEntry) -> bool:
         """Process a file transfer, checking the diversity quota and updating the destination directory stats."""
@@ -27,7 +19,6 @@ class TransferJob:
         """Update the job state after processing a directory."""
         self.quota.update(entry)
         dst.accept(entry)
-        self.events.append(FileTransferred(count=dst.count))
 
     def request_stop(self) -> None:
         """Request to stop the process."""
@@ -40,9 +31,9 @@ class DestinationDirectory:
 
     path: str
     target_qty: int
+    start_time: float
     count: int = 0
     size: int = 0
-    start_time: float = field(default_factory=perf_counter)
 
     @property
     def is_success(self) -> bool:
