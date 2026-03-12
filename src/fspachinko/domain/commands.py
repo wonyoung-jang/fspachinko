@@ -24,5 +24,5 @@ class StopProcess(Command):
 class StartProcessingDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 
-    di: int
+    dir_idx: int
     target_qty: int

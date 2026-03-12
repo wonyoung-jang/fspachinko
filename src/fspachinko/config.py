@@ -86,6 +86,14 @@ class RangeFilterModel(BaseModel):
             raise ValueError(msg)
         return self
 
+    @field_validator("minimum")
+    @classmethod
+    def validate_minimum(cls, val: float) -> float:
+        """Validate that minimum is non-negative."""
+        if val < 0:
+            return 0
+        return val
+
     @field_validator("maximum")
     @classmethod
     def validate_maximum(cls, val: float) -> float:
@@ -116,9 +124,7 @@ class OptionsModel(BaseModel):
     @classmethod
     def validate_rng_seed(cls, val: int | str | bytes | None) -> int | str | bytes | None:
         """Validate rng_seed."""
-        if isinstance(val, int) and val < 0:
-            return 0
-        if isinstance(val, str) and val.strip() == "":
+        if isinstance(val, str) and val == "":
             return None
         return val
 
@@ -128,15 +134,15 @@ class ConfigModel(BaseModel):
 
     root: str
     dest: str
-    filecount: FilecountModel
-    directory: DirectoryModel
-    filename: FilenameModel
-    dirname: TextFilterModel
-    keyword: TextFilterModel
-    extension: TextFilterModel
-    filesize: RangeFilterModel
-    duration: RangeFilterModel
-    options: OptionsModel
+    filecount: FilecountModel = Field(default_factory=FilecountModel)
+    directory: DirectoryModel = Field(default_factory=DirectoryModel)
+    filename: FilenameModel = Field(default_factory=FilenameModel)
+    dirname: TextFilterModel = Field(default_factory=TextFilterModel)
+    keyword: TextFilterModel = Field(default_factory=TextFilterModel)
+    extension: TextFilterModel = Field(default_factory=TextFilterModel)
+    filesize: RangeFilterModel = Field(default_factory=RangeFilterModel)
+    duration: RangeFilterModel = Field(default_factory=RangeFilterModel)
+    options: OptionsModel = Field(default_factory=OptionsModel)
 
     @field_validator("root", "dest")
     @classmethod

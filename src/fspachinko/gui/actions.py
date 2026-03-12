@@ -9,67 +9,50 @@ from ..constants import IconFilename
 from .qthelpers import set_qt_tips
 
 
+def build_action(icon: str, text: str, shortcut: str, tip: str) -> QAction:
+    """Build a QAction."""
+    action = QAction(icon=QIcon(get_icon_path(icon)), text=text, shortcut=QKeySequence.fromString(shortcut))
+    set_qt_tips(action, tip)
+    return action
+
+
+QACTION_CONFIGS = {
+    "save": (IconFilename.SAVE, "&Save Profile", "Ctrl+S", "Save current profile (Ctrl+S)"),
+    "save_as": (IconFilename.SAVE_AS, "Save Profile &As", "Ctrl+Shift+S", "Save current profile as ... (Ctrl+Shift+S)"),
+    "load": (IconFilename.OPEN, "&Load Profile", "Ctrl+O", "Load profile (Ctrl+O)"),
+    "exit": (IconFilename.CLOSE, "&Exit", "Ctrl+W", "Exit application (Ctrl+W)"),
+    "start": (IconFilename.START, "&Start", "Ctrl+R", "Start (Ctrl+R)"),
+    "stop": (IconFilename.STOP, "S&top", "ESC", "Stop (ESC)"),
+}
+
+
+@dataclass(slots=True)
 class FileActions:
     """Main file menu actions."""
 
-    def __init__(self) -> None:
-        """Initialize the main actions."""
-        self.save = QAction(
-            icon=QIcon(get_icon_path(IconFilename.SAVE)),
-            text="&Save Profile",
-            shortcut=QKeySequence.fromString("Ctrl+S"),
-        )
-        self.save_as = QAction(
-            icon=QIcon(get_icon_path(IconFilename.SAVE_AS)),
-            text="Save Profile &As",
-            shortcut=QKeySequence.fromString("Ctrl+Shift+S"),
-        )
-        self.load = QAction(
-            icon=QIcon(get_icon_path(IconFilename.OPEN)),
-            text="&Load Profile",
-            shortcut=QKeySequence.fromString("Ctrl+O"),
-        )
-        self.autosave = QAction(
-            icon=QIcon(get_icon_path(IconFilename.AUTOSAVE)),
-            text="A&utosave Profile",
-            shortcut=QKeySequence.fromString("Ctrl+U"),
-            checkable=True,
-            checked=True,
-        )
-        self.exit = QAction(
-            icon=QIcon(get_icon_path(IconFilename.CLOSE)),
-            text="&Exit",
-            shortcut=QKeySequence.fromString("Ctrl+W"),
-        )
-        set_qt_tips(self.save, "Save current GUI profile (Ctrl+S)")
-        set_qt_tips(self.save_as, "Save current GUI profile as ... (Ctrl+Shift+S)")
-        set_qt_tips(self.load, "Load GUI profile (Ctrl+O)")
-        set_qt_tips(self.autosave, "Automatically save profile on exit")
-        set_qt_tips(self.exit, "Exit application (Ctrl+W)")
+    save: QAction
+    save_as: QAction
+    load: QAction
+    exit: QAction
 
 
+@dataclass(slots=True)
 class RunActions:
     """Main run actions."""
 
-    def __init__(self) -> None:
-        """Initialize the main actions."""
-        self.start = QAction(
-            icon=QIcon(get_icon_path(IconFilename.START)),
-            text="&Start",
-            shortcut=QKeySequence.fromString("Ctrl+R"),
-        )
-        self.stop = QAction(
-            icon=QIcon(get_icon_path(IconFilename.STOP)),
-            text="S&top",
-            shortcut=QKeySequence.fromString("ESC"),
-        )
-        set_qt_tips(self.start, "Start (Ctrl+R)")
-        set_qt_tips(self.stop, "Stop (ESC)")
+    start: QAction
+    stop: QAction
 
 
 @dataclass(slots=True)
 class Actions:
     """Main actions."""
 
-    file: FileActions = field(default_factory=FileActions)
-    run: RunActions = field(default_factory=RunActions)
+    file: FileActions = field(init=False)
+    run: RunActions = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set up any additional state if needed."""
+        actions = {k: build_action(*v) for k, v in QACTION_CONFIGS.items()}
+        self.file = FileActions(actions["save"], actions["save_as"], actions["load"], actions["exit"])
+        self.run = RunActions(actions["start"], actions["stop"])

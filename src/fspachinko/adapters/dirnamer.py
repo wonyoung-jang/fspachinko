@@ -15,6 +15,17 @@ class AbstractDirectoryNamer(ABC):
 
 
 @dataclass(slots=True)
+class StaticDirectoryNamer(AbstractDirectoryNamer):
+    """Directory namer that returns a static folder name."""
+
+    dest: str
+
+    def gen_dir_name(self) -> str:
+        """Return the static destination folder name."""
+        return self.dest
+
+
+@dataclass(slots=True)
 class UniqueDirectoryNamer(AbstractDirectoryNamer):
     """Directory namer that generates unique folder names."""
 
@@ -24,14 +35,3 @@ class UniqueDirectoryNamer(AbstractDirectoryNamer):
     def gen_dir_name(self) -> str:
         """Return a unique destination folder name."""
         return join(self.dest, self.name)
-
-
-@dataclass(slots=True)
-class StaticDirectoryNamer(AbstractDirectoryNamer):
-    """Directory namer that returns a static folder name."""
-
-    dest: str
-
-    def gen_dir_name(self) -> str:
-        """Return the static destination folder name."""
-        return self.dest

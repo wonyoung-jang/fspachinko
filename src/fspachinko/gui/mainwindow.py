@@ -53,8 +53,6 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self._actions.file.save_as)
         file_menu.addAction(self._actions.file.load)
         file_menu.addSeparator()
-        file_menu.addAction(self._actions.file.autosave)
-        file_menu.addSeparator()
         file_menu.addAction(self._actions.file.exit)
 
         run_menu = menubar.addMenu(GUILabel.RUNMENU)
@@ -69,7 +67,6 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._actions.file.save)
         toolbar.addAction(self._actions.file.save_as)
         toolbar.addAction(self._actions.file.load)
-        toolbar.addAction(self._actions.file.autosave)
         toolbar.addSeparator()
         toolbar.addAction(self._actions.run.start)
         toolbar.addAction(self._actions.run.stop)
@@ -126,8 +123,6 @@ class MainWindow(QMainWindow):
         self.qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
         self.qsettings.setValue(GUISettingsKey.STATE, self.saveState())
         self.qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
-        if self._actions.file.autosave.isChecked():
-            self.profiles.set(self)
         super().closeEvent(event)
 
 

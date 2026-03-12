@@ -59,7 +59,7 @@ from ..helpers import get_report, get_status
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from ..config import ConfigModel, DirectoryModel, FilecountModel, FilenameModel, RangeFilterModel, TextFilterModel
+    from ..config import ConfigModel, RangeFilterModel, TextFilterModel
     from ..domain.commands import Command
     from .uow import AbstractUnitOfWork
 
@@ -77,7 +77,7 @@ def start_process(cmd: StartProcess, uow: AbstractUnitOfWork) -> Iterator[Messag
     yield ProcessStarted(dir_count=cmd.dir_count)
     for di in range(1, cmd.dir_count + 1):
         target_qty = uow.pipeline.get_file_count()
-        yield StartProcessingDirectory(di=di, target_qty=target_qty)
+        yield StartProcessingDirectory(dir_idx=di, target_qty=target_qty)
     yield ProcessStopped()
 
 
@@ -95,7 +95,7 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
         if job.is_stop_requested or job.quota.is_root_locked:
             return
 
-        yield DirectoryStarted(idx=cmd.di, target=cmd.target_qty)
+        yield DirectoryStarted(idx=cmd.dir_idx, target=cmd.target_qty)
 
         dst = DestinationDirectory(path=pipeline.get_currdir_dest(), target_qty=cmd.target_qty)
         job.quota.reset()
@@ -188,22 +188,22 @@ EVENT_HANDLERS: dict[type[Event], list[Callable]] = {
 ####################
 
 
-def get_filecount_fn(m: FilecountModel) -> AbstractFileCounter:
+def get_filecount_fn(count: int, rand_min: int, rand_max: int, *, is_rand_enabled: bool) -> AbstractFileCounter:
     """Return a function that determines the number of files to transfer based on the configuration."""
-    match m.is_rand_enabled:
+    match is_rand_enabled:
         case True:
-            return RandomFileCounter(rand_min=m.rand_min, rand_max=m.rand_max)
+            return RandomFileCounter(rand_min, rand_max)
         case False:
-            return StaticFileCounter(count=m.count)
+            return StaticFileCounter(count)
 
 
-def get_dirname_fn(m: DirectoryModel, dest: str) -> AbstractDirectoryNamer:
+def get_dirname_fn(dest: str, name: str, *, is_enabled: bool) -> AbstractDirectoryNamer:
     """Return a function that determines the destination folder name based on the configuration."""
-    match m.is_enabled:
+    match is_enabled:
         case True:
-            return UniqueDirectoryNamer(dest=dest, name=m.name)
+            return UniqueDirectoryNamer(dest, name)
         case False:
-            return StaticDirectoryNamer(dest=dest)
+            return StaticDirectoryNamer(dest)
 
 
 def get_textfilter_fn(m: TextFilterModel, re_fmt: str) -> TextFilterFn | None:
@@ -262,13 +262,13 @@ def get_filefilter_fn(m: ConfigModel) -> AbstractFileFilter:
             return NoOpFileFilter()
 
 
-def get_filenamer_fn(m: FilenameModel) -> AbstractFilenamer:
+def get_filenamer_fn(template: str, *, is_enabled: bool) -> AbstractFilenamer:
     """Return a function that determines the destination file name based on the configuration."""
-    match not m.is_enabled or m.template == FilenameTemplate.ORIGINAL:
+    match not is_enabled or template == FilenameTemplate.ORIGINAL:
         case True:
             return StaticFilenamer()
         case False:
-            return TemplateFilenamer(m.template)
+            return TemplateFilenamer(template)
 
 
 def get_available_transfer_modes() -> dict[TransferMode, AbstractTransfer]:
@@ -300,7 +300,7 @@ def get_available_transfer_modes() -> dict[TransferMode, AbstractTransfer]:
     return available
 
 
-def get_transfer_fn(mode: str) -> AbstractTransfer:
+def get_transfer_fn(mode: str | TransferMode) -> AbstractTransfer:
     """Return the appropriate transfer strategy instance.
 
     Falls back to DRY_RUN if the requested mode is not available.
