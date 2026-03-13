@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
+from ..adapters.loggers import get_dest_log_filehandler
 from ..bootstrap import bootstrap, build_pipeline
 from ..domain.commands import StartProcessingDirectory, StopProcess
 from ..domain.events import FileTransferred
@@ -56,12 +57,14 @@ class MainWorker(QRunnable):
 
             self.signals.directory_start.emit(dir_idx, target_qty)
 
-            pipeline.add_handler(dest_dir)
+            handler = get_dest_log_filehandler(dest_dir)
+            logging.getLogger().addHandler(handler)
 
             start_process_cmd = StartProcessingDirectory(dest_dir, target_qty)
             bus.handle(start_process_cmd, uow=bus.uow)
 
-            pipeline.remove_handler()
+            logging.getLogger().removeHandler(handler)
+            handler.close()
 
         self.signals.finished.emit()
 

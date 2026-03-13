@@ -37,31 +37,28 @@ def stop_process(_: StopProcess, uow: AbstractUnitOfWork) -> None:
 def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) -> None:
     """Handle the ProcessDirectoryCommand."""
     with uow:
-        _job = uow.job
-        _pipe = uow.pipeline
-        if _job.is_stop_requested or _job.quota.is_root_locked:
+        if uow.job.is_stop_requested or uow.job.quota.is_root_locked:
             return
 
-        dst = DestinationDirectory(
+        uow.job.dst = dst = DestinationDirectory(
             path=cmd.dest_dir,
             target_qty=cmd.target_qty,
         )
-        _job.dst = dst
-        _job.quota.reset()
+        uow.job.quota.reset()
 
-        for e in _pipe.walk():
-            if dst.is_success or _job.is_stop_requested or _job.quota.is_root_locked:
+        for e in uow.pipeline.walker_fn.walk():
+            if dst.is_success or uow.job.is_stop_requested or uow.job.quota.is_root_locked:
                 break
-            if not _job.process_file(e) or not _pipe.filefilter_fn(e):
+            if not uow.job.process_file(e) or not uow.pipeline.filefilter_fn(e):
                 continue
-            new_path = _pipe.get_new_path(dst=dst, e=e)
+            new_path = uow.pipeline.get_new_path(dst=dst, e=e)
             if new_path:
                 uow.register_transfer(e.path, new_path)
-                _job.update(e, new_path)
+                uow.job.update(e, new_path)
 
-        is_empty_creation = dst.is_none_found and _pipe.is_create_dir
-        _pipe.remove_dst_dir_if_empty(dst.path, is_empty_creation=is_empty_creation)
-        _job.finalize_directory(is_empty_creation=is_empty_creation)
+        is_empty_creation = dst.is_none_found and uow.pipeline.is_create_dir
+        uow.pipeline.remove_dst_dir_if_empty(dst.path, is_empty_creation=is_empty_creation)
+        uow.job.finalize_directory(is_empty_creation=is_empty_creation)
 
         uow.commit()
 

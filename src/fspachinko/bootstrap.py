@@ -4,8 +4,6 @@ import logging
 from random import seed
 from typing import TYPE_CHECKING
 
-from .adapters import ConcreteLoggingPort
-from .adapters.filesystemport import ConcreteFilesystemPort
 from .adapters.media import get_duration
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
@@ -116,8 +114,6 @@ def build_pipeline(m: ConfigModel) -> AbstractPipeline:
     filters = build_filters(m)
     return TransferPipeline(
         is_create_dir=m.directory.is_enabled,
-        fs=ConcreteFilesystemPort(),
-        logging=ConcreteLoggingPort(),
         filecount_fn=get_filecount_fn(
             m.filecount.count,
             m.filecount.rand_min,
