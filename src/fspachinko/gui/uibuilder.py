@@ -1,7 +1,5 @@
 """Main module."""
 
-import logging
-
 from PySide6.QtWidgets import QVBoxLayout
 
 from ..constants import ByteUnit, TimeUnit
@@ -16,8 +14,6 @@ from .components import (
     RangeFilterWidget,
     TextFilterWidget,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class UIBuilder:

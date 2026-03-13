@@ -1,6 +1,5 @@
 """Builder module for core functionality."""
 
-import logging
 from random import seed
 from typing import TYPE_CHECKING
 
@@ -27,9 +26,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from .config import ConfigModel
-
-
-logger = logging.getLogger(__name__)
 
 
 def bootstrap(

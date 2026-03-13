@@ -1,12 +1,8 @@
 """Main entry point for CLI."""
 
-import logging
-
 from ..adapters import initialize_logging
 from .app import app
 from .loggers_cli import setup_cli_logger
-
-logger = logging.getLogger(__name__)
 
 
 def main() -> None:

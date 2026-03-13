@@ -13,8 +13,6 @@ from ..domain.events import FileTransferred
 if TYPE_CHECKING:
     from ..config import ConfigModel
 
-logger = logging.getLogger(__name__)
-
 
 class WorkerSignals(QObject):
     """Qt worker signals."""

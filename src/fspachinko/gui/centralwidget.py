@@ -1,7 +1,5 @@
 """Main module."""
 
-import logging
-
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
@@ -11,8 +9,6 @@ from .loggers_gui import setup_gui_logger
 from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
 from .workers import MainWorker
-
-logger = logging.getLogger(__name__)
 
 
 class CentralWidget(QWidget):

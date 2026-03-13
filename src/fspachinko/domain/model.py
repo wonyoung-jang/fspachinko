@@ -90,7 +90,7 @@ class DiversityQuota:
     @property
     def is_root_locked(self) -> bool:
         """Check if the root directory is locked."""
-        return self.root in self.locked_dir and self.locked_dir[self.root] >= self.max_per_dir
+        return self.locked_dir[self.root] >= self.max_per_dir
 
     def reset(self) -> None:
         """Reset the locked file and directory sets."""
