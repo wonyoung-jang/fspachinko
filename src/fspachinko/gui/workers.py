@@ -7,11 +7,10 @@ from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
 from ..bootstrap import bootstrap, build_pipeline
 from ..domain.commands import StartProcessingDirectory, StopProcess
-from ..domain.events import DirectoryTransferred, Event, FileTransferred
+from ..domain.events import FileTransferred
 
 if TYPE_CHECKING:
     from ..config import ConfigModel
-    from ..service.messagebus import MessageBus
 
 logger = logging.getLogger(__name__)
 
@@ -33,34 +32,36 @@ class MainWorker(QRunnable):
         super().__init__()
         self.config = config
         self.signals = WorkerSignals()
-        self.bus: MessageBus | None = None
+        pipeline = build_pipeline(self.config)
+        self.bus = bootstrap(m=self.config, pipeline=pipeline)
 
     @Slot()
     def run(self) -> None:
         """Run the process."""
         m = self.config
-        pipeline = build_pipeline(m)
-        self.bus = bootstrap(m=m, pipeline=pipeline)
-
-        def publish(event: Event) -> None:
-            if isinstance(event, FileTransferred):
-                self.signals.file_transferred.emit(event.count)
-                logger.info("%s: %s -> %s", event.count, event.src, event.dst)
-            elif isinstance(event, DirectoryTransferred):
-                logger.info("%s\n%s", event.status, event.report)
-
-        bus = self.bus
         dir_count = m.directory.count
+        bus = self.bus
+        pipeline = bus.uow.pipeline
+
+        def handle_file_transferred(e: FileTransferred, **_: object) -> None:
+            self.signals.file_transferred.emit(e.count)
+
+        bus.event_handlers[FileTransferred].append(handle_file_transferred)
 
         self.signals.start_process.emit(dir_count)
 
         for dir_idx in range(1, dir_count + 1):
+            dest_dir = pipeline.get_currdir_dest()
             target_qty = pipeline.get_file_count()
 
             self.signals.directory_start.emit(dir_idx, target_qty)
 
-            start_process_cmd = StartProcessingDirectory(dir_idx=dir_idx, target_qty=target_qty)
-            bus.handle(start_process_cmd, uow=bus.uow, publish=publish)
+            pipeline.add_handler(dest_dir)
+
+            start_process_cmd = StartProcessingDirectory(dest_dir, target_qty)
+            bus.handle(start_process_cmd, uow=bus.uow)
+
+            pipeline.remove_handler()
 
         self.signals.finished.emit()
 

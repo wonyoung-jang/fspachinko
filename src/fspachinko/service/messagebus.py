@@ -44,6 +44,7 @@ class MessageBus:
             try:
                 logger.debug("Event: %s with handler %s", event, handler)
                 handler(event, **kwargs)
+                self.queue.extend(self.uow.collect_new_events())
             except Exception:
                 logger.exception("Exception handling event %s", event)
                 continue
@@ -54,6 +55,7 @@ class MessageBus:
         try:
             handler = self.command_handlers[type(command)]
             handler(command, **kwargs)
+            self.queue.extend(self.uow.collect_new_events())
         except Exception:
             logger.exception("Exception handling command %s", command)
             raise

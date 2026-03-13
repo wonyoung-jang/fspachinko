@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class Event:
     """Base class for events."""
 

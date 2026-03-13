@@ -1,7 +1,6 @@
 """Utility functions."""
 
 import logging
-from time import perf_counter
 
 from .constants import BytesIn, ByteUnit, StateStatus
 
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
     conversion: dict[BytesIn, str] = {
-        BytesIn.KILOBYTE: f"{nbytes / BytesIn.BYTE:.2f} {ByteUnit.BYTES}",
+        BytesIn.KILOBYTE: f"{nbytes} {ByteUnit.BYTES}",
         BytesIn.MEGABYTE: f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}",
         BytesIn.GIGABYTE: f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}",
     }
@@ -38,9 +37,8 @@ def get_status(
     return StateStatus.UNDEFINED
 
 
-def get_report(path: str, size: int, start_time: float, count: int, target_qty: int) -> str:
+def get_report(path: str, size: int, count: int, target_qty: int) -> str:
     """Generate a summary report string."""
-    runtime_str = f"{perf_counter() - start_time:.2f}s"
     size_str = convert_byte_to_human_readable_size(size)
     return (
         "------------------------------------------------------------------------\n"
@@ -48,6 +46,5 @@ def get_report(path: str, size: int, start_time: float, count: int, target_qty: 
         "------------------------------------------------------------------------\n"
         f"Destination:  {path}\n"
         f"Size:         {size_str}\n"
-        f"Runtime:      {runtime_str}\n"
         "========================================================================\n"
     )

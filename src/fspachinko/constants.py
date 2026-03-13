@@ -3,7 +3,6 @@
 from enum import IntEnum, StrEnum
 
 # General constants
-PERCENTAGE_100: float = 100.0
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
 
 

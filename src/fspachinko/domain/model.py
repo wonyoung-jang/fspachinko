@@ -1,7 +1,10 @@
 """Model classes for the domain."""
 
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass, field
+
+from ..helpers import get_report, get_status
+from .events import DirectoryTransferred, Event, FileTransferred
 
 
 @dataclass(slots=True)
@@ -10,19 +13,43 @@ class TransferJob:
 
     quota: DiversityQuota
     is_stop_requested: bool = False
+    dst: DestinationDirectory | None = None
+    events: deque[Event] = field(default_factory=deque)
 
     def process_file(self, entry: FSEntry) -> bool:
         """Process a file transfer, checking the diversity quota and updating the destination directory stats."""
         return self.quota.can_accept(entry)
 
-    def update(self, dst: DestinationDirectory, entry: FSEntry) -> None:
+    def update(self, entry: FSEntry, new_path: str) -> None:
         """Update the job state after processing a directory."""
+        if self.dst is None:
+            return
+
         self.quota.update(entry)
-        dst.accept(entry)
+        self.dst.accept(entry)
+        self.events.append(FileTransferred(self.dst.count, entry.path, new_path))
 
     def request_stop(self) -> None:
         """Request to stop the process."""
         self.is_stop_requested = True
+
+    def finalize_directory(self, *, is_empty_creation: bool) -> None:
+        """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
+        if self.dst is None:
+            return
+        status = get_status(
+            is_success=self.dst.is_success,
+            is_none_found_and_create_dir=is_empty_creation,
+            is_stop_requested=self.is_stop_requested,
+            is_root_locked=self.quota.is_root_locked,
+        )
+        report = get_report(
+            self.dst.path,
+            self.dst.size,
+            self.dst.count,
+            self.dst.target_qty,
+        )
+        self.events.append(DirectoryTransferred(status=status, report=report))
 
 
 @dataclass(slots=True)
@@ -31,7 +58,6 @@ class DestinationDirectory:
 
     path: str
     target_qty: int
-    start_time: float
     count: int = 0
     size: int = 0
 

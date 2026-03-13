@@ -3,7 +3,6 @@
 import logging
 import shutil
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from filecmp import cmp
 from os import makedirs, mkdir
 from os.path import exists, join, split
@@ -22,7 +21,6 @@ def ensure_datapaths(dp: DataPaths) -> None:
             mkdir(path)
 
 
-@dataclass(slots=True)
 class AbstractFilesystemPort(ABC):
     """Abstract port for filesystem operations."""
 
@@ -43,7 +41,6 @@ class AbstractFilesystemPort(ABC):
         """Remove a directory and its contents, with error handling."""
 
 
-@dataclass(slots=True)
 class ConcreteFilesystemPort(AbstractFilesystemPort):
     """Adapter for filesystem operations."""
 

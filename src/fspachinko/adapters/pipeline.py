@@ -6,16 +6,11 @@ from os.path import join
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
-    from ..adapters.dirnamer import AbstractDirectoryNamer
-    from ..adapters.filecounter import AbstractFileCounter
-    from ..adapters.filenamer import AbstractFilenamer
     from ..adapters.filesystemport import AbstractFilesystemPort
-    from ..adapters.transfer import AbstractTransfer
     from ..adapters.walker import AbstractFSWalker
     from ..domain.model import DestinationDirectory, FSEntry
-    from .filefilter import AbstractFileFilter
     from .loggers import AbstractLoggingPort
 
 
@@ -26,12 +21,12 @@ class AbstractPipeline(ABC):
     is_create_dir: bool
     fs: AbstractFilesystemPort
     logging: AbstractLoggingPort
-    filefilter_fn: AbstractFileFilter
-    filenamer_fn: AbstractFilenamer
-    transfer_fn: AbstractTransfer
+    filefilter_fn: Callable
+    filenamer_fn: Callable
+    transfer_fn: Callable
     walker_fn: AbstractFSWalker
-    filecount_fn: AbstractFileCounter
-    dirname_fn: AbstractDirectoryNamer
+    filecount_fn: Callable
+    dirname_fn: Callable
 
     @abstractmethod
     def walk(self) -> Iterator[FSEntry]:
@@ -74,11 +69,10 @@ class AbstractPipeline(ABC):
         """Check if the original file name can be used without transfer."""
 
     @abstractmethod
-    def remove_dst_dir_if_empty(self, path: str, *, none_found: bool) -> None:
+    def remove_dst_dir_if_empty(self, path: str, *, is_empty_creation: bool) -> None:
         """Remove the destination directory if it is empty."""
 
 
-@dataclass(slots=True)
 class TransferPipeline(AbstractPipeline):
     """Owns the strategy objects — Engine delegates to this."""
 
@@ -88,23 +82,23 @@ class TransferPipeline(AbstractPipeline):
 
     def get_file_count(self) -> int:
         """Count the number of files to be transferred."""
-        return self.filecount_fn.gen_file_count()
+        return self.filecount_fn()
 
     def get_dir_name(self) -> str:
         """Get the name for the current directory."""
-        return self.dirname_fn.gen_dir_name()
+        return self.dirname_fn()
 
     def is_valid(self, e: FSEntry) -> bool:
         """Check if a file should be transferred."""
-        return self.filefilter_fn.is_valid(e)
+        return self.filefilter_fn(e)
 
     def get_new_file_stem(self, e: FSEntry, count: int) -> str:
         """Get the new name for a file."""
-        return self.filenamer_fn.gen_name(e, count)
+        return self.filenamer_fn(e, count)
 
     def transfer_file(self, src: str, dst: str) -> None:
         """Transfer a file from src to dst."""
-        self.transfer_fn.transfer(src, dst)
+        self.transfer_fn(src, dst)
 
     def add_handler(self, path: str) -> None:
         """Add a logging handler for the current directory."""
@@ -118,10 +112,10 @@ class TransferPipeline(AbstractPipeline):
         """Get the current directory destination."""
         d = self.get_dir_name()
         match self.is_create_dir:
-            case False:
-                return d
             case True:
                 return self.fs.get_dest_dir_path(d)
+            case False:
+                return d
 
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
@@ -132,7 +126,7 @@ class TransferPipeline(AbstractPipeline):
             return None
         return self.fs.get_unique_path(dst.path, new_stem, ext)
 
-    def remove_dst_dir_if_empty(self, path: str, *, none_found: bool) -> None:
+    def remove_dst_dir_if_empty(self, path: str, *, is_empty_creation: bool) -> None:
         """Remove the destination directory if it is empty."""
-        if none_found:
+        if is_empty_creation:
             self.fs.remove_directory(path)

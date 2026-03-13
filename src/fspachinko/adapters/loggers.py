@@ -31,7 +31,6 @@ def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
     return handler
 
 
-@dataclass(slots=True)
 class AbstractLoggingPort(ABC):
     """Abstract port for logging operations."""
 

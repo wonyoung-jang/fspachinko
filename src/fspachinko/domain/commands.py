@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class Command:
     """Base class for commands."""
 
@@ -12,7 +12,7 @@ class Command:
 class StartProcessingDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 
-    dir_idx: int
+    dest_dir: str
     target_qty: int
 
 

@@ -5,7 +5,7 @@ import logging
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
-from ..constants import PERCENTAGE_100, GUIName
+from ..constants import GUIName
 from .configadapter import get_config
 from .loggers_gui import setup_gui_logger
 from .qthelpers import set_qt_name
@@ -70,7 +70,7 @@ class CentralWidget(QWidget):
         """Update the window title with the current progress."""
         self.ui.progress.progbar_files.setValue(val)
         if self.ui.progress.progbar_files.maximum() > 0:
-            percentage = int(val * PERCENTAGE_100 / self.ui.progress.progbar_files.maximum())
+            percentage = int(val * 100 / self.ui.progress.progbar_files.maximum())
             self.window().setWindowTitle(f"[{percentage}%] {self.original_window_title}")
 
     @Slot()

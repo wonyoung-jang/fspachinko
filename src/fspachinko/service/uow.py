@@ -6,7 +6,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from ..adapters.pipeline import AbstractPipeline, TransferPipeline
+    from ..domain.events import Event
     from ..domain.model import TransferJob
 
 logger = logging.getLogger(__name__)
@@ -30,6 +33,11 @@ class AbstractUnitOfWork(ABC):
     def commit(self) -> None:
         """Commit the transaction."""
         self._commit()
+
+    def collect_new_events(self) -> Iterator[Event]:
+        """Collect new events that were generated during the transaction."""
+        while self.job.events:
+            yield self.job.events.popleft()
 
     @abstractmethod
     def _commit(self) -> None:

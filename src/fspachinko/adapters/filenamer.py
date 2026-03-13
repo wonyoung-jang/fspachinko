@@ -1,7 +1,5 @@
 """Module for file naming based on template configuration."""
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from os.path import basename, split
 from typing import TYPE_CHECKING
 
@@ -11,53 +9,30 @@ if TYPE_CHECKING:
     from ..domain.model import FSEntry
 
 
-@dataclass(slots=True)
-class AbstractFilenamer(ABC):
-    """Abstract class for file naming."""
-
-    @abstractmethod
-    def gen_name(self, entry: FSEntry, count: int) -> str:
-        """Calculate the destination file stem based on template configuration."""
-
-
-@dataclass(slots=True)
-class StaticFilenamer(AbstractFilenamer):
-    """Filenamer that returns the original file name."""
-
-    def gen_name(self, entry: FSEntry, count: int) -> str:
-        """Return the original file name."""
+def get_name_from_template(entry: FSEntry, count: int, template: str) -> str:
+    """Calculate the destination file stem based on template configuration."""
+    mapping = SafeDict(
+        {
+            FilenameTemplateMapKey.INDEX: count + 1,
+            FilenameTemplateMapKey.ORIGINAL: entry.stem,
+            FilenameTemplateMapKey.PARENT: basename(entry.parent),
+            FilenameTemplateMapKey.PARENTS_TO_ROOT: split(entry.path)[0],
+        }
+    )
+    try:
+        formatted_stem = template.format_map(mapping)
+        return "".join(c for c in formatted_stem if c not in INVALID_FILENAME_CHARS)
+    except KeyError, ValueError:
         return entry.stem
 
 
-@dataclass(slots=True)
-class TemplateFilenamer(AbstractFilenamer):
-    """Dataclass for file naming."""
+class SafeDict(dict):
+    """A helper class for string formatting.
 
-    template: str
+    If a key is missing, it returns the key wrapped in braces
+    instead of raising a KeyError.
+    """
 
-    def gen_name(self, entry: FSEntry, count: int) -> str:
-        """Calculate the destination file stem based on template configuration."""
-        mapping = self.SafeDict(
-            {
-                FilenameTemplateMapKey.INDEX: count + 1,
-                FilenameTemplateMapKey.ORIGINAL: entry.stem,
-                FilenameTemplateMapKey.PARENT: basename(entry.parent),
-                FilenameTemplateMapKey.PARENTS_TO_ROOT: split(entry.path)[0],
-            }
-        )
-        try:
-            formatted_stem = self.template.format_map(mapping)
-            return "".join(c for c in formatted_stem if c not in INVALID_FILENAME_CHARS)
-        except KeyError, ValueError:
-            return entry.stem
-
-    class SafeDict(dict):
-        """A helper class for string formatting.
-
-        If a key is missing, it returns the key wrapped in braces
-        instead of raising a KeyError.
-        """
-
-        def __missing__(self, key: str) -> str:
-            """Return the key wrapped in braces if missing."""
-            return "{" + key + "}"
+    def __missing__(self, key: str) -> str:
+        """Return the key wrapped in braces if missing."""
+        return "{" + key + "}"
