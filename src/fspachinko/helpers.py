@@ -1,22 +1,23 @@
 """Utility functions."""
 
-import logging
-
 from .constants import BytesIn, ByteUnit, StateStatus
-
-logger = logging.getLogger(__name__)
 
 
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
-    conversion: dict[BytesIn, str] = {
-        BytesIn.KILOBYTE: f"{nbytes} {ByteUnit.BYTES}",
-        BytesIn.MEGABYTE: f"{nbytes / BytesIn.KILOBYTE:.2f} {ByteUnit.KILOBYTES}",
-        BytesIn.GIGABYTE: f"{nbytes / BytesIn.MEGABYTE:.2f} {ByteUnit.MEGABYTES}",
+    if nbytes < BytesIn.KILOBYTE:
+        return f"{nbytes} {ByteUnit.BYTES}"
+
+    conversion = {
+        BytesIn.KILOBYTE: ByteUnit.KILOBYTES,
+        BytesIn.MEGABYTE: ByteUnit.MEGABYTES,
+        BytesIn.GIGABYTE: ByteUnit.GIGABYTES,
     }
-    for threshold, r_str in conversion.items():
-        if nbytes < threshold:
-            return r_str
+
+    for threshold, unit in conversion.items():
+        if nbytes < threshold * 1024:
+            return f"{nbytes / threshold:.2f} {unit}"
+
     return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
 
 

@@ -102,7 +102,5 @@ class PachinkoFSWalker(AbstractFSWalker):
                             )
                     except OSError:
                         logger.debug("Error accessing entry %s, skipping.", e.path)
-                        continue
         except OSError:
             logger.debug("Error scanning directory %s, skipping.", pin.path)
-            return

@@ -62,8 +62,8 @@ def bootstrap(
     return MessageBus(uow=uow, event_handlers=EVENT_HANDLERS, command_handlers=COMMAND_HANDLERS)
 
 
-def build_pipeline(m: ConfigModel) -> AbstractPipeline:
-    """Build the pipeline based on the configuration."""
+def build_filters(m: ConfigModel) -> tuple[Callable[[FSEntry], bool], ...]:
+    """Build the filters based on the configuration."""
     dirname_filter_fn = get_textfilter_fn(
         text=m.dirname.text,
         re_fmt=ReStrFmt.DIRECTORY,
@@ -108,8 +108,12 @@ def build_pipeline(m: ConfigModel) -> AbstractPipeline:
         filter_list.append(lambda e: filesize_filter_fn(e.size))
     if duration_filter_fn:
         filter_list.append(lambda e: duration_filter_fn(get_duration(e.path)))
-    filters = tuple(filter_list)
+    return tuple(filter_list)
 
+
+def build_pipeline(m: ConfigModel) -> AbstractPipeline:
+    """Build the pipeline based on the configuration."""
+    filters = build_filters(m)
     return TransferPipeline(
         is_create_dir=m.directory.is_enabled,
         fs=ConcreteFilesystemPort(),

@@ -52,7 +52,7 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
         for e in _pipe.walk():
             if dst.is_success or _job.is_stop_requested or _job.quota.is_root_locked:
                 break
-            if not _job.process_file(e) or not _pipe.is_valid(e):
+            if not _job.process_file(e) or not _pipe.filefilter_fn(e):
                 continue
             new_path = _pipe.get_new_path(dst=dst, e=e)
             if new_path:

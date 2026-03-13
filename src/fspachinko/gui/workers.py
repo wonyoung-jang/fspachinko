@@ -52,7 +52,7 @@ class MainWorker(QRunnable):
 
         for dir_idx in range(1, dir_count + 1):
             dest_dir = pipeline.get_currdir_dest()
-            target_qty = pipeline.get_file_count()
+            target_qty = pipeline.filecount_fn()
 
             self.signals.directory_start.emit(dir_idx, target_qty)
 

@@ -41,7 +41,7 @@ def run(config_path: str = default_config_path) -> None:
     logger.debug("Process started: dir_count=%s", dir_count)
 
     for dir_idx in range(1, dir_count + 1):
-        target_qty = pipeline.get_file_count()
+        target_qty = pipeline.filenamer_fn()
         dest_dir = pipeline.get_currdir_dest()
 
         logger.debug("Processing directory: dir_idx=%s, target_qty=%s", dir_idx, target_qty)

@@ -33,26 +33,6 @@ class AbstractPipeline(ABC):
         """Walk the file system and yield FSEntry objects."""
 
     @abstractmethod
-    def get_file_count(self) -> int:
-        """Count the number of files to be transferred."""
-
-    @abstractmethod
-    def get_dir_name(self) -> str:
-        """Get the name for the current directory."""
-
-    @abstractmethod
-    def is_valid(self, e: FSEntry) -> bool:
-        """Check if a file should be transferred."""
-
-    @abstractmethod
-    def get_new_file_stem(self, e: FSEntry, count: int) -> str:
-        """Get the new name for a file."""
-
-    @abstractmethod
-    def transfer_file(self, src: str, dst: str) -> None:
-        """Transfer a file from src to dst."""
-
-    @abstractmethod
     def add_handler(self, path: str) -> None:
         """Add a logging handler for the current directory."""
 
@@ -80,26 +60,6 @@ class TransferPipeline(AbstractPipeline):
         """Walk the file system and yield FSEntry objects."""
         return self.walker_fn.walk()
 
-    def get_file_count(self) -> int:
-        """Count the number of files to be transferred."""
-        return self.filecount_fn()
-
-    def get_dir_name(self) -> str:
-        """Get the name for the current directory."""
-        return self.dirname_fn()
-
-    def is_valid(self, e: FSEntry) -> bool:
-        """Check if a file should be transferred."""
-        return self.filefilter_fn(e)
-
-    def get_new_file_stem(self, e: FSEntry, count: int) -> str:
-        """Get the new name for a file."""
-        return self.filenamer_fn(e, count)
-
-    def transfer_file(self, src: str, dst: str) -> None:
-        """Transfer a file from src to dst."""
-        self.transfer_fn(src, dst)
-
     def add_handler(self, path: str) -> None:
         """Add a logging handler for the current directory."""
         self.logging.add_handler(path)
@@ -110,7 +70,7 @@ class TransferPipeline(AbstractPipeline):
 
     def get_currdir_dest(self) -> str:
         """Get the current directory destination."""
-        d = self.get_dir_name()
+        d = self.dirname_fn()
         match self.is_create_dir:
             case True:
                 return self.fs.get_dest_dir_path(d)
@@ -120,7 +80,7 @@ class TransferPipeline(AbstractPipeline):
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
         ext = e.ext.casefold()
-        new_stem = self.get_new_file_stem(e, dst.count)
+        new_stem = self.filenamer_fn(e, dst.count)
         target = join(dst.path, f"{new_stem}{ext}")
         if self.fs.are_files_equal(e.path, target):
             return None
