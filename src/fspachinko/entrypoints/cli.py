@@ -1,8 +1,8 @@
 """Main entry point for CLI."""
 
-from ..adapters import initialize_logging
-from .app import app
-from .loggers_cli import setup_cli_logger
+from ..adapters.loggers import initialize_logging
+from ..cli.app import app
+from ..cli.loggers_cli import setup_cli_logger
 
 
 def main() -> None:

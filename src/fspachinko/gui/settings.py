@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from os.path import dirname
 from typing import TYPE_CHECKING
 
-from ..adapters.datapaths import get_profile_path
+from ..adapters.filesystemport import get_profile_path
 from ..adapters.jsonport import load_json, save_json
 from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 

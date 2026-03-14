@@ -37,21 +37,17 @@ class MainWorker(QRunnable):
     @Slot()
     def run(self) -> None:
         """Run the process."""
-        m = self.config
-        dir_count = m.directory.count
-        bus = self.bus
-        pipeline = bus.uow.pipeline
 
         def handle_file_transferred(e: FileTransferred, **_: object) -> None:
             self.signals.file_transferred.emit(e.count)
 
-        bus.event_handlers[FileTransferred].append(handle_file_transferred)
+        self.bus.event_handlers[FileTransferred].append(handle_file_transferred)
 
-        self.signals.start_process.emit(dir_count)
+        self.signals.start_process.emit(self.config.directory.count)
 
-        for dir_idx in range(1, dir_count + 1):
-            dest_dir = pipeline.get_currdir_dest()
-            target_qty = pipeline.filecount_fn()
+        for dir_idx in range(1, self.config.directory.count + 1):
+            dest_dir = self.bus.uow.pipeline.get_currdir_dest()
+            target_qty = self.bus.uow.pipeline.filecount_fn()
 
             self.signals.directory_start.emit(dir_idx, target_qty)
 
@@ -59,7 +55,7 @@ class MainWorker(QRunnable):
             logging.getLogger().addHandler(handler)
 
             start_process_cmd = StartProcessingDirectory(dest_dir, target_qty)
-            bus.handle(start_process_cmd, uow=bus.uow)
+            self.bus.handle(start_process_cmd, uow=self.bus.uow)
 
             logging.getLogger().removeHandler(handler)
             handler.close()

@@ -12,7 +12,7 @@ class Command:
 class StartProcessingDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 
-    dest_dir: str
+    path: str
     target_qty: int
 
 

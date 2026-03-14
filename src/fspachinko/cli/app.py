@@ -4,16 +4,14 @@ import logging
 
 from cyclopts import App
 
-from ..adapters.datapaths import get_config_path
+from ..adapters.filesystemport import get_config_path
 from ..bootstrap import bootstrap, build_pipeline
 from ..config import ConfigModel
 from ..constants import DefaultPath
 from ..domain.commands import StartProcessingDirectory
 
 logger = logging.getLogger(__name__)
-app = App(
-    help="fspachinko - Random file transfer utility.",
-)
+app = App(help="fspachinko - Random file transfer utility.")
 default_config_path = get_config_path(DefaultPath.CONFIG)
 
 
@@ -34,13 +32,11 @@ def run(config_path: str = default_config_path) -> None:
 
     m = ConfigModel.model_validate_json(data)
     pipeline = build_pipeline(m)
-
     bus = bootstrap(m=m, pipeline=pipeline)
-    dir_count = m.directory.count
 
-    logger.debug("Process started: dir_count=%s", dir_count)
+    logger.debug("Process started: dir_count=%s", m.directory.count)
 
-    for dir_idx in range(1, dir_count + 1):
+    for dir_idx in range(1, m.directory.count + 1):
         target_qty = pipeline.filenamer_fn()
         dest_dir = pipeline.get_currdir_dest()
 

@@ -1,13 +1,13 @@
-"""Main entry point for GUI."""
+"""Qt GUI entry point."""
 
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from ..adapters import initialize_logging
-from ..adapters.datapaths import get_icon_path
+from ..adapters.filesystemport import get_icon_path
+from ..adapters.loggers import initialize_logging
 from ..constants import AppSetting, IconFilename
-from .mainwindow import MainWindow
+from ..gui.mainwindow import MainWindow
 
 QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)

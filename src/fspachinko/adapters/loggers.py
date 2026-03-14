@@ -3,7 +3,7 @@
 import logging
 from os.path import basename, join
 
-from .datapaths import get_log_path
+from .filesystemport import get_log_path
 
 
 def initialize_logging() -> logging.Logger:

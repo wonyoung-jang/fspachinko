@@ -7,12 +7,12 @@ from random import randint
 from typing import TYPE_CHECKING
 
 from ..adapters.filenamer import get_name_from_template
-from ..adapters.transfer import get_available_transfer_modes
-from ..adapters.walker import AbstractFSWalker, PachinkoFSWalker
+from ..adapters.filesystemport import get_available_transfer_modes, remove_dst_dir_if_empty, walk
 from ..constants import FilenameTemplate, TransferMode
 from ..domain.commands import StartProcessingDirectory, StopProcess
 from ..domain.events import DirectoryTransferred, Event, FileTransferred
 from ..domain.model import DestinationDirectory, FSEntry
+from ..helpers import get_report, get_status
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,13 +40,10 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
         if uow.job.is_stop_requested or uow.job.quota.is_root_locked:
             return
 
-        uow.job.dst = dst = DestinationDirectory(
-            path=cmd.dest_dir,
-            target_qty=cmd.target_qty,
-        )
+        uow.job.dst = dst = DestinationDirectory(cmd.path, cmd.target_qty)
         uow.job.quota.reset()
 
-        for e in uow.pipeline.walker_fn.walk():
+        for e in uow.pipeline.walker_fn():
             if dst.is_success or uow.job.is_stop_requested or uow.job.quota.is_root_locked:
                 break
             if not uow.job.process_file(e) or not uow.pipeline.filefilter_fn(e):
@@ -57,8 +54,16 @@ def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) ->
                 uow.job.update(e, new_path)
 
         is_empty_creation = dst.is_none_found and uow.pipeline.is_create_dir
-        uow.pipeline.remove_dst_dir_if_empty(dst.path, is_empty_creation=is_empty_creation)
-        uow.job.finalize_directory(is_empty_creation=is_empty_creation)
+        remove_dst_dir_if_empty(dst.path, is_empty_creation=is_empty_creation)
+        uow.job.finalize_directory(
+            status=get_status(
+                is_success=dst.is_success,
+                is_none_found_and_create_dir=is_empty_creation,
+                is_stop_requested=uow.job.is_stop_requested,
+                is_root_locked=uow.job.quota.is_root_locked,
+            ),
+            report=get_report(dst.path, dst.size, dst.count, dst.target_qty),
+        )
 
         uow.commit()
 
@@ -182,9 +187,8 @@ def get_transfer_fn(mode: str | TransferMode) -> Callable:
     return available.get(TransferMode(mode), available[TransferMode.DRY_RUN])
 
 
-def get_walker_fn(root: str, *, should_follow_symlink: bool) -> AbstractFSWalker:
+def get_walker_fn(root: str, *, should_follow_symlink: bool) -> Callable:
     """Return a function that generates candidates for a given directory."""
-    return PachinkoFSWalker(
-        root=root,
-        should_follow_symlink=should_follow_symlink,
+    return lambda board={}, root=root, should_follow_symlink=should_follow_symlink: walk(
+        board, root, should_follow_symlink=should_follow_symlink
     )

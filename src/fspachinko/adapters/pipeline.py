@@ -5,12 +5,11 @@ from dataclasses import dataclass
 from os.path import join
 from typing import TYPE_CHECKING
 
-from .filesystemport import are_files_equal, get_dest_dir_path, get_unique_path, remove_directory
+from .filesystemport import are_files_equal, get_dest_dir_path, get_unique_path
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
-    from ..adapters.walker import AbstractFSWalker
     from ..domain.model import DestinationDirectory, FSEntry
 
 
@@ -22,7 +21,7 @@ class AbstractPipeline(ABC):
     filefilter_fn: Callable
     filenamer_fn: Callable
     transfer_fn: Callable
-    walker_fn: AbstractFSWalker
+    walker_fn: Callable[[], Iterator[FSEntry]]
     filecount_fn: Callable
     dirname_fn: Callable
 
@@ -33,10 +32,6 @@ class AbstractPipeline(ABC):
     @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
-
-    @abstractmethod
-    def remove_dst_dir_if_empty(self, path: str, *, is_empty_creation: bool) -> None:
-        """Remove the destination directory if it is empty."""
 
 
 class TransferPipeline(AbstractPipeline):
@@ -59,8 +54,3 @@ class TransferPipeline(AbstractPipeline):
         if are_files_equal(e.path, target):
             return None
         return get_unique_path(dst.path, new_stem, ext)
-
-    def remove_dst_dir_if_empty(self, path: str, *, is_empty_creation: bool) -> None:
-        """Remove the destination directory if it is empty."""
-        if is_empty_creation:
-            remove_directory(path)

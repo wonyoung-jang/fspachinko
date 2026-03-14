@@ -3,7 +3,6 @@
 from collections import Counter, deque
 from dataclasses import dataclass, field
 
-from ..helpers import get_report, get_status
 from .events import DirectoryTransferred, Event, FileTransferred
 
 
@@ -33,22 +32,8 @@ class TransferJob:
         """Request to stop the process."""
         self.is_stop_requested = True
 
-    def finalize_directory(self, *, is_empty_creation: bool) -> None:
+    def finalize_directory(self, status: str, report: str) -> None:
         """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
-        if self.dst is None:
-            return
-        status = get_status(
-            is_success=self.dst.is_success,
-            is_none_found_and_create_dir=is_empty_creation,
-            is_stop_requested=self.is_stop_requested,
-            is_root_locked=self.quota.is_root_locked,
-        )
-        report = get_report(
-            self.dst.path,
-            self.dst.size,
-            self.dst.count,
-            self.dst.target_qty,
-        )
         self.events.append(DirectoryTransferred(status=status, report=report))
 
 

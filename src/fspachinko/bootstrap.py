@@ -53,7 +53,11 @@ def bootstrap(
         msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
         raise ValueError(msg)
 
-    return MessageBus(uow=uow, event_handlers=EVENT_HANDLERS, command_handlers=COMMAND_HANDLERS)
+    return MessageBus(
+        uow=uow,
+        event_handlers=EVENT_HANDLERS,
+        command_handlers=COMMAND_HANDLERS,
+    )
 
 
 def build_filters(m: ConfigModel) -> tuple[Callable[[FSEntry], bool], ...]:

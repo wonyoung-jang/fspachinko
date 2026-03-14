@@ -28,8 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..adapters.datapaths import get_icon_path
-from ..adapters.transfer import get_available_transfer_modes
+from ..adapters.filesystemport import get_available_transfer_modes, get_icon_path
 from ..constants import ByteUnit, FilenameTemplate, IconFilename, TimeUnit
 from .qthelpers import set_qt_name, set_qt_tips
 

@@ -2,15 +2,53 @@
 
 import logging
 import shutil
+from dataclasses import dataclass
 from filecmp import cmp
-from os import makedirs, mkdir
-from os.path import exists, join, split
+from io import UnsupportedOperation
+from os import link, makedirs, mkdir, scandir, symlink, unlink
+from os.path import dirname, exists, join, split, splitext
+from random import choice
+from shutil import copy, copy2, move
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
+import fspachinko
+
+from ..constants import DefaultPath, FileError, TransferMode
+from ..domain.model import FSEntry, FSPachinkoPin
+
 if TYPE_CHECKING:
-    from .datapaths import DataPaths
+    from collections.abc import Callable, Iterator
+
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class DataPaths:
+    """Dataclass for general directories used."""
+
+    data: str = join(dirname(fspachinko.__file__), DefaultPath.DATA_DIR)
+    icons: str = join(data, DefaultPath.ICON_DIR)
+    configs: str = join(data, DefaultPath.CONFIG_DIR)
+    profiles: str = join(data, DefaultPath.GUI_PROFILE_DIR)
+    logs: str = join(data, DefaultPath.LOG_DIR)
+
+    def get_icon(self, path: str) -> str:
+        """Get the full path to an icon."""
+        return join(self.icons, path)
+
+    def get_config(self, path: str) -> str:
+        """Get the full path to a config file."""
+        return join(self.configs, path)
+
+    def get_profile(self, path: str) -> str:
+        """Get the full path to a profile file."""
+        return join(self.profiles, path)
+
+    def get_log(self, path: str) -> str:
+        """Get the full path to a log file."""
+        return join(self.logs, path)
 
 
 def ensure_datapaths(dp: DataPaths) -> None:
@@ -18,6 +56,14 @@ def ensure_datapaths(dp: DataPaths) -> None:
     for path in (dp.data, dp.icons, dp.configs, dp.profiles, dp.logs):
         if not exists(path):
             mkdir(path)
+
+
+_datapaths = DataPaths()
+ensure_datapaths(_datapaths)
+get_icon_path = _datapaths.get_icon
+get_config_path = _datapaths.get_config
+get_profile_path = _datapaths.get_profile
+get_log_path = _datapaths.get_log
 
 
 def get_unique_path(dest: str, stem: str, ext: str = "") -> str:
@@ -54,3 +100,119 @@ def remove_directory(path: str) -> None:
         logger.exception("Directory not found for removal: %s", path)
     except OSError:
         logger.exception("Error occurred while removing directory: %s", path)
+
+
+def remove_dst_dir_if_empty(path: str, *, is_empty_creation: bool) -> None:
+    """Remove the destination directory if it is empty."""
+    if is_empty_creation:
+        remove_directory(path)
+
+
+def get_available_transfer_modes() -> dict[TransferMode, Callable]:
+    """Return the set of available transfer modes based on the current environment."""
+    available = {
+        TransferMode.DRY_RUN: lambda _, __: None,
+        TransferMode.COPY: copy,
+        TransferMode.COPY_PRESERVE: copy2,
+        TransferMode.MOVE: move,
+        TransferMode.SYMLINK: symlink,
+        TransferMode.HARDLINK: hardlink,
+    }
+
+    def _verify_link_fn(link_func: Callable[[str, str], None], transfer_mode: TransferMode) -> None:
+        """Test link creation."""
+        try:
+            with TemporaryDirectory() as tmpdir:
+                test_src = join(tmpdir, "test_src")
+                test_link = join(tmpdir, "test_link")
+                open(test_src, "w").close()
+                link_func(test_src, test_link)
+                unlink(test_link)
+                unlink(test_src)
+        except OSError, UnsupportedOperation, NotImplementedError:
+            available.pop(transfer_mode)
+
+    _verify_link_fn(symlink, TransferMode.SYMLINK)
+    _verify_link_fn(link, TransferMode.HARDLINK)
+    return available
+
+
+def hardlink(src: str, dst: str) -> None:
+    """Create a hardlink from source to destination."""
+    try:
+        link(src, dst)
+    except OSError as e:
+        is_win_x_error = e.winerror == FileError.WINDOWS_CROSS_DRIVE_ERROR
+        is_unix_x_error = e.errno == FileError.UNIX_CROSS_FILESYSTEM_ERROR
+        if is_win_x_error or is_unix_x_error:
+            symlink(src, dst)
+        else:
+            raise
+
+
+def walk(board: dict[str, FSPachinkoPin], root: str, *, should_follow_symlink: bool) -> Iterator[FSEntry]:
+    """Iterate through FSEntry objects."""
+    if root not in board:
+        get_pin(board, root)
+
+    curr = root
+    pop = board.pop
+    while True:
+        pin = get_pin(board, curr)
+        if not pin.is_scanned:
+            scan_pin(pin, should_follow_symlink=should_follow_symlink)
+
+        subdirs, files = pin.subdirs, pin.files
+
+        if not subdirs and not files:
+            if curr == root:
+                break
+            pop(curr)
+            curr = root
+            continue
+
+        should_descend = choice((True, False)) if subdirs and files else bool(subdirs)
+        if should_descend:
+            curr = choice(subdirs)
+            continue
+
+        if files:
+            yield choice(files)
+
+        curr = root
+
+
+def get_pin(board: dict[str, FSPachinkoPin], path: str) -> FSPachinkoPin:
+    """Add a new pin to the board, or return an existing one."""
+    return board.setdefault(path, FSPachinkoPin(path=path))
+
+
+def scan_pin(pin: FSPachinkoPin, *, should_follow_symlink: bool) -> None:
+    """Only look at the OS file system when a ball hits a specific folder for the first time."""
+    try:
+        pin.is_scanned = True
+        with scandir(pin.path) as it:
+            follow = should_follow_symlink
+            subdirs_append = pin.subdirs.append
+            files_append = pin.files.append
+            for e in it:
+                try:
+                    if e.is_dir(follow_symlinks=follow):
+                        subdirs_append(e.path)
+                    elif e.is_file(follow_symlinks=follow):
+                        stat = e.stat(follow_symlinks=follow)
+                        stem, ext = splitext(e.name)
+                        files_append(
+                            FSEntry(
+                                path=e.path,
+                                stem=stem,
+                                ext=ext,
+                                parent=dirname(e.path),
+                                size=stat.st_size,
+                                mtime=stat.st_mtime,
+                            )
+                        )
+                except OSError:
+                    logger.debug("Error accessing entry %s, skipping.", e.path)
+    except OSError:
+        logger.debug("Error scanning directory %s, skipping.", pin.path)
