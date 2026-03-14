@@ -15,17 +15,27 @@ class TransferJob:
     dst: DestinationDirectory | None = None
     events: deque[Event] = field(default_factory=deque)
 
+    @property
+    def is_root_locked(self) -> bool:
+        """Check if the root directory is locked."""
+        return self.quota.is_root_locked
+
+    def reset(self) -> None:
+        """Reset the job state for a new transfer process."""
+        self.dst = None
+        self.quota.reset()
+
     def process_file(self, entry: FSEntry) -> bool:
         """Process a file transfer, checking the diversity quota and updating the destination directory stats."""
-        return self.quota.can_accept(entry)
+        return self.quota.can_accept(entry.parent, entry.path)
 
     def update(self, entry: FSEntry, new_path: str) -> None:
         """Update the job state after processing a directory."""
         if self.dst is None:
             return
 
-        self.quota.update(entry)
-        self.dst.accept(entry)
+        self.quota.update(entry.parent, entry.path)
+        self.dst.accept(entry.size)
         self.events.append(FileTransferred(self.dst.count, entry.path, new_path))
 
     def request_stop(self) -> None:
@@ -56,10 +66,10 @@ class DestinationDirectory:
         """Check if no valid files were found."""
         return self.count == 0
 
-    def accept(self, e: FSEntry) -> None:
+    def accept(self, size: int) -> None:
         """Update the directory stats after accepting a file."""
         self.count += 1
-        self.size += e.size
+        self.size += size
 
 
 @dataclass(slots=True)
@@ -83,16 +93,16 @@ class DiversityQuota:
         if not self.unique_files_only:
             self.locked_file.clear()
 
-    def can_accept(self, e: FSEntry) -> bool:
+    def can_accept(self, parent: str, path: str) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
-        if e.path in self.locked_file:
+        if path in self.locked_file:
             return False
-        return not self.locked_dir[e.parent] >= self.max_per_dir
+        return not self.locked_dir[parent] >= self.max_per_dir
 
-    def update(self, e: FSEntry) -> None:
+    def update(self, parent: str, path: str) -> None:
         """Update the locked directory count after accepting a file."""
-        self.locked_file.add(e.path)
-        self.locked_dir[e.parent] += 1
+        self.locked_file.add(path)
+        self.locked_dir[parent] += 1
 
 
 @dataclass(slots=True, frozen=True)

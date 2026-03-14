@@ -43,6 +43,6 @@ def run(config_path: str = default_config_path) -> None:
         logger.debug("Processing directory: dir_idx=%s, target_qty=%s", dir_idx, target_qty)
 
         start_process_cmd = StartProcessingDirectory(dest_dir, target_qty=target_qty)
-        bus.handle(start_process_cmd, uow=bus.uow)
+        bus.handle(start_process_cmd)
 
     logger.debug("Process stopped.")

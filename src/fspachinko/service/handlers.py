@@ -2,14 +2,14 @@
 
 import logging
 import re
+from dataclasses import dataclass
 from os.path import join
 from random import randint
 from typing import TYPE_CHECKING
 
 from ..adapters.filenamer import get_name_from_template
-from ..adapters.filesystemport import get_available_transfer_modes, remove_dst_dir_if_empty, walk
+from ..adapters.filesystemport import get_available_transfer_modes, remove_directory, walk
 from ..constants import FilenameTemplate, TransferMode
-from ..domain.commands import StartProcessingDirectory, StopProcess
 from ..domain.events import DirectoryTransferred, Event, FileTransferred
 from ..domain.model import DestinationDirectory, FSEntry
 from ..helpers import get_report, get_status
@@ -17,7 +17,7 @@ from ..helpers import get_report, get_status
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..domain.commands import Command
+    from ..domain.commands import Command, StartProcessingDirectory, StopProcess
     from .uow import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -29,69 +29,83 @@ type Message = Command | Event
 ######################
 
 
-def stop_process(_: StopProcess, uow: AbstractUnitOfWork) -> None:
-    """Handle the StopProcessCommand."""
-    uow.job.request_stop()
+@dataclass(slots=True)
+class StartProcessingDirectoryHandler:
+    """Handle the StartProcessingDirectory command."""
+
+    uow: AbstractUnitOfWork
+
+    def __call__(self, cmd: StartProcessingDirectory) -> None:
+        """Handle the StartProcessingDirectory command."""
+        with self.uow:
+            job = self.uow.job
+            if job.is_stop_requested or job.is_root_locked:
+                return
+
+            job.reset()
+            job.dst = DestinationDirectory(cmd.path, cmd.target_qty)
+
+            for entry in self.uow.pipeline.walker_fn():
+                if job.dst.is_success or job.is_stop_requested or job.is_root_locked:
+                    break
+
+                if not job.process_file(entry) or not self.uow.pipeline.filefilter_fn(entry):
+                    continue
+
+                new_path = self.uow.pipeline.get_new_path(dst=job.dst, e=entry)
+                if new_path:
+                    self.uow.register_transfer(entry.path, new_path)
+                    job.update(entry, new_path)
+
+            is_empty_creation = job.dst.is_none_found and self.uow.pipeline.is_create_dir
+            if is_empty_creation:
+                remove_directory(job.dst.path)
+
+            job.finalize_directory(
+                status=get_status(
+                    is_success=job.dst.is_success,
+                    is_none_found_and_create_dir=is_empty_creation,
+                    is_stop_requested=job.is_stop_requested,
+                    is_root_locked=job.is_root_locked,
+                ),
+                report=get_report(job.dst.path, job.dst.size, job.dst.count, job.dst.target_qty),
+            )
+
+            self.uow.commit()
 
 
-def process_directory(cmd: StartProcessingDirectory, uow: AbstractUnitOfWork) -> None:
-    """Handle the ProcessDirectoryCommand."""
-    with uow:
-        if uow.job.is_stop_requested or uow.job.quota.is_root_locked:
-            return
+@dataclass(slots=True)
+class StopProcessHandler:
+    """Handle the StopProcess command."""
 
-        uow.job.dst = dst = DestinationDirectory(cmd.path, cmd.target_qty)
-        uow.job.quota.reset()
+    uow: AbstractUnitOfWork
 
-        for e in uow.pipeline.walker_fn():
-            if dst.is_success or uow.job.is_stop_requested or uow.job.quota.is_root_locked:
-                break
-            if not uow.job.process_file(e) or not uow.pipeline.filefilter_fn(e):
-                continue
-            new_path = uow.pipeline.get_new_path(dst=dst, e=e)
-            if new_path:
-                uow.register_transfer(e.path, new_path)
-                uow.job.update(e, new_path)
+    def __call__(self, _: StopProcess) -> None:
+        """Handle the StopProcess command."""
+        job = self.uow.job
+        job.request_stop()
 
-        is_empty_creation = dst.is_none_found and uow.pipeline.is_create_dir
-        remove_dst_dir_if_empty(dst.path, is_empty_creation=is_empty_creation)
-        uow.job.finalize_directory(
-            status=get_status(
-                is_success=dst.is_success,
-                is_none_found_and_create_dir=is_empty_creation,
-                is_stop_requested=uow.job.is_stop_requested,
-                is_root_locked=uow.job.quota.is_root_locked,
-            ),
-            report=get_report(dst.path, dst.size, dst.count, dst.target_qty),
-        )
-
-        uow.commit()
-
-
-COMMAND_HANDLERS = {
-    StopProcess: stop_process,
-    StartProcessingDirectory: process_directory,
-}
 
 ####################
 ## EVENT HANDLERS ##
 ####################
 
 
-def handle_file_transferred(event: FileTransferred, **_: object) -> None:
+class FileTransferredHandler:
     """Handle the FileTransferred event."""
-    logger.info("%s: %s -> %s", event.count, event.src, event.dst)
+
+    def __call__(self, event: FileTransferred) -> None:
+        """Handle the FileTransferred event."""
+        logger.info("%s: %s -> %s", event.count, event.src, event.dst)
 
 
-def handle_directory_transferred(event: DirectoryTransferred, **_: object) -> None:
+class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
-    logger.info("%s\n%s", event.status, event.report)
 
+    def __call__(self, event: DirectoryTransferred) -> None:
+        """Handle the DirectoryTransferred event."""
+        logger.info("%s\n%s", event.status, event.report)
 
-EVENT_HANDLERS = {
-    FileTransferred: [handle_file_transferred],
-    DirectoryTransferred: [handle_directory_transferred],
-}
 
 ####################
 ## OTHER HANDLERS ##

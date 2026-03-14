@@ -24,37 +24,37 @@ class MessageBus:
     command_handlers: dict[type[Command], Any] = field(default_factory=dict)
     queue: deque = field(default_factory=deque)
 
-    def handle(self, message: Message, **kwargs: object) -> None:
+    def handle(self, message: Message) -> None:
         """Handle a message, which can be either a command or an event."""
         self.queue.append(message)
         while self.queue:
             msg = self.queue.popleft()
             if isinstance(msg, Event):
-                self.handle_event(msg, **kwargs)
+                self.handle_event(msg)
             elif isinstance(msg, Command):
-                self.handle_command(msg, **kwargs)
+                self.handle_command(msg)
             else:
                 msg = f"Message must be an Event or Command, got {type(msg)}"
                 logger.error(msg)
                 raise TypeError(msg)
 
-    def handle_event(self, event: Event, **kwargs: object) -> None:
+    def handle_event(self, event: Event) -> None:
         """Handle an event by calling its handlers and collecting any new events that are generated."""
         for handler in self.event_handlers[type(event)]:
             try:
                 logger.debug("Event: %s with handler %s", event, handler)
-                handler(event, **kwargs)
+                handler(event)
                 self.queue.extend(self.uow.collect_new_events())
             except Exception:
                 logger.exception("Exception handling event %s", event)
                 continue
 
-    def handle_command(self, command: Command, **kwargs: object) -> None:
+    def handle_command(self, command: Command) -> None:
         """Handle a command by calling its handler and collecting any new events that are generated."""
         logger.debug("Command: %s", command)
         try:
             handler = self.command_handlers[type(command)]
-            handler(command, **kwargs)
+            handler(command)
             self.queue.extend(self.uow.collect_new_events())
         except Exception:
             logger.exception("Exception handling command %s", command)

@@ -40,11 +40,9 @@ class TransferPipeline(AbstractPipeline):
     def get_currdir_dest(self) -> str:
         """Get the current directory destination."""
         d = self.dirname_fn()
-        match self.is_create_dir:
-            case True:
-                return get_dest_dir_path(d)
-            case False:
-                return d
+        if self.is_create_dir:
+            return get_dest_dir_path(d)
+        return d
 
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""

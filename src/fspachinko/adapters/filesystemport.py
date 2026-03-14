@@ -102,22 +102,9 @@ def remove_directory(path: str) -> None:
         logger.exception("Error occurred while removing directory: %s", path)
 
 
-def remove_dst_dir_if_empty(path: str, *, is_empty_creation: bool) -> None:
-    """Remove the destination directory if it is empty."""
-    if is_empty_creation:
-        remove_directory(path)
-
-
 def get_available_transfer_modes() -> dict[TransferMode, Callable]:
     """Return the set of available transfer modes based on the current environment."""
-    available = {
-        TransferMode.DRY_RUN: lambda _, __: None,
-        TransferMode.COPY: copy,
-        TransferMode.COPY_PRESERVE: copy2,
-        TransferMode.MOVE: move,
-        TransferMode.SYMLINK: symlink,
-        TransferMode.HARDLINK: hardlink,
-    }
+    available = AVAILABLE_TRANSFER_FNS
 
     def _verify_link_fn(link_func: Callable[[str, str], None], transfer_mode: TransferMode) -> None:
         """Test link creation."""
@@ -148,6 +135,16 @@ def hardlink(src: str, dst: str) -> None:
             symlink(src, dst)
         else:
             raise
+
+
+AVAILABLE_TRANSFER_FNS = {
+    TransferMode.DRY_RUN: lambda _, __: None,
+    TransferMode.COPY: copy,
+    TransferMode.COPY_PRESERVE: copy2,
+    TransferMode.MOVE: move,
+    TransferMode.SYMLINK: symlink,
+    TransferMode.HARDLINK: hardlink,
+}
 
 
 def walk(board: dict[str, FSPachinkoPin], root: str, *, should_follow_symlink: bool) -> Iterator[FSEntry]:

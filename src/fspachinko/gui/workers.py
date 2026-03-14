@@ -38,7 +38,7 @@ class MainWorker(QRunnable):
     def run(self) -> None:
         """Run the process."""
 
-        def handle_file_transferred(e: FileTransferred, **_: object) -> None:
+        def handle_file_transferred(e: FileTransferred) -> None:
             self.signals.file_transferred.emit(e.count)
 
         self.bus.event_handlers[FileTransferred].append(handle_file_transferred)
@@ -55,7 +55,7 @@ class MainWorker(QRunnable):
             logging.getLogger().addHandler(handler)
 
             start_process_cmd = StartProcessingDirectory(dest_dir, target_qty)
-            self.bus.handle(start_process_cmd, uow=self.bus.uow)
+            self.bus.handle(start_process_cmd)
 
             logging.getLogger().removeHandler(handler)
             handler.close()
@@ -66,4 +66,4 @@ class MainWorker(QRunnable):
         """Stop the process."""
         if self.bus is not None:
             stop_cmd = StopProcess()
-            self.bus.handle(stop_cmd, uow=self.bus.uow)
+            self.bus.handle(stop_cmd)

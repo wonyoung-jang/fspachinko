@@ -6,10 +6,14 @@ from typing import TYPE_CHECKING
 from .adapters.media import get_duration
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from .domain.commands import StartProcessingDirectory, StopProcess
+from .domain.events import DirectoryTransferred, FileTransferred
 from .domain.model import DiversityQuota, FSEntry, TransferJob
 from .service.handlers import (
-    COMMAND_HANDLERS,
-    EVENT_HANDLERS,
+    DirectoryTransferredHandler,
+    FileTransferredHandler,
+    StartProcessingDirectoryHandler,
+    StopProcessHandler,
     get_dirname_fn,
     get_filecount_fn,
     get_filefilter_fn,
@@ -53,10 +57,19 @@ def bootstrap(
         msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
         raise ValueError(msg)
 
+    event_handlers = {
+        FileTransferred: [FileTransferredHandler()],
+        DirectoryTransferred: [DirectoryTransferredHandler()],
+    }
+    command_handlers = {
+        StartProcessingDirectory: StartProcessingDirectoryHandler(uow=uow),
+        StopProcess: StopProcessHandler(uow=uow),
+    }
+
     return MessageBus(
         uow=uow,
-        event_handlers=EVENT_HANDLERS,
-        command_handlers=COMMAND_HANDLERS,
+        event_handlers=event_handlers,
+        command_handlers=command_handlers,
     )
 
 
