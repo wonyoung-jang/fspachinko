@@ -6,7 +6,7 @@ from cyclopts import App
 
 from ..adapters.filesystemport import get_config_path
 from ..bootstrap import bootstrap, build_pipeline
-from ..config import ConfigModel
+from ..config import get_config_from_jsonpath
 from ..constants import DefaultPath
 from ..domain.commands import StartProcessingDirectory
 
@@ -23,14 +23,7 @@ def run(config_path: str = default_config_path) -> None:
         config_path (str): Path to configuration file.
 
     """
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            data = f.read()
-    except FileNotFoundError:
-        logger.exception("Configuration file not found: %s", config_path)
-        return
-
-    m = ConfigModel.model_validate_json(data)
+    m = get_config_from_jsonpath(config_path)
     pipeline = build_pipeline(m)
     bus = bootstrap(m=m, pipeline=pipeline)
 

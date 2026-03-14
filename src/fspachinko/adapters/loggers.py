@@ -28,3 +28,12 @@ def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
     return handler
+
+
+def get_cli_log_handler() -> logging.Handler:
+    """Get a logging handler for CLI output."""
+    handler = logging.StreamHandler()
+    handler.set_name("console")
+    handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s[%(module)s] %(message)s"))
+    handler.setLevel(logging.INFO)
+    return handler

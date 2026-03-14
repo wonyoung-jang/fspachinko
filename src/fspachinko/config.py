@@ -1,10 +1,33 @@
 """Configuration dataclasses."""
 
+import logging
 from os.path import isabs, realpath
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .constants import FilenameTemplate, TransferMode
+
+logger = logging.getLogger(__name__)
+
+
+def get_config_from_pydict(config: dict) -> ConfigModel:
+    """Get the current configuration from a dictionary."""
+    try:
+        return ConfigModel.model_validate(config)
+    except Exception:
+        logger.exception("Failed to get configuration from dictionary.")
+        raise
+
+
+def get_config_from_jsonpath(path: str) -> ConfigModel:
+    """Get the current configuration from a JSON file."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = f.read()
+        return ConfigModel.model_validate_json(data)
+    except Exception:
+        logger.exception("Failed to get configuration from JSON file: %s", path)
+        raise
 
 
 class FilecountModel(BaseModel):
