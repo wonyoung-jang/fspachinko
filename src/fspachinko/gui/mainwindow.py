@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 from ..constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
 from .actions import Actions
 from .centralwidget import CentralWidget
-from .qthelpers import set_qt_name
 from .settings import ProfileManager
 
 if TYPE_CHECKING:
@@ -35,7 +34,7 @@ class MainWindow(QMainWindow):
 
     def init_connections(self) -> None:
         """Initialize connections."""
-        self._actions.file.save.triggered.connect(lambda: self.profiles.set(self))
+        self._actions.file.save.triggered.connect(lambda: self.profiles.set(self.central_widget.ui))
         self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
         self._actions.file.load.triggered.connect(self.open_profile_dialog)
         self._actions.file.exit.triggered.connect(self.close)
@@ -45,10 +44,8 @@ class MainWindow(QMainWindow):
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
         menubar = self.menuBar()
-        set_qt_name(menubar, GUIName.MENUBAR)
 
         file_menu = menubar.addMenu(GUILabel.FILEMENU)
-        set_qt_name(file_menu, GUIName.FILEMENU)
         file_menu.addAction(self._actions.file.save)
         file_menu.addAction(self._actions.file.save_as)
         file_menu.addAction(self._actions.file.load)
@@ -56,14 +53,13 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self._actions.file.exit)
 
         run_menu = menubar.addMenu(GUILabel.RUNMENU)
-        set_qt_name(run_menu, GUIName.RUNMENU)
         run_menu.addAction(self._actions.run.start)
         run_menu.addAction(self._actions.run.stop)
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
         toolbar = QToolBar(GUIName.TOOLBAR)
-        set_qt_name(toolbar, GUIName.TOOLBAR)
+        toolbar.setObjectName(GUIName.TOOLBAR)
         toolbar.addAction(self._actions.file.save)
         toolbar.addAction(self._actions.file.save_as)
         toolbar.addAction(self._actions.file.load)
@@ -77,7 +73,6 @@ class MainWindow(QMainWindow):
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
         statusbar = QStatusBar(self, sizeGripEnabled=True)
-        set_qt_name(statusbar, GUIName.STATUSBAR)
         self.setStatusBar(statusbar)
 
     def init_settings(self) -> None:
@@ -85,7 +80,7 @@ class MainWindow(QMainWindow):
         self.restoreGeometry(self.qsettings.value(GUISettingsKey.GEOMETRY))
         self.restoreState(self.qsettings.value(GUISettingsKey.STATE))
         self.update_profile_path(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
-        self.profiles.get(self)
+        self.profiles.get(self.central_widget.ui)
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -98,7 +93,7 @@ class MainWindow(QMainWindow):
         )
         if filename:
             self.update_profile_path(filename)
-            self.profiles.set(self)
+            self.profiles.set(self.central_widget.ui)
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -111,7 +106,7 @@ class MainWindow(QMainWindow):
         )
         if filename:
             self.update_profile_path(filename)
-            self.profiles.get(self)
+            self.profiles.get(self.central_widget.ui)
 
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""

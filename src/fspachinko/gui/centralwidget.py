@@ -4,9 +4,7 @@ from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QGroupBox, QWidget
 
 from ..config import get_config_from_pydict
-from ..constants import GUIName
 from .loggers_gui import setup_gui_logger
-from .qthelpers import set_qt_name
 from .uibuilder import UIBuilder
 from .workers import MainWorker
 
@@ -17,7 +15,6 @@ class CentralWidget(QWidget):
     def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        set_qt_name(self, GUIName.CENTRAL_WIDGET)
         self.original_window_title = ""
         self.worker = None
         self.thread_pool = QThreadPool()
@@ -29,7 +26,8 @@ class CentralWidget(QWidget):
     def on_start(self) -> None:
         """Start the process and disable UI elements."""
         self.original_window_title = self.window().windowTitle()
-        self.worker = MainWorker(get_config_from_pydict(self.ui.config))
+        config_model = get_config_from_pydict(self.ui.config)
+        self.worker = MainWorker(config_model)
         self.worker.signals.start_process.connect(self.handle_start_process)
         self.worker.signals.directory_start.connect(self.handle_directory_start)
         self.worker.signals.file_transferred.connect(self.handle_file_transfer)

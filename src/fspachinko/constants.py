@@ -161,12 +161,9 @@ class GUITitle(StrEnum):
 class GUIName(StrEnum):
     """Enumeration for GUI object names."""
 
-    CENTRAL_WIDGET = "central_widget"
-    MENUBAR = "menubar"
     RUNMENU = "run_menu"
     FILEMENU = "file_menu"
     TOOLBAR = "toolbar"
-    STATUSBAR = "statusbar"
 
 
 class GUILabel(StrEnum):

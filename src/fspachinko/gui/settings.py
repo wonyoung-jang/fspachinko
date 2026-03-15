@@ -6,10 +6,9 @@ from typing import TYPE_CHECKING
 
 from ..adapters.filesystemport import get_profile_path
 from ..adapters.jsonport import load_json, save_json
-from .qthelpers import get_widget_value, iter_custom_widget, set_widget_value
 
 if TYPE_CHECKING:
-    from PySide6.QtWidgets import QWidget
+    from .uibuilder import UIBuilder
 
 
 @dataclass(slots=True)
@@ -33,17 +32,13 @@ class ProfileManager:
         """Get the parent directory of the current profile."""
         return dirname(self.path)
 
-    def set(self, parent: QWidget) -> None:
-        """Recursively save settings for all child widgets."""
-        data = {}
-        for key, child in iter_custom_widget(parent):
-            if (val := get_widget_value(child)) is not None:
-                data[key] = val
-        save_json(self.path, data, sort=True)
+    def set(self, ui: UIBuilder) -> None:
+        """Set the profile path from a UIBuilder instance."""
+        data = ui.config
+        save_json(self.path, data)
 
-    def get(self, parent: QWidget) -> None:
-        """Recursively load settings for all child widgets."""
+    def get(self, ui: UIBuilder) -> None:
+        """Load the profile to a UIBuilder instance."""
         data = load_json(self.path)
-        for key, child in iter_custom_widget(parent):
-            if (val := data.get(key)) is not None:
-                set_widget_value(child, val)
+        for component in ui.has_config:
+            component.restore(data)
