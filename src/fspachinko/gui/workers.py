@@ -18,8 +18,8 @@ class WorkerSignals(QObject):
     """Qt worker signals."""
 
     start_process = Signal(int)
-    directory_start = Signal(int, int)
-    file_transferred = Signal(int)
+    directory_start = Signal(int)
+    file_transferred = Signal()
     finished = Signal()
 
 
@@ -37,19 +37,15 @@ class MainWorker(QRunnable):
     @Slot()
     def run(self) -> None:
         """Run the process."""
-
-        def handle_file_transferred(e: FileTransferred) -> None:
-            self.signals.file_transferred.emit(e.count)
-
-        self.bus.event_handlers[FileTransferred].append(handle_file_transferred)
+        self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
 
         self.signals.start_process.emit(self.config.directory.count)
 
-        for dir_idx in range(1, self.config.directory.count + 1):
+        for _ in range(self.config.directory.count):
             dest_dir = self.bus.uow.pipeline.get_currdir_dest()
-            target_qty = self.bus.uow.pipeline.filecount_fn()
+            target_qty = self.bus.uow.pipeline.get_target_filecount()
 
-            self.signals.directory_start.emit(dir_idx, target_qty)
+            self.signals.directory_start.emit(target_qty)
 
             handler = get_dest_log_filehandler(dest_dir)
             logging.getLogger().addHandler(handler)

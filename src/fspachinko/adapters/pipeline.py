@@ -18,12 +18,12 @@ class AbstractPipeline(ABC):
     """Abstract pipeline."""
 
     is_create_dir: bool
-    filefilter_fn: Callable
-    filenamer_fn: Callable
-    transfer_fn: Callable
-    walker_fn: Callable[[], Iterator[FSEntry]]
-    filecount_fn: Callable
-    dirname_fn: Callable
+    filter_file: Callable
+    get_file_stem: Callable
+    transfer: Callable
+    walk: Callable[[], Iterator[FSEntry]]
+    get_target_filecount: Callable
+    get_directory_name: Callable
 
     @abstractmethod
     def get_currdir_dest(self) -> str:
@@ -39,7 +39,7 @@ class TransferPipeline(AbstractPipeline):
 
     def get_currdir_dest(self) -> str:
         """Get the current directory destination."""
-        d = self.dirname_fn()
+        d = self.get_directory_name()
         if self.is_create_dir:
             return get_dest_dir_path(d)
         return d
@@ -47,7 +47,7 @@ class TransferPipeline(AbstractPipeline):
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
         ext = e.ext.casefold()
-        new_stem = self.filenamer_fn(e, dst.count)
+        new_stem = self.get_file_stem(e, dst.count)
         target = join(dst.path, f"{new_stem}{ext}")
         if are_files_equal(e.path, target):
             return None

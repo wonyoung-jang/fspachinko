@@ -29,11 +29,11 @@ def run(config_path: str = default_config_path) -> None:
 
     logger.debug("Process started: dir_count=%s", m.directory.count)
 
-    for dir_idx in range(1, m.directory.count + 1):
-        target_qty = pipeline.filenamer_fn()
+    for _ in range(m.directory.count):
+        target_qty = pipeline.get_file_stem()
         dest_dir = pipeline.get_currdir_dest()
 
-        logger.debug("Processing directory: dir_idx=%s, target_qty=%s", dir_idx, target_qty)
+        logger.debug("Processing directory: %s, target_qty=%s", dest_dir, target_qty)
 
         start_process_cmd = StartProcessingDirectory(dest_dir, target_qty=target_qty)
         bus.handle(start_process_cmd)

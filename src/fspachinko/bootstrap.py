@@ -127,27 +127,27 @@ def build_pipeline(m: ConfigModel) -> AbstractPipeline:
     filters = build_filters(m)
     return TransferPipeline(
         is_create_dir=m.directory.is_enabled,
-        filecount_fn=get_filecount_fn(
+        filter_file=get_filefilter_fn(filters),
+        get_file_stem=get_filenamer_fn(
+            m.filename.template,
+            is_enabled=m.filename.is_enabled,
+        ),
+        transfer=get_transfer_fn(
+            m.options.transfer_mode,
+        ),
+        walk=get_walker_fn(
+            m.root,
+            should_follow_symlink=m.options.should_follow_symlink,
+        ),
+        get_target_filecount=get_filecount_fn(
             m.filecount.count,
             m.filecount.rand_min,
             m.filecount.rand_max,
             is_rand_enabled=m.filecount.is_rand_enabled,
         ),
-        dirname_fn=get_dirname_fn(
+        get_directory_name=get_dirname_fn(
             m.dest,
             m.directory.name,
             is_enabled=m.directory.is_enabled,
-        ),
-        filefilter_fn=get_filefilter_fn(filters),
-        filenamer_fn=get_filenamer_fn(
-            m.filename.template,
-            is_enabled=m.filename.is_enabled,
-        ),
-        transfer_fn=get_transfer_fn(
-            m.options.transfer_mode,
-        ),
-        walker_fn=get_walker_fn(
-            m.root,
-            should_follow_symlink=m.options.should_follow_symlink,
         ),
     )

@@ -7,8 +7,7 @@ from os.path import join
 from random import randint
 from typing import TYPE_CHECKING
 
-from ..adapters.filenamer import get_name_from_template
-from ..adapters.filesystemport import get_available_transfer_modes, remove_directory, walk
+from ..adapters.filesystemport import get_available_transfer_modes, get_name_from_template, remove_directory, walk
 from ..constants import FilenameTemplate, TransferMode
 from ..domain.events import DirectoryTransferred, Event, FileTransferred
 from ..domain.model import DestinationDirectory, FSEntry
@@ -45,11 +44,11 @@ class StartProcessingDirectoryHandler:
             job.reset()
             job.dst = DestinationDirectory(cmd.path, cmd.target_qty)
 
-            for entry in self.uow.pipeline.walker_fn():
+            for entry in self.uow.pipeline.walk():
                 if job.dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
 
-                if not job.process_file(entry) or not self.uow.pipeline.filefilter_fn(entry):
+                if not job.process_file(entry) or not self.uow.pipeline.filter_file(entry):
                     continue
 
                 new_path = self.uow.pipeline.get_new_path(dst=job.dst, e=entry)

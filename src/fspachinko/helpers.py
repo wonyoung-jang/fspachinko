@@ -16,9 +16,10 @@ def convert_byte_to_human_readable_size(nbytes: int) -> str:
 
     for threshold, unit in conversion.items():
         if nbytes < threshold * 1024:
-            return f"{nbytes / threshold:.2f} {unit}"
+            result = f"{nbytes / threshold:.2f} {unit}"
+            break
 
-    return f"{nbytes / BytesIn.GIGABYTE:.2f} {ByteUnit.GIGABYTES}"
+    return result
 
 
 def get_status(

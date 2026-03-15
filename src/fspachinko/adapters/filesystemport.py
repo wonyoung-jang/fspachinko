@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from filecmp import cmp
 from io import UnsupportedOperation
 from os import link, makedirs, mkdir, scandir, symlink, unlink
-from os.path import dirname, exists, join, split, splitext
+from os.path import basename, dirname, exists, join, split, splitext
 from random import choice
 from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import fspachinko
 
-from ..constants import DefaultPath, FileError, TransferMode
+from ..constants import INVALID_FILENAME_CHARS, DefaultPath, FileError, FilenameTemplateMapKey, TransferMode
 from ..domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
@@ -213,3 +213,32 @@ def scan_pin(pin: FSPachinkoPin, *, should_follow_symlink: bool) -> None:
                     logger.debug("Error accessing entry %s, skipping.", e.path)
     except OSError:
         logger.debug("Error scanning directory %s, skipping.", pin.path)
+
+
+def get_name_from_template(entry: FSEntry, count: int, template: str) -> str:
+    """Calculate the destination file stem based on template configuration."""
+    mapping = SafeDict(
+        {
+            FilenameTemplateMapKey.INDEX: count + 1,
+            FilenameTemplateMapKey.ORIGINAL: entry.stem,
+            FilenameTemplateMapKey.PARENT: basename(entry.parent),
+            FilenameTemplateMapKey.PARENTS_TO_ROOT: split(entry.path)[0],
+        }
+    )
+    try:
+        formatted_stem = template.format_map(mapping)
+        return "".join(c for c in formatted_stem if c not in INVALID_FILENAME_CHARS)
+    except KeyError, ValueError:
+        return entry.stem
+
+
+class SafeDict(dict):
+    """A helper class for string formatting.
+
+    If a key is missing, it returns the key wrapped in braces
+    instead of raising a KeyError.
+    """
+
+    def __missing__(self, key: str) -> str:
+        """Return the key wrapped in braces if missing."""
+        return "{" + key + "}"

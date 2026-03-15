@@ -68,7 +68,7 @@ class FileSystemUnitOfWork(AbstractUnitOfWork):
         """Actually perform the I/O."""
         for src, dst in self.pending:
             try:
-                self.pipeline.transfer_fn(src, dst)
+                self.pipeline.transfer(src, dst)
             except OSError:
                 logger.debug("Failed to transfer file from %s -> %s", src, dst)
                 continue

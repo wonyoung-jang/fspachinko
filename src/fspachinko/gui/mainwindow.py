@@ -7,24 +7,27 @@ from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
 from ..constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
-from .actions import Actions
-from .centralwidget import CentralWidget
-from .settings import ProfileManager
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
+
+    from .actions import Actions
+    from .centralwidget import CentralWidget
+    from .settings import ProfileManager
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, central_widget: CentralWidget, profiles: ProfileManager, settings: QSettings, _actions: Actions
+    ) -> None:
         """Initialize the main window."""
-        super().__init__()
-        self.central_widget = CentralWidget()
-        self.profiles = ProfileManager()
-        self.qsettings = QSettings()
-        self._actions = Actions()
+        super().__init__(animated=True)
+        self.central_widget = central_widget
+        self.profiles = profiles
+        self.qsettings = settings
+        self._actions = _actions
         self.setCentralWidget(self.central_widget)
         self.init_connections()
         self.init_menubar()
@@ -44,14 +47,12 @@ class MainWindow(QMainWindow):
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
         menubar = self.menuBar()
-
         file_menu = menubar.addMenu(GUILabel.FILEMENU)
         file_menu.addAction(self._actions.file.save)
         file_menu.addAction(self._actions.file.save_as)
         file_menu.addAction(self._actions.file.load)
         file_menu.addSeparator()
         file_menu.addAction(self._actions.file.exit)
-
         run_menu = menubar.addMenu(GUILabel.RUNMENU)
         run_menu.addAction(self._actions.run.start)
         run_menu.addAction(self._actions.run.stop)
@@ -85,27 +86,27 @@ class MainWindow(QMainWindow):
     @Slot()
     def save_profile_as_dialog(self) -> None:
         """Save a GUI profile via dialog."""
-        filename, _ = QFileDialog.getSaveFileName(
+        profile_path, _ = QFileDialog.getSaveFileName(
             parent=self,
             caption=GUITitle.SAVE_PROFILE,
             dir=self.profiles.parent,
             filter=GUIFileDialogFilter.JSON,
         )
-        if filename:
-            self.update_profile_path(filename)
+        if profile_path:
+            self.update_profile_path(profile_path)
             self.profiles.set(self.central_widget.ui)
 
     @Slot()
     def open_profile_dialog(self) -> None:
         """Load a GUI profile via dialog."""
-        filename, _ = QFileDialog.getOpenFileName(
+        profile_path, _ = QFileDialog.getOpenFileName(
             parent=self,
             caption=GUITitle.OPEN_PROFILE,
             dir=self.profiles.parent,
             filter=GUIFileDialogFilter.JSON,
         )
-        if filename:
-            self.update_profile_path(filename)
+        if profile_path:
+            self.update_profile_path(profile_path)
             self.profiles.get(self.central_widget.ui)
 
     def update_profile_path(self, path: str) -> None:

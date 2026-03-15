@@ -1,7 +1,7 @@
 """Test helper functions."""
 
 from fspachinko.constants import StateStatus
-from fspachinko.helpers import convert_byte_to_human_readable_size, get_status
+from fspachinko.helpers import convert_byte_to_human_readable_size, get_report, get_status
 
 
 def test_convert_byte_to_human_readable_size() -> None:
@@ -73,3 +73,17 @@ def test_get_status() -> None:
         )
         == StateStatus.UNDEFINED
     )
+
+
+def test_get_report() -> None:
+    """Test get_report."""
+    report = get_report("/path/to/destination", 5 * 1024**2, 3, 10)
+    expected_report = (
+        "------------------------------------------------------------------------\n"
+        "3/10 files transferred\n"
+        "------------------------------------------------------------------------\n"
+        "Destination:  /path/to/destination\n"
+        "Size:         5.00 MB\n"
+        "========================================================================\n"
+    )
+    assert report == expected_report
