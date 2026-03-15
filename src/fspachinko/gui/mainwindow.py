@@ -78,8 +78,10 @@ class MainWindow(QMainWindow):
 
     def init_settings(self) -> None:
         """Initialize GUI settings manager."""
-        self.restoreGeometry(self.qsettings.value(GUISettingsKey.GEOMETRY))
-        self.restoreState(self.qsettings.value(GUISettingsKey.STATE))
+        if geometry := self.qsettings.value(GUISettingsKey.GEOMETRY):
+            self.restoreGeometry(geometry)
+        if state := self.qsettings.value(GUISettingsKey.STATE):
+            self.restoreState(state)
         self.update_profile_path(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
         self.profiles.get(self.central_widget.ui)
 

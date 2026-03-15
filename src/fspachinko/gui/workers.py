@@ -12,6 +12,7 @@ from ..domain.events import FileTransferred
 
 if TYPE_CHECKING:
     from ..config import ConfigModel
+    from ..service.messagebus import MessageBus
 
 
 class WorkerSignals(QObject):
@@ -31,12 +32,13 @@ class MainWorker(QRunnable):
         super().__init__()
         self.config = config
         self.signals = WorkerSignals()
-        pipeline = build_pipeline(self.config)
-        self.bus = bootstrap(m=self.config, pipeline=pipeline)
+        self.bus: MessageBus | None = None
 
     @Slot()
     def run(self) -> None:
         """Run the process."""
+        pipeline = build_pipeline(self.config)
+        self.bus = bootstrap(m=self.config, pipeline=pipeline)
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
 
         self.signals.start_process.emit(self.config.directory.count)

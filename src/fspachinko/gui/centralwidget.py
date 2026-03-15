@@ -16,7 +16,7 @@ class CentralWidget(QWidget):
         """Initialize the main window."""
         super().__init__()
         self.original_window_title = ""
-        self.worker = None
+        self.worker: MainWorker | None = None
         self.thread_pool = QThreadPool()
         self.ui = UIBuilder()
         self.setLayout(self.ui.build())
@@ -37,7 +37,7 @@ class CentralWidget(QWidget):
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
-        if self.worker:
+        if self.worker is not None:
             self.worker.stop()
 
     def toggle_ui(self, *, is_enabled: bool) -> None:
@@ -56,19 +56,20 @@ class CentralWidget(QWidget):
     @Slot(int)
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        curr_dir_idx = self.ui.progress.progbar_dirs.value()
-        self.ui.progress.progbar_dirs.setValue(curr_dir_idx + 1)
+        curr = self.ui.progress.progbar_dirs.value()
+        self.ui.progress.progbar_dirs.setValue(curr + 1)
         self.ui.progress.progbar_files.setMaximum(target)
         self.ui.progress.progbar_files.setValue(0)
 
     @Slot()
     def handle_file_transfer(self) -> None:
         """Update the window title with the current progress."""
-        curr_file_count = self.ui.progress.progbar_files.value()
-        self.ui.progress.progbar_files.setValue(curr_file_count + 1)
-
-        percentage = int((curr_file_count + 1) * 100 / self.ui.progress.progbar_files.maximum())
-        self.window().setWindowTitle(f"[{percentage}%] {self.original_window_title}")
+        curr = self.ui.progress.progbar_files.value()
+        self.ui.progress.progbar_files.setValue(curr + 1)
+        maximum = self.ui.progress.progbar_files.maximum()
+        if maximum > 0:
+            percentage = int((curr + 1) * 100 / maximum)
+            self.window().setWindowTitle(f"[{percentage}%] {self.original_window_title}")
 
     @Slot()
     def handle_finished(self) -> None:
