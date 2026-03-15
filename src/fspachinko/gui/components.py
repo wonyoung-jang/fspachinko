@@ -389,10 +389,10 @@ class OptionsWidget(BaseGroupBox):
 
 
 class LogWidget(QWidget):
-    """Log widget."""
+    """Logging text box."""
 
-    def __init__(self, name: str) -> None:
-        """Initiralize the log widget."""
+    def __init__(self) -> None:
+        """Initialize the log widget."""
         super().__init__()
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
@@ -400,12 +400,16 @@ class LogWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.addWidget(self.textbrowser_log)
 
+    def append(self, text: str) -> None:
+        """Append text to the log."""
+        self.textbrowser_log.append(text)
+
 
 class ProgressWidget(QWidget):
-    """Progress bars and execution controls."""
+    """Progress bars."""
 
-    def __init__(self, name: str) -> None:
-        """Post-initialize the progress widget."""
+    def __init__(self) -> None:
+        """Initialize the progress widget."""
         super().__init__()
         self.progbar_dirs = QProgressBar(textVisible=True)
         set_qt_tips(self.progbar_dirs, "Total progress bar, max is set at number of output folders.")
@@ -414,3 +418,23 @@ class ProgressWidget(QWidget):
         layout = QFormLayout(self)
         layout.addRow("Directories", self.progbar_dirs)
         layout.addRow("Files", self.progbar_files)
+
+    def handle_start_process(self, dir_count: int) -> None:
+        """Set up the progress bars at the start of the process."""
+        self.progbar_dirs.setMaximum(dir_count)
+        self.progbar_dirs.setValue(0)
+        self.progbar_files.setValue(0)
+
+    def handle_directory_start(self, target: int) -> None:
+        """Update the directory progress bar."""
+        curr = self.progbar_dirs.value()
+        self.progbar_dirs.setValue(curr + 1)
+        self.progbar_files.setMaximum(target)
+        self.progbar_files.setValue(0)
+
+    def handle_file_transfer(self) -> int:
+        """Update the file progress bar."""
+        curr = self.progbar_files.value()
+        self.progbar_files.setValue(curr + 1)
+        maximum = self.progbar_files.maximum()
+        return int((curr + 1) * 100 / maximum) if maximum > 0 else 0

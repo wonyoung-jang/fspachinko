@@ -1,5 +1,7 @@
 """Main module."""
 
+from typing import TYPE_CHECKING
+
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from ..constants import ByteUnit, TimeUnit
@@ -15,6 +17,9 @@ from .components import (
     RangeFilterWidget,
     TextFilterWidget,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class UIBuilder:
@@ -33,8 +38,8 @@ class UIBuilder:
         self.filesize = RangeFilterWidget("File Size", "filesize", tuple(ByteUnit))
         self.duration = RangeFilterWidget("Duration", "duration", tuple(TimeUnit))
         self.options = OptionsWidget("Options", "options")
-        self.logging = LogWidget("logging")
-        self.progress = ProgressWidget("progress")
+        self.logging = LogWidget()
+        self.progress = ProgressWidget()
         self.all_widgets: tuple[QWidget, ...] = (
             self.root,
             self.dest,
@@ -66,3 +71,20 @@ class UIBuilder:
         for w in self.has_config:
             config.update(w.config)
         return config
+
+    @property
+    def log_append(self) -> Callable:
+        """Get the log append function."""
+        return self.logging.append
+
+    def handle_start_process(self, dir_count: int) -> None:
+        """Handle the start of the process."""
+        self.progress.handle_start_process(dir_count)
+
+    def handle_directory_start(self, target: int) -> None:
+        """Update the directory progress bar."""
+        self.progress.handle_directory_start(target)
+
+    def handle_file_transfer(self) -> int:
+        """Update the file progress bar and return the current percentage."""
+        return self.progress.handle_file_transfer()

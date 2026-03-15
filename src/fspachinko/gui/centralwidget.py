@@ -19,13 +19,29 @@ class CentralWidget(QWidget):
         self.worker: MainWorker | None = None
         self.thread_pool = QThreadPool()
         self.ui = UIBuilder()
+        self._window = self.window()
         self.setLayout(self.ui.build())
-        setup_gui_logger(self.ui.logging.textbrowser_log.append)
+        setup_gui_logger(self.ui.log_append)
+
+    def toggle_ui(self, *, is_enabled: bool) -> None:
+        """Lock or unlock UI elements."""
+        for child in self.findChildren(QGroupBox):
+            child.setEnabled(is_enabled)
+
+    def capture_config(self) -> dict:
+        """Capture the current configuration from the UI."""
+        return self.ui.config
+
+    def restore_config(self, config: dict) -> None:
+        """Restore the configuration to the UI."""
+        for component in self.ui.has_config:
+            component.restore(config)
 
     @Slot()
     def on_start(self) -> None:
         """Start the process and disable UI elements."""
-        self.original_window_title = self.window().windowTitle()
+        self._window = self.window()
+        self.original_window_title = self._window.windowTitle()
         config_model = get_config_from_pydict(self.ui.config)
         self.worker = MainWorker(config_model)
         self.worker.signals.start_process.connect(self.handle_start_process)
@@ -40,39 +56,25 @@ class CentralWidget(QWidget):
         if self.worker is not None:
             self.worker.stop()
 
-    def toggle_ui(self, *, is_enabled: bool) -> None:
-        """Lock or unlock UI elements."""
-        for child in self.findChildren(QGroupBox):
-            child.setEnabled(is_enabled)
-
     @Slot(int)
     def handle_start_process(self, dir_count: int) -> None:
         """Handle the start of the process."""
         self.toggle_ui(is_enabled=False)
-        self.ui.progress.progbar_dirs.setMaximum(dir_count)
-        self.ui.progress.progbar_dirs.setValue(0)
-        self.ui.progress.progbar_files.setValue(0)
+        self.ui.handle_start_process(dir_count)
 
     @Slot(int)
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        curr = self.ui.progress.progbar_dirs.value()
-        self.ui.progress.progbar_dirs.setValue(curr + 1)
-        self.ui.progress.progbar_files.setMaximum(target)
-        self.ui.progress.progbar_files.setValue(0)
+        self.ui.handle_directory_start(target)
 
     @Slot()
     def handle_file_transfer(self) -> None:
         """Update the window title with the current progress."""
-        curr = self.ui.progress.progbar_files.value()
-        self.ui.progress.progbar_files.setValue(curr + 1)
-        maximum = self.ui.progress.progbar_files.maximum()
-        if maximum > 0:
-            percentage = int((curr + 1) * 100 / maximum)
-            self.window().setWindowTitle(f"[{percentage}%] {self.original_window_title}")
+        percentage = self.ui.handle_file_transfer()
+        self._window.setWindowTitle(f"[{percentage}%] {self.original_window_title}")
 
     @Slot()
     def handle_finished(self) -> None:
         """Reset the window title to the original."""
         self.toggle_ui(is_enabled=True)
-        self.window().setWindowTitle(self.original_window_title)
+        self._window.setWindowTitle(self.original_window_title)

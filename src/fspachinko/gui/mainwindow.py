@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
 
     def init_connections(self) -> None:
         """Initialize connections."""
-        self._actions.file.save.triggered.connect(lambda: self.profiles.set(self.central_widget.ui))
+        self._actions.file.save.triggered.connect(lambda: self.profiles.set(self.central_widget.capture_config()))
         self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
         self._actions.file.load.triggered.connect(self.open_profile_dialog)
         self._actions.file.exit.triggered.connect(self.close)
@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
         if state := self.qsettings.value(GUISettingsKey.STATE):
             self.restoreState(state)
         self.update_profile_path(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
-        self.profiles.get(self.central_widget.ui)
+        self.central_widget.restore_config(self.profiles.get())
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.profiles.set(self.central_widget.ui)
+            self.profiles.set(self.central_widget.capture_config())
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.profiles.get(self.central_widget.ui)
+            self.central_widget.restore_config(self.profiles.get())
 
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""
