@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..adapters.filesystemport import get_available_transfer_modes, get_icon_path
+from ..adapters.filesystemport import get_icon_path
 from ..constants import FilenameTemplate, IconFilename
 from .qthelpers import set_qt_tips
 
@@ -39,6 +39,9 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+BROWSE_ICON = QIcon(get_icon_path(IconFilename.BROWSE))
+OPEN_ICON = QIcon(get_icon_path(IconFilename.OPEN_DIR))
 
 
 class BaseGroupBox(QGroupBox):
@@ -68,20 +71,20 @@ class PathSelectorWidget(BaseGroupBox):
     def __init__(self, title: str, name: str) -> None:
         """Initialize the path selector widget."""
         super().__init__(title, name)
-        self.setAcceptDrops(True)
-        titlenorm = self.title().casefold()
+
         self.lbl_selected = QLabel()
-        set_qt_tips(self.lbl_selected, f"Select the {titlenorm} folder.")
-        icon_browse = QIcon(get_icon_path(IconFilename.BROWSE))
-        icon_open = QIcon(get_icon_path(IconFilename.OPEN_DIR))
-        self.btn_browse = QPushButton()
-        self.btn_browse.setIcon(icon_browse)
+        self.btn_browse = QPushButton(BROWSE_ICON, "Browse")
+        self.btn_open = QPushButton(OPEN_ICON, "Open")
+
+        self.setAcceptDrops(True)
         self.btn_browse.clicked.connect(self.browse)
-        set_qt_tips(self.btn_browse, f"Browse for {titlenorm} folder.")
-        self.btn_open = QPushButton()
-        self.btn_open.setIcon(icon_open)
         self.btn_open.clicked.connect(self.open)
+
+        titlenorm = self.title().casefold()
+        set_qt_tips(self.lbl_selected, f"Select the {titlenorm} folder.")
+        set_qt_tips(self.btn_browse, f"Browse for {titlenorm} folder.")
         set_qt_tips(self.btn_open, f"Open current {titlenorm} folder in file explorer.")
+
         layout = QHBoxLayout(self)
         layout.addWidget(self.lbl_selected, stretch=1)
         layout.addWidget(self.btn_browse)
@@ -100,7 +103,6 @@ class PathSelectorWidget(BaseGroupBox):
     def browse(self) -> None:
         """Return the browse button."""
         d = QFileDialog.getExistingDirectory(
-            parent=self,
             caption=f"Select {self.title()}",
             dir=self.lbl_selected.text(),
         )
@@ -134,24 +136,25 @@ class FileCountWidget(BaseGroupBox):
     def __init__(self, title: str, name: str) -> None:
         """Initialize the file count widget."""
         super().__init__(title, name)
+
         self.radio_fixed = QRadioButton("Fixed")
-        self.radio_fixed.setChecked(True)
-        set_qt_tips(self.radio_fixed, "Select fixed file count.")
         self.spin_fixed = QSpinBox(suffix=" files", minimum=1)
-        set_qt_tips(self.spin_fixed, "Number of files to copy.")
         self.radio_rand = QRadioButton("Random")
-        set_qt_tips(self.radio_rand, "Select random file count.")
         self.spin_min_rand = QSpinBox(prefix="Min: ", minimum=1)
-        set_qt_tips(self.spin_min_rand, "Minimum random file count.")
-        self.spin_max_rand = QSpinBox(prefix="Max: ", minimum=1)
-        set_qt_tips(self.spin_max_rand, "Maximum random file count.")
+        self.spin_max_rand = QSpinBox(prefix="Max: ", minimum=2)
+
         self.spin_min_rand.valueChanged.connect(self.spin_max_rand.setMinimum)
         self.spin_max_rand.valueChanged.connect(self.spin_min_rand.setMaximum)
         self.radio_fixed.toggled.connect(self.spin_fixed.setEnabled)
         self.radio_fixed.toggled.connect(self.spin_min_rand.setDisabled)
         self.radio_fixed.toggled.connect(self.spin_max_rand.setDisabled)
-        self.spin_min_rand.setDisabled(True)
-        self.spin_max_rand.setDisabled(True)
+
+        set_qt_tips(self.radio_fixed, "Select fixed file count.")
+        set_qt_tips(self.spin_fixed, "Number of files to copy.")
+        set_qt_tips(self.radio_rand, "Select random file count.")
+        set_qt_tips(self.spin_min_rand, "Minimum random file count.")
+        set_qt_tips(self.spin_max_rand, "Maximum random file count.")
+
         layout = QGridLayout(self)
         layout.addWidget(self.radio_fixed, 0, 0)
         layout.addWidget(self.spin_fixed, 0, 1)
@@ -174,11 +177,14 @@ class FileCountWidget(BaseGroupBox):
     def restore(self, config: dict) -> None:
         """Restore the file count widget from config data."""
         c = config.get(self.name, {})
+        is_rand_enabled = c.get("is_rand_enabled", True)
         self.spin_fixed.setValue(c.get("count", 1))
-        self.radio_fixed.setChecked(not c.get("is_rand_enabled", True))
-        self.radio_rand.setChecked(c.get("is_rand_enabled", True))
+        self.radio_fixed.setChecked(not is_rand_enabled)
+        self.radio_rand.setChecked(is_rand_enabled)
         self.spin_min_rand.setValue(c.get("rand_min", 1))
-        self.spin_max_rand.setValue(c.get("rand_max", 1))
+        self.spin_max_rand.setValue(c.get("rand_max", 2))
+        self.spin_min_rand.setEnabled(is_rand_enabled)
+        self.spin_max_rand.setEnabled(is_rand_enabled)
 
 
 class DirectoryCreateWidget(BaseGroupBox):
@@ -187,10 +193,13 @@ class DirectoryCreateWidget(BaseGroupBox):
     def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
         super().__init__(title, name, checkable=True)
+
         self.spinbox_folder_count = QSpinBox(suffix=" directories", minimum=1)
-        set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
         self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
+
+        set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
         set_qt_tips(self.lineedit_folder_name, "Template for naming created folders.")
+
         layout = QVBoxLayout(self)
         layout.addWidget(self.spinbox_folder_count)
         layout.addWidget(self.lineedit_folder_name)
@@ -201,8 +210,8 @@ class DirectoryCreateWidget(BaseGroupBox):
         return {
             self.name: {
                 "is_enabled": self.isChecked(),
-                "name": self.lineedit_folder_name.text(),
                 "count": self.spinbox_folder_count.value(),
+                "name": self.lineedit_folder_name.text(),
             }
         }
 
@@ -220,25 +229,33 @@ class FilenamerWidget(BaseGroupBox):
     def __init__(self, title: str, name: str) -> None:
         """Initialize the filename template settings widget."""
         super().__init__(title, name, checkable=True)
-        self.edit_template = QLineEdit("{original}", placeholderText="Ex: {original}_{index}", clearButtonEnabled=True)
-        set_qt_tips(self.edit_template, "Template for renaming files. Use the 'Insert Tag' button to add tags.")
-        self.menu_template = QMenu(title="Tags")
-        set_qt_tips(self.menu_template, "Select a tag to insert into the filename template.")
-        self.btn_template = QPushButton("Insert tag")
-        self.btn_template.setMenu(self.menu_template)
-        set_qt_tips(self.btn_template, "Insert a tag into the template at the cursor position.")
+
+        self.lineedit_template = QLineEdit(
+            FilenameTemplate.ORIGINAL,
+            placeholderText=f"Ex: {FilenameTemplate.ORIGINAL}_{FilenameTemplate.INDEX}",
+            clearButtonEnabled=True,
+        )
+        self.btn_insert = QPushButton("Insert tag")
+        self.menu = QMenu(title="Tags")
+
         for lbl in FilenameTemplate:
-            action = self.menu_template.addAction(lbl)
+            action = self.menu.addAction(lbl)
             action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
+        self.btn_insert.setMenu(self.menu)
+
+        set_qt_tips(self.lineedit_template, "Template for renaming files. Use the 'Insert Tag' button to add tags.")
+        set_qt_tips(self.btn_insert, "Insert a tag into the template at the cursor position.")
+        set_qt_tips(self.menu, "Select a tag to insert into the filename template.")
+
         layout = QHBoxLayout(self)
-        layout.addWidget(self.edit_template)
-        layout.addWidget(self.btn_template)
+        layout.addWidget(self.lineedit_template)
+        layout.addWidget(self.btn_insert)
 
     @Slot(str)
     def insert_tag(self, tag: str) -> None:
         """Insert a tag into the template at the cursor position."""
-        self.edit_template.insert(tag)
-        self.edit_template.setFocus()
+        self.lineedit_template.insert(tag)
+        self.lineedit_template.setFocus()
 
     @property
     def config(self) -> dict:
@@ -246,7 +263,7 @@ class FilenamerWidget(BaseGroupBox):
         return {
             self.name: {
                 "is_enabled": self.isChecked(),
-                "template": self.edit_template.text(),
+                "template": self.lineedit_template.text(),
             }
         }
 
@@ -254,7 +271,7 @@ class FilenamerWidget(BaseGroupBox):
         """Restore the filename template widget from config data."""
         c = config.get(self.name, {})
         self.setChecked(c.get("is_enabled", False))
-        self.edit_template.setText(c.get("template", ""))
+        self.lineedit_template.setText(c.get("template", ""))
 
 
 class TextFilterWidget(BaseGroupBox):
@@ -263,18 +280,20 @@ class TextFilterWidget(BaseGroupBox):
     def __init__(self, title: str, name: str) -> None:
         """Initialize the dual list widget."""
         super().__init__(title, name, checkable=True)
-        title_lower = self.title().casefold()
-        self.filter_edit = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
-        set_qt_tips(self.filter_edit, f"Enter {title_lower} separated by commas.")
-        self.filter_include_radio = QRadioButton("Include")
-        self.filter_include_radio.setChecked(True)
-        set_qt_tips(self.filter_include_radio, f"Include only items matching the {title_lower} filter.")
-        self.filter_exclude_radio = QRadioButton("Exclude")
-        set_qt_tips(self.filter_exclude_radio, f"Exclude items matching the {title_lower} filter.")
+
+        self.lineedit_filter = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
+        self.radio_include = QRadioButton("Include")
+        self.radio_exclude = QRadioButton("Exclude")
+
+        titlenorm = self.title().casefold()
+        set_qt_tips(self.lineedit_filter, f"Enter {titlenorm} separated by commas.")
+        set_qt_tips(self.radio_include, f"Include only items matching the {titlenorm} filter.")
+        set_qt_tips(self.radio_exclude, f"Exclude items matching the {titlenorm} filter.")
+
         layout = QHBoxLayout(self)
-        layout.addWidget(self.filter_edit)
-        layout.addWidget(self.filter_include_radio)
-        layout.addWidget(self.filter_exclude_radio)
+        layout.addWidget(self.lineedit_filter)
+        layout.addWidget(self.radio_include)
+        layout.addWidget(self.radio_exclude)
 
     @property
     def config(self) -> dict:
@@ -282,18 +301,19 @@ class TextFilterWidget(BaseGroupBox):
         return {
             self.name: {
                 "is_enabled": self.isChecked(),
-                "should_include": self.filter_include_radio.isChecked(),
-                "text": self.filter_edit.text(),
+                "should_include": self.radio_include.isChecked(),
+                "text": self.lineedit_filter.text(),
             }
         }
 
     def restore(self, config: dict) -> None:
         """Restore the text filter widget from config data."""
         c = config.get(self.name, {})
+        should_include = c.get("should_include", True)
         self.setChecked(c.get("is_enabled", False))
-        self.filter_include_radio.setChecked(c.get("should_include", True))
-        self.filter_exclude_radio.setChecked(not c.get("should_include", True))
-        self.filter_edit.setText(c.get("text", ""))
+        self.radio_include.setChecked(should_include)
+        self.radio_exclude.setChecked(not should_include)
+        self.lineedit_filter.setText(c.get("text", ""))
 
 
 class RangeFilterWidget(BaseGroupBox):
@@ -302,15 +322,19 @@ class RangeFilterWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, checkable=True)
+
         self.spin_min = QDoubleSpinBox(prefix="Min ")
-        set_qt_tips(self.spin_min, f"Minimum value for the {name} filter.")
         self.spin_max = QDoubleSpinBox(prefix="Max ")
-        set_qt_tips(self.spin_max, f"Maximum value for the {name} filter.")
-        self.spin_min.valueChanged.connect(self.spin_max.setMinimum)
-        self.spin_max.valueChanged.connect(self.spin_min.setMaximum)
         self.combo_unit = QComboBox()
         self.combo_unit.addItems(items)
+
+        set_qt_tips(self.spin_min, f"Minimum value for the {name} filter.")
+        set_qt_tips(self.spin_max, f"Maximum value for the {name} filter.")
         set_qt_tips(self.combo_unit, f"Unit multiplier for the {name} filter.")
+
+        self.spin_min.valueChanged.connect(self.spin_max.setMinimum)
+        self.spin_max.valueChanged.connect(self.spin_min.setMaximum)
+
         layout = QHBoxLayout(self)
         layout.addWidget(self.spin_min)
         layout.addWidget(self.spin_max)
@@ -343,49 +367,52 @@ class RangeFilterWidget(BaseGroupBox):
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    def __init__(self, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
         """Initialize the options widget."""
         super().__init__(title, name)
-        self.combo_mode = QComboBox()
-        self.combo_mode.addItems(list(get_available_transfer_modes().keys()))
-        set_qt_tips(self.combo_mode, "Select the transfer mode to use.")
-        self.spin_max_per_folder = QSpinBox()
-        self.spin_max_per_folder.setSpecialValueText("Unlimited")
-        set_qt_tips(self.spin_max_per_folder, "Maximum number of files allowed per input folder. 0 for unlimited.")
-        self.chk_follow_symlink = QCheckBox()
-        set_qt_tips(self.chk_follow_symlink, "If checked, symbolic links will be followed during file traversal.")
-        self.rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
-        set_qt_tips(self.rng_seed, "Seed for random number generator. Integer or string. If empty, system clock used.")
+
+        self.combo_transfermode = QComboBox()
+        self.combo_transfermode.addItems(transfermodes)
+        self.spin_max_per_dir = QSpinBox()
+        self.spin_max_per_dir.setSpecialValueText("Unlimited")
         self.chk_unique_folders = QCheckBox()
+        self.chk_follow_symlink = QCheckBox()
+        self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
+
+        set_qt_tips(self.combo_transfermode, "Select the transfer mode to use.")
+        set_qt_tips(self.spin_max_per_dir, "Maximum number of files allowed per input folder. 0 for unlimited.")
         set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
+        set_qt_tips(self.chk_follow_symlink, "If checked, symbolic links will be followed during file traversal.")
+        set_qt_tips(self.lineedit_rng_seed, "Seed for random number generator. If empty, system clock used.")
+
         layout = QFormLayout(self)
-        layout.addRow("Transfer mode", self.combo_mode)
-        layout.addRow("Max from one directory", self.spin_max_per_folder)
+        layout.addRow("Transfer mode", self.combo_transfermode)
+        layout.addRow("Max from one directory", self.spin_max_per_dir)
         layout.addRow("Ensure unique directories", self.chk_unique_folders)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
-        layout.addRow("Random seed", self.rng_seed)
+        layout.addRow("Random seed", self.lineedit_rng_seed)
 
     @property
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
             self.name: {
-                "transfer_mode": self.combo_mode.currentText(),
-                "max_per_dir": self.spin_max_per_folder.value(),
+                "transfer_mode": self.combo_transfermode.currentText(),
+                "max_per_dir": self.spin_max_per_dir.value(),
                 "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
                 "should_follow_symlink": self.chk_follow_symlink.isChecked(),
-                "rng_seed": self.rng_seed.text(),
+                "rng_seed": self.lineedit_rng_seed.text(),
             }
         }
 
     def restore(self, config: dict) -> None:
         """Restore the options widget from config data."""
         c = config.get(self.name, {})
-        self.combo_mode.setCurrentText(c.get("transfer_mode", ""))
-        self.spin_max_per_folder.setValue(c.get("max_per_dir", 0))
+        self.combo_transfermode.setCurrentText(c.get("transfer_mode", ""))
+        self.spin_max_per_dir.setValue(c.get("max_per_dir", 0))
         self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
         self.chk_follow_symlink.setChecked(c.get("should_follow_symlink", False))
-        self.rng_seed.setText(c.get("rng_seed", ""))
+        self.lineedit_rng_seed.setText(c.get("rng_seed", ""))
 
 
 class LogWidget(QWidget):
@@ -394,9 +421,12 @@ class LogWidget(QWidget):
     def __init__(self) -> None:
         """Initialize the log widget."""
         super().__init__()
+
         self.textbrowser_log = QTextBrowser()
         self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+
         set_qt_tips(self.textbrowser_log, "Log for output messages.")
+
         layout = QHBoxLayout(self)
         layout.addWidget(self.textbrowser_log)
 
@@ -411,10 +441,13 @@ class ProgressWidget(QWidget):
     def __init__(self) -> None:
         """Initialize the progress widget."""
         super().__init__()
+
         self.progbar_dirs = QProgressBar(textVisible=True)
-        set_qt_tips(self.progbar_dirs, "Total progress bar, max is set at number of output folders.")
         self.progbar_files = QProgressBar(textVisible=True)
+
+        set_qt_tips(self.progbar_dirs, "Total progress bar, max is set at number of output folders.")
         set_qt_tips(self.progbar_files, "Current folder progress bar, max is set at number of files to copy.")
+
         layout = QFormLayout(self)
         layout.addRow("Directories", self.progbar_dirs)
         layout.addRow("Files", self.progbar_files)

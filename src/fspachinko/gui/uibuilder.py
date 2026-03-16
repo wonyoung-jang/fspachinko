@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
+from ..adapters.filesystemport import get_available_transfer_modes
 from ..constants import ByteUnit, TimeUnit
 from .components import (
     BaseGroupBox,
@@ -37,7 +38,7 @@ class UIBuilder:
         self.extension = TextFilterWidget("Extension", "extension")
         self.filesize = RangeFilterWidget("File Size", "filesize", tuple(ByteUnit))
         self.duration = RangeFilterWidget("Duration", "duration", tuple(TimeUnit))
-        self.options = OptionsWidget("Options", "options")
+        self.options = OptionsWidget("Options", "options", tuple(get_available_transfer_modes().keys()))
         self.logging = LogWidget()
         self.progress = ProgressWidget()
         self.all_widgets: tuple[QWidget, ...] = (
@@ -88,3 +89,13 @@ class UIBuilder:
     def handle_file_transfer(self) -> int:
         """Update the file progress bar and return the current percentage."""
         return self.progress.handle_file_transfer()
+
+    def toggle(self, *, is_enabled: bool) -> None:
+        """Lock or unlock UI elements."""
+        for component in self.has_config:
+            component.setEnabled(is_enabled)
+
+    def restore(self, config: dict) -> None:
+        """Restore the UI to its default state."""
+        for component in self.has_config:
+            component.restore(config)

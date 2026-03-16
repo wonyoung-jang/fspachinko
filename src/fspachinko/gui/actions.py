@@ -1,6 +1,6 @@
 """Actions module for QActions."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 
@@ -16,7 +16,7 @@ def build_action(icon: str, text: str, shortcut: str, tip: str) -> QAction:
     return action
 
 
-QACTION_CONFIGS = {
+ACTION_CONFIG = {
     "save": (IconFilename.SAVE, "&Save Profile", "Ctrl+S", "Save current profile (Ctrl+S)"),
     "save_as": (IconFilename.SAVE_AS, "Save Profile &As", "Ctrl+Shift+S", "Save current profile as ... (Ctrl+Shift+S)"),
     "load": (IconFilename.OPEN, "&Load Profile", "Ctrl+O", "Load profile (Ctrl+O)"),
@@ -26,33 +26,19 @@ QACTION_CONFIGS = {
 }
 
 
+def get_actions() -> Actions:
+    """Get file menu actions."""
+    actions = {k: build_action(*v) for k, v in ACTION_CONFIG.items()}
+    return Actions(**actions)
+
+
 @dataclass(slots=True)
-class FileActions:
+class Actions:
     """Main file menu actions."""
 
     save: QAction
     save_as: QAction
     load: QAction
     exit: QAction
-
-
-@dataclass(slots=True)
-class RunActions:
-    """Main run actions."""
-
     start: QAction
     stop: QAction
-
-
-@dataclass(slots=True)
-class Actions:
-    """Main actions."""
-
-    file: FileActions = field(init=False)
-    run: RunActions = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set up any additional state if needed."""
-        actions = {k: build_action(*v) for k, v in QACTION_CONFIGS.items()}
-        self.file = FileActions(actions["save"], actions["save_as"], actions["load"], actions["exit"])
-        self.run = RunActions(actions["start"], actions["stop"])

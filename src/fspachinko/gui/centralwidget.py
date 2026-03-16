@@ -24,19 +24,14 @@ class CentralWidget(QWidget):
         self.setLayout(self.ui.build())
         setup_gui_logger(self.ui.log_append)
 
-    def toggle_ui(self, *, is_enabled: bool) -> None:
-        """Lock or unlock UI elements."""
-        for component in self.ui.has_config:
-            component.setEnabled(is_enabled)
-
-    def capture_config(self) -> dict:
+    @property
+    def config(self) -> dict:
         """Capture the current configuration from the UI."""
         return self.ui.config
 
     def restore_config(self, config: dict) -> None:
         """Restore the configuration to the UI."""
-        for component in self.ui.has_config:
-            component.restore(config)
+        self.ui.restore(config)
 
     @Slot()
     def on_start(self) -> None:
@@ -52,7 +47,7 @@ class CentralWidget(QWidget):
     def run_worker(self) -> None:
         """Run the worker in a separate thread."""
         if self.worker is not None:
-            config_model = get_config_from_pydict(self.ui.config)
+            config_model = get_config_from_pydict(self.config)
             self.worker.run(config_model)
 
     @Slot()
@@ -64,7 +59,7 @@ class CentralWidget(QWidget):
     @Slot(int)
     def handle_start_process(self, dir_count: int) -> None:
         """Handle the start of the process."""
-        self.toggle_ui(is_enabled=False)
+        self.ui.toggle(is_enabled=False)
         self.ui.handle_start_process(dir_count)
 
     @Slot(int)
@@ -81,5 +76,5 @@ class CentralWidget(QWidget):
     @Slot()
     def handle_finished(self) -> None:
         """Reset the window title to the original."""
-        self.toggle_ui(is_enabled=True)
+        self.ui.toggle(is_enabled=True)
         self.title_changed.emit(self.original_window_title)
