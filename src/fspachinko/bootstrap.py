@@ -29,7 +29,7 @@ from .service.uow import AbstractUnitOfWork, FileSystemUnitOfWork
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .config import ConfigModel
+    from .configuration.model import ConfigModel
 
 
 def bootstrap(

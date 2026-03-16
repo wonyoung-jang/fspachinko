@@ -6,7 +6,7 @@ from cyclopts import App
 
 from ..adapters.filesystemport import get_config_path
 from ..bootstrap import bootstrap, build_pipeline
-from ..config import get_config_from_jsonpath
+from ..configuration.model import get_config_from_jsonpath
 from ..constants import DefaultPath
 from ..domain.commands import StartProcessingDirectory
 

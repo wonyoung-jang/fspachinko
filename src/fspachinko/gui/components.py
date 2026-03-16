@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..adapters.filesystemport import get_icon_path
-from ..constants import FilenameTemplate, IconFilename
+from ..constants import FilenameTemplate, IconFilename, TransferMode
 from .qthelpers import set_qt_tips
 
 if TYPE_CHECKING:
@@ -177,12 +177,12 @@ class FileCountWidget(BaseGroupBox):
     def restore(self, config: dict) -> None:
         """Restore the file count widget from config data."""
         c = config.get(self.name, {})
-        is_rand_enabled = c.get("is_rand_enabled", True)
+        is_rand_enabled = c.get("is_rand_enabled", False)
         self.spin_fixed.setValue(c.get("count", 1))
         self.radio_fixed.setChecked(not is_rand_enabled)
         self.radio_rand.setChecked(is_rand_enabled)
         self.spin_min_rand.setValue(c.get("rand_min", 1))
-        self.spin_max_rand.setValue(c.get("rand_max", 2))
+        self.spin_max_rand.setValue(c.get("rand_max", 10))
         self.spin_min_rand.setEnabled(is_rand_enabled)
         self.spin_max_rand.setEnabled(is_rand_enabled)
 
@@ -220,7 +220,7 @@ class DirectoryCreateWidget(BaseGroupBox):
         c = config.get(self.name, {})
         self.setChecked(c.get("is_enabled", False))
         self.spinbox_folder_count.setValue(c.get("count", 1))
-        self.lineedit_folder_name.setText(c.get("name", ""))
+        self.lineedit_folder_name.setText(c.get("name", "fsp_output"))
 
 
 class FilenamerWidget(BaseGroupBox):
@@ -271,7 +271,7 @@ class FilenamerWidget(BaseGroupBox):
         """Restore the filename template widget from config data."""
         c = config.get(self.name, {})
         self.setChecked(c.get("is_enabled", False))
-        self.lineedit_template.setText(c.get("template", ""))
+        self.lineedit_template.setText(c.get("template", FilenameTemplate.ORIGINAL))
 
 
 class TextFilterWidget(BaseGroupBox):
@@ -408,7 +408,7 @@ class OptionsWidget(BaseGroupBox):
     def restore(self, config: dict) -> None:
         """Restore the options widget from config data."""
         c = config.get(self.name, {})
-        self.combo_transfermode.setCurrentText(c.get("transfer_mode", ""))
+        self.combo_transfermode.setCurrentText(c.get("transfer_mode", TransferMode.DRY_RUN))
         self.spin_max_per_dir.setValue(c.get("max_per_dir", 0))
         self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
         self.chk_follow_symlink.setChecked(c.get("should_follow_symlink", False))

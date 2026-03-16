@@ -5,7 +5,7 @@ from os.path import isabs, realpath
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .constants import FilenameTemplate, TransferMode
+from ..constants import FilenameTemplate, TransferMode
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class FilecountModel(BaseModel):
     count: int = Field(default=10, ge=1)
     is_rand_enabled: bool = False
     rand_min: int = Field(default=1, ge=1)
-    rand_max: int = Field(default=10, ge=1)
+    rand_max: int = Field(default=10, ge=2)
 
     @model_validator(mode="after")
     def validate_filecount_model(self) -> FilecountModel:

@@ -5,7 +5,14 @@ from os.path import realpath
 import pytest
 from pydantic import ValidationError
 
-from fspachinko.config import ConfigModel, DirectoryModel, FilecountModel, FilenameModel, OptionsModel, RangeFilterModel
+from fspachinko.configuration.model import (
+    ConfigModel,
+    DirectoryModel,
+    FilecountModel,
+    FilenameModel,
+    OptionsModel,
+    RangeFilterModel,
+)
 
 
 def test_filecount_model() -> None:

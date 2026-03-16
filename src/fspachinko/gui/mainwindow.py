@@ -70,7 +70,7 @@ class MainWindow(QMainWindow):
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
-        statusbar = QStatusBar(self, sizeGripEnabled=True)
+        statusbar = QStatusBar(sizeGripEnabled=True)
         self.setStatusBar(statusbar)
 
     def init_settings(self) -> None:

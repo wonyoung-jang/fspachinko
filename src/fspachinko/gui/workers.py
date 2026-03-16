@@ -11,7 +11,7 @@ from ..domain.commands import StartProcessingDirectory, StopProcess
 from ..domain.events import FileTransferred
 
 if TYPE_CHECKING:
-    from ..config import ConfigModel
+    from ..configuration.model import ConfigModel
     from ..service.messagebus import MessageBus
 
 
