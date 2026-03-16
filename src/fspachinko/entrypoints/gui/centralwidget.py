@@ -37,19 +37,14 @@ class CentralWidget(QWidget):
     @Slot()
     def on_start(self) -> None:
         """Start the process and disable UI elements."""
+        self.ui.toggle(is_enabled=False)
         self.original_window_title = self.window().windowTitle()
-        self.worker = MainWorker()
+        self.worker = MainWorker(get_config_from_pydict(self.config))
         self.worker.signals.process_started.connect(self.handle_start_process)
         self.worker.signals.directory_started.connect(self.handle_directory_start)
         self.worker.signals.file_transferred.connect(self.handle_file_transfer)
         self.worker.signals.finished.connect(self.handle_finished)
-        self.thread_pool.start(self.run_worker)
-
-    def run_worker(self) -> None:
-        """Run the worker in a separate thread."""
-        if self.worker is not None:
-            config_model = get_config_from_pydict(self.config)
-            self.worker.run(config_model)
+        self.thread_pool.start(self.worker)
 
     @Slot()
     def on_stop(self) -> None:
@@ -60,7 +55,6 @@ class CentralWidget(QWidget):
     @Slot(int)
     def handle_start_process(self, dir_count: int) -> None:
         """Handle the start of the process."""
-        self.ui.toggle(is_enabled=False)
         self.ui.handle_start_process(dir_count)
 
     @Slot(int)

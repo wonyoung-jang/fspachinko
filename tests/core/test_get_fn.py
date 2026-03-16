@@ -4,8 +4,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-from fspachinko.constants import FilenameTemplate, TransferMode
-from fspachinko.service.handlers import (
+from fspachinko.bootstrap import (
     get_dirname_fn,
     get_filecount_fn,
     get_filefilter_fn,
@@ -14,6 +13,7 @@ from fspachinko.service.handlers import (
     get_textfilter_fn,
     get_transfer_fn,
 )
+from fspachinko.constants import FilenameTemplate, TransferMode
 
 
 def test_get_filenamer_fn() -> None:

@@ -1,13 +1,13 @@
 """Main module."""
 
-from os.path import basename, splitext
+from os.path import basename, dirname, splitext
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
 from fspachinko.adapters.filesystemport import get_profile_path
-from fspachinko.configuration.profiles import ProfileManager
+from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
 
 from .actions import get_actions
@@ -22,17 +22,34 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         """Initialize the main window."""
-        super().__init__(animated=True)
+        super().__init__()
         self.central_widget = CentralWidget()
-        self.profiles = ProfileManager(get_profile_path)
+        self.config_repo = JSONConfigRepository()
         self.acts = get_actions()
-
+        self._path = ""
+        self.setAnimated(True)
         self.setCentralWidget(self.central_widget)
+
         self.init_connections()
         self.init_menubar()
         self.init_toolbar()
         self.init_statusbar()
         self.init_settings()
+
+    @property
+    def config_path(self) -> str:
+        """Get the current profile path."""
+        return self._path
+
+    @config_path.setter
+    def config_path(self, value: str) -> None:
+        """Set the current profile path."""
+        self._path = get_profile_path(value)
+
+    @property
+    def config_parent(self) -> str:
+        """Get the parent directory of the current profile."""
+        return dirname(self.config_path)
 
     def init_connections(self) -> None:
         """Initialize connections."""
@@ -73,15 +90,16 @@ class MainWindow(QMainWindow):
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
-        statusbar = QStatusBar(sizeGripEnabled=True)
+        statusbar = QStatusBar()
+        statusbar.setSizeGripEnabled(True)
         self.setStatusBar(statusbar)
 
     def init_settings(self) -> None:
         """Initialize GUI settings manager."""
         qsettings = QSettings()
-        if geometry := qsettings.value(GUISettingsKey.GEOMETRY):
+        if (geometry := qsettings.value(GUISettingsKey.GEOMETRY)) and isinstance(geometry, bytes | bytearray):
             self.restoreGeometry(geometry)
-        if state := qsettings.value(GUISettingsKey.STATE):
+        if (state := qsettings.value(GUISettingsKey.STATE)) and isinstance(state, bytes | bytearray):
             self.restoreState(state)
         self.update_profile_path(str(qsettings.value(GUISettingsKey.PROFILE, "")))
         self.open_profile()
@@ -89,11 +107,11 @@ class MainWindow(QMainWindow):
     @Slot()
     def save_profile(self) -> None:
         """Save the current profile."""
-        self.profiles.set(self.central_widget.config)
+        self.config_repo.set(self.config_path, self.central_widget.config)
 
     def open_profile(self) -> None:
         """Open the current profile."""
-        self.central_widget.restore_config(self.profiles.get())
+        self.central_widget.restore_config(self.config_repo.get(self.config_path))
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -101,7 +119,7 @@ class MainWindow(QMainWindow):
         profile_path, _ = QFileDialog.getSaveFileName(
             parent=self,
             caption=GUITitle.SAVE_PROFILE,
-            dir=self.profiles.parent,
+            dir=self.config_parent,
             filter=GUIFileDialogFilter.JSON,
         )
         if profile_path:
@@ -114,7 +132,7 @@ class MainWindow(QMainWindow):
         profile_path, _ = QFileDialog.getOpenFileName(
             parent=self,
             caption=GUITitle.OPEN_PROFILE,
-            dir=self.profiles.parent,
+            dir=self.config_parent,
             filter=GUIFileDialogFilter.JSON,
         )
         if profile_path:
@@ -123,15 +141,15 @@ class MainWindow(QMainWindow):
 
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""
-        self.profiles.path = path
-        self.setWindowTitle(get_window_title(self.profiles.path))
+        self.config_path = path
+        self.setWindowTitle(get_window_title(self.config_path))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
         qsettings = QSettings()
         qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
         qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
+        qsettings.setValue(GUISettingsKey.PROFILE, self.config_path)
         super().closeEvent(event)
 
 

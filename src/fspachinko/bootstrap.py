@@ -1,11 +1,15 @@
 """Builder module for core functionality."""
 
-from random import seed
+import re
+from os.path import join
+from random import randint, seed
 from typing import TYPE_CHECKING
+
+from fspachinko.adapters.filesystemport import get_available_transfer_modes, get_name_from_template, walk
 
 from .adapters.media import get_duration
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
-from .constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from .constants import SIZE_MAP, TIME_MAP, FilenameTemplate, ReStrFmt, TransferMode
 from .domain.commands import StartProcessingDirectory, StopProcess
 from .domain.events import DirectoryTransferred, FileTransferred
 from .domain.model import DiversityQuota, FSEntry, TransferJob
@@ -14,14 +18,6 @@ from .service.handlers import (
     FileTransferredHandler,
     StartProcessingDirectoryHandler,
     StopProcessHandler,
-    get_dirname_fn,
-    get_filecount_fn,
-    get_filefilter_fn,
-    get_filenamer_fn,
-    get_rangefilter_fn,
-    get_textfilter_fn,
-    get_transfer_fn,
-    get_walker_fn,
 )
 from .service.messagebus import MessageBus
 from .service.uow import AbstractUnitOfWork, FileSystemUnitOfWork
@@ -136,7 +132,8 @@ def build_pipeline(m: ConfigModel) -> AbstractPipeline:
             m.options.transfer_mode,
         ),
         walk=get_walker_fn(
-            m.root,
+            board={},
+            root=m.root,
             should_follow_symlink=m.options.should_follow_symlink,
         ),
         get_target_filecount=get_filecount_fn(
@@ -150,4 +147,99 @@ def build_pipeline(m: ConfigModel) -> AbstractPipeline:
             m.directory.name,
             is_enabled=m.directory.is_enabled,
         ),
+    )
+
+
+#####################
+## FACTORY METHODS ##
+#####################
+
+
+def get_filecount_fn(count: int, rand_min: int, rand_max: int, *, is_rand_enabled: bool) -> Callable:
+    """Return a function that determines the number of files to transfer based on the configuration."""
+    if is_rand_enabled:
+        return lambda: randint(rand_min, rand_max)
+    return lambda: count
+
+
+def get_dirname_fn(dest: str, name: str, *, is_enabled: bool) -> Callable:
+    """Return a function that determines the destination folder name based on the configuration."""
+    if is_enabled:
+        return lambda: join(dest, name)
+    return lambda: dest
+
+
+def get_textfilter_fn(text: str, re_fmt: str, *, is_enabled: bool, should_include: bool) -> Callable | None:
+    """Create an include-exclude filter function from configuration model."""
+    if not (is_enabled and text):
+        return None
+
+    split_text = set(text.split(","))
+    patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in split_text)
+
+    match should_include, len(patterns) == 1:
+        case (True, True):
+            return lambda part: patterns[0].search(part) is not None
+        case (True, False):
+            return lambda part: any(p.search(part) for p in patterns)
+        case (False, True):
+            return lambda part: patterns[0].search(part) is None
+        case (False, False):
+            return lambda part: not any(p.search(part) for p in patterns)
+
+
+def get_rangefilter_fn(
+    minimum: float, maximum: float, unit: str, mapping: dict[str, int | float], *, is_enabled: bool
+) -> Callable | None:
+    """Create a range filter function from it's configuration model."""
+    if not is_enabled:
+        return None
+
+    min_val = minimum * mapping.get(unit, 1.0)
+    max_val = maximum * mapping.get(unit, 1.0)
+
+    match min_val >= 0, max_val < float("inf"):
+        case (True, True):
+            return lambda val: min_val <= val <= max_val
+        case (True, False):
+            return lambda val: val >= min_val
+        case (False, True):
+            return lambda val: val <= max_val
+        case _:
+            return None
+
+
+def get_filefilter_fn(filters: tuple[Callable, ...]) -> Callable:
+    """Create a FileFilter instance from the configuration model."""
+    match len(filters) > 0, len(filters) == 1:
+        case True, True:
+            return filters[0]
+        case True, False:
+            return lambda e: all(f(e) for f in filters)
+        case _:
+            return lambda _: True
+
+
+def get_filenamer_fn(
+    template: str, *, is_enabled: bool
+) -> Callable[[FSEntry, int, str], str] | Callable[[FSEntry, int], str]:
+    """Return a function that determines the destination file name based on the configuration."""
+    if not is_enabled or template == FilenameTemplate.ORIGINAL:
+        return lambda e, _: e.stem
+    return lambda e, count, template=template: get_name_from_template(e, count, template)
+
+
+def get_transfer_fn(mode: str) -> Callable:
+    """Return the appropriate transfer strategy instance.
+
+    Falls back to DRY_RUN if the requested mode is not available.
+    """
+    available = get_available_transfer_modes()
+    return available.get(TransferMode(mode), available[TransferMode.DRY_RUN])
+
+
+def get_walker_fn(board: dict, root: str, *, should_follow_symlink: bool) -> Callable:
+    """Return a function that generates candidates for a given directory."""
+    return lambda board=board, root=root, should_follow_symlink=should_follow_symlink: walk(
+        board, root, should_follow_symlink=should_follow_symlink
     )

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QIcon
 
 from fspachinko.adapters.filesystemport import get_icon_path
 from fspachinko.constants import IconFilename
@@ -12,7 +12,8 @@ from .qthelpers import set_qt_tips
 
 def build_action(icon: str, text: str, shortcut: str, tip: str) -> QAction:
     """Build a QAction."""
-    action = QAction(icon=QIcon(get_icon_path(icon)), text=text, shortcut=QKeySequence.fromString(shortcut))
+    action = QAction(icon=QIcon(get_icon_path(icon)), text=text)
+    action.setShortcut(shortcut)
     set_qt_tips(action, tip)
     return action
 
