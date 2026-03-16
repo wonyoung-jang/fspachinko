@@ -12,6 +12,8 @@ from fspachinko.constants import GUIFileDialogFilter, GUILabel, GUIName, GUISett
 
 from .actions import get_actions
 from .centralwidget import CentralWidget
+from .loggers_gui import setup_gui_logger
+from .workers import ProcessController
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -23,12 +25,16 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.central_widget = CentralWidget()
+        self._config_path = ""
+        self._original_title = ""
+        self.ui = CentralWidget()
         self.config_repo = JSONConfigRepository()
         self.acts = get_actions()
-        self._path = ""
+        self.controller = ProcessController()
+
+        setup_gui_logger(self.ui.log_append)
         self.setAnimated(True)
-        self.setCentralWidget(self.central_widget)
+        self.setCentralWidget(self.ui)
 
         self.init_connections()
         self.init_menubar()
@@ -39,12 +45,12 @@ class MainWindow(QMainWindow):
     @property
     def config_path(self) -> str:
         """Get the current profile path."""
-        return self._path
+        return self._config_path
 
     @config_path.setter
     def config_path(self, value: str) -> None:
         """Set the current profile path."""
-        self._path = get_profile_path(value)
+        self._config_path = get_profile_path(value)
 
     @property
     def config_parent(self) -> str:
@@ -57,9 +63,12 @@ class MainWindow(QMainWindow):
         self.acts.save_as.triggered.connect(self.save_profile_as_dialog)
         self.acts.load.triggered.connect(self.open_profile_dialog)
         self.acts.exit.triggered.connect(self.close)
-        self.acts.start.triggered.connect(self.central_widget.on_start)
-        self.acts.stop.triggered.connect(self.central_widget.on_stop)
-        self.central_widget.title_changed.connect(self.setWindowTitle)
+        self.acts.start.triggered.connect(self.on_start)
+        self.acts.stop.triggered.connect(self.on_stop)
+        self.controller.signals.process_started.connect(self.ui.handle_start_process)
+        self.controller.signals.directory_started.connect(self.ui.handle_directory_start)
+        self.controller.signals.file_transferred.connect(self.handle_file_transfer)
+        self.controller.signals.finished.connect(self.handle_finished)
 
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
@@ -107,11 +116,11 @@ class MainWindow(QMainWindow):
     @Slot()
     def save_profile(self) -> None:
         """Save the current profile."""
-        self.config_repo.set(self.config_path, self.central_widget.config)
+        self.config_repo.set(self.config_path, self.ui.config)
 
     def open_profile(self) -> None:
         """Open the current profile."""
-        self.central_widget.restore_config(self.config_repo.get(self.config_path))
+        self.ui.restore_config(self.config_repo.get(self.config_path))
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -151,6 +160,30 @@ class MainWindow(QMainWindow):
         qsettings.setValue(GUISettingsKey.STATE, self.saveState())
         qsettings.setValue(GUISettingsKey.PROFILE, self.config_path)
         super().closeEvent(event)
+
+    @Slot()
+    def on_start(self) -> None:
+        """Start the process and disable UI elements."""
+        self._original_title = self.windowTitle()
+        self.ui.toggle(is_enabled=False)
+        self.controller.start(self.ui.config)
+
+    @Slot()
+    def on_stop(self) -> None:
+        """Stop the process."""
+        self.controller.stop()
+
+    @Slot()
+    def handle_file_transfer(self) -> None:
+        """Update the window title with the current progress."""
+        percentage = self.ui.handle_file_transfer()
+        self.setWindowTitle(f"[{percentage}%] {self._original_title}")
+
+    @Slot()
+    def handle_finished(self) -> None:
+        """Reset the window title to the original."""
+        self.ui.toggle(is_enabled=True)
+        self.setWindowTitle(self._original_title)
 
 
 def get_window_title(path: str, title: str = GUITitle.WINDOW) -> str:

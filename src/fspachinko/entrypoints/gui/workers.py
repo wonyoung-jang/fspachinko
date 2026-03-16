@@ -3,10 +3,11 @@
 import logging
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QRunnable, Signal, Slot
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.bootstrap import bootstrap, build_pipeline
+from fspachinko.configuration.model import get_config_from_pydict
 from fspachinko.domain.commands import StartProcessingDirectory, StopProcess
 from fspachinko.domain.events import FileTransferred
 
@@ -24,14 +25,35 @@ class WorkerSignals(QObject):
     finished = Signal()
 
 
+class ProcessController(QObject):
+    """Qt worker signals."""
+
+    def __init__(self) -> None:
+        """Initialize the process controller."""
+        super().__init__()
+        self.signals = WorkerSignals()
+        self.threadpool = QThreadPool()
+        self.worker: MainWorker | None = None
+
+    def start(self, config: dict) -> None:
+        """Start the process."""
+        self.worker = MainWorker(get_config_from_pydict(config), self.signals)
+        self.threadpool.start(self.worker)
+
+    def stop(self) -> None:
+        """Stop the process."""
+        if self.worker is not None:
+            self.worker.stop()
+
+
 class MainWorker(QRunnable):
     """Worker for running process."""
 
-    def __init__(self, config: ConfigModel) -> None:
+    def __init__(self, config: ConfigModel, signals: WorkerSignals) -> None:
         """Initialize the worker."""
         super().__init__()
         self.config = config
-        self.signals = WorkerSignals()
+        self.signals = signals
         self.bus: MessageBus | None = None
 
     @Slot()

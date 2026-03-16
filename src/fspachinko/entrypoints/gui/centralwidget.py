@@ -1,75 +1,104 @@
 """Main module."""
 
-from PySide6.QtCore import QThreadPool, Signal, Slot
-from PySide6.QtWidgets import QWidget
+from typing import TYPE_CHECKING
 
-from fspachinko.configuration.model import get_config_from_pydict
+from PySide6.QtCore import Slot
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from .loggers_gui import setup_gui_logger
-from .uibuilder import UIBuilder
-from .workers import MainWorker
+from fspachinko.adapters.filesystemport import get_available_transfer_modes
+from fspachinko.constants import ByteUnit, TimeUnit
+
+from .components import (
+    BaseGroupBox,
+    DirectoryCreateWidget,
+    FileCountWidget,
+    FilenamerWidget,
+    LogWidget,
+    OptionsWidget,
+    PathSelectorWidget,
+    ProgressWidget,
+    RangeFilterWidget,
+    TextFilterWidget,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class CentralWidget(QWidget):
-    """Main application window."""
-
-    title_changed = Signal(str)
+    """Main widget."""
 
     def __init__(self) -> None:
-        """Initialize the main window."""
+        """Initialize the main widget."""
         super().__init__()
-        self.original_window_title = ""
-        self.worker: MainWorker | None = None
-        self.thread_pool = QThreadPool()
-        self.ui = UIBuilder()
-        self.setLayout(self.ui.build())
-        setup_gui_logger(self.ui.log_append)
+        self.root = PathSelectorWidget("Root", "root")
+        self.dest = PathSelectorWidget("Destination", "dest")
+        self.filecount = FileCountWidget("File count", "filecount")
+        self.directory = DirectoryCreateWidget("Create directories", "directory")
+        self.filename = FilenamerWidget("Filenamer", "filenamer")
+        self.dirname = TextFilterWidget("Directory name", "dirname")
+        self.keyword = TextFilterWidget("Keyword", "keyword")
+        self.extension = TextFilterWidget("Extension", "extension")
+        self.filesize = RangeFilterWidget("File Size", "filesize", tuple(ByteUnit))
+        self.duration = RangeFilterWidget("Duration", "duration", tuple(TimeUnit))
+        self.options = OptionsWidget("Options", "options", tuple(get_available_transfer_modes().keys()))
+        self.logging = LogWidget()
+        self.progress = ProgressWidget()
+        self._config_widgets: tuple[BaseGroupBox, ...] = (
+            self.root,
+            self.dest,
+            self.filecount,
+            self.directory,
+            self.filename,
+            self.dirname,
+            self.keyword,
+            self.extension,
+            self.filesize,
+            self.duration,
+            self.options,
+        )
+        self.build_layout()
 
     @property
     def config(self) -> dict:
         """Capture the current configuration from the UI."""
-        return self.ui.config
+        config = {}
+        for w in self._config_widgets:
+            config.update(w.config)
+        return config
+
+    @property
+    def log_append(self) -> Callable[[str], None]:
+        """Get the log append function."""
+        return self.logging.append
+
+    def build_layout(self) -> None:
+        """Build the layout."""
+        layout = QVBoxLayout()
+        for w in (*self._config_widgets, self.logging, self.progress):
+            layout.addWidget(w)
+        self.setLayout(layout)
 
     def restore_config(self, config: dict) -> None:
         """Restore the configuration to the UI."""
-        self.ui.restore(config)
-
-    @Slot()
-    def on_start(self) -> None:
-        """Start the process and disable UI elements."""
-        self.ui.toggle(is_enabled=False)
-        self.original_window_title = self.window().windowTitle()
-        self.worker = MainWorker(get_config_from_pydict(self.config))
-        self.worker.signals.process_started.connect(self.handle_start_process)
-        self.worker.signals.directory_started.connect(self.handle_directory_start)
-        self.worker.signals.file_transferred.connect(self.handle_file_transfer)
-        self.worker.signals.finished.connect(self.handle_finished)
-        self.thread_pool.start(self.worker)
-
-    @Slot()
-    def on_stop(self) -> None:
-        """Stop the process."""
-        if self.worker is not None:
-            self.worker.stop()
+        for component in self._config_widgets:
+            component.restore(config)
 
     @Slot(int)
     def handle_start_process(self, dir_count: int) -> None:
         """Handle the start of the process."""
-        self.ui.handle_start_process(dir_count)
+        self.progress.handle_start_process(dir_count)
 
     @Slot(int)
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        self.ui.handle_directory_start(target)
+        self.progress.handle_directory_start(target)
 
-    @Slot()
-    def handle_file_transfer(self) -> None:
-        """Update the window title with the current progress."""
-        percentage = self.ui.handle_file_transfer()
-        self.title_changed.emit(f"[{percentage}%] {self.original_window_title}")
+    def handle_file_transfer(self) -> int:
+        """Update the file transfer progress bar."""
+        return self.progress.handle_file_transfer()
 
-    @Slot()
-    def handle_finished(self) -> None:
-        """Reset the window title to the original."""
-        self.ui.toggle(is_enabled=True)
-        self.title_changed.emit(self.original_window_title)
+    def toggle(self, *, is_enabled: bool) -> None:
+        """Lock or unlock UI elements."""
+        for component in self._config_widgets:
+            component.setEnabled(is_enabled)
