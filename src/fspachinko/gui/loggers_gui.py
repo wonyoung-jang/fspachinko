@@ -18,7 +18,7 @@ def setup_gui_logger(slotfunc: Callable) -> None:
 class QtLogHandlerSignals(QObject):
     """Signals for the LogHandler."""
 
-    on_log = Signal(str)
+    logged = Signal(str)
 
 
 class QtLogHandler(logging.Handler):
@@ -28,7 +28,7 @@ class QtLogHandler(logging.Handler):
         """Initialize the handler and its signals."""
         super().__init__(*args, **kwargs)
         self.signals = QtLogHandlerSignals()
-        self.signals.on_log.connect(slotfunc)
+        self.signals.logged.connect(slotfunc)
         self.set_name("qtgui")
         self.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
         self.setLevel(logging.INFO)
@@ -36,4 +36,4 @@ class QtLogHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         """Emit a log record by formatting it and emitting the text_written signal."""
         msg = self.format(record)
-        self.signals.on_log.emit(msg)
+        self.signals.logged.emit(msg)

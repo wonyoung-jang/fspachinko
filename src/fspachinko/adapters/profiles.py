@@ -1,15 +1,15 @@
-"""Settings handling for GUI."""
+"""Settings handling."""
 
 from dataclasses import dataclass
 from os.path import dirname
 
-from ..adapters.filesystemport import get_profile_path
-from ..adapters.jsonport import load_json, save_json
+from .filesystemport import get_profile_path
+from .jsonport import load_json, save_json
 
 
 @dataclass(slots=True)
 class ProfileManager:
-    """Class for managing GUI profiles."""
+    """Class for managing configuration profiles."""
 
     _path: str = ""
 
@@ -29,9 +29,9 @@ class ProfileManager:
         return dirname(self.path)
 
     def set(self, data: dict) -> None:
-        """Set the profile path from a UIBuilder instance."""
+        """Save configuration from a dict to the profile path."""
         save_json(self.path, data)
 
     def get(self) -> dict:
-        """Load the profile to a UIBuilder instance."""
+        """Load configuration from the profile path and return as a dict."""
         return load_json(self.path)

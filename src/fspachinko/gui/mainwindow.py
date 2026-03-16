@@ -6,28 +6,24 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
+from ..adapters.profiles import ProfileManager
 from ..constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
+from .actions import Actions
+from .centralwidget import CentralWidget
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
-
-    from .actions import Actions
-    from .centralwidget import CentralWidget
-    from .settings import ProfileManager
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(
-        self, central_widget: CentralWidget, profiles: ProfileManager, settings: QSettings, _actions: Actions
-    ) -> None:
+    def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__(animated=True)
-        self.central_widget = central_widget
-        self.profiles = profiles
-        self.qsettings = settings
-        self._actions = _actions
+        self.central_widget = CentralWidget()
+        self.profiles = ProfileManager()
+        self._actions = Actions()
         self.setCentralWidget(self.central_widget)
         self.init_connections()
         self.init_menubar()
@@ -37,12 +33,13 @@ class MainWindow(QMainWindow):
 
     def init_connections(self) -> None:
         """Initialize connections."""
-        self._actions.file.save.triggered.connect(lambda: self.profiles.set(self.central_widget.capture_config()))
+        self._actions.file.save.triggered.connect(self.save_profile)
         self._actions.file.save_as.triggered.connect(self.save_profile_as_dialog)
         self._actions.file.load.triggered.connect(self.open_profile_dialog)
         self._actions.file.exit.triggered.connect(self.close)
         self._actions.run.start.triggered.connect(self.central_widget.on_start)
         self._actions.run.stop.triggered.connect(self.central_widget.on_stop)
+        self.central_widget.title_changed.connect(self.setWindowTitle)
 
     def init_menubar(self) -> None:
         """Initialize the menu bar."""
@@ -78,11 +75,21 @@ class MainWindow(QMainWindow):
 
     def init_settings(self) -> None:
         """Initialize GUI settings manager."""
-        if geometry := self.qsettings.value(GUISettingsKey.GEOMETRY):
+        qsettings = QSettings()
+        if geometry := qsettings.value(GUISettingsKey.GEOMETRY):
             self.restoreGeometry(geometry)
-        if state := self.qsettings.value(GUISettingsKey.STATE):
+        if state := qsettings.value(GUISettingsKey.STATE):
             self.restoreState(state)
-        self.update_profile_path(str(self.qsettings.value(GUISettingsKey.PROFILE, "")))
+        self.update_profile_path(str(qsettings.value(GUISettingsKey.PROFILE, "")))
+        self.open_profile()
+
+    @Slot()
+    def save_profile(self) -> None:
+        """Save the current profile."""
+        self.profiles.set(self.central_widget.capture_config())
+
+    def open_profile(self) -> None:
+        """Open the current profile."""
         self.central_widget.restore_config(self.profiles.get())
 
     @Slot()
@@ -96,7 +103,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.profiles.set(self.central_widget.capture_config())
+            self.save_profile()
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -109,7 +116,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.central_widget.restore_config(self.profiles.get())
+            self.open_profile()
 
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""
@@ -118,9 +125,10 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
-        self.qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
-        self.qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        self.qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
+        qsettings = QSettings()
+        qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
+        qsettings.setValue(GUISettingsKey.STATE, self.saveState())
+        qsettings.setValue(GUISettingsKey.PROFILE, self.profiles.path)
         super().closeEvent(event)
 
 
