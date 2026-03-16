@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from ..adapters.filesystemport import get_available_transfer_modes
-from ..constants import ByteUnit, TimeUnit
+from fspachinko.adapters.filesystemport import get_available_transfer_modes
+from fspachinko.constants import ByteUnit, TimeUnit
+
 from .components import (
     BaseGroupBox,
     DirectoryCreateWidget,

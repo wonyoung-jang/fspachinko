@@ -19,9 +19,9 @@ Repository = "https://github.com/wonyoung-jang/fspachinko"
 Issues = "https://github.com/wonyoung-jang/fspachinko/issues"
 
 [project.scripts]
-fspachinko = "fspachinko.entrypoints.gui:main"
-fspachinko-gui = "fspachinko.entrypoints.gui:main"
-fspachinko-cli = "fspachinko.entrypoints.cli:main"
+fspachinko = "fspachinko.entrypoints.gui.__main__:main"
+fspachinko-gui = "fspachinko.entrypoints.gui.__main__:main"
+fspachinko-cli = "fspachinko.entrypoints.cli.__main__:main"
 # fspachinko-web = "fspachinko.web.__main__:main"
 
 [build-system]

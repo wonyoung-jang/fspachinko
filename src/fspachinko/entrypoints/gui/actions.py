@@ -4,8 +4,9 @@ from dataclasses import dataclass
 
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 
-from ..adapters.filesystemport import get_icon_path
-from ..constants import IconFilename
+from fspachinko.adapters.filesystemport import get_icon_path
+from fspachinko.constants import IconFilename
+
 from .qthelpers import set_qt_tips
 
 

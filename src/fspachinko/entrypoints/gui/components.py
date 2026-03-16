@@ -28,8 +28,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..adapters.filesystemport import get_icon_path
-from ..constants import FilenameTemplate, IconFilename, TransferMode
+from fspachinko.adapters.filesystemport import get_icon_path
+from fspachinko.constants import FilenameTemplate, IconFilename, TransferMode
+
 from .qthelpers import set_qt_tips
 
 if TYPE_CHECKING:

@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
-from ..adapters.profiles import ProfileManager
-from ..constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
+from fspachinko.adapters.filesystemport import get_profile_path
+from fspachinko.configuration.profiles import ProfileManager
+from fspachinko.constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
+
 from .actions import get_actions
 from .centralwidget import CentralWidget
 
@@ -22,8 +24,9 @@ class MainWindow(QMainWindow):
         """Initialize the main window."""
         super().__init__(animated=True)
         self.central_widget = CentralWidget()
-        self.profiles = ProfileManager()
+        self.profiles = ProfileManager(get_profile_path)
         self.acts = get_actions()
+
         self.setCentralWidget(self.central_widget)
         self.init_connections()
         self.init_menubar()

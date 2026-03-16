@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
-from ..adapters.loggers import get_dest_log_filehandler
-from ..bootstrap import bootstrap, build_pipeline
-from ..domain.commands import StartProcessingDirectory, StopProcess
-from ..domain.events import FileTransferred
+from fspachinko.adapters.loggers import get_dest_log_filehandler
+from fspachinko.bootstrap import bootstrap, build_pipeline
+from fspachinko.domain.commands import StartProcessingDirectory, StopProcess
+from fspachinko.domain.events import FileTransferred
 
 if TYPE_CHECKING:
-    from ..configuration.model import ConfigModel
-    from ..service.messagebus import MessageBus
+    from fspachinko.configuration.model import ConfigModel
+    from fspachinko.service.messagebus import MessageBus
 
 
 class WorkerSignals(QObject):

@@ -3,7 +3,8 @@
 from PySide6.QtCore import QThreadPool, Signal, Slot
 from PySide6.QtWidgets import QWidget
 
-from ..configuration.model import get_config_from_pydict
+from fspachinko.configuration.model import get_config_from_pydict
+
 from .loggers_gui import setup_gui_logger
 from .uibuilder import UIBuilder
 from .workers import MainWorker

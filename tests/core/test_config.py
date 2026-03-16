@@ -33,8 +33,11 @@ def test_filecount_model() -> None:
     with pytest.raises(ValidationError, check=lambda e: "rand_max" in str(e)):
         m = FilecountModel(count=5, is_rand_enabled=True, rand_min=1, rand_max=0)
 
-    with pytest.raises(ValueError, check=lambda e: "Random minimum cannot be greater than random maximum" in str(e)):
+    with pytest.raises(ValidationError, check=lambda e: "rand_max" in str(e)):
         m = FilecountModel(count=5, is_rand_enabled=True, rand_min=10, rand_max=1)
+
+    with pytest.raises(ValueError, check=lambda e: "Random minimum cannot be greater than random maximum" in str(e)):
+        m = FilecountModel(count=5, is_rand_enabled=True, rand_min=10, rand_max=2)
 
 
 def test_directory_model() -> None:

@@ -2,8 +2,9 @@
 
 import logging
 
-from ..adapters.loggers import get_cli_log_handler, initialize_logging
-from ..cli.app import app
+from fspachinko.adapters.loggers import get_cli_log_handler, initialize_logging
+
+from .app import app
 
 
 def main() -> None:

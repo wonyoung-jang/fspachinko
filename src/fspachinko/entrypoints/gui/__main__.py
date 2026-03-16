@@ -4,10 +4,11 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from ..adapters.filesystemport import get_icon_path
-from ..adapters.loggers import initialize_logging
-from ..constants import AppSetting, IconFilename
-from ..gui.mainwindow import MainWindow
+from fspachinko.adapters.filesystemport import get_icon_path
+from fspachinko.adapters.loggers import initialize_logging
+from fspachinko.constants import AppSetting, IconFilename
+
+from .mainwindow import MainWindow
 
 QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)

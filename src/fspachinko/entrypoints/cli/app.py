@@ -4,11 +4,11 @@ import logging
 
 from cyclopts import App
 
-from ..adapters.filesystemport import get_config_path
-from ..bootstrap import bootstrap, build_pipeline
-from ..configuration.model import get_config_from_jsonpath
-from ..constants import DefaultPath
-from ..domain.commands import StartProcessingDirectory
+from fspachinko.adapters.filesystemport import get_config_path
+from fspachinko.bootstrap import bootstrap, build_pipeline
+from fspachinko.configuration.model import get_config_from_jsonpath
+from fspachinko.constants import DefaultPath
+from fspachinko.domain.commands import StartProcessingDirectory
 
 logger = logging.getLogger(__name__)
 app = App(help="fspachinko - Random file transfer utility.")
