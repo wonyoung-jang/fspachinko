@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
 
-from fspachinko.adapters.filesystemport import get_profile_path
+from fspachinko.adapters.filesystemport import get_available_transfer_modes, get_profile_path
 from fspachinko.configuration.repository import JSONConfigRepository
-from fspachinko.constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
+from fspachinko.constants import ByteUnit, GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, TimeUnit
 
 from .actions import get_actions
 from .centralwidget import CentralWidget
@@ -27,7 +27,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._config_path = ""
         self._original_title = ""
-        self.ui = CentralWidget()
+        self.ui = CentralWidget(
+            size_units=tuple(ByteUnit),
+            dur_units=tuple(TimeUnit),
+            transfermodes=tuple(get_available_transfer_modes().keys()),
+        )
         self.config_repo = JSONConfigRepository()
         self.acts = get_actions()
         self.controller = ProcessController()
@@ -65,8 +69,8 @@ class MainWindow(QMainWindow):
         self.acts.exit.triggered.connect(self.close)
         self.acts.start.triggered.connect(self.on_start)
         self.acts.stop.triggered.connect(self.on_stop)
-        self.controller.signals.process_started.connect(self.ui.handle_start_process)
-        self.controller.signals.directory_started.connect(self.ui.handle_directory_start)
+        self.controller.signals.process_started.connect(self.handle_start_process)
+        self.controller.signals.directory_started.connect(self.handle_directory_start)
         self.controller.signals.file_transferred.connect(self.handle_file_transfer)
         self.controller.signals.finished.connect(self.handle_finished)
 
@@ -151,7 +155,7 @@ class MainWindow(QMainWindow):
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""
         self.config_path = path
-        self.setWindowTitle(get_window_title(self.config_path))
+        self.setWindowTitle(self.get_window_title())
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
@@ -173,11 +177,21 @@ class MainWindow(QMainWindow):
         """Stop the process."""
         self.controller.stop()
 
+    @Slot(int)
+    def handle_start_process(self, dir_count: int) -> None:
+        """Handle the start of the process."""
+        self.ui.handle_start_process(dir_count)
+
+    @Slot(int)
+    def handle_directory_start(self, target: int) -> None:
+        """Update the directory progress bar."""
+        self.ui.handle_directory_start(target)
+
     @Slot()
     def handle_file_transfer(self) -> None:
         """Update the window title with the current progress."""
-        percentage = self.ui.handle_file_transfer()
-        self.setWindowTitle(f"[{percentage}%] {self._original_title}")
+        self.ui.handle_file_transfer()
+        self.setWindowTitle(f"[{self.ui.file_progress_percent}%] {self._original_title}")
 
     @Slot()
     def handle_finished(self) -> None:
@@ -185,10 +199,9 @@ class MainWindow(QMainWindow):
         self.ui.toggle(is_enabled=True)
         self.setWindowTitle(self._original_title)
 
-
-def get_window_title(path: str, title: str = GUITitle.WINDOW) -> str:
-    """Generate a window title based on the profile path."""
-    if path:
-        profile_stem, _ = splitext(basename(path))
-        return f"{profile_stem} - {title}"
-    return title
+    def get_window_title(self) -> str:
+        """Generate a window title based on the profile path."""
+        if self.config_path:
+            profile_stem, _ = splitext(basename(self.config_path))
+            return f"{profile_stem} - {GUITitle.WINDOW}"
+        return GUITitle.WINDOW

@@ -2,7 +2,6 @@
 
 import logging
 import os
-from abc import abstractmethod
 from functools import cache
 from typing import TYPE_CHECKING
 
@@ -65,13 +64,17 @@ class BaseGroupBox(QGroupBox):
         self.setFlat(True)
 
     @property
-    @abstractmethod
     def config(self) -> dict:
         """Return clean data for the config."""
+        raise NotImplementedError
 
-    @abstractmethod
     def restore(self, config: dict) -> None:
         """Restore the widget from config data."""
+        raise NotImplementedError
+
+    def _section(self, config: dict) -> dict:
+        """Get the relevant section of the config."""
+        return config.get(self.name, {})
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -191,7 +194,7 @@ class FileCountWidget(BaseGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the file count widget from config data."""
-        c = config.get(self.name, {})
+        c = self._section(config)
         is_rand_enabled = c.get("is_rand_enabled", False)
         self.spin_fixed.setValue(c.get("count", 1))
         self.radio_fixed.setChecked(not is_rand_enabled)
@@ -236,7 +239,7 @@ class DirectoryCreateWidget(BaseGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the create folders widget from config data."""
-        c = config.get(self.name, {})
+        c = self._section(config)
         self.setChecked(c.get("is_enabled", False))
         self.spinbox_folder_count.setValue(c.get("count", 1))
         self.lineedit_folder_name.setText(c.get("name", "fsp_output"))
@@ -286,7 +289,7 @@ class FilenamerWidget(BaseGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the filename template widget from config data."""
-        c = config.get(self.name, {})
+        c = self._section(config)
         self.setChecked(c.get("is_enabled", False))
         self.lineedit_template.setText(c.get("template", FilenameTemplate.ORIGINAL))
 
@@ -327,7 +330,7 @@ class TextFilterWidget(BaseGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the text filter widget from config data."""
-        c = config.get(self.name, {})
+        c = self._section(config)
         should_include = c.get("should_include", True)
         self.setChecked(c.get("is_enabled", False))
         self.radio_include.setChecked(should_include)
@@ -375,7 +378,7 @@ class RangeFilterWidget(BaseGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the range filter widget from config data."""
-        c = config.get(self.name, {})
+        c = self._section(config)
         self.setChecked(c.get("is_enabled", False))
         self.spin_min.setValue(c.get("minimum", 0.0))
         self.spin_max.setValue(c.get("maximum", 10.0))
@@ -430,7 +433,7 @@ class OptionsWidget(BaseGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the options widget from config data."""
-        c = config.get(self.name, {})
+        c = self._section(config)
         self.combo_transfermode.setCurrentText(c.get("transfer_mode", TransferMode.DRY_RUN))
         self.spin_max_per_dir.setValue(c.get("max_per_dir", 0))
         self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
@@ -438,24 +441,14 @@ class OptionsWidget(BaseGroupBox):
         self.lineedit_rng_seed.setText(c.get("rng_seed", ""))
 
 
-class LogWidget(QWidget):
+class LogWidget(QTextBrowser):
     """Logging text box."""
 
     def __init__(self) -> None:
         """Initialize the log widget."""
         super().__init__()
-
-        self.textbrowser_log = QTextBrowser()
-        self.textbrowser_log.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-
-        set_qt_tips(self.textbrowser_log, "Log for output messages.")
-
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.textbrowser_log)
-
-    def append(self, text: str) -> None:
-        """Append text to the log."""
-        self.textbrowser_log.append(text)
+        self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        set_qt_tips(self, "Log for output messages.")
 
 
 class ProgressWidget(QWidget):
@@ -490,9 +483,12 @@ class ProgressWidget(QWidget):
         self.progbar_files.setMaximum(target)
         self.progbar_files.setValue(0)
 
-    def handle_file_transfer(self) -> int:
+    def handle_file_transfer(self) -> None:
         """Update the file progress bar."""
-        curr = self.progbar_files.value()
-        self.progbar_files.setValue(curr + 1)
+        self.progbar_files.setValue(self.progbar_files.value() + 1)
+
+    @property
+    def file_progress_percent(self) -> int:
+        """Calculate the current file progress percentage."""
         maximum = self.progbar_files.maximum()
-        return int((curr + 1) * 100 / maximum) if maximum > 0 else 0
+        return int((self.progbar_files.value()) * 100 / maximum) if maximum > 0 else 0

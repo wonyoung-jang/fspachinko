@@ -54,7 +54,7 @@ class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     is_enabled: bool = False
-    template: str = Field(default=FilenameTemplate.ORIGINAL)
+    template: str = FilenameTemplate.ORIGINAL
 
     @field_validator("template")
     @classmethod
