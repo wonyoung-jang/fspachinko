@@ -2,11 +2,10 @@
 
 import logging
 import os
-from functools import cache
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl, Slot
-from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -29,10 +28,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fspachinko.adapters.filesystemport import get_icon_path
-from fspachinko.constants import FilenameTemplate, IconFilename, TransferMode
+from fspachinko.constants import FilenameTemplate, TransferMode
 
-from .qthelpers import set_qt_tips
+from .qthelpers import browse_icon, open_dir_icon, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,16 +39,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-@cache
-def _browse_icon() -> QIcon:
-    return QIcon(get_icon_path(IconFilename.BROWSE))
-
-
-@cache
-def _open_icon() -> QIcon:
-    return QIcon(get_icon_path(IconFilename.OPEN_DIR))
 
 
 class BaseGroupBox(QGroupBox):
@@ -85,8 +73,8 @@ class PathSelectorWidget(BaseGroupBox):
         super().__init__(title, name)
 
         self.lbl_selected = QLabel()
-        self.btn_browse = QPushButton(_browse_icon(), "Browse")
-        self.btn_open = QPushButton(_open_icon(), "Open")
+        self.btn_browse = QPushButton(browse_icon(), "Browse")
+        self.btn_open = QPushButton(open_dir_icon(), "Open")
 
         self.setAcceptDrops(True)
         self.btn_browse.clicked.connect(self.browse)
@@ -124,10 +112,9 @@ class PathSelectorWidget(BaseGroupBox):
     @Slot()
     def open(self) -> None:
         """Open the currently selected path in file explorer."""
-        try:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(self.lbl_selected.text()))
-        except Exception:
-            logger.exception("Failed to open path %s", self.lbl_selected.text())
+        path = self.lbl_selected.text()
+        if path and not QDesktopServices.openUrl(QUrl.fromLocalFile(self.lbl_selected.text())):
+            logger.warning("Failed to open path %s", path)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
         """Handle drag enter event for folder paths."""
@@ -474,6 +461,7 @@ class ProgressWidget(QWidget):
         """Set up the progress bars at the start of the process."""
         self.progbar_dirs.setMaximum(dir_count)
         self.progbar_dirs.setValue(0)
+        self.progbar_files.setMaximum(0)
         self.progbar_files.setValue(0)
 
     def handle_directory_start(self, target: int) -> None:

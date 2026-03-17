@@ -4,7 +4,7 @@ from os.path import basename, dirname, splitext
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Slot
-from PySide6.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QToolBar
+from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from fspachinko.adapters.filesystemport import get_available_transfer_modes, get_profile_path
 from fspachinko.configuration.repository import JSONConfigRepository
@@ -12,6 +12,7 @@ from fspachinko.constants import ByteUnit, GUIFileDialogFilter, GUILabel, GUINam
 
 from .actions import get_actions
 from .centralwidget import CentralWidget
+from .components import LogWidget, ProgressWidget
 from .loggers_gui import setup_gui_logger
 from .workers import ProcessController
 
@@ -25,20 +26,24 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         """Initialize the main window."""
         super().__init__()
-        self._config_path = ""
+        self.setAnimated(True)
+
         self._original_title = ""
+        self.config_path = ""
+        self.acts = get_actions()
+        self.config_repo = JSONConfigRepository()
+        self.controller = ProcessController()
+
+        self.logging = LogWidget()
+        self.progress = ProgressWidget()
         self.ui = CentralWidget(
             size_units=tuple(ByteUnit),
             dur_units=tuple(TimeUnit),
             transfermodes=tuple(get_available_transfer_modes().keys()),
         )
-        self.config_repo = JSONConfigRepository()
-        self.acts = get_actions()
-        self.controller = ProcessController()
-
-        setup_gui_logger(self.ui.log_append)
-        self.setAnimated(True)
+        self.ui.add_to_layout(self.logging, self.progress)
         self.setCentralWidget(self.ui)
+        setup_gui_logger(self.logging.append)
 
         self.init_connections()
         self.init_menubar()
@@ -47,19 +52,14 @@ class MainWindow(QMainWindow):
         self.init_settings()
 
     @property
-    def config_path(self) -> str:
-        """Get the current profile path."""
-        return self._config_path
-
-    @config_path.setter
-    def config_path(self, value: str) -> None:
-        """Set the current profile path."""
-        self._config_path = get_profile_path(value)
-
-    @property
     def config_parent(self) -> str:
         """Get the parent directory of the current profile."""
         return dirname(self.config_path)
+
+    @property
+    def file_progress_percent(self) -> int:
+        """Get the current file transfer progress percentage."""
+        return self.progress.file_progress_percent
 
     def init_connections(self) -> None:
         """Initialize connections."""
@@ -89,23 +89,19 @@ class MainWindow(QMainWindow):
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
-        toolbar = QToolBar(GUIName.TOOLBAR)
+        toolbar = self.addToolBar(GUIName.TOOLBAR)
         toolbar.setObjectName(GUIName.TOOLBAR)
         toolbar.addAction(self.acts.save)
         toolbar.addAction(self.acts.save_as)
         toolbar.addAction(self.acts.load)
-        toolbar.addSeparator()
         toolbar.addAction(self.acts.start)
         toolbar.addAction(self.acts.stop)
-        toolbar.addSeparator()
         toolbar.addAction(self.acts.exit)
-        self.addToolBar(toolbar)
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""
-        statusbar = QStatusBar()
+        statusbar = self.statusBar()
         statusbar.setSizeGripEnabled(True)
-        self.setStatusBar(statusbar)
 
     def init_settings(self) -> None:
         """Initialize GUI settings manager."""
@@ -114,8 +110,9 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geometry)
         if (state := qsettings.value(GUISettingsKey.STATE)) and isinstance(state, bytes | bytearray):
             self.restoreState(state)
-        self.update_profile_path(str(qsettings.value(GUISettingsKey.PROFILE, "")))
-        self.open_profile()
+        if profile_path := str(qsettings.value(GUISettingsKey.PROFILE, "")):
+            self.update_profile_path(profile_path)
+            self.open_profile()
 
     @Slot()
     def save_profile(self) -> None:
@@ -154,7 +151,7 @@ class MainWindow(QMainWindow):
 
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""
-        self.config_path = path
+        self.config_path = get_profile_path(path)
         self.setWindowTitle(self.get_window_title())
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
@@ -180,18 +177,18 @@ class MainWindow(QMainWindow):
     @Slot(int)
     def handle_start_process(self, dir_count: int) -> None:
         """Handle the start of the process."""
-        self.ui.handle_start_process(dir_count)
+        self.progress.handle_start_process(dir_count)
 
     @Slot(int)
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        self.ui.handle_directory_start(target)
+        self.progress.handle_directory_start(target)
 
     @Slot()
     def handle_file_transfer(self) -> None:
         """Update the window title with the current progress."""
-        self.ui.handle_file_transfer()
-        self.setWindowTitle(f"[{self.ui.file_progress_percent}%] {self._original_title}")
+        self.progress.handle_file_transfer()
+        self.setWindowTitle(f"[{self.file_progress_percent}%] {self._original_title}")
 
     @Slot()
     def handle_finished(self) -> None:
