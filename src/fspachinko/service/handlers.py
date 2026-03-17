@@ -1,6 +1,5 @@
 """Handlers module."""
 
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -10,18 +9,18 @@ from ..domain.model import DestinationDirectory
 from ..helpers import get_report, get_status
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..domain.commands import Command, StartProcessingDirectory, StopProcess
     from .uow import AbstractUnitOfWork
 
-logger = logging.getLogger(__name__)
 
 type Message = Command | Event
+
 
 ######################
 ## COMMAND HANDLERS ##
 ######################
-
-
 @dataclass(slots=True)
 class StartProcessingDirectoryHandler:
     """Handle the StartProcessingDirectory command."""
@@ -82,19 +81,23 @@ class StopProcessHandler:
 ####################
 ## EVENT HANDLERS ##
 ####################
-
-
+@dataclass(slots=True)
 class FileTransferredHandler:
     """Handle the FileTransferred event."""
 
+    call: Callable
+
     def __call__(self, event: FileTransferred) -> None:
         """Handle the FileTransferred event."""
-        logger.info("%s: %s -> %s", event.count, event.src, event.dst)
+        self.call("%s: %s -> %s", event.count, event.src, event.dst)
 
 
+@dataclass(slots=True)
 class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
+    call: Callable
+
     def __call__(self, event: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
-        logger.info("%s\n%s", event.status, event.report)
+        self.call("%s\n%s", event.status, event.report)

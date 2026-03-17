@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class AbstractPipeline(ABC):
     """Abstract pipeline."""
 
-    is_create_dir: bool
+    is_create_dir: bool = False
     filter_file: Callable = lambda _: True
     get_file_stem: Callable = lambda _: True
     transfer: Callable = lambda _: True

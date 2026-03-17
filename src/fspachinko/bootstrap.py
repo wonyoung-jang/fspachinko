@@ -1,12 +1,12 @@
 """Builder module for core functionality."""
 
+import logging
 import re
 from os.path import join
 from random import randint, seed
 from typing import TYPE_CHECKING
 
-from fspachinko.adapters.filesystemport import get_available_transfer_modes, get_name_from_template, walk
-
+from .adapters.filesystemport import get_available_transfer_modes, get_name_from_template, walk
 from .adapters.media import get_duration
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilenameTemplate, ReStrFmt, TransferMode
@@ -28,6 +28,9 @@ if TYPE_CHECKING:
     from .configuration.model import ConfigModel
 
 
+logger = logging.getLogger(__name__)
+
+
 def bootstrap(
     m: ConfigModel,
     pipeline: AbstractPipeline | None = None,
@@ -36,12 +39,13 @@ def bootstrap(
     """Bootstrap the application and return the message bus."""
     seed(m.options.rng_seed)
 
-    quota = DiversityQuota(
-        root=m.root,
-        max_per_dir=m.options.max_per_dir,
-        unique_files_only=m.options.is_create_unique_dirs,
+    job = TransferJob(
+        quota=DiversityQuota(
+            root=m.root,
+            max_per_dir=m.options.max_per_dir,
+            unique_files_only=m.options.is_create_unique_dirs,
+        )
     )
-    job = TransferJob(quota=quota)
 
     if pipeline is None:
         pipeline = build_pipeline(m)
@@ -54,8 +58,8 @@ def bootstrap(
         raise ValueError(msg)
 
     event_handlers = {
-        FileTransferred: [FileTransferredHandler()],
-        DirectoryTransferred: [DirectoryTransferredHandler()],
+        FileTransferred: [FileTransferredHandler(call=logger.info)],
+        DirectoryTransferred: [DirectoryTransferredHandler(call=logger.info)],
     }
     command_handlers = {
         StartProcessingDirectory: StartProcessingDirectoryHandler(uow=uow),
@@ -104,50 +108,47 @@ def build_filters(m: ConfigModel) -> tuple[Callable[[FSEntry], bool], ...]:
         is_enabled=m.duration.is_enabled,
     )
 
-    filter_list: list[Callable[[FSEntry], bool]] = []
+    filters: list[Callable[[FSEntry], bool]] = []
     if dirname_filter_fn:
-        filter_list.append(lambda e: dirname_filter_fn(e.parent))
+        filters.append(lambda e: dirname_filter_fn(e.parent))
     if keyword_filter_fn:
-        filter_list.append(lambda e: keyword_filter_fn(e.stem))
+        filters.append(lambda e: keyword_filter_fn(e.stem))
     if extension_filter_fn:
-        filter_list.append(lambda e: extension_filter_fn(e.ext))
+        filters.append(lambda e: extension_filter_fn(e.ext))
     if filesize_filter_fn:
-        filter_list.append(lambda e: filesize_filter_fn(e.size))
+        filters.append(lambda e: filesize_filter_fn(e.size))
     if duration_filter_fn:
-        filter_list.append(lambda e: duration_filter_fn(get_duration(e.path)))
-    return tuple(filter_list)
+        filters.append(lambda e: duration_filter_fn(get_duration(e.path)))
+    return tuple(filters)
 
 
 def build_pipeline(m: ConfigModel) -> AbstractPipeline:
     """Build the pipeline based on the configuration."""
-    filters = build_filters(m)
-    return TransferPipeline(
-        is_create_dir=m.directory.is_enabled,
-        filter_file=get_filefilter_fn(filters),
-        get_file_stem=get_filenamer_fn(
-            m.filename.template,
-            is_enabled=m.filename.is_enabled,
-        ),
-        transfer=get_transfer_fn(
-            m.options.transfer_mode,
-        ),
-        walk=get_walker_fn(
-            board={},
-            root=m.root,
-            should_follow_symlink=m.options.should_follow_symlink,
-        ),
-        get_target_filecount=get_filecount_fn(
-            m.filecount.count,
-            m.filecount.rand_min,
-            m.filecount.rand_max,
-            is_rand_enabled=m.filecount.is_rand_enabled,
-        ),
-        get_directory_name=get_dirname_fn(
-            m.dest,
-            m.directory.name,
-            is_enabled=m.directory.is_enabled,
-        ),
+    pipeline = TransferPipeline()
+    pipeline.is_create_dir = m.directory.is_enabled
+    pipeline.filter_file = get_filefilter_fn(build_filters(m))
+    pipeline.get_file_stem = get_filenamer_fn(
+        m.filename.template,
+        is_enabled=m.filename.is_enabled,
     )
+    pipeline.transfer = get_transfer_fn(m.options.transfer_mode)
+    pipeline.walk = get_walker_fn(
+        board={},
+        root=m.root,
+        should_follow_symlink=m.options.should_follow_symlink,
+    )
+    pipeline.get_target_filecount = get_filecount_fn(
+        m.filecount.count,
+        m.filecount.rand_min,
+        m.filecount.rand_max,
+        is_rand_enabled=m.filecount.is_rand_enabled,
+    )
+    pipeline.get_directory_name = get_dirname_fn(
+        m.dest,
+        m.directory.name,
+        is_enabled=m.directory.is_enabled,
+    )
+    return pipeline
 
 
 #####################
@@ -205,8 +206,7 @@ def get_rangefilter_fn(
             return lambda val: val >= min_val
         case (False, True):
             return lambda val: val <= max_val
-        case _:
-            return None
+    return None
 
 
 def get_filefilter_fn(filters: tuple[Callable, ...]) -> Callable:

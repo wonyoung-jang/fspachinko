@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.bootstrap import bootstrap, build_pipeline
-from fspachinko.configuration.model import get_config_from_pydict
+from fspachinko.configuration.model import get_config_from_dict
 from fspachinko.domain.commands import StartProcessingDirectory, StopProcess
 from fspachinko.domain.events import FileTransferred
 
@@ -37,7 +37,7 @@ class ProcessController(QObject):
 
     def start(self, config: dict) -> None:
         """Start the process."""
-        self.worker = MainWorker(get_config_from_pydict(config), self.signals)
+        self.worker = MainWorker(get_config_from_dict(config), self.signals)
         self.threadpool.start(self.worker)
 
     def stop(self) -> None:

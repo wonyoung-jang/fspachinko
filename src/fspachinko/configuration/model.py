@@ -156,7 +156,7 @@ class ConfigModel(BaseModel):
         return val
 
 
-def get_config_from_pydict(config: dict) -> ConfigModel:
+def get_config_from_dict(config: dict) -> ConfigModel:
     """Get the current configuration from a dictionary."""
     try:
         return ConfigModel.model_validate(config)
@@ -165,7 +165,7 @@ def get_config_from_pydict(config: dict) -> ConfigModel:
         raise
 
 
-def get_config_from_jsonpath(path: str) -> ConfigModel:
+def get_config_from_json_path(path: str) -> ConfigModel:
     """Get the current configuration from a JSON file."""
     try:
         with open(path, encoding="utf-8") as f:

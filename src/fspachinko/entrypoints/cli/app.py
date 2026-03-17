@@ -6,7 +6,7 @@ from cyclopts import App
 
 from fspachinko.adapters.filesystemport import get_config_path
 from fspachinko.bootstrap import bootstrap, build_pipeline
-from fspachinko.configuration.model import get_config_from_jsonpath
+from fspachinko.configuration.model import get_config_from_json_path
 from fspachinko.constants import DefaultPath
 from fspachinko.domain.commands import StartProcessingDirectory
 
@@ -23,7 +23,7 @@ def run(config_path: str = default_config_path) -> None:
         config_path (str): Path to configuration file.
 
     """
-    m = get_config_from_jsonpath(config_path)
+    m = get_config_from_json_path(config_path)
     pipeline = build_pipeline(m)
     bus = bootstrap(m=m, pipeline=pipeline)
 
