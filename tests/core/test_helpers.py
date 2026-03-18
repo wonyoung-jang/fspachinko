@@ -23,7 +23,6 @@ def test_get_status() -> None:
         )
         == StateStatus.SUCCESS
     )
-
     assert (
         get_status(
             is_success=False,
@@ -33,7 +32,6 @@ def test_get_status() -> None:
         )
         == StateStatus.NO_FILES_FOUND_FOLDER_DELETED
     )
-
     assert (
         get_status(
             is_success=False,
@@ -43,7 +41,6 @@ def test_get_status() -> None:
         )
         == StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
     )
-
     assert (
         get_status(
             is_success=False,
@@ -53,7 +50,6 @@ def test_get_status() -> None:
         )
         == StateStatus.USER_STOPPED
     )
-
     assert (
         get_status(
             is_success=False,
@@ -63,7 +59,6 @@ def test_get_status() -> None:
         )
         == StateStatus.ALL_FILES_SEARCHED
     )
-
     assert (
         get_status(
             is_success=False,

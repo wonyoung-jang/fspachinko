@@ -151,31 +151,25 @@ def walk(board: dict[str, FSPachinkoPin], root: str, *, should_follow_symlink: b
     """Iterate through FSEntry objects."""
     if root not in board:
         get_pin(board, root)
-
     curr = root
     pop = board.pop
     while True:
         pin = get_pin(board, curr)
         if not pin.is_scanned:
             scan_pin(pin, should_follow_symlink=should_follow_symlink)
-
         subdirs, files = pin.subdirs, pin.files
-
         if not subdirs and not files:
             if curr == root:
                 break
             pop(curr)
             curr = root
             continue
-
         should_descend = choice((True, False)) if subdirs and files else bool(subdirs)
         if should_descend:
             curr = choice(subdirs)
             continue
-
         if files:
             yield choice(files)
-
         curr = root
 
 

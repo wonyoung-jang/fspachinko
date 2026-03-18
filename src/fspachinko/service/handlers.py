@@ -30,36 +30,21 @@ class ProcessDirectoryHandler:
             job = self.uow.job
             if job.is_stop_requested or job.is_root_locked:
                 return
-
             job.reset()
             job.dst = DestinationDirectory(cmd.path, cmd.target_qty)
-
             for entry in self.uow.pipeline.walker_fn():
                 if job.dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
-
                 if not job.process_file(entry) or not self.uow.pipeline.filefilter_fn(entry):
                     continue
-
                 new_path = self.uow.pipeline.get_new_path(dst=job.dst, e=entry)
                 if new_path:
                     self.uow.register_transfer(entry.path, new_path)
                     job.update(entry, new_path)
-
             is_empty_creation = job.dst.is_none_found and self.uow.pipeline.is_create_dir
             if is_empty_creation:
                 remove_directory(job.dst.path)
-
-            job.finalize_directory(
-                status=get_status(
-                    is_success=job.dst.is_success,
-                    is_none_found_and_create_dir=is_empty_creation,
-                    is_stop_requested=job.is_stop_requested,
-                    is_root_locked=job.is_root_locked,
-                ),
-                report=get_report(job.dst.path, job.dst.size, job.dst.count, job.dst.target_qty),
-            )
-
+            job.finalize_directory(is_empty_creation=is_empty_creation)
             self.uow.commit()
 
 
@@ -97,4 +82,11 @@ class DirectoryTransferredHandler:
 
     def __call__(self, event: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
-        self.call("%s\n%s", event.status, event.report)
+        status = get_status(
+            is_success=event.is_success,
+            is_none_found_and_create_dir=event.is_empty_creation,
+            is_stop_requested=event.is_stop_requested,
+            is_root_locked=event.is_root_locked,
+        )
+        report = get_report(event.path, event.size, event.count, event.target_qty)
+        self.call("%s\n%s", status, report)

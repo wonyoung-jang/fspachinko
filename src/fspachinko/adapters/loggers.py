@@ -13,7 +13,6 @@ def initialize_logging() -> logging.Logger:
     fh.set_name("file")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s[%(module)s] %(message)s"))
-
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(fh)

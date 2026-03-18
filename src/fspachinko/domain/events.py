@@ -21,5 +21,11 @@ class FileTransferred(Event):
 class DirectoryTransferred(Event):
     """Event after directory is transferred."""
 
-    status: str
-    report: str
+    path: str
+    size: int
+    count: int
+    target_qty: int
+    is_success: bool
+    is_empty_creation: bool
+    is_stop_requested: bool
+    is_root_locked: bool

@@ -26,16 +26,11 @@ def run(config_path: str = default_config_path) -> None:
     m = ConfigModel.from_json_path(config_path)
     pipeline = build_pipeline(m)
     bus = bootstrap(m=m, pipeline=pipeline)
-
     logger.debug("Process started: dir_count=%s", m.directory.count)
-
     for _ in range(m.directory.count):
         target_qty = pipeline.filecount_fn()
         dest_dir = pipeline.get_currdir_dest()
-
         logger.debug("Processing directory: %s, target_qty=%s", dest_dir, target_qty)
-
         start_process_cmd = ProcessDirectory(dest_dir, target_qty=target_qty)
         bus.handle(start_process_cmd)
-
     logger.debug("Process stopped.")

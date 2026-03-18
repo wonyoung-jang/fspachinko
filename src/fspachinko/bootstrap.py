@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
     from .configuration.model import ConfigModel
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +37,6 @@ def bootstrap(
 ) -> MessageBus:
     """Bootstrap the application and return the message bus."""
     seed(m.options.rng_seed)
-
     job = TransferJob(
         quota=DiversityQuota(
             root=m.root,
@@ -46,17 +44,13 @@ def bootstrap(
             unique_files_only=m.options.is_create_unique_dirs,
         )
     )
-
     if pipeline is None:
         pipeline = build_pipeline(m)
-
     if uow is None and isinstance(pipeline, TransferPipeline):
         uow = FileSystemUnitOfWork(pipeline=pipeline, job=job)
-
     if uow is None:
         msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
         raise ValueError(msg)
-
     event_handlers = {
         FileTransferred: [FileTransferredHandler(call=logger.info)],
         DirectoryTransferred: [DirectoryTransferredHandler(call=logger.info)],
@@ -65,7 +59,6 @@ def bootstrap(
         ProcessDirectory: ProcessDirectoryHandler(uow=uow),
         StopProcess: StopProcessHandler(uow=uow),
     }
-
     return MessageBus(
         uow=uow,
         event_handlers=event_handlers,
@@ -107,7 +100,6 @@ def build_filters(m: ConfigModel) -> tuple[Callable[[FSEntry], bool], ...]:
         mapping=TIME_MAP,
         is_enabled=m.duration.is_enabled,
     )
-
     filters: list[Callable[[FSEntry], bool]] = []
     if dirname_filter_fn:
         filters.append(lambda e: dirname_filter_fn(e.parent))
@@ -174,10 +166,8 @@ def get_textfilter_fn(text: str, re_fmt: str, *, is_enabled: bool, should_includ
     """Create an include-exclude filter function from configuration model."""
     if not (is_enabled and text):
         return None
-
     split_text = set(text.split(","))
     patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in split_text)
-
     match should_include, len(patterns) == 1:
         case (True, True):
             return lambda part: patterns[0].search(part) is not None
@@ -195,10 +185,8 @@ def get_rangefilter_fn(
     """Create a range filter function from it's configuration model."""
     if not is_enabled:
         return None
-
     min_val = minimum * mapping.get(unit, 1.0)
     max_val = maximum * mapping.get(unit, 1.0)
-
     match min_val >= 0, max_val < float("inf"):
         case (True, True):
             return lambda val: min_val <= val <= max_val

@@ -27,14 +27,12 @@ class MainWindow(QMainWindow):
         """Initialize the main window."""
         super().__init__()
         self.setAnimated(True)
-
         self._original_title = ""
         self.config_path = ""
         self.acts = get_actions()
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
         self.log_signal = setup_gui_logger()
-
         self.logging = LogWidget()
         self.progress = ProgressWidget()
         self.ui = CentralWidget(
@@ -44,7 +42,6 @@ class MainWindow(QMainWindow):
         )
         self.ui.add_to_layout(self.logging, self.progress)
         self.setCentralWidget(self.ui)
-
         self.init_connections()
         self.init_menubar()
         self.init_toolbar()

@@ -62,24 +62,17 @@ class MainWorker(QRunnable):
         pipeline = build_pipeline(self.config)
         self.bus = bootstrap(m=self.config, pipeline=pipeline)
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
-
         self.signals.process_started.emit(self.config.directory.count)
-
         for _ in range(self.config.directory.count):
             dest_dir = self.bus.uow.pipeline.get_currdir_dest()
             target_qty = self.bus.uow.pipeline.filecount_fn()
-
             self.signals.directory_started.emit(target_qty)
-
             handler = get_dest_log_filehandler(dest_dir)
             logging.getLogger().addHandler(handler)
-
             start_process_cmd = ProcessDirectory(dest_dir, target_qty)
             self.bus.handle(start_process_cmd)
-
             logging.getLogger().removeHandler(handler)
             handler.close()
-
         self.signals.finished.emit()
 
     def stop(self) -> None:

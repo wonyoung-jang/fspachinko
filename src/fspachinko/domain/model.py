@@ -42,9 +42,21 @@ class TransferJob:
         """Request to stop the process."""
         self.is_stop_requested = True
 
-    def finalize_directory(self, status: str, report: str) -> None:
+    def finalize_directory(self, *, is_empty_creation: bool) -> None:
         """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
-        self.events.append(DirectoryTransferred(status=status, report=report))
+        if self.dst:
+            self.events.append(
+                DirectoryTransferred(
+                    path=self.dst.path,
+                    size=self.dst.size,
+                    count=self.dst.count,
+                    target_qty=self.dst.target_qty,
+                    is_success=self.dst.is_success,
+                    is_empty_creation=is_empty_creation,
+                    is_stop_requested=self.is_stop_requested,
+                    is_root_locked=self.is_root_locked,
+                )
+            )
 
 
 @dataclass(slots=True)
