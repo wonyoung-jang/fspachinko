@@ -155,22 +155,22 @@ class ConfigModel(BaseModel):
             return realpath(val)
         return val
 
+    @classmethod
+    def from_dict(cls, config: dict) -> ConfigModel:
+        """Get the current configuration from a dictionary."""
+        try:
+            return cls.model_validate(config)
+        except Exception:
+            logger.exception("Failed to get configuration from dictionary.")
+            raise
 
-def get_config_from_dict(config: dict) -> ConfigModel:
-    """Get the current configuration from a dictionary."""
-    try:
-        return ConfigModel.model_validate(config)
-    except Exception:
-        logger.exception("Failed to get configuration from dictionary.")
-        raise
-
-
-def get_config_from_json_path(path: str) -> ConfigModel:
-    """Get the current configuration from a JSON file."""
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = f.read()
-        return ConfigModel.model_validate_json(data)
-    except Exception:
-        logger.exception("Failed to get configuration from JSON file: %s", path)
-        raise
+    @classmethod
+    def from_json_path(cls, path: str) -> ConfigModel:
+        """Get the current configuration from a JSON file."""
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = f.read()
+            return cls.model_validate_json(data)
+        except Exception:
+            logger.exception("Failed to get configuration from JSON file: %s", path)
+            raise

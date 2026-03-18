@@ -476,7 +476,7 @@ class ProgressWidget(QWidget):
         self.progbar_files.setValue(self.progbar_files.value() + 1)
 
     @property
-    def file_progress_percent(self) -> int:
+    def file_percentage(self) -> int:
         """Calculate the current file progress percentage."""
         maximum = self.progbar_files.maximum()
         return int((self.progbar_files.value()) * 100 / maximum) if maximum > 0 else 0

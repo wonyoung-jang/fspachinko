@@ -10,13 +10,13 @@ from .adapters.filesystemport import get_available_transfer_modes, get_name_from
 from .adapters.media import get_duration
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilenameTemplate, ReStrFmt, TransferMode
-from .domain.commands import StartProcessingDirectory, StopProcess
+from .domain.commands import ProcessDirectory, StopProcess
 from .domain.events import DirectoryTransferred, FileTransferred
 from .domain.model import DiversityQuota, FSEntry, TransferJob
 from .service.handlers import (
     DirectoryTransferredHandler,
     FileTransferredHandler,
-    StartProcessingDirectoryHandler,
+    ProcessDirectoryHandler,
     StopProcessHandler,
 )
 from .service.messagebus import MessageBus
@@ -62,7 +62,7 @@ def bootstrap(
         DirectoryTransferred: [DirectoryTransferredHandler(call=logger.info)],
     }
     command_handlers = {
-        StartProcessingDirectory: StartProcessingDirectoryHandler(uow=uow),
+        ProcessDirectory: ProcessDirectoryHandler(uow=uow),
         StopProcess: StopProcessHandler(uow=uow),
     }
 
@@ -126,24 +126,24 @@ def build_pipeline(m: ConfigModel) -> AbstractPipeline:
     """Build the pipeline based on the configuration."""
     pipeline = TransferPipeline()
     pipeline.is_create_dir = m.directory.is_enabled
-    pipeline.filter_file = get_filefilter_fn(build_filters(m))
-    pipeline.get_file_stem = get_filenamer_fn(
+    pipeline.filefilter_fn = get_filefilter_fn(build_filters(m))
+    pipeline.filenamer_fn = get_filenamer_fn(
         m.filename.template,
         is_enabled=m.filename.is_enabled,
     )
-    pipeline.transfer = get_transfer_fn(m.options.transfer_mode)
-    pipeline.walk = get_walker_fn(
+    pipeline.transfer_fn = get_transfer_fn(m.options.transfer_mode)
+    pipeline.walker_fn = get_walker_fn(
         board={},
         root=m.root,
         should_follow_symlink=m.options.should_follow_symlink,
     )
-    pipeline.get_target_filecount = get_filecount_fn(
+    pipeline.filecount_fn = get_filecount_fn(
         m.filecount.count,
         m.filecount.rand_min,
         m.filecount.rand_max,
         is_rand_enabled=m.filecount.is_rand_enabled,
     )
-    pipeline.get_directory_name = get_dirname_fn(
+    pipeline.dirname_fn = get_dirname_fn(
         m.dest,
         m.directory.name,
         is_enabled=m.directory.is_enabled,
@@ -220,13 +220,11 @@ def get_filefilter_fn(filters: tuple[Callable, ...]) -> Callable:
             return lambda _: True
 
 
-def get_filenamer_fn(
-    template: str, *, is_enabled: bool
-) -> Callable[[FSEntry, int, str], str] | Callable[[FSEntry, int], str]:
+def get_filenamer_fn(template: str, *, is_enabled: bool) -> Callable[[FSEntry, int], str]:
     """Return a function that determines the destination file name based on the configuration."""
     if not is_enabled or template == FilenameTemplate.ORIGINAL:
         return lambda e, _: e.stem
-    return lambda e, count, template=template: get_name_from_template(e, count, template)
+    return lambda e, count: get_name_from_template(e, count, template)
 
 
 def get_transfer_fn(mode: str) -> Callable:

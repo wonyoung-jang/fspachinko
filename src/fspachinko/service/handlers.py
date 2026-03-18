@@ -4,30 +4,27 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..adapters.filesystemport import remove_directory
-from ..domain.events import DirectoryTransferred, Event, FileTransferred
 from ..domain.model import DestinationDirectory
 from ..helpers import get_report, get_status
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..domain.commands import Command, StartProcessingDirectory, StopProcess
+    from ..domain.commands import ProcessDirectory, StopProcess
+    from ..domain.events import DirectoryTransferred, FileTransferred
     from .uow import AbstractUnitOfWork
-
-
-type Message = Command | Event
 
 
 ######################
 ## COMMAND HANDLERS ##
 ######################
 @dataclass(slots=True)
-class StartProcessingDirectoryHandler:
+class ProcessDirectoryHandler:
     """Handle the StartProcessingDirectory command."""
 
     uow: AbstractUnitOfWork
 
-    def __call__(self, cmd: StartProcessingDirectory) -> None:
+    def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
         with self.uow:
             job = self.uow.job
@@ -37,11 +34,11 @@ class StartProcessingDirectoryHandler:
             job.reset()
             job.dst = DestinationDirectory(cmd.path, cmd.target_qty)
 
-            for entry in self.uow.pipeline.walk():
+            for entry in self.uow.pipeline.walker_fn():
                 if job.dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
 
-                if not job.process_file(entry) or not self.uow.pipeline.filter_file(entry):
+                if not job.process_file(entry) or not self.uow.pipeline.filefilter_fn(entry):
                     continue
 
                 new_path = self.uow.pipeline.get_new_path(dst=job.dst, e=entry)
@@ -89,7 +86,7 @@ class FileTransferredHandler:
 
     def __call__(self, event: FileTransferred) -> None:
         """Handle the FileTransferred event."""
-        self.call("%s: %s -> %s", event.count, event.src, event.dst)
+        self.call("%s: '%s' -> '%s'", event.count, event.src, event.dst)
 
 
 @dataclass(slots=True)

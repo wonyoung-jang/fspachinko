@@ -9,7 +9,7 @@ class Command:
 
 
 @dataclass(slots=True, frozen=True)
-class StartProcessingDirectory(Command):
+class ProcessDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 
     path: str

@@ -7,12 +7,11 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.bootstrap import bootstrap, build_pipeline
-from fspachinko.configuration.model import get_config_from_dict
-from fspachinko.domain.commands import StartProcessingDirectory, StopProcess
+from fspachinko.configuration.model import ConfigModel
+from fspachinko.domain.commands import ProcessDirectory, StopProcess
 from fspachinko.domain.events import FileTransferred
 
 if TYPE_CHECKING:
-    from fspachinko.configuration.model import ConfigModel
     from fspachinko.service.messagebus import MessageBus
 
 
@@ -37,7 +36,8 @@ class ProcessController(QObject):
 
     def start(self, config: dict) -> None:
         """Start the process."""
-        self.worker = MainWorker(get_config_from_dict(config), self.signals)
+        self.worker = MainWorker(ConfigModel.from_dict(config), self.signals)
+        self.worker.setAutoDelete(False)
         self.threadpool.start(self.worker)
 
     def stop(self) -> None:
@@ -67,14 +67,14 @@ class MainWorker(QRunnable):
 
         for _ in range(self.config.directory.count):
             dest_dir = self.bus.uow.pipeline.get_currdir_dest()
-            target_qty = self.bus.uow.pipeline.get_target_filecount()
+            target_qty = self.bus.uow.pipeline.filecount_fn()
 
             self.signals.directory_started.emit(target_qty)
 
             handler = get_dest_log_filehandler(dest_dir)
             logging.getLogger().addHandler(handler)
 
-            start_process_cmd = StartProcessingDirectory(dest_dir, target_qty)
+            start_process_cmd = ProcessDirectory(dest_dir, target_qty)
             self.bus.handle(start_process_cmd)
 
             logging.getLogger().removeHandler(handler)

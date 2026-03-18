@@ -1,24 +1,14 @@
 """Utility functions."""
 
-from .constants import BytesIn, ByteUnit, StateStatus
+from .constants import SIZE_MAP, StateStatus
 
 
 def convert_byte_to_human_readable_size(nbytes: int) -> str:
     """Convert bytes to human readable string."""
-    if nbytes < BytesIn.KILOBYTE:
-        return f"{nbytes} {ByteUnit.BYTES}"
-
-    conversion = {
-        BytesIn.KILOBYTE: ByteUnit.KILOBYTES,
-        BytesIn.MEGABYTE: ByteUnit.MEGABYTES,
-        BytesIn.GIGABYTE: ByteUnit.GIGABYTES,
-    }
-
-    for threshold, unit in conversion.items():
+    for unit, threshold in SIZE_MAP.items():
         if nbytes < threshold * 1024:
             result = f"{nbytes / threshold:.2f} {unit}"
             break
-
     return result
 
 

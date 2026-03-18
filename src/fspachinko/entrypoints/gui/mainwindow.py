@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
         self.acts = get_actions()
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
+        self.log_signal = setup_gui_logger()
 
         self.logging = LogWidget()
         self.progress = ProgressWidget()
@@ -43,7 +44,6 @@ class MainWindow(QMainWindow):
         )
         self.ui.add_to_layout(self.logging, self.progress)
         self.setCentralWidget(self.ui)
-        setup_gui_logger(self.logging.append)
 
         self.init_connections()
         self.init_menubar()
@@ -56,13 +56,9 @@ class MainWindow(QMainWindow):
         """Get the parent directory of the current profile."""
         return dirname(self.config_path)
 
-    @property
-    def file_progress_percent(self) -> int:
-        """Get the current file transfer progress percentage."""
-        return self.progress.file_progress_percent
-
     def init_connections(self) -> None:
         """Initialize connections."""
+        self.log_signal.logged.connect(self.logging.append)
         self.acts.save.triggered.connect(self.save_profile)
         self.acts.save_as.triggered.connect(self.save_profile_as_dialog)
         self.acts.load.triggered.connect(self.open_profile_dialog)
@@ -188,7 +184,7 @@ class MainWindow(QMainWindow):
     def handle_file_transfer(self) -> None:
         """Update the window title with the current progress."""
         self.progress.handle_file_transfer()
-        self.setWindowTitle(f"[{self.file_progress_percent}%] {self._original_title}")
+        self.setWindowTitle(f"[{self.progress.file_percentage}%] {self._original_title}")
 
     @Slot()
     def handle_finished(self) -> None:

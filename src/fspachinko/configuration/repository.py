@@ -31,5 +31,6 @@ class JSONConfigRepository(AbstractConfigRepository):
         """Load JSON data from a file."""
         if not (exists(src) and isfile(src)):
             return {}
+
         with open(src, encoding="utf-8") as f:
             return json.load(f)

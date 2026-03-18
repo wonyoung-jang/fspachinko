@@ -30,7 +30,7 @@ class CentralWidget(QWidget):
             PathSelectorWidget("Destination", "dest"),
             FileCountWidget("File count", "filecount"),
             DirectoryCreateWidget("Create directories", "directory"),
-            FilenamerWidget("Filenamer", "filenamer"),
+            FilenamerWidget("Filenamer", "filename"),
             TextFilterWidget("Directory names", "dirname"),
             TextFilterWidget("Keywords", "keyword"),
             TextFilterWidget("Extensions", "extension"),
