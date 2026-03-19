@@ -8,9 +8,10 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.adapters.pipeline import TransferPipeline
 from fspachinko.bootstrap import bootstrap
-from fspachinko.configuration.model import ConfigModel
-from fspachinko.constants import SIZE_MAP, TIME_MAP, ReStrFmt
+from fspachinko.configuration.model import ConfigModel, RangeFilterModel
+from fspachinko.constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from fspachinko.domain.commands import (
+    Command,
     CreateDirnameFn,
     CreateFilecountFn,
     CreateFilefilterFn,
@@ -69,86 +70,42 @@ class MainWorker(QRunnable):
         self.signals = signals
         self.bus: MessageBus | None = None
 
+    def _setup_commands(self) -> list[Command]:
+        c = self.config
+        cmds: list[Command] = [
+            CreateTransferFn(c.options.transfer_mode),
+            CreateFilenameFn(c.filename.template, c.filename.is_enabled),
+            CreateFilecountFn(
+                c.filecount.count, (c.filecount.rand_min, c.filecount.rand_max), c.filecount.is_rand_enabled
+            ),
+            CreateDirnameFn(c.dest, c.directory.name, c.directory.is_enabled),
+            CreateWalkerFn(c.root, c.options.should_follow_symlink),
+        ]
+        text_specs = [
+            (FilterName.DIRNAME, c.dirname, ReStrFmt.DIRECTORY),
+            (FilterName.KEYWORD, c.keyword, ReStrFmt.KEYWORD),
+            (FilterName.EXTENSION, c.extension, ReStrFmt.EXTENSION),
+        ]
+        for name, model, fmt in text_specs:
+            cmds.append(CreateTextFilterFn(name, model.text, fmt, model.is_enabled, model.should_include))
+        range_specs: list[tuple[str, RangeFilterModel, dict]] = [
+            (FilterName.FILESIZE, c.filesize, SIZE_MAP),
+            (FilterName.DURATION, c.duration, TIME_MAP),
+        ]
+        for name, model, unit_map in range_specs:
+            mul = unit_map.get(model.unit, 1.0)
+            cmds.append(CreateRangeFilterFn(name, model.minimum * mul, model.maximum * mul, model.is_enabled))
+        cmds.append(CreateFilefilterFn())
+        return cmds
+
     def _bootstrap(self) -> None:
         """Bootstrap the application."""
         if self.bus is None:
             msg = "Message bus is not initialized."
             raise ValueError(msg)
-        self.bus.handle(
-            CreateTransferFn(
-                self.config.options.transfer_mode,
-            )
-        )
-        self.bus.handle(
-            CreateFilenameFn(
-                self.config.filename.template,
-                self.config.filename.is_enabled,
-            )
-        )
-        self.bus.handle(
-            CreateFilecountFn(
-                self.config.filecount.count,
-                (self.config.filecount.rand_min, self.config.filecount.rand_max),
-                self.config.filecount.is_rand_enabled,
-            )
-        )
-        self.bus.handle(
-            CreateDirnameFn(
-                self.config.dest,
-                self.config.directory.name,
-                self.config.directory.is_enabled,
-            )
-        )
-        self.bus.handle(
-            CreateWalkerFn(
-                self.config.root,
-                self.config.options.should_follow_symlink,
-            )
-        )
-        self.bus.handle(
-            CreateTextFilterFn(
-                name="dirname_filter",
-                text=self.config.dirname.text,
-                re_fmt=ReStrFmt.DIRECTORY,
-                is_enabled=self.config.dirname.is_enabled,
-                should_include=self.config.dirname.should_include,
-            )
-        )
-        self.bus.handle(
-            CreateTextFilterFn(
-                name="keyword_filter",
-                text=self.config.keyword.text,
-                re_fmt=ReStrFmt.KEYWORD,
-                is_enabled=self.config.keyword.is_enabled,
-                should_include=self.config.keyword.should_include,
-            )
-        )
-        self.bus.handle(
-            CreateTextFilterFn(
-                name="extension_filter",
-                text=self.config.extension.text,
-                re_fmt=ReStrFmt.EXTENSION,
-                is_enabled=self.config.extension.is_enabled,
-                should_include=self.config.extension.should_include,
-            )
-        )
-        self.bus.handle(
-            CreateRangeFilterFn(
-                name="filesize_filter",
-                minimum=self.config.filesize.minimum * SIZE_MAP.get(self.config.filesize.unit, 1.0),
-                maximum=self.config.filesize.maximum * SIZE_MAP.get(self.config.filesize.unit, 1.0),
-                is_enabled=self.config.filesize.is_enabled,
-            )
-        )
-        self.bus.handle(
-            CreateRangeFilterFn(
-                name="duration_filter",
-                minimum=self.config.duration.minimum * TIME_MAP.get(self.config.duration.unit, 1.0),
-                maximum=self.config.duration.maximum * TIME_MAP.get(self.config.duration.unit, 1.0),
-                is_enabled=self.config.duration.is_enabled,
-            )
-        )
-        self.bus.handle(CreateFilefilterFn())
+        cmds = self._setup_commands()
+        for cmd in cmds:
+            self.bus.handle(cmd)
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
 
     @Slot()

@@ -70,8 +70,8 @@ def bootstrap(
         "fs": fs_uow,
     }
     event_handlers = {
-        FileTransferred: [FileTransferredHandler(call=log_fn)],
-        DirectoryTransferred: [DirectoryTransferredHandler(call=log_fn)],
+        FileTransferred: [FileTransferredHandler(log_fn=log_fn)],
+        DirectoryTransferred: [DirectoryTransferredHandler(log_fn=log_fn)],
     }
     command_handlers = {
         ProcessDirectory: ProcessDirectoryHandler(uow=uows["fs"]),

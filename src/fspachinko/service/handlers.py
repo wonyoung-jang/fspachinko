@@ -12,12 +12,12 @@ from fspachinko.adapters.filesystemport import (
     walk,
 )
 from fspachinko.adapters.media import get_duration
-from fspachinko.constants import FilenameTemplate, TransferMode
+from fspachinko.constants import FilenameTemplate, FilterName, TransferMode
 from fspachinko.domain.model import DestinationDirectory, FSEntry
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.commands import (
@@ -105,7 +105,7 @@ class CreateFilenameFnHandler:
         if not cmd.is_enabled or cmd.template == FilenameTemplate.ORIGINAL:
             self.pipeline.filenamer_fn = lambda e, _: e.stem
         else:
-            self.pipeline.filenamer_fn = lambda e, count: get_name_from_template(e, count, cmd.template)
+            self.pipeline.filenamer_fn = lambda e, count, t=cmd.template: get_name_from_template(e, count, t)
 
 
 @dataclass(slots=True)
@@ -196,25 +196,32 @@ class CreateFilefilterFnHandler:
 
     def __call__(self, _: CreateFilefilterFn) -> None:
         """Handle the CreateFilefilterFn command."""
-        filters: list[Callable[[FSEntry], bool]] = []
-        for name, fn in self.pipeline.filters.items():
-            if name == "dirname_filter":
-                filters.append(lambda e, fn=fn: fn(e.parent))
-            elif name == "keyword_filter":
-                filters.append(lambda e, fn=fn: fn(e.stem))
-            elif name == "extension_filter":
-                filters.append(lambda e, fn=fn: fn(e.ext))
-            elif name == "filesize_filter":
-                filters.append(lambda e, fn=fn: fn(e.size))
-            elif name == "duration_filter":
-                filters.append(lambda e, fn=fn: fn(get_duration(e.path)))
 
-        if filters and len(filters) == 1:
-            self.pipeline.filefilter_fn = filters[0]
-        elif filters:
-            self.pipeline.filefilter_fn = lambda e: all(f(e) for f in filters)
-        else:
-            self.pipeline.filefilter_fn = lambda _: True
+        def _get_filter(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
+            match name:
+                case FilterName.DIRNAME:
+                    return lambda e: fn(e.parent)
+                case FilterName.KEYWORD:
+                    return lambda e: fn(e.stem)
+                case FilterName.EXTENSION:
+                    return lambda e: fn(e.ext)
+                case FilterName.FILESIZE:
+                    return lambda e: fn(e.size)
+                case FilterName.DURATION:
+                    return lambda e: fn(get_duration(e.path))
+                case _:
+                    msg = f"Unknown filter name: {name}"
+                    raise ValueError(msg)
+
+        def _get_filters() -> Iterator[Callable[[FSEntry], bool]]:
+            for name, fn in self.pipeline.filters.items():
+                yield _get_filter(name, fn)
+
+        filter_fns = tuple(_get_filters())
+        if filter_fns and len(filter_fns) == 1:
+            self.pipeline.filefilter_fn = filter_fns[0]
+        elif filter_fns:
+            self.pipeline.filefilter_fn = lambda e: all(f(e) for f in filter_fns)
 
 
 ####################
@@ -224,18 +231,18 @@ class CreateFilefilterFnHandler:
 class FileTransferredHandler:
     """Handle the FileTransferred event."""
 
-    call: Callable
+    log_fn: Callable
 
     def __call__(self, event: FileTransferred) -> None:
         """Handle the FileTransferred event."""
-        self.call("%s: '%s' -> '%s'", event.count, event.src, event.dst)
+        self.log_fn("%s: '%s' -> '%s'", event.count, event.src, event.dst)
 
 
 @dataclass(slots=True)
 class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
-    call: Callable
+    log_fn: Callable
 
     def __call__(self, event: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
@@ -246,4 +253,4 @@ class DirectoryTransferredHandler:
             is_root_locked=event.is_root_locked,
         )
         report = get_report(event.path, event.size, event.count, event.target_qty)
-        self.call("%s\n%s", status, report)
+        self.log_fn("%s\n%s", status, report)

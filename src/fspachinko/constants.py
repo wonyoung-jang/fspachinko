@@ -177,3 +177,13 @@ class GUIFileDialogFilter(StrEnum):
     """Enumeration for GUI file dialog filters."""
 
     JSON = "JSON Files (*.json)"
+
+
+class FilterName(StrEnum):
+    """Enumeration for filter names."""
+
+    DIRNAME = "Directory Name Filter"
+    KEYWORD = "Keyword Filter"
+    EXTENSION = "Extension Filter"
+    FILESIZE = "File Size Filter"
+    DURATION = "Duration Filter"
