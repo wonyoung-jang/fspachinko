@@ -5,8 +5,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..domain.commands import Command
-from ..domain.events import Event
+from fspachinko.domain.commands import Command
+from fspachinko.domain.events import Event
 
 if TYPE_CHECKING:
     from collections.abc import Callable

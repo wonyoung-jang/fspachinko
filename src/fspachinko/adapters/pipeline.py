@@ -10,7 +10,7 @@ from .filesystemport import are_files_equal, get_dest_dir_path, get_unique_path
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from ..domain.model import DestinationDirectory, FSEntry
+    from fspachinko.domain.model import DestinationDirectory, FSEntry
 
 
 @dataclass(slots=True)

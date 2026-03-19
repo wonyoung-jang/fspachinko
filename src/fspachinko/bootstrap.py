@@ -4,14 +4,14 @@ import logging
 from random import seed
 from typing import TYPE_CHECKING
 
-from fspachinko.domain.commands import CreateFilefilterFn, CreateRangeFilterFn, CreateTextFilterFn
-from fspachinko.service.handlers import CreateFilefilterFnHandler, CreateRangeFilterFnHandler, CreateTextFilterFnHandler
-
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .domain.commands import (
     CreateDirnameFn,
     CreateFilecountFn,
+    CreateFilefilterFn,
     CreateFilenameFn,
+    CreateRangeFilterFn,
+    CreateTextFilterFn,
     CreateTransferFn,
     CreateWalkerFn,
     ProcessDirectory,
@@ -22,7 +22,10 @@ from .domain.model import DiversityQuota, TransferJob
 from .service.handlers import (
     CreateDirnameFnHandler,
     CreateFilecountFnHandler,
+    CreateFilefilterFnHandler,
     CreateFilenameFnHandler,
+    CreateRangeFilterFnHandler,
+    CreateTextFilterFnHandler,
     CreateTransferFnHandler,
     CreateWalkerFnHandler,
     DirectoryTransferredHandler,
@@ -34,6 +37,8 @@ from .service.messagebus import MessageBus
 from .service.uow import AbstractUnitOfWork, FileSystemUnitOfWork
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .configuration.model import ConfigModel
 
 logger = logging.getLogger(__name__)
@@ -42,6 +47,7 @@ logger = logging.getLogger(__name__)
 def bootstrap(
     m: ConfigModel,
     pipeline: AbstractPipeline,
+    log_fn: Callable | None = None,
     fs_uow: AbstractUnitOfWork | None = None,
 ) -> MessageBus:
     """Bootstrap the application and return the message bus."""
@@ -53,6 +59,8 @@ def bootstrap(
             unique_files_only=m.options.is_create_unique_dirs,
         )
     )
+    if log_fn is None:
+        log_fn = logger.info
     if fs_uow is None and isinstance(pipeline, TransferPipeline):
         fs_uow = FileSystemUnitOfWork(pipeline=pipeline, job=job)
     if fs_uow is None or not isinstance(fs_uow, FileSystemUnitOfWork):
@@ -62,12 +70,12 @@ def bootstrap(
         "fs": fs_uow,
     }
     event_handlers = {
-        FileTransferred: [FileTransferredHandler(call=logger.info)],
-        DirectoryTransferred: [DirectoryTransferredHandler(call=logger.info)],
+        FileTransferred: [FileTransferredHandler(call=log_fn)],
+        DirectoryTransferred: [DirectoryTransferredHandler(call=log_fn)],
     }
     command_handlers = {
-        ProcessDirectory: ProcessDirectoryHandler(uow=fs_uow),
-        StopProcess: StopProcessHandler(uow=fs_uow),
+        ProcessDirectory: ProcessDirectoryHandler(uow=uows["fs"]),
+        StopProcess: StopProcessHandler(uow=uows["fs"]),
         CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
         CreateFilenameFn: CreateFilenameFnHandler(pipeline=pipeline),
         CreateFilecountFn: CreateFilecountFnHandler(pipeline=pipeline),

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from ..adapters.pipeline import AbstractPipeline
-    from ..domain.events import Event
-    from ..domain.model import TransferJob
+    from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.domain.events import Event
+    from fspachinko.domain.model import TransferJob
 
 logger = logging.getLogger(__name__)
 

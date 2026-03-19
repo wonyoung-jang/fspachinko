@@ -5,7 +5,7 @@ from os.path import isabs, realpath
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from ..constants import FilenameTemplate, TransferMode
+from fspachinko.constants import FilenameTemplate, TransferMode
 
 logger = logging.getLogger(__name__)
 

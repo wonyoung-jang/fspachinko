@@ -13,9 +13,8 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 import fspachinko
-
-from ..constants import INVALID_FILENAME_CHARS, DefaultPath, FileError, FilenameTemplateMapKey, TransferMode
-from ..domain.model import FSEntry, FSPachinkoPin
+from fspachinko.constants import INVALID_FILENAME_CHARS, DefaultPath, FileError, FilenameTemplateMapKey, TransferMode
+from fspachinko.domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
