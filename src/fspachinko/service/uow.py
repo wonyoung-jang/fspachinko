@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from ..adapters.pipeline import AbstractPipeline, TransferPipeline
+    from ..adapters.pipeline import AbstractPipeline
     from ..domain.events import Event
     from ..domain.model import TransferJob
 
@@ -18,9 +18,6 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class AbstractUnitOfWork(ABC):
     """Abstract Unit of Work."""
-
-    pipeline: AbstractPipeline
-    job: TransferJob
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
@@ -34,10 +31,9 @@ class AbstractUnitOfWork(ABC):
         """Commit the transaction."""
         self._commit()
 
+    @abstractmethod
     def collect_new_events(self) -> Iterator[Event]:
         """Collect new events that were generated during the transaction."""
-        while self.job.events:
-            yield self.job.events.popleft()
 
     @abstractmethod
     def _commit(self) -> None:
@@ -47,22 +43,24 @@ class AbstractUnitOfWork(ABC):
     def rollback(self) -> None:
         """Rollback the transaction."""
 
-    @abstractmethod
-    def register_transfer(self, src: str, dst: str) -> None:
-        """Register a file transfer to be performed on commit."""
-
 
 @dataclass(slots=True)
 class FileSystemUnitOfWork(AbstractUnitOfWork):
-    """Unit of Work for file system operations."""
+    """Abstract Unit of Work."""
 
-    pipeline: TransferPipeline
+    pipeline: AbstractPipeline
+    job: TransferJob
     pending: list[tuple[str, str]] = field(default_factory=list)
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
         self.pending.clear()
         return super().__enter__()
+
+    def collect_new_events(self) -> Iterator[Event]:
+        """Collect new events that were generated during the transaction."""
+        while self.job.events:
+            yield self.job.events.popleft()
 
     def _commit(self) -> None:
         """Actually perform the I/O."""

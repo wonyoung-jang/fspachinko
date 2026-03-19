@@ -1,5 +1,7 @@
 """Utility functions."""
 
+import re
+
 from .constants import SIZE_MAP, StateStatus
 
 
@@ -40,3 +42,13 @@ def get_report(path: str, size: int, count: int, target_qty: int) -> str:
         f"Size:         {size_str}\n"
         "========================================================================\n"
     )
+
+
+def get_text_patterns(text: str, fmt: str) -> tuple[re.Pattern, ...]:
+    """Get regex patterns from comma-separated text."""
+
+    def compile_re(t: str) -> re.Pattern:
+        return re.compile(fmt.format(re.escape(t)), re.IGNORECASE)
+
+    split = set(text.split(","))
+    return tuple(compile_re(t) for t in split)

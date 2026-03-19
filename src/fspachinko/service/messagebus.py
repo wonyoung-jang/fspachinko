@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 class MessageBus:
     """A simple message bus for handling commands and events."""
 
-    uow: AbstractUnitOfWork
-    event_handlers: dict[type[Event], list[Callable]] = field(default_factory=dict)
-    command_handlers: dict[type[Command], Callable] = field(default_factory=dict)
+    uows: dict[str, AbstractUnitOfWork]
+    event_handlers: dict[type[Event], list[Callable]]
+    command_handlers: dict[type[Command], Callable]
     queue: deque = field(default_factory=deque)
 
     def handle(self, message: Message) -> None:
@@ -46,7 +46,7 @@ class MessageBus:
             try:
                 logger.debug("Event: %s with handler %s", event, handler)
                 handler(event)
-                self.queue.extend(self.uow.collect_new_events())
+                self._collect_events()
             except Exception:
                 logger.exception("Exception handling event %s", event)
                 continue
@@ -57,7 +57,12 @@ class MessageBus:
         try:
             handler = self.command_handlers[type(command)]
             handler(command)
-            self.queue.extend(self.uow.collect_new_events())
+            self._collect_events()
         except Exception:
             logger.exception("Exception handling command %s", command)
             raise
+
+    def _collect_events(self) -> None:
+        """Collect events from all unit of works."""
+        for uow in self.uows.values():
+            self.queue.extend(uow.collect_new_events())

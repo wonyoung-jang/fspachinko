@@ -1,7 +1,7 @@
 """Model classes for the domain."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os.path import join
 from typing import TYPE_CHECKING
 
@@ -18,12 +18,13 @@ class AbstractPipeline(ABC):
     """Abstract pipeline."""
 
     is_create_dir: bool = False
-    filefilter_fn: Callable = lambda _: True
+    filters: dict[str, Callable] = field(default_factory=dict)
+    filefilter_fn: Callable[[FSEntry], bool] = lambda _: True
     filenamer_fn: Callable[[FSEntry, int], str] = lambda _, __: ""
-    transfer_fn: Callable = lambda _: True
+    transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
-    filecount_fn: Callable = lambda _: True
-    dirname_fn: Callable = lambda _: True
+    filecount_fn: Callable[[], int] = lambda: 1
+    dirname_fn: Callable[[], str] = lambda: ""
 
     @abstractmethod
     def get_currdir_dest(self) -> str:
