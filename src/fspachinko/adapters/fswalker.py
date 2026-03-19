@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
 class AbstractFSWalker(ABC):
     """Abstract class for filesystem walker."""
 

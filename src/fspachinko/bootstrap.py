@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 def bootstrap(
     m: ConfigModel,
-    pipeline: AbstractPipeline,
+    pipeline: AbstractPipeline | None = None,
     log_fn: Callable | None = None,
     fs_uow: AbstractUnitOfWork | None = None,
 ) -> MessageBus:
@@ -59,13 +59,15 @@ def bootstrap(
             unique_files_only=m.options.is_create_unique_dirs,
         )
     )
+    if pipeline is None:
+        pipeline = TransferPipeline(is_create_dir=m.directory.is_enabled)
     if log_fn is None:
         log_fn = logger.info
     if fs_uow is None and isinstance(pipeline, TransferPipeline):
         fs_uow = FileSystemUnitOfWork(pipeline=pipeline, job=job)
-    if fs_uow is None or not isinstance(fs_uow, FileSystemUnitOfWork):
+    if not isinstance(fs_uow, FileSystemUnitOfWork):
         msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
-        raise ValueError(msg)
+        raise TypeError(msg)
     uows = {
         "fs": fs_uow,
     }
