@@ -5,19 +5,19 @@ import shutil
 from dataclasses import dataclass
 from filecmp import cmp
 from io import UnsupportedOperation
-from os import link, makedirs, mkdir, scandir, symlink, unlink
-from os.path import basename, dirname, exists, join, split, splitext
-from random import choice
+from os import link, makedirs, mkdir, symlink, unlink
+from os.path import basename, dirname, exists, join, split
 from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 import fspachinko
 from fspachinko.constants import INVALID_FILENAME_CHARS, DefaultPath, FileError, FilenameTemplateMapKey, TransferMode
-from fspachinko.domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
+
+    from fspachinko.domain.model import FSEntry
 
 
 logger = logging.getLogger(__name__)
@@ -144,68 +144,6 @@ AVAILABLE_TRANSFER_FNS = {
     TransferMode.SYMLINK: symlink,
     TransferMode.HARDLINK: hardlink,
 }
-
-
-def walk(board: dict[str, FSPachinkoPin], root: str, *, should_follow_symlink: bool) -> Iterator[FSEntry]:
-    """Iterate through FSEntry objects."""
-    if root not in board:
-        get_pin(board, root)
-    curr = root
-    pop = board.pop
-    while True:
-        pin = get_pin(board, curr)
-        if not pin.is_scanned:
-            scan_pin(pin, should_follow_symlink=should_follow_symlink)
-        subdirs, files = pin.subdirs, pin.files
-        if not subdirs and not files:
-            if curr == root:
-                break
-            pop(curr)
-            curr = root
-            continue
-        should_descend = choice((True, False)) if subdirs and files else bool(subdirs)
-        if should_descend:
-            curr = choice(subdirs)
-            continue
-        if files:
-            yield choice(files)
-        curr = root
-
-
-def get_pin(board: dict[str, FSPachinkoPin], path: str) -> FSPachinkoPin:
-    """Add a new pin to the board, or return an existing one."""
-    return board.setdefault(path, FSPachinkoPin(path=path))
-
-
-def scan_pin(pin: FSPachinkoPin, *, should_follow_symlink: bool) -> None:
-    """Only look at the OS file system when a ball hits a specific folder for the first time."""
-    try:
-        pin.is_scanned = True
-        with scandir(pin.path) as it:
-            follow = should_follow_symlink
-            subdirs_append = pin.subdirs.append
-            files_append = pin.files.append
-            for e in it:
-                try:
-                    if e.is_dir(follow_symlinks=follow):
-                        subdirs_append(e.path)
-                    elif e.is_file(follow_symlinks=follow):
-                        stat = e.stat(follow_symlinks=follow)
-                        stem, ext = splitext(e.name)
-                        files_append(
-                            FSEntry(
-                                path=e.path,
-                                stem=stem,
-                                ext=ext,
-                                parent=dirname(e.path),
-                                size=stat.st_size,
-                                mtime=stat.st_mtime,
-                            )
-                        )
-                except OSError:
-                    logger.debug("Error accessing entry %s, skipping.", e.path)
-    except OSError:
-        logger.debug("Error scanning directory %s, skipping.", pin.path)
 
 
 def get_name_from_template(entry: FSEntry, count: int, template: str) -> str:

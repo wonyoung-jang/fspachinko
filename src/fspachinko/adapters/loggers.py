@@ -29,7 +29,7 @@ def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
     return handler
 
 
-def get_cli_log_handler() -> logging.Handler:
+def get_cli_log_handler() -> logging.StreamHandler:
     """Get a logging handler for CLI output."""
     handler = logging.StreamHandler()
     handler.set_name("console")

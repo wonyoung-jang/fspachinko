@@ -33,7 +33,6 @@ class TransferJob:
         """Update the job state after processing a directory."""
         if self.dst is None:
             return
-
         self.quota.update(entry.parent, entry.path)
         self.dst.accept(entry.size)
         self.events.append(FileTransferred(self.dst.count, entry.path, new_path))

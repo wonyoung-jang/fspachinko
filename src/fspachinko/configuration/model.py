@@ -161,7 +161,7 @@ class ConfigModel(BaseModel):
         try:
             return cls.model_validate(config)
         except Exception:
-            logger.exception("Failed to get configuration from dictionary.")
+            logger.exception("Failed to get configuration from dictionary. %s", config)
             raise
 
     @classmethod

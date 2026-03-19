@@ -9,8 +9,8 @@ from fspachinko.adapters.filesystemport import (
     get_available_transfer_modes,
     get_name_from_template,
     remove_directory,
-    walk,
 )
+from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.media import get_duration
 from fspachinko.constants import FilenameTemplate, FilterName, TransferMode
 from fspachinko.domain.model import DestinationDirectory, FSEntry
@@ -144,9 +144,7 @@ class CreateWalkerFnHandler:
 
     def __call__(self, cmd: CreateWalkerFn) -> None:
         """Handle the CreateWalkerFn command."""
-        self.pipeline.walker_fn = lambda board={}, root=cmd.root, should_follow_symlink=cmd.should_follow_symlink: walk(
-            board, root, should_follow_symlink=should_follow_symlink
-        )
+        self.pipeline.walker_fn = FSWalker(root=cmd.root, should_follow_symlink=cmd.should_follow_symlink)
 
 
 @dataclass(slots=True)
@@ -159,15 +157,20 @@ class CreateTextFilterFnHandler:
         """Handle the CreateTextFilterFn command."""
         if not (cmd.is_enabled and cmd.text):
             return
+
+        should_include = cmd.should_include
         patterns = get_text_patterns(cmd.text, cmd.re_fmt)
-        if cmd.should_include and len(patterns) == 1:
-            self.pipeline.filters[cmd.name] = lambda part: patterns[0].search(part) is not None
-        elif cmd.should_include:
-            self.pipeline.filters[cmd.name] = lambda part: any(p.search(part) for p in patterns)
-        elif len(patterns) == 1:
-            self.pipeline.filters[cmd.name] = lambda part: patterns[0].search(part) is None
-        else:
-            self.pipeline.filters[cmd.name] = lambda part: not any(p.search(part) for p in patterns)
+
+        def _get_text_filter() -> Callable[[str], bool]:
+            if should_include and len(patterns) == 1:
+                return lambda p: patterns[0].search(p) is not None
+            if should_include:
+                return lambda p: any(pattern.search(p) for pattern in patterns)
+            if len(patterns) == 1:
+                return lambda p: patterns[0].search(p) is None
+            return lambda p: not any(pattern.search(p) for pattern in patterns)
+
+        self.pipeline.filters[cmd.name] = _get_text_filter()
 
 
 @dataclass(slots=True)
@@ -180,12 +183,20 @@ class CreateRangeFilterFnHandler:
         """Handle the CreateRangeFilterFn command."""
         if not cmd.is_enabled:
             return
-        if cmd.minimum >= 0 and cmd.maximum < float("inf"):
-            self.pipeline.filters[cmd.name] = lambda val: cmd.minimum <= val <= cmd.maximum
-        elif cmd.minimum >= 0:
-            self.pipeline.filters[cmd.name] = lambda val: val >= cmd.minimum
-        elif cmd.maximum < float("inf"):
-            self.pipeline.filters[cmd.name] = lambda val: val <= cmd.maximum
+
+        minimum, maximum = cmd.minimum, cmd.maximum
+
+        def _get_range_filter() -> Callable[[int | float], bool]:
+            if minimum >= 0 and maximum < float("inf"):
+                return lambda v: minimum <= v <= maximum
+            if minimum >= 0:
+                return lambda v: v >= minimum
+            if maximum < float("inf"):
+                return lambda v: v <= maximum
+            msg = "Invalid range filter configuration."
+            raise ValueError(msg)
+
+        self.pipeline.filters[cmd.name] = _get_range_filter()
 
 
 @dataclass(slots=True)
@@ -197,31 +208,36 @@ class CreateFilefilterFnHandler:
     def __call__(self, _: CreateFilefilterFn) -> None:
         """Handle the CreateFilefilterFn command."""
 
-        def _get_filter(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
+        def _generate_valid_filefilters() -> Iterator[Callable[[FSEntry], bool]]:
+            for name, fn in self.pipeline.filters.items():
+                yield _get_filefilter(name, fn)
+
+        def _get_filefilter(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
             match name:
                 case FilterName.DIRNAME:
-                    return lambda e: fn(e.parent)
+                    return lambda e, fn=fn: fn(e.parent)
                 case FilterName.KEYWORD:
-                    return lambda e: fn(e.stem)
+                    return lambda e, fn=fn: fn(e.stem)
                 case FilterName.EXTENSION:
-                    return lambda e: fn(e.ext)
+                    return lambda e, fn=fn: fn(e.ext)
                 case FilterName.FILESIZE:
-                    return lambda e: fn(e.size)
+                    return lambda e, fn=fn: fn(e.size)
                 case FilterName.DURATION:
-                    return lambda e: fn(get_duration(e.path))
+                    return lambda e, fn=fn: fn(get_duration(e.path))
                 case _:
                     msg = f"Unknown filter name: {name}"
                     raise ValueError(msg)
 
-        def _get_filters() -> Iterator[Callable[[FSEntry], bool]]:
-            for name, fn in self.pipeline.filters.items():
-                yield _get_filter(name, fn)
+        filter_fns = tuple(_generate_valid_filefilters())
 
-        filter_fns = tuple(_get_filters())
-        if filter_fns and len(filter_fns) == 1:
-            self.pipeline.filefilter_fn = filter_fns[0]
-        elif filter_fns:
-            self.pipeline.filefilter_fn = lambda e: all(f(e) for f in filter_fns)
+        def _get_composite_filefilter() -> Callable[[FSEntry], bool]:
+            if filter_fns:
+                if len(filter_fns) == 1:
+                    return filter_fns[0]
+                return lambda e: all(f(e) for f in filter_fns)
+            return lambda _: True
+
+        self.pipeline.filefilter_fn = _get_composite_filefilter()
 
 
 ####################
