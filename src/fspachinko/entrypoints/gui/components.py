@@ -1,11 +1,12 @@
 """GUI components in PySide6."""
 
 import logging
+from dataclasses import dataclass
 from os.path import exists, isdir
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -30,7 +31,7 @@ from PySide6.QtWidgets import (
 
 from fspachinko.constants import FilenameTemplate, TransferMode
 
-from .qthelpers import browse_icon, open_dir_icon, set_qt_tips
+from .qthelpers import ACTION_CONFIG, browse_icon, open_dir_icon, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -38,6 +39,28 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class Actions:
+    """Main file menu actions."""
+
+    save: QAction
+    save_as: QAction
+    load: QAction
+    exit: QAction
+    start: QAction
+    stop: QAction
+
+    @classmethod
+    def build(cls) -> Actions:
+        """Get file menu actions."""
+        actions = {}
+        for name, (icon, text, shortcut, tip) in ACTION_CONFIG.items():
+            action = QAction(icon(), text, shortcut=shortcut())
+            set_qt_tips(action, tip)
+            actions[name] = action
+        return cls(**actions)
 
 
 class BaseGroupBox(QGroupBox):

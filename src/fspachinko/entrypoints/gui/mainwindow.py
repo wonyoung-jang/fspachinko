@@ -10,9 +10,8 @@ from fspachinko.adapters.filesystemport import get_available_transfer_modes, get
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import ByteUnit, GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, TimeUnit
 
-from .actions import Actions
 from .centralwidget import CentralWidget
-from .components import LogWidget, ProgressWidget
+from .components import Actions, LogWidget, ProgressWidget
 from .loggers_gui import setup_gui_logger
 from .workers import ProcessController
 
