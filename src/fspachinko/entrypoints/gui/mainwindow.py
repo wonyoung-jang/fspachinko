@@ -10,7 +10,7 @@ from fspachinko.adapters.filesystemport import get_available_transfer_modes, get
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import ByteUnit, GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, TimeUnit
 
-from .actions import get_actions
+from .actions import Actions
 from .centralwidget import CentralWidget
 from .components import LogWidget, ProgressWidget
 from .loggers_gui import setup_gui_logger
@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         self.setAnimated(True)
         self._original_title = ""
         self.config_path = ""
-        self.acts = get_actions()
+        self.actions_ = Actions.build()
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
         self.log_signal = setup_gui_logger()
@@ -56,12 +56,12 @@ class MainWindow(QMainWindow):
     def init_connections(self) -> None:
         """Initialize connections."""
         self.log_signal.logged.connect(self.logging.append)
-        self.acts.save.triggered.connect(self.save_profile)
-        self.acts.save_as.triggered.connect(self.save_profile_as_dialog)
-        self.acts.load.triggered.connect(self.open_profile_dialog)
-        self.acts.exit.triggered.connect(self.close)
-        self.acts.start.triggered.connect(self.on_start)
-        self.acts.stop.triggered.connect(self.on_stop)
+        self.actions_.save.triggered.connect(self.save_profile)
+        self.actions_.save_as.triggered.connect(self.save_profile_as_dialog)
+        self.actions_.load.triggered.connect(self.open_profile_dialog)
+        self.actions_.exit.triggered.connect(self.close)
+        self.actions_.start.triggered.connect(self.on_start)
+        self.actions_.stop.triggered.connect(self.on_stop)
         self.controller.signals.process_started.connect(self.handle_start_process)
         self.controller.signals.directory_started.connect(self.handle_directory_start)
         self.controller.signals.file_transferred.connect(self.handle_file_transfer)
@@ -71,25 +71,25 @@ class MainWindow(QMainWindow):
         """Initialize the menu bar."""
         menubar = self.menuBar()
         file_menu = menubar.addMenu(GUILabel.FILEMENU)
-        file_menu.addAction(self.acts.save)
-        file_menu.addAction(self.acts.save_as)
-        file_menu.addAction(self.acts.load)
+        file_menu.addAction(self.actions_.save)
+        file_menu.addAction(self.actions_.save_as)
+        file_menu.addAction(self.actions_.load)
         file_menu.addSeparator()
-        file_menu.addAction(self.acts.exit)
+        file_menu.addAction(self.actions_.exit)
         run_menu = menubar.addMenu(GUILabel.RUNMENU)
-        run_menu.addAction(self.acts.start)
-        run_menu.addAction(self.acts.stop)
+        run_menu.addAction(self.actions_.start)
+        run_menu.addAction(self.actions_.stop)
 
     def init_toolbar(self) -> None:
         """Initialize the toolbar."""
         toolbar = self.addToolBar(GUIName.TOOLBAR)
         toolbar.setObjectName(GUIName.TOOLBAR)
-        toolbar.addAction(self.acts.save)
-        toolbar.addAction(self.acts.save_as)
-        toolbar.addAction(self.acts.load)
-        toolbar.addAction(self.acts.start)
-        toolbar.addAction(self.acts.stop)
-        toolbar.addAction(self.acts.exit)
+        toolbar.addAction(self.actions_.save)
+        toolbar.addAction(self.actions_.save_as)
+        toolbar.addAction(self.actions_.load)
+        toolbar.addAction(self.actions_.start)
+        toolbar.addAction(self.actions_.stop)
+        toolbar.addAction(self.actions_.exit)
 
     def init_statusbar(self) -> None:
         """Initialize the status bar."""

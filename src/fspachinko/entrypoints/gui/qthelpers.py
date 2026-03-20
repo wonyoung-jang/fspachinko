@@ -3,7 +3,7 @@
 from functools import cache
 from typing import TYPE_CHECKING
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QKeySequence
 
 from fspachinko.adapters.filesystemport import get_icon_path
 from fspachinko.constants import IconFilename
@@ -73,3 +73,49 @@ def browse_icon() -> QIcon:
 def open_dir_icon() -> QIcon:
     """Get the open directory icon."""
     return QIcon(get_icon_path(IconFilename.OPEN_DIR))
+
+
+@cache
+def save_shortcut() -> QKeySequence:
+    """Get the save shortcut."""
+    return QKeySequence("Ctrl+S")
+
+
+@cache
+def save_as_shortcut() -> QKeySequence:
+    """Get the save as shortcut."""
+    return QKeySequence("Ctrl+Shift+S")
+
+
+@cache
+def load_shortcut() -> QKeySequence:
+    """Get the load shortcut."""
+    return QKeySequence("Ctrl+O")
+
+
+@cache
+def exit_shortcut() -> QKeySequence:
+    """Get the exit shortcut."""
+    return QKeySequence("Ctrl+W")
+
+
+@cache
+def start_shortcut() -> QKeySequence:
+    """Get the start shortcut."""
+    return QKeySequence("Ctrl+R")
+
+
+@cache
+def stop_shortcut() -> QKeySequence:
+    """Get the stop shortcut."""
+    return QKeySequence("ESC")
+
+
+ACTION_CONFIG = {
+    "save": (save_icon, "&Save Profile", save_shortcut, "Save current profile (Ctrl+S)"),
+    "save_as": (save_as_icon, "Save Profile &As", save_as_shortcut, "Save current profile as ... (Ctrl+Shift+S)"),
+    "load": (load_icon, "&Load Profile", load_shortcut, "Load profile (Ctrl+O)"),
+    "exit": (exit_icon, "&Exit", exit_shortcut, "Exit application (Ctrl+W)"),
+    "start": (start_icon, "&Start", start_shortcut, "Start (Ctrl+R)"),
+    "stop": (stop_icon, "S&top", stop_shortcut, "Stop (ESC)"),
+}

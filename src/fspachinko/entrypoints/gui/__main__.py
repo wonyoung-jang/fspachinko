@@ -9,10 +9,9 @@ from fspachinko.constants import AppSetting
 from .mainwindow import MainWindow
 from .qthelpers import window_icon
 
-q_core_app = QCoreApplication
-q_core_app.setOrganizationName(AppSetting.ORGANIZATION_NAME)
-q_core_app.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)
-q_core_app.setApplicationName(AppSetting.APPLICATION_NAME)
+QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
+QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)
+QCoreApplication.setApplicationName(AppSetting.APPLICATION_NAME)
 
 # Windows only - taskbar icon fix
 try:
