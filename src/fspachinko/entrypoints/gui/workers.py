@@ -6,29 +6,12 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from fspachinko.adapters.loggers import get_dest_log_filehandler
-from fspachinko.adapters.pipeline import TransferPipeline
-from fspachinko.bootstrap import bootstrap
-from fspachinko.constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
-from fspachinko.domain.commands import (
-    Command,
-    CreateDirnameFn,
-    CreateFilecountFn,
-    CreateFilefilterFn,
-    CreateFilenameFn,
-    CreateRangeFilterFn,
-    CreateTextFilterFn,
-    CreateTransferFn,
-    CreateTransferJob,
-    CreateWalkerFn,
-    ProcessDirectory,
-    StopProcess,
-)
+from fspachinko.bootstrap import FSPachinkoBootstrapper, setup_bus
+from fspachinko.domain.commands import ProcessDirectory, StopProcess
 from fspachinko.domain.events import FileTransferred
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from fspachinko.configuration.model import ConfigModel, RangeFilterModel
+    from fspachinko.configuration.model import ConfigModel
     from fspachinko.service.messagebus import MessageBus
 
 
@@ -63,37 +46,6 @@ class ProcessController(QObject):
             self.worker.stop()
 
 
-def _setup_commands(c: ConfigModel) -> Iterator[Command]:
-    yield from (
-        CreateTransferFn(c.options.transfer_mode),
-        CreateFilenameFn(c.filename.template, c.filename.is_enabled),
-        CreateFilecountFn(c.filecount.count, (c.filecount.rand_min, c.filecount.rand_max), c.filecount.is_rand_enabled),
-        CreateDirnameFn(c.dest, c.directory.name, c.directory.is_enabled),
-        CreateWalkerFn(c.root, c.options.should_follow_symlink),
-    )
-    text_specs = [
-        (FilterName.DIRNAME, c.dirname, ReStrFmt.DIRECTORY),
-        (FilterName.KEYWORD, c.keyword, ReStrFmt.KEYWORD),
-        (FilterName.EXTENSION, c.extension, ReStrFmt.EXTENSION),
-    ]
-    for name, model, fmt in text_specs:
-        yield CreateTextFilterFn(name, model.text, fmt, model.is_enabled, model.should_include)
-    range_specs: list[tuple[str, RangeFilterModel, dict]] = [
-        (FilterName.FILESIZE, c.filesize, SIZE_MAP),
-        (FilterName.DURATION, c.duration, TIME_MAP),
-    ]
-    for name, model, unit_map in range_specs:
-        mul = unit_map.get(model.unit, 1.0)
-        yield CreateRangeFilterFn(name, model.minimum * mul, model.maximum * mul, model.is_enabled)
-    yield CreateFilefilterFn()
-
-
-def _setup_bus(bus: MessageBus, config: ConfigModel) -> None:
-    """Bootstrap the application."""
-    for cmd in _setup_commands(config):
-        bus.handle(cmd)
-
-
 class MainWorker(QRunnable):
     """Worker for running process."""
 
@@ -107,17 +59,10 @@ class MainWorker(QRunnable):
     @Slot()
     def run(self) -> None:
         """Run the process."""
-        pipeline = TransferPipeline(is_create_dir=self.config.directory.is_enabled)
-        self.bus = bootstrap(m=self.config, pipeline=pipeline)
+        bootstrapper = FSPachinkoBootstrapper()
+        self.bus, pipeline = bootstrapper.bus, bootstrapper.fs_uow.pipeline
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
-        _setup_bus(self.bus, self.config)
-        self.bus.handle(
-            CreateTransferJob(
-                root=self.config.root,
-                max_per_dir=self.config.options.max_per_dir,
-                unique_files_only=self.config.options.is_create_unique_dirs,
-            )
-        )
+        setup_bus(self.bus, self.config)
         root_logger = logging.getLogger()
         self.signals.process_started.emit(self.config.directory.count)
         for _ in range(self.config.directory.count):

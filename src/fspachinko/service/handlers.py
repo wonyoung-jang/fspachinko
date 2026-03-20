@@ -31,6 +31,8 @@ if TYPE_CHECKING:
         CreateTransferJob,
         CreateWalkerFn,
         ProcessDirectory,
+        SetPipelineCreateDir,
+        SetRngSeed,
         StopProcess,
     )
     from fspachinko.domain.events import DirectoryTransferred, FileTransferred
@@ -98,6 +100,28 @@ class StopProcessHandler:
         """Handle the StopProcess command."""
         job = self.uow.job
         job.request_stop()
+
+
+@dataclass(slots=True)
+class SetRngSeedHandler:
+    """Handle the SetRngSeed command."""
+
+    rng_seed_fn: Callable
+
+    def __call__(self, cmd: SetRngSeed) -> None:
+        """Handle the SetRngSeed command."""
+        self.rng_seed_fn(cmd.rng_seed)
+
+
+@dataclass(slots=True)
+class SetPipelineCreateDirHandler:
+    """Handle the SetPipelineCreateDir command."""
+
+    pipeline: AbstractPipeline
+
+    def __call__(self, cmd: SetPipelineCreateDir) -> None:
+        """Handle the SetPipelineCreateDir command."""
+        self.pipeline.is_create_dir = cmd.is_create_dir
 
 
 @dataclass(slots=True)

@@ -31,6 +31,20 @@ class StopProcess(Command):
 
 
 @dataclass(slots=True, frozen=True)
+class SetRngSeed(Command):
+    """Command to set the RNG seed."""
+
+    rng_seed: int | str | bytes | None
+
+
+@dataclass(slots=True, frozen=True)
+class SetPipelineCreateDir(Command):
+    """Command to set the pipeline's create_dir flag."""
+
+    is_create_dir: bool
+
+
+@dataclass(slots=True, frozen=True)
 class CreateTransferFn(Command):
     """Command to create a transfer function."""
 

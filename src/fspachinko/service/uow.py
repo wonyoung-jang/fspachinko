@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
+from fspachinko.adapters.pipeline import TransferPipeline
 from fspachinko.domain.model import TransferJob
 
 if TYPE_CHECKING:
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class AbstractUnitOfWork(ABC):
     """Abstract Unit of Work."""
+
+    pipeline: AbstractPipeline
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
@@ -49,7 +52,7 @@ class AbstractUnitOfWork(ABC):
 class FileSystemUnitOfWork(AbstractUnitOfWork):
     """Abstract Unit of Work."""
 
-    pipeline: AbstractPipeline
+    pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     pending: list[tuple[str, str]] = field(default_factory=list)
     _job: TransferJob = field(default_factory=TransferJob)
 

@@ -11,7 +11,8 @@ from fspachinko.domain.events import Event
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .uow import AbstractUnitOfWork
+    from .eventcollector import CompositeEventCollector
+
 
 type Message = Command | Event
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MessageBus:
     """A simple message bus for handling commands and events."""
 
-    uows: dict[str, AbstractUnitOfWork]
+    collector: CompositeEventCollector
     event_handlers: dict[type[Event], list[Callable]]
     command_handlers: dict[type[Command], Callable]
     queue: deque = field(default_factory=deque)
@@ -46,7 +47,7 @@ class MessageBus:
             try:
                 logger.debug("Event: %s with handler %s", event, handler)
                 handler(event)
-                self._collect_events()
+                self.queue.extend(self.collector.collect_new_events())
             except Exception:
                 logger.exception("Exception handling event %s", event)
                 continue
@@ -57,12 +58,7 @@ class MessageBus:
         try:
             handler = self.command_handlers[type(command)]
             handler(command)
-            self._collect_events()
+            self.queue.extend(self.collector.collect_new_events())
         except Exception:
             logger.exception("Exception handling command %s", command)
             raise
-
-    def _collect_events(self) -> None:
-        """Collect events from all unit of works."""
-        for uow in self.uows.values():
-            self.queue.extend(uow.collect_new_events())
