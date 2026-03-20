@@ -154,23 +154,3 @@ class ConfigModel(BaseModel):
         if not isabs(val):
             return realpath(val)
         return val
-
-    @classmethod
-    def from_dict(cls, config: dict) -> ConfigModel:
-        """Get the current configuration from a dictionary."""
-        try:
-            return cls.model_validate(config)
-        except Exception:
-            logger.exception("Failed to get configuration from dictionary. %s", config)
-            raise
-
-    @classmethod
-    def from_json_path(cls, path: str) -> ConfigModel:
-        """Get the current configuration from a JSON file."""
-        try:
-            with open(path, encoding="utf-8") as f:
-                data = f.read()
-            return cls.model_validate_json(data)
-        except Exception:
-            logger.exception("Failed to get configuration from JSON file: %s", path)
-            raise

@@ -159,7 +159,7 @@ def get_name_from_template(entry: FSEntry, count: int, template: str) -> str:
     try:
         formatted_stem = template.format_map(mapping)
         return "".join(c for c in formatted_stem if c not in INVALID_FILENAME_CHARS)
-    except KeyError, ValueError:
+    except KeyError, ValueError, IndexError:
         return entry.stem
 
 

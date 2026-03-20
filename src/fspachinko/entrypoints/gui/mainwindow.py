@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
-        self.controller.start(self.ui.config)
+        self.controller.start(self.config_repo.model_from_dict(self.ui.config))
 
     @Slot()
     def on_stop(self) -> None:

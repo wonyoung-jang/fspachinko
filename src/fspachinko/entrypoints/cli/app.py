@@ -7,7 +7,7 @@ from cyclopts import App
 from fspachinko.adapters.filesystemport import get_config_path
 from fspachinko.adapters.pipeline import TransferPipeline
 from fspachinko.bootstrap import bootstrap
-from fspachinko.configuration.model import ConfigModel
+from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import DefaultPath
 from fspachinko.domain.commands import ProcessDirectory
 
@@ -24,7 +24,8 @@ def run(config_path: str = default_config_path) -> None:
         config_path (str): Path to configuration file.
 
     """
-    m = ConfigModel.from_json_path(config_path)
+    repo = JSONConfigRepository()
+    m = repo.model_from_json_path(config_path)
     pipeline = TransferPipeline(m.directory.is_enabled)
     bus = bootstrap(m=m, pipeline=pipeline)
     logger.debug("Process started: dir_count=%s", m.directory.count)

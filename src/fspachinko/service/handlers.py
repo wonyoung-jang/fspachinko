@@ -13,7 +13,7 @@ from fspachinko.adapters.filesystemport import (
 from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.media import get_duration
 from fspachinko.constants import FilenameTemplate, FilterName, TransferMode
-from fspachinko.domain.model import DestinationDirectory, FSEntry
+from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
 if TYPE_CHECKING:
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         CreateRangeFilterFn,
         CreateTextFilterFn,
         CreateTransferFn,
+        CreateTransferJob,
         CreateWalkerFn,
         ProcessDirectory,
         StopProcess,
@@ -40,6 +41,23 @@ if TYPE_CHECKING:
 ######################
 ## COMMAND HANDLERS ##
 ######################
+@dataclass(slots=True)
+class CreateTransferJobHandler:
+    """Handle the CreateTransferJob command."""
+
+    uow: FileSystemUnitOfWork
+
+    def __call__(self, cmd: CreateTransferJob) -> None:
+        """Handle the CreateTransferJob command."""
+        self.uow.job = TransferJob(
+            quota=DiversityQuota(
+                root=cmd.root,
+                max_per_dir=cmd.max_per_dir,
+                unique_files_only=cmd.unique_files_only,
+            ),
+        )
+
+
 @dataclass(slots=True)
 class ProcessDirectoryHandler:
     """Handle the StartProcessingDirectory command."""

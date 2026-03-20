@@ -5,12 +5,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
+from fspachinko.domain.model import TransferJob
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.events import Event
-    from fspachinko.domain.model import TransferJob
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +50,23 @@ class FileSystemUnitOfWork(AbstractUnitOfWork):
     """Abstract Unit of Work."""
 
     pipeline: AbstractPipeline
-    job: TransferJob
     pending: list[tuple[str, str]] = field(default_factory=list)
+    _job: TransferJob = field(default_factory=TransferJob)
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
         self.pending.clear()
         return super().__enter__()
+
+    @property
+    def job(self) -> TransferJob:
+        """Get the current transfer job."""
+        return self._job
+
+    @job.setter
+    def job(self, job: TransferJob) -> None:
+        """Set the current transfer job."""
+        self._job = job
 
     def collect_new_events(self) -> Iterator[Event]:
         """Collect new events that were generated during the transaction."""

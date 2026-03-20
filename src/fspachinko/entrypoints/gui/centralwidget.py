@@ -52,6 +52,9 @@ class CentralWidget(QWidget):
     def add_to_layout(self, *widgets: QWidget) -> None:
         """Build the layout."""
         layout = self.layout()
+        if layout is None:
+            msg = "Layout is not set"
+            raise RuntimeError(msg)
         for w in widgets:
             layout.addWidget(w)
 

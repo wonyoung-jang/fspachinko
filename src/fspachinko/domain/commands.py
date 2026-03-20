@@ -9,6 +9,15 @@ class Command:
 
 
 @dataclass(slots=True, frozen=True)
+class CreateTransferJob(Command):
+    """Command to create a transfer job."""
+
+    root: str
+    max_per_dir: int | float
+    unique_files_only: bool
+
+
+@dataclass(slots=True, frozen=True)
 class ProcessDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 

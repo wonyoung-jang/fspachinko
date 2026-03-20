@@ -1,7 +1,7 @@
 """GUI components in PySide6."""
 
 import logging
-import os
+from os.path import exists, isdir
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl, Slot
@@ -108,8 +108,10 @@ class PathSelectorWidget(BaseGroupBox):
     def open(self) -> None:
         """Open the currently selected path in file explorer."""
         path = self.lbl_selected.text()
-        if path and not QDesktopServices.openUrl(QUrl.fromLocalFile(self.lbl_selected.text())):
+        if not path or not exists(path):
             logger.warning("Failed to open path %s", path)
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
         """Handle drag enter event for folder paths."""
@@ -120,7 +122,7 @@ class PathSelectorWidget(BaseGroupBox):
         """Handle drop event for folder paths."""
         for url in event.mimeData().urls():
             path = url.toLocalFile()
-            if os.path.isdir(path):
+            if isdir(path):
                 self.lbl_selected.setText(path)
 
 
@@ -450,4 +452,6 @@ class ProgressWidget(QWidget):
     def file_percentage(self) -> int:
         """Calculate the current file progress percentage."""
         maximum = self.progbar_files.maximum()
-        return int((self.progbar_files.value()) * 100 / maximum) if maximum > 0 else 0
+        if maximum <= 0:
+            return 0
+        return int((self.progbar_files.value()) * 100 / maximum)

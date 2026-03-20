@@ -8,7 +8,6 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.adapters.pipeline import TransferPipeline
 from fspachinko.bootstrap import bootstrap
-from fspachinko.configuration.model import ConfigModel, RangeFilterModel
 from fspachinko.constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from fspachinko.domain.commands import (
     Command,
@@ -19,6 +18,7 @@ from fspachinko.domain.commands import (
     CreateRangeFilterFn,
     CreateTextFilterFn,
     CreateTransferFn,
+    CreateTransferJob,
     CreateWalkerFn,
     ProcessDirectory,
     StopProcess,
@@ -28,6 +28,7 @@ from fspachinko.domain.events import FileTransferred
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from fspachinko.configuration.model import ConfigModel, RangeFilterModel
     from fspachinko.service.messagebus import MessageBus
 
 
@@ -50,9 +51,9 @@ class ProcessController(QObject):
         self.threadpool = QThreadPool()
         self.worker: MainWorker | None = None
 
-    def start(self, config: dict) -> None:
+    def start(self, config: ConfigModel) -> None:
         """Start the process."""
-        self.worker = MainWorker(ConfigModel.from_dict(config), self.signals)
+        self.worker = MainWorker(config, self.signals)
         self.worker.setAutoDelete(False)
         self.threadpool.start(self.worker)
 
@@ -110,6 +111,13 @@ class MainWorker(QRunnable):
         self.bus = bootstrap(m=self.config, pipeline=pipeline)
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
         _setup_bus(self.bus, self.config)
+        self.bus.handle(
+            CreateTransferJob(
+                root=self.config.root,
+                max_per_dir=self.config.options.max_per_dir,
+                unique_files_only=self.config.options.is_create_unique_dirs,
+            )
+        )
         root_logger = logging.getLogger()
         self.signals.process_started.emit(self.config.directory.count)
         for _ in range(self.config.directory.count):

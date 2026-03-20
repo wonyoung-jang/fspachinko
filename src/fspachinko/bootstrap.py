@@ -4,6 +4,8 @@ import logging
 from random import seed
 from typing import TYPE_CHECKING
 
+from fspachinko.domain.commands import CreateTransferJob
+
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .domain.commands import (
     CreateDirnameFn,
@@ -18,7 +20,6 @@ from .domain.commands import (
     StopProcess,
 )
 from .domain.events import DirectoryTransferred, FileTransferred
-from .domain.model import DiversityQuota, TransferJob
 from .service.handlers import (
     CreateDirnameFnHandler,
     CreateFilecountFnHandler,
@@ -27,6 +28,7 @@ from .service.handlers import (
     CreateRangeFilterFnHandler,
     CreateTextFilterFnHandler,
     CreateTransferFnHandler,
+    CreateTransferJobHandler,
     CreateWalkerFnHandler,
     DirectoryTransferredHandler,
     FileTransferredHandler,
@@ -52,19 +54,12 @@ def bootstrap(
 ) -> MessageBus:
     """Bootstrap the application and return the message bus."""
     seed(m.options.rng_seed)
-    job = TransferJob(
-        quota=DiversityQuota(
-            root=m.root,
-            max_per_dir=m.options.max_per_dir,
-            unique_files_only=m.options.is_create_unique_dirs,
-        )
-    )
     if pipeline is None:
         pipeline = TransferPipeline(is_create_dir=m.directory.is_enabled)
     if log_fn is None:
         log_fn = logger.info
     if fs_uow is None and isinstance(pipeline, TransferPipeline):
-        fs_uow = FileSystemUnitOfWork(pipeline=pipeline, job=job)
+        fs_uow = FileSystemUnitOfWork(pipeline=pipeline)
     if not isinstance(fs_uow, FileSystemUnitOfWork):
         msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
         raise TypeError(msg)
@@ -76,6 +71,7 @@ def bootstrap(
         DirectoryTransferred: [DirectoryTransferredHandler(log_fn=log_fn)],
     }
     command_handlers = {
+        CreateTransferJob: CreateTransferJobHandler(uow=uows["fs"]),
         ProcessDirectory: ProcessDirectoryHandler(uow=uows["fs"]),
         StopProcess: StopProcessHandler(uow=uows["fs"]),
         CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
