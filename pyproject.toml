@@ -48,7 +48,7 @@ docs = [
 ]
 gui = [
     "pyinstaller>=6.19.0",
-    "pyside6>=6.10.2",
+    "pyside6-essentials>=6.10.2",
 ]
 tests = [
     "pytest>=9.0.2",
