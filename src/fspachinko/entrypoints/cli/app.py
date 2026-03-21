@@ -5,7 +5,7 @@ import logging
 from cyclopts import App
 
 from fspachinko.adapters.filesystemport import get_config_path
-from fspachinko.bootstrap import FSPachinkoBootstrapper, setup_bus
+from fspachinko.bootstrap import bootstrap, setup_bus
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import DefaultPath
 from fspachinko.domain.commands import ProcessDirectory
@@ -25,13 +25,12 @@ def run(config_path: str = default_config_path) -> None:
     """
     repo = JSONConfigRepository()
     config = repo.model_from_json_path(config_path)
-    bootstrapper = FSPachinkoBootstrapper()
-    bus, pipeline = bootstrapper.bus, bootstrapper.pipeline
+    bus, pipeline = bootstrap()
     setup_bus(bus, config)
     logger.debug("Process started: dir_count=%s", config.directory.count)
     for _ in range(config.directory.count):
+        dest_dir = pipeline.dirname_fn()
         target_qty = pipeline.filecount_fn()
-        dest_dir = pipeline.get_currdir_dest()
         logger.debug("Processing directory: %s, target_qty=%s", dest_dir, target_qty)
         start_process_cmd = ProcessDirectory(dest_dir, target_qty=target_qty)
         bus.handle(start_process_cmd)

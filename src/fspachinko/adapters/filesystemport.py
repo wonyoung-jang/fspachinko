@@ -11,8 +11,7 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-import fspachinko
-from fspachinko.constants import INVALID_FILENAME_CHARS, DefaultPath, FileError, FilenameTemplateMapKey, TransferMode
+from fspachinko.constants import INVALID_FILENAME_CHARS, DefaultPath, FilenameTemplateMapKey, OSCrossError, TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 class DataPaths:
     """Dataclass for general directories used."""
 
-    data: str = join(dirname(fspachinko.__file__), DefaultPath.DATA_DIR)
+    data: str = join(dirname(DefaultPath.APP), DefaultPath.DATA_DIR)
     icons: str = join(data, DefaultPath.ICON_DIR)
     configs: str = join(data, DefaultPath.CONFIG_DIR)
     profiles: str = join(data, DefaultPath.GUI_PROFILE_DIR)
@@ -128,8 +127,8 @@ def hardlink(src: str, dst: str) -> None:
     try:
         link(src, dst)
     except OSError as e:
-        is_win_x_error = e.winerror == FileError.WINDOWS_CROSS_DRIVE_ERROR
-        is_unix_x_error = e.errno == FileError.UNIX_CROSS_FILESYSTEM_ERROR
+        is_win_x_error = e.winerror == OSCrossError.WINDOWS
+        is_unix_x_error = e.errno == OSCrossError.UNIX
         if is_win_x_error or is_unix_x_error:
             symlink(src, dst)
         else:

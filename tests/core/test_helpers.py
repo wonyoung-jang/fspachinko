@@ -16,55 +16,55 @@ def test_get_status() -> None:
     """Test get_status."""
     assert (
         get_status(
-            is_success=True,
-            is_none_found_and_create_dir=False,
-            is_stop_requested=False,
-            is_root_locked=False,
+            success=True,
+            empty_creation=False,
+            stop_requested=False,
+            root_locked=False,
         )
         == StateStatus.SUCCESS
     )
     assert (
         get_status(
-            is_success=False,
-            is_none_found_and_create_dir=True,
-            is_stop_requested=False,
-            is_root_locked=False,
+            success=False,
+            empty_creation=True,
+            stop_requested=False,
+            root_locked=False,
         )
         == StateStatus.NO_FILES_FOUND_FOLDER_DELETED
     )
     assert (
         get_status(
-            is_success=False,
-            is_none_found_and_create_dir=True,
-            is_stop_requested=False,
-            is_root_locked=True,
+            success=False,
+            empty_creation=True,
+            stop_requested=False,
+            root_locked=True,
         )
         == StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
     )
     assert (
         get_status(
-            is_success=False,
-            is_none_found_and_create_dir=False,
-            is_stop_requested=True,
-            is_root_locked=False,
+            success=False,
+            empty_creation=False,
+            stop_requested=True,
+            root_locked=False,
         )
         == StateStatus.USER_STOPPED
     )
     assert (
         get_status(
-            is_success=False,
-            is_none_found_and_create_dir=False,
-            is_stop_requested=False,
-            is_root_locked=True,
+            success=False,
+            empty_creation=False,
+            stop_requested=False,
+            root_locked=True,
         )
         == StateStatus.ALL_FILES_SEARCHED
     )
     assert (
         get_status(
-            is_success=False,
-            is_none_found_and_create_dir=False,
-            is_stop_requested=False,
-            is_root_locked=False,
+            success=False,
+            empty_creation=False,
+            stop_requested=False,
+            root_locked=False,
         )
         == StateStatus.UNDEFINED
     )

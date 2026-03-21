@@ -1,12 +1,14 @@
 """Handlers module."""
 
 from dataclasses import dataclass
+from functools import partial
 from os.path import join
 from random import randint
 from typing import TYPE_CHECKING
 
 from fspachinko.adapters.filesystemport import (
     get_available_transfer_modes,
+    get_dest_dir_path,
     get_name_from_template,
     remove_directory,
 )
@@ -17,7 +19,7 @@ from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntr
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.commands import (
@@ -36,8 +38,7 @@ if TYPE_CHECKING:
         StopProcess,
     )
     from fspachinko.domain.events import DirectoryTransferred, FileTransferred
-
-    from .uow import FileSystemUnitOfWork
+    from fspachinko.service.uow import AbstractUnitOfWork
 
 
 ######################
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
 class CreateTransferJobHandler:
     """Handle the CreateTransferJob command."""
 
-    uow: FileSystemUnitOfWork
+    uow: AbstractUnitOfWork
 
     def __call__(self, cmd: CreateTransferJob) -> None:
         """Handle the CreateTransferJob command."""
@@ -62,7 +63,7 @@ class CreateTransferJobHandler:
 class ProcessDirectoryHandler:
     """Handle the StartProcessingDirectory command."""
 
-    uow: FileSystemUnitOfWork
+    uow: AbstractUnitOfWork
     pipeline: AbstractPipeline
 
     def __call__(self, cmd: ProcessDirectory) -> None:
@@ -94,7 +95,7 @@ class ProcessDirectoryHandler:
 class StopProcessHandler:
     """Handle the StopProcess command."""
 
-    uow: FileSystemUnitOfWork
+    uow: AbstractUnitOfWork
 
     def __call__(self, _: StopProcess) -> None:
         """Handle the StopProcess command."""
@@ -173,7 +174,7 @@ class CreateDirnameFnHandler:
     def __call__(self, cmd: CreateDirnameFn) -> None:
         """Handle the CreateDirnameFn command."""
         if cmd.is_enabled:
-            self.pipeline.dirname_fn = lambda: join(cmd.dest, cmd.name)
+            self.pipeline.dirname_fn = lambda: get_dest_dir_path(join(cmd.dest, cmd.name))
         else:
             self.pipeline.dirname_fn = lambda: cmd.dest
 
@@ -241,6 +242,15 @@ class CreateRangeFilterFnHandler:
         self.pipeline.filters[cmd.name] = _get_range_filter()
 
 
+FILTER_MAPPINGS: dict[str, Callable[[FSEntry, Callable], bool]] = {
+    FilterName.DIRNAME: lambda e, fn: fn(e.parent),
+    FilterName.KEYWORD: lambda e, fn: fn(e.stem),
+    FilterName.EXTENSION: lambda e, fn: fn(e.ext),
+    FilterName.FILESIZE: lambda e, fn: fn(e.size),
+    FilterName.DURATION: lambda e, fn: fn(get_duration(e.path)),
+}
+
+
 @dataclass(slots=True)
 class CreateFilefilterFnHandler:
     """Handle the CreateFilefilterFn command."""
@@ -250,37 +260,24 @@ class CreateFilefilterFnHandler:
     def __call__(self, _: CreateFilefilterFn) -> None:
         """Handle the CreateFilefilterFn command."""
 
-        def _generate_valid_filefilters() -> Iterator[Callable[[FSEntry], bool]]:
-            for name, fn in self.pipeline.filters.items():
-                yield _get_filefilter(name, fn)
+        def _build(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
+            if name not in FILTER_MAPPINGS:
+                msg = f"Unknown filter name: {name}"
+                raise ValueError(msg)
+            return partial(FILTER_MAPPINGS[name], fn=fn)
 
-        def _get_filefilter(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
-            match name:
-                case FilterName.DIRNAME:
-                    return lambda e, fn=fn: fn(e.parent)
-                case FilterName.KEYWORD:
-                    return lambda e, fn=fn: fn(e.stem)
-                case FilterName.EXTENSION:
-                    return lambda e, fn=fn: fn(e.ext)
-                case FilterName.FILESIZE:
-                    return lambda e, fn=fn: fn(e.size)
-                case FilterName.DURATION:
-                    return lambda e, fn=fn: fn(get_duration(e.path))
+        filter_fns = tuple(_build(name, fn) for name, fn in self.pipeline.filters.items())
+
+        def _composite() -> Callable[[FSEntry], bool]:
+            match len(filter_fns):
+                case 0:
+                    return lambda _: True
+                case 1:
+                    return filter_fns[0]
                 case _:
-                    msg = f"Unknown filter name: {name}"
-                    raise ValueError(msg)
+                    return lambda e: all(f(e) for f in filter_fns)
 
-        filter_fns = tuple(_generate_valid_filefilters())
-
-        def _get_composite_filefilter() -> Callable[[FSEntry], bool]:
-            n_filters = len(filter_fns)
-            if n_filters > 1:
-                return lambda e: all(f(e) for f in filter_fns)
-            if n_filters == 1:
-                return filter_fns[0]
-            return lambda _: True
-
-        self.pipeline.filefilter_fn = _get_composite_filefilter()
+        self.pipeline.filefilter_fn = _composite()
 
 
 ####################
@@ -306,10 +303,10 @@ class DirectoryTransferredHandler:
     def __call__(self, event: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
         status = get_status(
-            is_success=event.is_success,
-            is_none_found_and_create_dir=event.is_empty_creation,
-            is_stop_requested=event.is_stop_requested,
-            is_root_locked=event.is_root_locked,
+            success=event.is_success,
+            empty_creation=event.is_empty_creation,
+            stop_requested=event.is_stop_requested,
+            root_locked=event.is_root_locked,
         )
         report = get_report(event.path, event.size, event.count, event.target_qty)
         self.log_fn("%s\n%s", status, report)

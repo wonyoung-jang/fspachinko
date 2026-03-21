@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class AbstractRepository(ABC):
     """Abstract base class for repositories."""
 
+    transfer_fn: Callable = lambda _, __: None
+
     @abstractmethod
     def add(self, job: TransferJob) -> None:
         """Add an item to the repository."""
@@ -24,13 +26,16 @@ class AbstractRepository(ABC):
     def get(self) -> TransferJob:
         """Retrieve an item from the repository by its identifier."""
 
+    @abstractmethod
+    def add_transfer(self, src: str, dst: str) -> None:
+        """Add a pending transfer to the repository."""
+
 
 @dataclass(slots=True)
 class TransferRepository(AbstractRepository):
     """Repository for transfer jobs."""
 
     job: TransferJob = field(default_factory=TransferJob)
-    transfer_fn: Callable = lambda _, __: None
     _pending: list[tuple[str, str]] = field(default_factory=list)
 
     def add(self, job: TransferJob) -> None:

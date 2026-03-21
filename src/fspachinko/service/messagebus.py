@@ -38,7 +38,6 @@ class MessageBus:
                 self.handle_command(msg)
             else:
                 msg = f"Message must be an Event or Command, got {type(msg)}"
-                logger.error(msg)
                 raise TypeError(msg)
 
     def handle_event(self, event: Event) -> None:

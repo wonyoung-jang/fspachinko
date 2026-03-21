@@ -4,14 +4,14 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
 from fspachinko.adapters.loggers import initialize_logging
-from fspachinko.constants import AppSetting
 
+from .constants import GUIAppSetting
 from .mainwindow import MainWindow
 from .qthelpers import window_icon
 
-QCoreApplication.setOrganizationName(AppSetting.ORGANIZATION_NAME)
-QCoreApplication.setOrganizationDomain(AppSetting.ORGANIZATION_DOMAIN)
-QCoreApplication.setApplicationName(AppSetting.APPLICATION_NAME)
+QCoreApplication.setOrganizationName(GUIAppSetting.ORGANIZATION_NAME)
+QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)
+QCoreApplication.setApplicationName(GUIAppSetting.APPLICATION_NAME)
 
 # Windows only - taskbar icon fix
 try:

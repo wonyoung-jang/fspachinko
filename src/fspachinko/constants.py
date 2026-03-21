@@ -2,6 +2,8 @@
 
 from enum import IntEnum, StrEnum
 
+import fspachinko
+
 # General constants
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
 
@@ -9,6 +11,7 @@ INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
 class DefaultPath(StrEnum):
     """Enumeration for default configuration filenames."""
 
+    APP = fspachinko.__file__
     CONFIG = "fspachinko.json"
     DATA_DIR = "_data"
     ICON_DIR = "icons"
@@ -25,28 +28,11 @@ class ReStrFmt(StrEnum):
     EXTENSION = r"{}$"
 
 
-class FileError(IntEnum):
+class OSCrossError(IntEnum):
     """Enumeration for file error codes."""
 
-    WINDOWS_CROSS_DRIVE_ERROR = 17
-    UNIX_CROSS_FILESYSTEM_ERROR = 18
-
-
-class SecondsIn(IntEnum):
-    """Enumeration for seconds in units."""
-
-    SECOND = 1
-    MINUTE = 60
-    HOUR = 3600
-
-
-class BytesIn(IntEnum):
-    """Enumeration for bytes in units."""
-
-    BYTE = 1
-    KILOBYTE = 1 << 10
-    MEGABYTE = 1 << 20
-    GIGABYTE = 1 << 30
+    WINDOWS = 17
+    UNIX = 18
 
 
 class TransferMode(StrEnum):
@@ -60,42 +46,17 @@ class TransferMode(StrEnum):
     HARDLINK = "Hardlink"
 
 
-class AppSetting(StrEnum):
-    """Enumeration for different settings categories."""
-
-    ORGANIZATION_NAME = "Wonyoung Jang"
-    ORGANIZATION_DOMAIN = "https://github.com/wonyoung-jang/fspachinko"
-    APPLICATION_NAME = "fspachinko"
-
-
-class ByteUnit(StrEnum):
-    """Enumeration for size units."""
-
-    BYTES = "B"
-    KILOBYTES = "KB"
-    MEGABYTES = "MB"
-    GIGABYTES = "GB"
-
-
-class TimeUnit(StrEnum):
-    """Enumeration for time units."""
-
-    SECONDS = "s"
-    MINUTES = "m"
-    HOURS = "h"
-
-
-SIZE_MAP = {
-    ByteUnit.BYTES: BytesIn.BYTE,
-    ByteUnit.KILOBYTES: BytesIn.KILOBYTE,
-    ByteUnit.MEGABYTES: BytesIn.MEGABYTE,
-    ByteUnit.GIGABYTES: BytesIn.GIGABYTE,
+SIZE_MAP: dict[str, int] = {
+    "B": 1,
+    "KB": 1 << 10,
+    "MB": 1 << 20,
+    "GB": 1 << 30,
 }
 
-TIME_MAP = {
-    TimeUnit.SECONDS: SecondsIn.SECOND,
-    TimeUnit.MINUTES: SecondsIn.MINUTE,
-    TimeUnit.HOURS: SecondsIn.HOUR,
+TIME_MAP: dict[str, int] = {
+    "s": 1,
+    "m": 60,
+    "h": 3600,
 }
 
 
@@ -117,20 +78,6 @@ class FilenameTemplateMapKey(StrEnum):
     PARENTS_TO_ROOT = "parentstoroot"
 
 
-class IconFilename(StrEnum):
-    """Enumeration for icon filenames."""
-
-    WINDOW = "windowIcon.png"
-    SAVE = "save_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    SAVE_AS = "save_as_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    OPEN = "file_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    START = "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    STOP = "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    CLOSE = "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    BROWSE = "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-    OPEN_DIR = "open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
-
-
 class StateStatus(StrEnum):
     """Enumeration for engine state statuses."""
 
@@ -140,43 +87,6 @@ class StateStatus(StrEnum):
     ALL_FILES_SEARCHED = "ALL FILES SEARCHED"
     NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED = "NO FILES FOUND | ALL FILES SEARCHED | FOLDER DELETED"
     NO_FILES_FOUND_FOLDER_DELETED = "NO FILES FOUND | FOLDER DELETED"
-
-
-class GUISettingsKey(StrEnum):
-    """Enumeration for QSettings keys."""
-
-    GEOMETRY = "geometry"
-    STATE = "state"
-    PROFILE = "profile"
-
-
-class GUITitle(StrEnum):
-    """Enumeration for GUI window titles."""
-
-    WINDOW = "fspachinko: Transfer random files"
-    SAVE_PROFILE = "Save Profile As"
-    OPEN_PROFILE = "Open Profile"
-
-
-class GUIName(StrEnum):
-    """Enumeration for GUI object names."""
-
-    RUNMENU = "run_menu"
-    FILEMENU = "file_menu"
-    TOOLBAR = "toolbar"
-
-
-class GUILabel(StrEnum):
-    """Enumeration for GUI labels."""
-
-    FILEMENU = "&File"
-    RUNMENU = "&Run"
-
-
-class GUIFileDialogFilter(StrEnum):
-    """Enumeration for GUI file dialog filters."""
-
-    JSON = "JSON Files (*.json)"
 
 
 class FilterName(StrEnum):

@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QIcon, QKeySequence
 
 from fspachinko.adapters.filesystemport import get_icon_path
-from fspachinko.constants import IconFilename
+
+from .constants import GUIIconFilename
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QAction
@@ -24,55 +25,55 @@ def set_qt_tips(w: QWidget | QAction, tooltip: str, statustip: str = "") -> None
 @cache
 def window_icon() -> QIcon:
     """Get the window icon."""
-    return QIcon(get_icon_path(IconFilename.WINDOW))
+    return QIcon(get_icon_path(GUIIconFilename.WINDOW))
 
 
 @cache
 def save_icon() -> QIcon:
     """Get the save icon."""
-    return QIcon(get_icon_path(IconFilename.SAVE))
+    return QIcon(get_icon_path(GUIIconFilename.SAVE))
 
 
 @cache
 def save_as_icon() -> QIcon:
     """Get the save as icon."""
-    return QIcon(get_icon_path(IconFilename.SAVE_AS))
+    return QIcon(get_icon_path(GUIIconFilename.SAVE_AS))
 
 
 @cache
 def load_icon() -> QIcon:
     """Get the load icon."""
-    return QIcon(get_icon_path(IconFilename.OPEN))
+    return QIcon(get_icon_path(GUIIconFilename.OPEN))
 
 
 @cache
 def exit_icon() -> QIcon:
     """Get the exit icon."""
-    return QIcon(get_icon_path(IconFilename.CLOSE))
+    return QIcon(get_icon_path(GUIIconFilename.CLOSE))
 
 
 @cache
 def start_icon() -> QIcon:
     """Get the start icon."""
-    return QIcon(get_icon_path(IconFilename.START))
+    return QIcon(get_icon_path(GUIIconFilename.START))
 
 
 @cache
 def stop_icon() -> QIcon:
     """Get the stop icon."""
-    return QIcon(get_icon_path(IconFilename.STOP))
+    return QIcon(get_icon_path(GUIIconFilename.STOP))
 
 
 @cache
 def browse_icon() -> QIcon:
     """Get the browse icon."""
-    return QIcon(get_icon_path(IconFilename.BROWSE))
+    return QIcon(get_icon_path(GUIIconFilename.BROWSE))
 
 
 @cache
 def open_dir_icon() -> QIcon:
     """Get the open directory icon."""
-    return QIcon(get_icon_path(IconFilename.OPEN_DIR))
+    return QIcon(get_icon_path(GUIIconFilename.OPEN_DIR))
 
 
 @cache

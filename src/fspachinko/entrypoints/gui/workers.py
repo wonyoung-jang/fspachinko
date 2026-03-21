@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from fspachinko.adapters.loggers import get_dest_log_filehandler
-from fspachinko.bootstrap import FSPachinkoBootstrapper, setup_bus
+from fspachinko.bootstrap import bootstrap, setup_bus
 from fspachinko.domain.commands import ProcessDirectory, StopProcess
 from fspachinko.domain.events import FileTransferred
 
@@ -59,14 +59,13 @@ class MainWorker(QRunnable):
     @Slot()
     def run(self) -> None:
         """Run the process."""
-        bootstrapper = FSPachinkoBootstrapper()
-        self.bus, pipeline = bootstrapper.bus, bootstrapper.pipeline
+        self.bus, pipeline = bootstrap()
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
         setup_bus(self.bus, self.config)
         root_logger = logging.getLogger()
         self.signals.process_started.emit(self.config.directory.count)
         for _ in range(self.config.directory.count):
-            dest_dir = pipeline.get_currdir_dest()
+            dest_dir = pipeline.dirname_fn()
             target_qty = pipeline.filecount_fn()
             self.signals.directory_started.emit(target_qty)
             handler = get_dest_log_filehandler(dest_dir)

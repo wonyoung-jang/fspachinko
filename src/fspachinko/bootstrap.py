@@ -3,10 +3,9 @@
 import logging
 from dataclasses import dataclass, field
 from random import seed
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
-
+from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from .domain.commands import (
     Command,
@@ -24,7 +23,7 @@ from .domain.commands import (
     SetRngSeed,
     StopProcess,
 )
-from .domain.events import DirectoryTransferred, FileTransferred
+from .domain.events import DirectoryTransferred, Event, FileTransferred
 from .service.eventcollector import CompositeEventCollector
 from .service.handlers import (
     CreateDirnameFnHandler,
@@ -53,6 +52,11 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def bootstrap(*args: Any, **kwargs: Any) -> tuple[MessageBus, AbstractPipeline]:
+    """Bootstrap the application and return the message bus."""
+    return FSPachinkoBootstrapper.bootstrap(*args, **kwargs)
 
 
 def setup_bus(bus: MessageBus, c: ConfigModel) -> None:
@@ -102,35 +106,43 @@ class FSPachinkoBootstrapper:
     fs_uow: AbstractUnitOfWork = field(default_factory=FileSystemUnitOfWork)
     log_fn: Callable = logger.info
     rng_seed_fn: Callable = seed
-    bus: MessageBus = field(init=False)
 
-    def __post_init__(self) -> None:
-        """Post-initialization to set up the message bus."""
-        if not isinstance(self.fs_uow, FileSystemUnitOfWork):
-            msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
-            raise TypeError(msg)
-        self.collector.register_emitter(self.fs_uow)
-        event_handlers = {
-            FileTransferred: [FileTransferredHandler(log_fn=self.log_fn)],
-            DirectoryTransferred: [DirectoryTransferredHandler(log_fn=self.log_fn)],
+    @classmethod
+    def bootstrap(cls, *args: Any, **kwargs: Any) -> tuple[MessageBus, AbstractPipeline]:
+        """Bootstrap the application and return the message bus."""
+        b = cls(*args, **kwargs)
+        b.collector.register_emitter(b.fs_uow)
+        return MessageBus(
+            collector=b.collector,
+            event_handlers=b.event_handlers,
+            command_handlers=b.command_handlers,
+        ), b.pipeline
+
+    @property
+    def event_handlers(self) -> dict[type[Event], list[Callable]]:
+        """Get the event handlers."""
+        log_fn = self.log_fn
+        return {
+            FileTransferred: [FileTransferredHandler(log_fn=log_fn)],
+            DirectoryTransferred: [DirectoryTransferredHandler(log_fn=log_fn)],
         }
-        command_handlers = {
-            CreateTransferJob: CreateTransferJobHandler(uow=self.fs_uow),
-            ProcessDirectory: ProcessDirectoryHandler(uow=self.fs_uow, pipeline=self.pipeline),
-            StopProcess: StopProcessHandler(uow=self.fs_uow),
-            SetRngSeed: SetRngSeedHandler(rng_seed_fn=self.rng_seed_fn),
-            SetPipelineCreateDir: SetPipelineCreateDirHandler(pipeline=self.pipeline),
-            CreateTransferFn: CreateTransferFnHandler(pipeline=self.pipeline),
-            CreateFilenameFn: CreateFilenameFnHandler(pipeline=self.pipeline),
-            CreateFilecountFn: CreateFilecountFnHandler(pipeline=self.pipeline),
-            CreateDirnameFn: CreateDirnameFnHandler(pipeline=self.pipeline),
-            CreateWalkerFn: CreateWalkerFnHandler(pipeline=self.pipeline),
-            CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=self.pipeline),
-            CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=self.pipeline),
-            CreateFilefilterFn: CreateFilefilterFnHandler(pipeline=self.pipeline),
+
+    @property
+    def command_handlers(self) -> dict[type[Command], Callable]:
+        """Get the command handlers."""
+        uow, pipeline, rng_seed_fn = self.fs_uow, self.pipeline, self.rng_seed_fn
+        return {
+            CreateTransferJob: CreateTransferJobHandler(uow=uow),
+            ProcessDirectory: ProcessDirectoryHandler(uow=uow, pipeline=pipeline),
+            StopProcess: StopProcessHandler(uow=uow),
+            SetRngSeed: SetRngSeedHandler(rng_seed_fn=rng_seed_fn),
+            SetPipelineCreateDir: SetPipelineCreateDirHandler(pipeline=pipeline),
+            CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
+            CreateFilenameFn: CreateFilenameFnHandler(pipeline=pipeline),
+            CreateFilecountFn: CreateFilecountFnHandler(pipeline=pipeline),
+            CreateDirnameFn: CreateDirnameFnHandler(pipeline=pipeline),
+            CreateWalkerFn: CreateWalkerFnHandler(pipeline=pipeline),
+            CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=pipeline),
+            CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=pipeline),
+            CreateFilefilterFn: CreateFilefilterFnHandler(pipeline=pipeline),
         }
-        self.bus = MessageBus(
-            collector=self.collector,
-            event_handlers=event_handlers,
-            command_handlers=command_handlers,
-        )

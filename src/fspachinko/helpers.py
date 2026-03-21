@@ -14,19 +14,17 @@ def convert_byte_to_human_readable_size(nbytes: int) -> str:
     return result
 
 
-def get_status(
-    *, is_success: bool, is_none_found_and_create_dir: bool, is_stop_requested: bool, is_root_locked: bool
-) -> str | StateStatus:
+def get_status(*, success: bool, empty_creation: bool, stop_requested: bool, root_locked: bool) -> str:
     """Get the state and message for reporting."""
-    if is_success:
+    if success:
         return StateStatus.SUCCESS
-    if is_stop_requested:
+    if stop_requested:
         return StateStatus.USER_STOPPED
-    if is_none_found_and_create_dir and is_root_locked:
+    if empty_creation and root_locked:
         return StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
-    if is_none_found_and_create_dir:
+    if empty_creation:
         return StateStatus.NO_FILES_FOUND_FOLDER_DELETED
-    if is_root_locked:
+    if root_locked:
         return StateStatus.ALL_FILES_SEARCHED
     return StateStatus.UNDEFINED
 

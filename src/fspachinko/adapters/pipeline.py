@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from os.path import join
 from typing import TYPE_CHECKING
 
-from .filesystemport import are_files_equal, get_dest_dir_path, get_unique_path
+from .filesystemport import are_files_equal, get_unique_path
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -27,23 +27,12 @@ class AbstractPipeline(ABC):
     dirname_fn: Callable[[], str] = lambda: ""
 
     @abstractmethod
-    def get_currdir_dest(self) -> str:
-        """Get the current directory destination."""
-
-    @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
 
 
 class TransferPipeline(AbstractPipeline):
     """Owns the strategy objects — Engine delegates to this."""
-
-    def get_currdir_dest(self) -> str:
-        """Get the current directory destination."""
-        d = self.dirname_fn()
-        if self.is_create_dir:
-            return get_dest_dir_path(d)
-        return d
 
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""

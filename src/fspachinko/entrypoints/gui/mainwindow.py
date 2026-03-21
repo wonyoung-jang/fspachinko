@@ -8,10 +8,11 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from fspachinko.adapters.filesystemport import get_available_transfer_modes, get_profile_path
 from fspachinko.configuration.repository import JSONConfigRepository
-from fspachinko.constants import ByteUnit, GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle, TimeUnit
+from fspachinko.constants import SIZE_MAP, TIME_MAP
 
 from .centralwidget import CentralWidget
 from .components import Actions, LogWidget, ProgressWidget
+from .constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
 from .loggers_gui import setup_gui_logger
 from .workers import ProcessController
 
@@ -35,8 +36,8 @@ class MainWindow(QMainWindow):
         self.logging = LogWidget()
         self.progress = ProgressWidget()
         self.ui = CentralWidget(
-            size_units=tuple(ByteUnit),
-            dur_units=tuple(TimeUnit),
+            size_units=tuple(SIZE_MAP.keys()),
+            dur_units=tuple(TIME_MAP.keys()),
             transfermodes=tuple(get_available_transfer_modes().keys()),
         )
         self.ui.add_to_layout(self.logging, self.progress)
