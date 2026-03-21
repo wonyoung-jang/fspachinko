@@ -111,7 +111,7 @@ def stop_shortcut() -> QKeySequence:
     return QKeySequence("ESC")
 
 
-ACTION_CONFIG = {
+GUI_ACTION_CONFIG = {
     "save": (save_icon, "&Save Profile", save_shortcut, "Save current profile (Ctrl+S)"),
     "save_as": (save_as_icon, "Save Profile &As", save_as_shortcut, "Save current profile as ... (Ctrl+Shift+S)"),
     "load": (load_icon, "&Load Profile", load_shortcut, "Load profile (Ctrl+O)"),

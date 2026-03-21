@@ -5,13 +5,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
-from fspachinko.adapters.pipeline import TransferPipeline
 from fspachinko.domain.model import TransferJob
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
-    from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.events import Event
 
 logger = logging.getLogger(__name__)
@@ -20,8 +18,6 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class AbstractUnitOfWork(ABC):
     """Abstract Unit of Work."""
-
-    pipeline: AbstractPipeline
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
@@ -52,7 +48,7 @@ class AbstractUnitOfWork(ABC):
 class FileSystemUnitOfWork(AbstractUnitOfWork):
     """Abstract Unit of Work."""
 
-    pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
+    transfer_fn: Callable = lambda _, __: None
     pending: list[tuple[str, str]] = field(default_factory=list)
     _job: TransferJob = field(default_factory=TransferJob)
 
@@ -80,7 +76,7 @@ class FileSystemUnitOfWork(AbstractUnitOfWork):
         """Actually perform the I/O."""
         for src, dst in self.pending:
             try:
-                self.pipeline.transfer_fn(src, dst)
+                self.transfer_fn(src, dst)
             except OSError:
                 logger.debug("Failed to transfer file from %s -> %s", src, dst)
                 continue

@@ -60,7 +60,7 @@ class MainWorker(QRunnable):
     def run(self) -> None:
         """Run the process."""
         bootstrapper = FSPachinkoBootstrapper()
-        self.bus, pipeline = bootstrapper.bus, bootstrapper.fs_uow.pipeline
+        self.bus, pipeline = bootstrapper.bus, bootstrapper.pipeline
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
         setup_bus(self.bus, self.config)
         root_logger = logging.getLogger()

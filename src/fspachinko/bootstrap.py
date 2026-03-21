@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from random import seed
 from typing import TYPE_CHECKING
 
+from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
+
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from .domain.commands import (
     Command,
@@ -96,6 +98,7 @@ class FSPachinkoBootstrapper:
     """Bootstrapper for the FSPachinko application."""
 
     collector: CompositeEventCollector = field(default_factory=CompositeEventCollector)
+    pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     fs_uow: AbstractUnitOfWork = field(default_factory=FileSystemUnitOfWork)
     log_fn: Callable = logger.info
     rng_seed_fn: Callable = seed
@@ -106,7 +109,7 @@ class FSPachinkoBootstrapper:
         if not isinstance(self.fs_uow, FileSystemUnitOfWork):
             msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
             raise TypeError(msg)
-        pipeline = self.fs_uow.pipeline
+        self.fs_uow.transfer_fn = self.pipeline.transfer_fn
         self.collector.register_emitter(self.fs_uow)
         event_handlers = {
             FileTransferred: [FileTransferredHandler(log_fn=self.log_fn)],
@@ -114,18 +117,18 @@ class FSPachinkoBootstrapper:
         }
         command_handlers = {
             CreateTransferJob: CreateTransferJobHandler(uow=self.fs_uow),
-            ProcessDirectory: ProcessDirectoryHandler(uow=self.fs_uow),
+            ProcessDirectory: ProcessDirectoryHandler(uow=self.fs_uow, pipeline=self.pipeline),
             StopProcess: StopProcessHandler(uow=self.fs_uow),
             SetRngSeed: SetRngSeedHandler(rng_seed_fn=self.rng_seed_fn),
-            SetPipelineCreateDir: SetPipelineCreateDirHandler(pipeline=pipeline),
-            CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
-            CreateFilenameFn: CreateFilenameFnHandler(pipeline=pipeline),
-            CreateFilecountFn: CreateFilecountFnHandler(pipeline=pipeline),
-            CreateDirnameFn: CreateDirnameFnHandler(pipeline=pipeline),
-            CreateWalkerFn: CreateWalkerFnHandler(pipeline=pipeline),
-            CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=pipeline),
-            CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=pipeline),
-            CreateFilefilterFn: CreateFilefilterFnHandler(pipeline=pipeline),
+            SetPipelineCreateDir: SetPipelineCreateDirHandler(pipeline=self.pipeline),
+            CreateTransferFn: CreateTransferFnHandler(pipeline=self.pipeline),
+            CreateFilenameFn: CreateFilenameFnHandler(pipeline=self.pipeline),
+            CreateFilecountFn: CreateFilecountFnHandler(pipeline=self.pipeline),
+            CreateDirnameFn: CreateDirnameFnHandler(pipeline=self.pipeline),
+            CreateWalkerFn: CreateWalkerFnHandler(pipeline=self.pipeline),
+            CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=self.pipeline),
+            CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=self.pipeline),
+            CreateFilefilterFn: CreateFilefilterFnHandler(pipeline=self.pipeline),
         }
         self.bus = MessageBus(
             collector=self.collector,

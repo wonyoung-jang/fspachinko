@@ -65,27 +65,29 @@ class ProcessDirectoryHandler:
     """Handle the StartProcessingDirectory command."""
 
     uow: FileSystemUnitOfWork
+    pipeline: AbstractPipeline
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
+        dst = DestinationDirectory(cmd.path, cmd.target_qty)
         with self.uow:
             job = self.uow.job
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
-            job.dst = DestinationDirectory(cmd.path, cmd.target_qty)
-            for entry in self.uow.pipeline.walker_fn():
-                if job.dst.is_success or job.is_stop_requested or job.is_root_locked:
+            job.dst = dst
+            for entry in self.pipeline.walker_fn():
+                if dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
-                if not job.process_file(entry) or not self.uow.pipeline.filefilter_fn(entry):
+                if not job.process_file(entry) or not self.pipeline.filefilter_fn(entry):
                     continue
-                new_path = self.uow.pipeline.get_new_path(dst=job.dst, e=entry)
+                new_path = self.pipeline.get_new_path(dst=dst, e=entry)
                 if new_path:
                     self.uow.register_transfer(entry.path, new_path)
                     job.update(entry, new_path)
-            is_empty_creation = job.dst.is_none_found and self.uow.pipeline.is_create_dir
+            is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
             if is_empty_creation:
-                remove_directory(job.dst.path)
+                remove_directory(dst.path)
             job.finalize_directory(is_empty_creation=is_empty_creation)
             self.uow.commit()
 
@@ -273,10 +275,11 @@ class CreateFilefilterFnHandler:
         filter_fns = tuple(_generate_valid_filefilters())
 
         def _get_composite_filefilter() -> Callable[[FSEntry], bool]:
-            if filter_fns:
-                if len(filter_fns) == 1:
-                    return filter_fns[0]
+            n_filters = len(filter_fns)
+            if n_filters > 1:
                 return lambda e: all(f(e) for f in filter_fns)
+            if n_filters == 1:
+                return filter_fns[0]
             return lambda _: True
 
         self.pipeline.filefilter_fn = _get_composite_filefilter()

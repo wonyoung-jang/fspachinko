@@ -21,16 +21,16 @@ class EventEmitterProtocol(Protocol):
 class CompositeEventCollector:
     """Aggregate handler for collecting events."""
 
-    event_emitters: list[EventEmitterProtocol] = field(default_factory=list)
+    emitters: list[EventEmitterProtocol] = field(default_factory=list)
     events: deque = field(default_factory=deque)
 
     def collect_new_events(self) -> Iterator[Event]:
         """Collect new events from all event emitters."""
-        for emitter in self.event_emitters:
+        for emitter in self.emitters:
             self.events.extend(emitter.collect_new_events())
             while self.events:
                 yield self.events.popleft()
 
     def register_emitter(self, emitter: EventEmitterProtocol) -> None:
         """Register an event emitter."""
-        self.event_emitters.append(emitter)
+        self.emitters.append(emitter)
