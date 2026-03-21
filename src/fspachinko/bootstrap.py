@@ -109,7 +109,6 @@ class FSPachinkoBootstrapper:
         if not isinstance(self.fs_uow, FileSystemUnitOfWork):
             msg = "Unit of Work must be provided if pipeline is not a TransferPipeline."
             raise TypeError(msg)
-        self.fs_uow.repo.transfer_fn = self.pipeline.transfer_fn
         self.collector.register_emitter(self.fs_uow)
         event_handlers = {
             FileTransferred: [FileTransferredHandler(log_fn=self.log_fn)],

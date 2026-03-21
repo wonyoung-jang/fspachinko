@@ -26,7 +26,7 @@ def run(config_path: str = default_config_path) -> None:
     repo = JSONConfigRepository()
     config = repo.model_from_json_path(config_path)
     bootstrapper = FSPachinkoBootstrapper()
-    bus, pipeline = bootstrapper.bus, bootstrapper.fs_uow.pipeline
+    bus, pipeline = bootstrapper.bus, bootstrapper.pipeline
     setup_bus(bus, config)
     logger.debug("Process started: dir_count=%s", config.directory.count)
     for _ in range(config.directory.count):

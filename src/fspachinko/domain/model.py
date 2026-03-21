@@ -70,7 +70,6 @@ class TransferJob:
 
     quota: DiversityQuota = field(default_factory=DiversityQuota)
     is_stop_requested: bool = False
-    dst: DestinationDirectory | None = None
     events: deque[Event] = field(default_factory=deque)
 
     @property
@@ -80,40 +79,36 @@ class TransferJob:
 
     def reset(self) -> None:
         """Reset the job state for a new transfer process."""
-        self.dst = None
         self.quota.reset()
 
     def process_file(self, entry: FSEntry) -> bool:
         """Process a file transfer, checking the diversity quota and updating the destination directory stats."""
         return self.quota.can_accept(entry.parent, entry.path)
 
-    def update(self, entry: FSEntry, new_path: str) -> None:
+    def update(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
         """Update the job state after processing a directory."""
-        if self.dst is None:
-            return
+        dst.accept(entry.size)
         self.quota.update(entry.parent, entry.path)
-        self.dst.accept(entry.size)
-        self.events.append(FileTransferred(self.dst.count, entry.path, new_path))
+        self.events.append(FileTransferred(dst.count, entry.path, new_path))
 
     def request_stop(self) -> None:
         """Request to stop the process."""
         self.is_stop_requested = True
 
-    def finalize_directory(self, *, is_empty_creation: bool) -> None:
+    def finalize_directory(self, dst: DestinationDirectory, *, is_empty_creation: bool) -> None:
         """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
-        if self.dst:
-            self.events.append(
-                DirectoryTransferred(
-                    path=self.dst.path,
-                    size=self.dst.size,
-                    count=self.dst.count,
-                    target_qty=self.dst.target_qty,
-                    is_success=self.dst.is_success,
-                    is_empty_creation=is_empty_creation,
-                    is_stop_requested=self.is_stop_requested,
-                    is_root_locked=self.is_root_locked,
-                )
+        self.events.append(
+            DirectoryTransferred(
+                path=dst.path,
+                size=dst.size,
+                count=dst.count,
+                target_qty=dst.target_qty,
+                is_success=dst.is_success,
+                is_empty_creation=is_empty_creation,
+                is_stop_requested=self.is_stop_requested,
+                is_root_locked=self.is_root_locked,
             )
+        )
 
 
 @dataclass(slots=True, frozen=True)

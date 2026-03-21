@@ -74,7 +74,6 @@ class ProcessDirectoryHandler:
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
-            job.dst = dst
             for entry in self.pipeline.walker_fn():
                 if dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
@@ -83,11 +82,11 @@ class ProcessDirectoryHandler:
                 new_path = self.pipeline.get_new_path(dst=dst, e=entry)
                 if new_path:
                     uow.repo.add_transfer(entry.path, new_path)
-                    job.update(entry, new_path)
+                    job.update(dst, entry, new_path)
             is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
             if is_empty_creation:
                 remove_directory(dst.path)
-            job.finalize_directory(is_empty_creation=is_empty_creation)
+            job.finalize_directory(dst, is_empty_creation=is_empty_creation)
             uow.commit()
 
 
