@@ -51,13 +51,11 @@ class CreateTransferJobHandler:
 
     def __call__(self, cmd: CreateTransferJob) -> None:
         """Handle the CreateTransferJob command."""
-        self.uow.job = TransferJob(
-            quota=DiversityQuota(
-                root=cmd.root,
-                max_per_dir=cmd.max_per_dir,
-                unique_files_only=cmd.unique_files_only,
-            ),
-        )
+        quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+        job = TransferJob(quota=quota)
+        with self.uow as uow:
+            uow.repo.add(job)
+            uow.commit()
 
 
 @dataclass(slots=True)
@@ -70,8 +68,9 @@ class ProcessDirectoryHandler:
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
         dst = DestinationDirectory(cmd.path, cmd.target_qty)
-        with self.uow:
-            job = self.uow.job
+        with self.uow as uow:
+            uow.repo.transfer_fn = self.pipeline.transfer_fn
+            job = uow.repo.get()
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
@@ -83,13 +82,13 @@ class ProcessDirectoryHandler:
                     continue
                 new_path = self.pipeline.get_new_path(dst=dst, e=entry)
                 if new_path:
-                    self.uow.register_transfer(entry.path, new_path)
+                    uow.repo.add_transfer(entry.path, new_path)
                     job.update(entry, new_path)
             is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
             if is_empty_creation:
                 remove_directory(dst.path)
             job.finalize_directory(is_empty_creation=is_empty_creation)
-            self.uow.commit()
+            uow.commit()
 
 
 @dataclass(slots=True)
@@ -100,7 +99,7 @@ class StopProcessHandler:
 
     def __call__(self, _: StopProcess) -> None:
         """Handle the StopProcess command."""
-        job = self.uow.job
+        job = self.uow.repo.get()
         job.request_stop()
 
 
