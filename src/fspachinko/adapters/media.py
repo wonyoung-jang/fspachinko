@@ -18,12 +18,13 @@ DURATION_CMD = [
 TIMEOUT = 2
 
 
-def get_duration(path: str) -> float:
-    """Get the duration of a media file."""
-    if not shutil.which("ffprobe"):
-        logger.warning("ffprobe not found in system PATH. Cannot evaluate media duration.")
-        return 0.0
+def _get_duration_noop(_: str) -> float:
+    """No-op function for getting media duration when ffprobe is not available."""
+    return float("inf")
 
+
+def _get_duration_ffprobe(path: str) -> float:
+    """Get the duration of a media file."""
     try:
         completed_proc = subprocess.run(
             [*DURATION_CMD, path],
@@ -36,9 +37,16 @@ def get_duration(path: str) -> float:
     except ValueError:
         logger.exception("ffprobe output could not be parsed as float for %s", path)
     except subprocess.CalledProcessError:
-        logger.exception("ffprobe failed for %s", path)
+        logger.debug("ffprobe failed for %s", path)
     except subprocess.TimeoutExpired:
-        logger.exception("ffprobe timed out for %s", path)
+        logger.debug("ffprobe timed out for %s", path)
     except subprocess.SubprocessError:
-        logger.exception("Unexpected error while getting duration for %s", path)
-    return 0.0
+        logger.debug("Unexpected error while getting duration for %s", path)
+    return float("inf")
+
+
+# Determine which duration function to use based on ffprobe availability
+get_duration = _get_duration_ffprobe
+if not shutil.which("ffprobe"):
+    logger.warning("ffprobe not found in system PATH. Cannot evaluate media duration.")
+    get_duration = _get_duration_noop

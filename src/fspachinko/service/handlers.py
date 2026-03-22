@@ -213,8 +213,7 @@ class CreateTextFilterFnHandler:
                     return lambda p: any(ptn.search(p) for ptn in patterns)
                 case _, False:
                     return lambda p: not any(ptn.search(p) for ptn in patterns)
-            msg = "Invalid text filter configuration."
-            raise ValueError(msg)
+            return lambda _: True
 
         self.pipeline.filters[cmd.name] = _get_text_filter()
 
