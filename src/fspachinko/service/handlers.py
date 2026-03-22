@@ -2,13 +2,15 @@
 
 from dataclasses import dataclass
 from functools import partial
+from os import makedirs, scandir
+from os.path import join
 from random import randint
 from typing import TYPE_CHECKING
 
 from fspachinko.adapters.filenamer import TemplateFilenamer
 from fspachinko.adapters.filesystemport import (
     get_available_transfer_modes,
-    get_dest_dir_path,
+    get_unique_path,
     remove_directory,
 )
 from fspachinko.adapters.fswalker import FSWalker
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
 
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.commands import (
-        CreateDirnameFn,
+        CreateDirnamesFn,
         CreateFilecountFn,
         CreateFilefilterFn,
         CreateFilenameFn,
@@ -37,7 +39,8 @@ if TYPE_CHECKING:
         StopProcess,
     )
     from fspachinko.domain.events import DirectoryTransferred, FileTransferred
-    from fspachinko.service.uow import AbstractUnitOfWork
+
+    from .uow import AbstractUnitOfWork
 
 
 ######################
@@ -163,17 +166,24 @@ class CreateFilecountFnHandler:
 
 
 @dataclass(slots=True)
-class CreateDirnameFnHandler:
+class CreateDirnamesFnHandler:
     """Handle the CreateDirnameFn command."""
 
     pipeline: AbstractPipeline
 
-    def __call__(self, cmd: CreateDirnameFn) -> None:
+    def __call__(self, cmd: CreateDirnamesFn) -> None:
         """Handle the CreateDirnameFn command."""
-        if cmd.is_enabled:
-            self.pipeline.dirname_fn = lambda: get_dest_dir_path(cmd.dest, cmd.name)
-        else:
-            self.pipeline.dirname_fn = lambda: cmd.dest
+        if not cmd.is_enabled or cmd.count <= 0:
+            self.pipeline.dirnames.append(cmd.dest)
+            return
+        with scandir(cmd.dest) as it:
+            existing = {entry.path for entry in it if entry.is_dir()}
+        candidate = join(cmd.dest, cmd.name)
+        for _ in range(cmd.count):
+            next_name = get_unique_path(candidate, existing)
+            makedirs(next_name, exist_ok=True)
+            self.pipeline.dirnames.append(next_name)
+            existing.add(next_name)
 
 
 @dataclass(slots=True)

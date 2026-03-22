@@ -5,7 +5,7 @@ import shutil
 from dataclasses import dataclass
 from filecmp import cmp
 from io import UnsupportedOperation
-from os import link, makedirs, mkdir, symlink, unlink
+from os import link, mkdir, symlink, unlink
 from os.path import dirname, exists, join
 from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
@@ -62,30 +62,24 @@ get_profile_path = _datapaths.get_profile
 get_log_path = _datapaths.get_log
 
 
-def get_unique_path(dest: str, stem: str, ext: str = "") -> str:
+def get_unique_path(path: str, paths: set[str]) -> str:
     """Get a new path, ensuring it doesn't already exist."""
-    target = join(dest, f"{stem}{ext}")
+    if path not in paths:
+        return path
+    stem, _, ext = path.rpartition(".")
+    if not stem:
+        stem, ext = ext, ""
+    else:
+        ext = f".{ext}"
     x = 2
-    while exists(target):
-        target = join(dest, f"{stem} ({x}){ext}")
+    while (candidate := f"{stem} ({x}){ext}") in paths:
         x += 1
-    return target
+    return candidate
 
 
 def are_files_equal(src: str, dest: str) -> bool:
     """Check if two files are the same by comparing their contents."""
-    if not exists(dest):
-        return False
-    if cmp(src, dest, shallow=True):
-        return cmp(src, dest, shallow=False)
-    return False
-
-
-def get_dest_dir_path(dest: str, name: str) -> str:
-    """Get the destination directory path."""
-    new_dest = get_unique_path(dest, name)
-    makedirs(new_dest, exist_ok=True)
-    return new_dest
+    return cmp(src, dest, shallow=True) and cmp(src, dest, shallow=False)
 
 
 def remove_directory(path: str) -> None:

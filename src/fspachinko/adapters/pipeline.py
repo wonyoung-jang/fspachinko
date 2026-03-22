@@ -24,7 +24,8 @@ class AbstractPipeline(ABC):
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
     filecount_fn: Callable[[], int] = lambda: 1
-    dirname_fn: Callable[[], str] = lambda: ""
+    dirnames: list[str] = field(default_factory=list)
+    files_are_equal: Callable[[str, str], bool] = are_files_equal
 
     @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
@@ -39,6 +40,9 @@ class TransferPipeline(AbstractPipeline):
         new_stem = self.filenamer_fn(e, dst.count)
         ext = e.ext.casefold()
         target = join(dst.path, f"{new_stem}{ext}")
-        if are_files_equal(e.path, target):
+        if target not in dst.files:
+            return target
+        # If the file already exists and is the same, skip transferring it.
+        if self.files_are_equal(e.path, target):
             return None
-        return get_unique_path(dst.path, new_stem, ext)
+        return get_unique_path(target, dst.files)

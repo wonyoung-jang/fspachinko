@@ -68,8 +68,7 @@ class MainWorker(QRunnable):
         setup_bus(self.bus, self.config)
         root_logger = logging.getLogger()
         self.signals.process_started.emit(self.config.directory.count)
-        for _ in range(self.config.directory.count):
-            dest_dir = self.pipeline.dirname_fn()
+        for dest_dir in self.pipeline.dirnames:
             target_qty = self.pipeline.filecount_fn()
             self.signals.directory_started.emit(target_qty)
             handler = get_dest_log_filehandler(dest_dir)

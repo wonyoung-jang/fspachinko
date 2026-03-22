@@ -9,7 +9,7 @@ from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from .domain.commands import (
     Command,
-    CreateDirnameFn,
+    CreateDirnamesFn,
     CreateFilecountFn,
     CreateFilefilterFn,
     CreateFilenameFn,
@@ -26,7 +26,7 @@ from .domain.commands import (
 from .domain.events import DirectoryTransferred, Event, FileTransferred
 from .service.eventcollector import CompositeEventCollector
 from .service.handlers import (
-    CreateDirnameFnHandler,
+    CreateDirnamesFnHandler,
     CreateFilecountFnHandler,
     CreateFilefilterFnHandler,
     CreateFilenameFnHandler,
@@ -71,7 +71,7 @@ def setup_bus(bus: MessageBus, c: ConfigModel) -> None:
             CreateFilecountFn(
                 c.filecount.count, (c.filecount.rand_min, c.filecount.rand_max), c.filecount.is_rand_enabled
             ),
-            CreateDirnameFn(c.dest, c.directory.name, c.directory.is_enabled),
+            CreateDirnamesFn(c.directory.count, c.dest, c.directory.name, c.directory.is_enabled),
             CreateWalkerFn(c.root, c.options.should_follow_symlink),
         )
         text_specs = [
@@ -140,7 +140,7 @@ class FSPachinkoBootstrapper:
             CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
             CreateFilenameFn: CreateFilenameFnHandler(pipeline=pipeline),
             CreateFilecountFn: CreateFilecountFnHandler(pipeline=pipeline),
-            CreateDirnameFn: CreateDirnameFnHandler(pipeline=pipeline),
+            CreateDirnamesFn: CreateDirnamesFnHandler(pipeline=pipeline),
             CreateWalkerFn: CreateWalkerFnHandler(pipeline=pipeline),
             CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=pipeline),
             CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=pipeline),

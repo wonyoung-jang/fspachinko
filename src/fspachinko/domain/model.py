@@ -12,8 +12,13 @@ class DestinationDirectory:
 
     path: str
     target_qty: int
-    count: int = 0
     size: int = 0
+    files: set[str] = field(default_factory=set)
+
+    @property
+    def count(self) -> int:
+        """Get the current count of files in the directory."""
+        return len(self.files)
 
     @property
     def is_success(self) -> bool:
@@ -25,10 +30,10 @@ class DestinationDirectory:
         """Check if no valid files were found."""
         return self.count == 0
 
-    def accept(self, size: int) -> None:
+    def accept(self, size: int, path: str) -> None:
         """Update the directory stats after accepting a file."""
-        self.count += 1
         self.size += size
+        self.files.add(path)
 
 
 @dataclass(slots=True)
@@ -87,7 +92,7 @@ class TransferJob:
 
     def update(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
         """Update the job state after processing a directory."""
-        dst.accept(entry.size)
+        dst.accept(entry.size, new_path)
         self.quota.update(entry.parent, entry.path)
         self.events.append(FileTransferred(dst.count, entry.path, new_path))
 

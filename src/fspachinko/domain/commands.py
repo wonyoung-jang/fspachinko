@@ -69,9 +69,10 @@ class CreateFilecountFn(Command):
 
 
 @dataclass(slots=True, frozen=True)
-class CreateDirnameFn(Command):
+class CreateDirnamesFn(Command):
     """Command to create a directory name function."""
 
+    count: int
     dest: str
     name: str
     is_enabled: bool

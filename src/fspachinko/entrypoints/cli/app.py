@@ -28,8 +28,7 @@ def run(config_path: str = default_config_path) -> None:
     bus, pipeline = bootstrap()
     setup_bus(bus, config)
     logger.debug("Process started: dir_count=%s", config.directory.count)
-    for _ in range(config.directory.count):
-        dest_dir = pipeline.dirname_fn()
+    for dest_dir in pipeline.dirnames:
         target_qty = pipeline.filecount_fn()
         logger.debug("Processing directory: %s, target_qty=%s", dest_dir, target_qty)
         start_process_cmd = ProcessDirectory(dest_dir, target_qty=target_qty)
