@@ -20,7 +20,7 @@ class AbstractPipeline(ABC):
     is_create_dir: bool = False
     filters: dict[str, Callable] = field(default_factory=dict)
     filefilter_fn: Callable[[FSEntry], bool] = lambda _: True
-    filenamer_fn: Callable[[FSEntry, int], str] = lambda _, __: ""
+    filenamer_fn: Callable[[FSEntry, int], str] = lambda e, _: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
     filecount_fn: Callable[[], int] = lambda: 1

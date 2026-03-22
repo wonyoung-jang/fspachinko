@@ -5,15 +5,15 @@ from functools import partial
 from random import randint
 from typing import TYPE_CHECKING
 
+from fspachinko.adapters.filenamer import TemplateFilenamer
 from fspachinko.adapters.filesystemport import (
     get_available_transfer_modes,
     get_dest_dir_path,
-    get_name_from_template,
     remove_directory,
 )
 from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.media import get_duration
-from fspachinko.constants import FilenameTemplate, FilterName, TransferMode
+from fspachinko.constants import FilterName, TransferMode
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
@@ -144,10 +144,8 @@ class CreateFilenameFnHandler:
 
     def __call__(self, cmd: CreateFilenameFn) -> None:
         """Handle the CreateFilenameFn command."""
-        if not cmd.is_enabled or cmd.template == FilenameTemplate.ORIGINAL:
-            self.pipeline.filenamer_fn = lambda e, _: e.stem
-        else:
-            self.pipeline.filenamer_fn = lambda e, count, t=cmd.template: get_name_from_template(e, count, t)
+        if cmd.is_enabled:
+            self.pipeline.filenamer_fn = TemplateFilenamer(cmd.template)
 
 
 @dataclass(slots=True)
