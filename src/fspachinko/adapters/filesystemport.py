@@ -11,7 +11,13 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from fspachinko.constants import INVALID_FILENAME_CHARS, DefaultPath, FilenameTemplateMapKey, OSCrossError, TransferMode
+from fspachinko.constants import (
+    INVALID_FILENAME_CHARS,
+    DefaultPath,
+    FilenameTemplate,
+    OSCrossError,
+    TransferMode,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -83,9 +89,9 @@ def are_files_equal(src: str, dest: str) -> bool:
     return False
 
 
-def get_dest_dir_path(dest: str) -> str:
+def get_dest_dir_path(dest: str, name: str) -> str:
     """Get the destination directory path."""
-    new_dest = get_unique_path(*split(dest))
+    new_dest = get_unique_path(dest, name)
     makedirs(new_dest, exist_ok=True)
     return new_dest
 
@@ -127,9 +133,7 @@ def hardlink(src: str, dst: str) -> None:
     try:
         link(src, dst)
     except OSError as e:
-        is_win_x_error = e.winerror == OSCrossError.WINDOWS
-        is_unix_x_error = e.errno == OSCrossError.UNIX
-        if is_win_x_error or is_unix_x_error:
+        if e.winerror == OSCrossError.WINDOWS or e.errno == OSCrossError.UNIX:
             symlink(src, dst)
         else:
             raise
@@ -147,17 +151,15 @@ AVAILABLE_TRANSFER_FNS = {
 
 def get_name_from_template(entry: FSEntry, count: int, template: str) -> str:
     """Calculate the destination file stem based on template configuration."""
-    mapping = SafeDict(
-        {
-            FilenameTemplateMapKey.INDEX: count + 1,
-            FilenameTemplateMapKey.ORIGINAL: entry.stem,
-            FilenameTemplateMapKey.PARENT: basename(entry.parent),
-            FilenameTemplateMapKey.PARENTS_TO_ROOT: split(entry.path)[0],
-        }
-    )
+    value_map = {
+        FilenameTemplate.ORIGINAL: entry.stem,
+        FilenameTemplate.INDEX: count + 1,
+        FilenameTemplate.PARENT: basename(entry.parent),
+        FilenameTemplate.PARENTS_TO_ROOT: split(entry.path)[0],
+    }
+    mapping = SafeDict({t.strip("{}"): v for t, v in value_map.items()})
     try:
-        formatted_stem = template.format_map(mapping)
-        return "".join(c for c in formatted_stem if c not in INVALID_FILENAME_CHARS)
+        return "".join(c for c in template.format_map(mapping) if c not in INVALID_FILENAME_CHARS)
     except KeyError, ValueError, IndexError:
         return entry.stem
 

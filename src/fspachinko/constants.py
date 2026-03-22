@@ -69,15 +69,6 @@ class FilenameTemplate(StrEnum):
     PARENTS_TO_ROOT = "{parentstoroot}"
 
 
-class FilenameTemplateMapKey(StrEnum):
-    """Enumeration for filename templates."""
-
-    ORIGINAL = "original"
-    INDEX = "index"
-    PARENT = "parent"
-    PARENTS_TO_ROOT = "parentstoroot"
-
-
 class StateStatus(StrEnum):
     """Enumeration for engine state statuses."""
 
