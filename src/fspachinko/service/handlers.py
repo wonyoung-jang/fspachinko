@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from functools import partial
-from os.path import join
 from random import randint
 from typing import TYPE_CHECKING
 
@@ -68,7 +67,7 @@ class ProcessDirectoryHandler:
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
-        dst = DestinationDirectory(cmd.path, cmd.target_qty)
+        dst = DestinationDirectory(cmd.dest_dir, cmd.target_qty)
         with self.uow as uow:
             uow.repo.transfer_fn = self.pipeline.transfer_fn
             job = uow.repo.get()
@@ -174,7 +173,7 @@ class CreateDirnameFnHandler:
     def __call__(self, cmd: CreateDirnameFn) -> None:
         """Handle the CreateDirnameFn command."""
         if cmd.is_enabled:
-            self.pipeline.dirname_fn = lambda: get_dest_dir_path(join(cmd.dest, cmd.name))
+            self.pipeline.dirname_fn = lambda: get_dest_dir_path(cmd.dest, cmd.name)
         else:
             self.pipeline.dirname_fn = lambda: cmd.dest
 
@@ -205,13 +204,17 @@ class CreateTextFilterFnHandler:
         patterns = get_text_patterns(cmd.text, cmd.re_fmt)
 
         def _get_text_filter() -> Callable[[str], bool]:
-            if should_include and len(patterns) == 1:
-                return lambda p: patterns[0].search(p) is not None
-            if should_include:
-                return lambda p: any(pattern.search(p) for pattern in patterns)
-            if len(patterns) == 1:
-                return lambda p: patterns[0].search(p) is None
-            return lambda p: not any(pattern.search(p) for pattern in patterns)
+            match len(patterns), should_include:
+                case 1, True:
+                    return lambda p: patterns[0].search(p) is not None
+                case 1, False:
+                    return lambda p: patterns[0].search(p) is None
+                case _, True:
+                    return lambda p: any(ptn.search(p) for ptn in patterns)
+                case _, False:
+                    return lambda p: not any(ptn.search(p) for ptn in patterns)
+            msg = "Invalid text filter configuration."
+            raise ValueError(msg)
 
         self.pipeline.filters[cmd.name] = _get_text_filter()
 
@@ -230,12 +233,13 @@ class CreateRangeFilterFnHandler:
         minimum, maximum = cmd.minimum, cmd.maximum
 
         def _get_range_filter() -> Callable[[int | float], bool]:
-            if minimum >= 0 and maximum < float("inf"):
-                return lambda v: minimum <= v <= maximum
-            if minimum >= 0:
-                return lambda v: v >= minimum
-            if maximum < float("inf"):
-                return lambda v: v <= maximum
+            match minimum >= 0, maximum < float("inf"):
+                case True, True:
+                    return lambda v: minimum <= v <= maximum
+                case True, False:
+                    return lambda v: v >= minimum
+                case False, True:
+                    return lambda v: v <= maximum
             msg = "Invalid range filter configuration."
             raise ValueError(msg)
 

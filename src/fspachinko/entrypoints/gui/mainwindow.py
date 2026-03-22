@@ -12,24 +12,29 @@ from fspachinko.constants import SIZE_MAP, TIME_MAP
 
 from .centralwidget import CentralWidget
 from .components import Actions, LogWidget, ProgressWidget
-from .constants import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
+from .constants_gui import GUIFileDialogFilter, GUILabel, GUIName, GUISettingsKey, GUITitle
 from .loggers_gui import setup_gui_logger
 from .workers import ProcessController
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
+    from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.service.messagebus import MessageBus
+
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self) -> None:
+    def __init__(self, bus: MessageBus, pipeline: AbstractPipeline) -> None:
         """Initialize the main window."""
         super().__init__()
         self.setAnimated(True)
         self._original_title = ""
         self.config_path = ""
-        self.actions_ = Actions.build()
+        self.bus: MessageBus = bus
+        self.pipeline: AbstractPipeline = pipeline
+        self.actions_: Actions = Actions.build()
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
         self.log_signal = setup_gui_logger()
@@ -47,11 +52,6 @@ class MainWindow(QMainWindow):
         self.init_toolbar()
         self.init_statusbar()
         self.init_settings()
-
-    @property
-    def config_parent(self) -> str:
-        """Get the parent directory of the current profile."""
-        return dirname(self.config_path)
 
     def init_connections(self) -> None:
         """Initialize connections."""
@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
         profile_path, _ = QFileDialog.getSaveFileName(
             parent=self,
             caption=GUITitle.SAVE_PROFILE,
-            dir=self.config_parent,
+            dir=dirname(self.config_path),
             filter=GUIFileDialogFilter.JSON,
         )
         if profile_path:
@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
         profile_path, _ = QFileDialog.getOpenFileName(
             parent=self,
             caption=GUITitle.OPEN_PROFILE,
-            dir=self.config_parent,
+            dir=dirname(self.config_path),
             filter=GUIFileDialogFilter.JSON,
         )
         if profile_path:
@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
-        self.controller.start(self.config_repo.model_from_dict(self.ui.config))
+        self.controller.start(self.bus, self.pipeline, self.config_repo.from_dict(self.ui.config))
 
     @Slot()
     def on_stop(self) -> None:

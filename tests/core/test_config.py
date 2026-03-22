@@ -98,6 +98,10 @@ def test_options_model() -> None:
 
 def test_config_model() -> None:
     """Test ConfigModel validation."""
+    # Test default factory
+    m = ConfigModel()
+    assert m.root == "C:/"
+    assert m.dest == "/fspachinko_output"
     # Test valid model
     m = ConfigModel(root="/source", dest="/destination")
     assert m.root == realpath("/source")

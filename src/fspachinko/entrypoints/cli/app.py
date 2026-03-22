@@ -24,7 +24,7 @@ def run(config_path: str = default_config_path) -> None:
 
     """
     repo = JSONConfigRepository()
-    config = repo.model_from_json_path(config_path)
+    config = repo.from_json(config_path)
     bus, pipeline = bootstrap()
     setup_bus(bus, config)
     logger.debug("Process started: dir_count=%s", config.directory.count)

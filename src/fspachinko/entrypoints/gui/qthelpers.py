@@ -7,7 +7,7 @@ from PySide6.QtGui import QIcon, QKeySequence
 
 from fspachinko.adapters.filesystemport import get_icon_path
 
-from .constants import GUIIconFilename
+from .constants_gui import GUIIconFilename
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QAction

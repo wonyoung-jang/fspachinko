@@ -21,7 +21,7 @@ class CreateTransferJob(Command):
 class ProcessDirectory(Command):
     """Command to process a single directory (triggers a UoW transaction)."""
 
-    path: str
+    dest_dir: str
     target_qty: int
 
 
@@ -109,3 +109,18 @@ class CreateRangeFilterFn(Command):
 @dataclass(slots=True, frozen=True)
 class CreateFilefilterFn(Command):
     """Command to create a file filter function."""
+
+
+@dataclass(slots=True, frozen=True)
+class SaveProfile(Command):
+    """Command to save a profile."""
+
+    path: str
+    config: dict
+
+
+@dataclass(slots=True, frozen=True)
+class LoadProfile(Command):
+    """Command to load a profile."""
+
+    path: str
