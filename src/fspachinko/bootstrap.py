@@ -5,6 +5,10 @@ from dataclasses import dataclass, field
 from random import seed
 from typing import TYPE_CHECKING, Any
 
+from fspachinko.configuration.uow import AbstractConfigUnitOfWork, JSONConfigUnitOfWork
+from fspachinko.domain.commands import SaveProfile
+from fspachinko.service.handlers import SaveProfileHandler
+
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from .domain.commands import (
@@ -41,7 +45,7 @@ from .service.handlers import (
     StopProcessHandler,
 )
 from .service.messagebus import MessageBus
-from .service.uow import AbstractUnitOfWork, FileSystemUnitOfWork
+from .service.uow import AbstractTransferUnitOfWork, TransferUnitOfWork
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -131,7 +135,8 @@ class FSPachinkoBootstrapper:
 
     collector: CompositeEventCollector = field(default_factory=CompositeEventCollector)
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
-    fs_uow: AbstractUnitOfWork = field(default_factory=FileSystemUnitOfWork)
+    fst_uow: AbstractTransferUnitOfWork = field(default_factory=TransferUnitOfWork)
+    cfg_uow: AbstractConfigUnitOfWork = field(default_factory=JSONConfigUnitOfWork)
     log_fn: Callable = logger.info
     rng_seed_fn: Callable = seed
 
@@ -139,7 +144,7 @@ class FSPachinkoBootstrapper:
     def bootstrap(cls, *args: Any, **kwargs: Any) -> tuple[MessageBus, AbstractPipeline]:
         """Bootstrap the application and return the message bus."""
         b = cls(*args, **kwargs)
-        b.collector.register_emitter(b.fs_uow)
+        b.collector.register_emitter(b.fst_uow)
         return MessageBus(
             collector=b.collector,
             event_handlers=b.get_event_handlers(),
@@ -156,11 +161,11 @@ class FSPachinkoBootstrapper:
 
     def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""
-        uow, pipeline, rng_seed_fn = self.fs_uow, self.pipeline, self.rng_seed_fn
+        fst_uow, cfg_uow, pipeline, rng_seed_fn = self.fst_uow, self.cfg_uow, self.pipeline, self.rng_seed_fn
         return {
-            CreateTransferJob: CreateTransferJobHandler(uow=uow),
-            ProcessDirectory: ProcessDirectoryHandler(uow=uow, pipeline=pipeline),
-            StopProcess: StopProcessHandler(uow=uow),
+            CreateTransferJob: CreateTransferJobHandler(uow=fst_uow),
+            ProcessDirectory: ProcessDirectoryHandler(uow=fst_uow, pipeline=pipeline),
+            StopProcess: StopProcessHandler(uow=fst_uow),
             SetRngSeed: SetRngSeedHandler(rng_seed_fn=rng_seed_fn),
             SetPipelineCreateDir: SetPipelineCreateDirHandler(pipeline=pipeline),
             CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
@@ -170,4 +175,5 @@ class FSPachinkoBootstrapper:
             CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=pipeline),
             CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=pipeline),
             CreateFilefilterFn: CreateFilefilterFnHandler(pipeline=pipeline),
+            SaveProfile: SaveProfileHandler(uow=cfg_uow),
         }

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class AbstractRepository(ABC):
+class AbstractTransferRepository(ABC):
     """Abstract base class for repositories."""
 
     transfer_fn: Callable = lambda _, __: None
@@ -32,7 +32,7 @@ class AbstractRepository(ABC):
 
 
 @dataclass(slots=True)
-class TransferRepository(AbstractRepository):
+class TransferRepository(AbstractTransferRepository):
     """Repository for transfer jobs."""
 
     job: TransferJob = field(default_factory=TransferJob)

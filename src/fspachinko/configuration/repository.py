@@ -15,11 +15,11 @@ class AbstractConfigRepository(ABC):
     """Abstract class for managing configuration profiles."""
 
     @abstractmethod
-    def set(self, dst: str, data: dict) -> None:
+    def set(self, path: str, data: dict) -> None:
         """Save configuration from a dict to the profile path."""
 
     @abstractmethod
-    def get(self, src: str) -> dict:
+    def json_to_dict(self, path: str) -> dict:
         """Load configuration from the profile path and return as a dict."""
 
 
@@ -27,18 +27,19 @@ class AbstractConfigRepository(ABC):
 class JSONConfigRepository(AbstractConfigRepository):
     """Class for managing configuration profiles."""
 
+    path: str = ""
+    data: dict = field(default_factory=dict)
     model: ConfigModel = field(default_factory=ConfigModel)
 
-    def set(self, dst: str, data: dict) -> None:
+    def set(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""
-        with open(dst, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        self.path, self.data = path, data
 
-    def get(self, src: str) -> dict:
+    def json_to_dict(self, path: str) -> dict:
         """Load JSON data from a file."""
-        if not (exists(src) and isfile(src)):
+        if not (exists(path) and isfile(path)):
             return {}
-        with open(src, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
 
     def from_dict(self, config: dict) -> ConfigModel:

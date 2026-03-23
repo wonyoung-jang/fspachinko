@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.configuration.uow import AbstractConfigUnitOfWork
     from fspachinko.domain.commands import (
         CreateDestDirs,
         CreateFilefilterFn,
@@ -30,13 +31,14 @@ if TYPE_CHECKING:
         CreateTransferJob,
         CreateWalkerFn,
         ProcessDirectory,
+        SaveProfile,
         SetPipelineCreateDir,
         SetRngSeed,
         StopProcess,
     )
     from fspachinko.domain.events import DirectoryTransferred, FileTransferred
 
-    from .uow import AbstractUnitOfWork
+    from .uow import AbstractTransferUnitOfWork
 
 
 ######################
@@ -46,7 +48,7 @@ if TYPE_CHECKING:
 class CreateTransferJobHandler:
     """Handle the CreateTransferJob command."""
 
-    uow: AbstractUnitOfWork
+    uow: AbstractTransferUnitOfWork
 
     def __call__(self, cmd: CreateTransferJob) -> None:
         """Handle the CreateTransferJob command."""
@@ -61,7 +63,7 @@ class CreateTransferJobHandler:
 class ProcessDirectoryHandler:
     """Handle the StartProcessingDirectory command."""
 
-    uow: AbstractUnitOfWork
+    uow: AbstractTransferUnitOfWork
     pipeline: AbstractPipeline
 
     def __call__(self, cmd: ProcessDirectory) -> None:
@@ -93,7 +95,7 @@ class ProcessDirectoryHandler:
 class StopProcessHandler:
     """Handle the StopProcess command."""
 
-    uow: AbstractUnitOfWork
+    uow: AbstractTransferUnitOfWork
 
     def __call__(self, _: StopProcess) -> None:
         """Handle the StopProcess command."""
@@ -276,6 +278,19 @@ class CreateFilefilterFnHandler:
                     return lambda e: all(f(e) for f in filter_fns)
 
         self.pipeline.filefilter_fn = _composite()
+
+
+@dataclass(slots=True)
+class SaveProfileHandler:
+    """Handle the SaveProfile command."""
+
+    uow: AbstractConfigUnitOfWork
+
+    def __call__(self, cmd: SaveProfile) -> None:
+        """Handle the SaveProfile command."""
+        with self.uow as uow:
+            uow.repo.set(cmd.path, cmd.config)
+            uow.commit()
 
 
 ####################

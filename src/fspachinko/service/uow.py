@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
-from fspachinko.adapters.repository import AbstractRepository, TransferRepository
+from fspachinko.adapters.repository import AbstractTransferRepository, TransferRepository
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
-class AbstractUnitOfWork(ABC):
+class AbstractTransferUnitOfWork(ABC):
     """Abstract Unit of Work."""
 
-    repo: AbstractRepository
+    repo: AbstractTransferRepository
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
@@ -47,7 +47,7 @@ class AbstractUnitOfWork(ABC):
 
 
 @dataclass(slots=True)
-class FileSystemUnitOfWork(AbstractUnitOfWork):
+class TransferUnitOfWork(AbstractTransferUnitOfWork):
     """Abstract Unit of Work."""
 
     repo: TransferRepository = field(default_factory=TransferRepository)

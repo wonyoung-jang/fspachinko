@@ -10,6 +10,8 @@ from fspachinko.adapters.filesystemport import get_profile_path
 from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import SIZE_MAP, TIME_MAP
+from fspachinko.domain.commands import SaveProfile
+from fspachinko.domain.events import FileTransferred
 
 from .centralwidget import CentralWidget
 from .components import Actions, LogWidget, ProgressWidget
@@ -30,7 +32,6 @@ class MainWindow(QMainWindow):
     def __init__(self, bus: MessageBus, pipeline: AbstractPipeline) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.setAnimated(True)
         self._original_title = ""
         self.config_path = ""
         self.bus: MessageBus = bus
@@ -48,14 +49,14 @@ class MainWindow(QMainWindow):
         )
         self.ui.add_to_layout(self.logging, self.progress)
         self.setCentralWidget(self.ui)
+        self.setAnimated(True)
         self.init_connections()
-        self.init_menubar()
-        self.init_toolbar()
-        self.init_statusbar()
+        self.init_bars()
         self.init_settings()
 
     def init_connections(self) -> None:
         """Initialize connections."""
+        self.bus.event_handlers[FileTransferred].append(lambda _: self.controller.signals.file_transferred.emit())
         self.log_signal.logged.connect(self.logging.append)
         self.actions_.save.triggered.connect(self.save_profile)
         self.actions_.save_as.triggered.connect(self.save_profile_as_dialog)
@@ -68,8 +69,8 @@ class MainWindow(QMainWindow):
         self.controller.signals.file_transferred.connect(self.handle_file_transfer)
         self.controller.signals.finished.connect(self.handle_finished)
 
-    def init_menubar(self) -> None:
-        """Initialize the menu bar."""
+    def init_bars(self) -> None:
+        """Initialize the menu, tool, and status bar."""
         menubar = self.menuBar()
         file_menu = menubar.addMenu(GUILabel.FILEMENU)
         file_menu.addAction(self.actions_.save)
@@ -80,9 +81,6 @@ class MainWindow(QMainWindow):
         run_menu = menubar.addMenu(GUILabel.RUNMENU)
         run_menu.addAction(self.actions_.start)
         run_menu.addAction(self.actions_.stop)
-
-    def init_toolbar(self) -> None:
-        """Initialize the toolbar."""
         toolbar = self.addToolBar(GUIName.TOOLBAR)
         toolbar.setObjectName(GUIName.TOOLBAR)
         toolbar.addAction(self.actions_.save)
@@ -91,9 +89,6 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.actions_.start)
         toolbar.addAction(self.actions_.stop)
         toolbar.addAction(self.actions_.exit)
-
-    def init_statusbar(self) -> None:
-        """Initialize the status bar."""
         statusbar = self.statusBar()
         statusbar.setSizeGripEnabled(True)
 
@@ -106,16 +101,12 @@ class MainWindow(QMainWindow):
             self.restoreState(state)
         if profile_path := str(qsettings.value(GUISettingsKey.PROFILE, "")):
             self.update_profile_path(profile_path)
-            self.open_profile()
+            self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
 
     @Slot()
     def save_profile(self) -> None:
         """Save the current profile."""
-        self.config_repo.set(self.config_path, self.ui.config)
-
-    def open_profile(self) -> None:
-        """Open the current profile."""
-        self.ui.restore_config(self.config_repo.get(self.config_path))
+        self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -128,7 +119,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.save_profile()
+            self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -141,7 +132,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.open_profile()
+            self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
 
     def update_profile_path(self, path: str) -> None:
         """Set the current profile path."""
