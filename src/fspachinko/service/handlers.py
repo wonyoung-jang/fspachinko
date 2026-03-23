@@ -8,14 +8,11 @@ from random import randint
 from typing import TYPE_CHECKING
 
 from fspachinko.adapters.filenamer import TemplateFilenamer
-from fspachinko.adapters.filesystemport import (
-    get_available_transfer_modes,
-    get_unique_path,
-    remove_directory,
-)
+from fspachinko.adapters.filesystemport import get_unique_path, remove_directory
 from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.media import get_duration
-from fspachinko.constants import FilterName, TransferMode
+from fspachinko.adapters.transfer import FileTransferFnManager
+from fspachinko.constants import FilterName
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
@@ -24,8 +21,7 @@ if TYPE_CHECKING:
 
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.commands import (
-        CreateDirnamesFn,
-        CreateFilecountFn,
+        CreateDestDirs,
         CreateFilefilterFn,
         CreateFilenameFn,
         CreateRangeFilterFn,
@@ -135,8 +131,7 @@ class CreateTransferFnHandler:
 
     def __call__(self, cmd: CreateTransferFn) -> None:
         """Handle the CreateTransferFn command."""
-        available = get_available_transfer_modes()
-        self.pipeline.transfer_fn = available.get(TransferMode(cmd.transfermode), available[TransferMode.DRY_RUN])
+        self.pipeline.transfer_fn = FileTransferFnManager().get(cmd.transfermode)
 
 
 @dataclass(slots=True)
@@ -149,40 +144,32 @@ class CreateFilenameFnHandler:
         """Handle the CreateFilenameFn command."""
         if cmd.is_enabled:
             self.pipeline.filenamer_fn = TemplateFilenamer(cmd.template)
-
-
-@dataclass(slots=True)
-class CreateFilecountFnHandler:
-    """Handle the CreateFilecountFn command."""
-
-    pipeline: AbstractPipeline
-
-    def __call__(self, cmd: CreateFilecountFn) -> None:
-        """Handle the CreateFilecountFn command."""
-        if cmd.is_rand_enabled:
-            self.pipeline.filecount_fn = lambda: randint(*cmd.rand_range)
         else:
-            self.pipeline.filecount_fn = lambda: cmd.count
+            self.pipeline.filenamer_fn = lambda e, _: e.stem
 
 
 @dataclass(slots=True)
-class CreateDirnamesFnHandler:
-    """Handle the CreateDirnameFn command."""
+class CreateDestDirsHandler:
+    """Handle the CreateDestDirs command."""
 
     pipeline: AbstractPipeline
 
-    def __call__(self, cmd: CreateDirnamesFn) -> None:
-        """Handle the CreateDirnameFn command."""
-        if not cmd.is_enabled or cmd.count <= 0:
-            self.pipeline.dirnames.append(cmd.dest)
+    def __call__(self, cmd: CreateDestDirs) -> None:
+        """Handle the CreateDestDirs command."""
+        filecount_fn = (
+            (lambda: randint(*cmd.filecount_randrange))
+            if cmd.filecount_rand_is_enabled
+            else (lambda: cmd.filecount_static)
+        )
+        if not cmd.directory_create_is_enabled:
+            self.pipeline.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
             return
-        with scandir(cmd.dest) as it:
-            existing = {entry.path for entry in it if entry.is_dir()}
-        candidate = join(cmd.dest, cmd.name)
-        for _ in range(cmd.count):
+        existing = {entry.path for entry in scandir(cmd.directory_dest) if entry.is_dir()}
+        candidate = join(cmd.directory_dest, cmd.directory_name)
+        while len(self.pipeline.dest_dir_inputs) < cmd.dir_count:
             next_name = get_unique_path(candidate, existing)
             makedirs(next_name, exist_ok=True)
-            self.pipeline.dirnames.append(next_name)
+            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
 
 

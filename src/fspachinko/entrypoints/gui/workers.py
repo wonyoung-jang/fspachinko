@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from fspachinko.configuration.model import ConfigModel
     from fspachinko.service.messagebus import MessageBus
 
+root_logger = logging.getLogger()
+
 
 class WorkerSignals(QObject):
     """Qt worker signals."""
@@ -66,10 +68,8 @@ class MainWorker(QRunnable):
         """Run the process."""
         self.bus.event_handlers[FileTransferred].append(lambda _: self.signals.file_transferred.emit())
         setup_bus(self.bus, self.config)
-        root_logger = logging.getLogger()
         self.signals.process_started.emit(self.config.directory.count)
-        for dest_dir in self.pipeline.dirnames:
-            target_qty = self.pipeline.filecount_fn()
+        for dest_dir, target_qty in self.pipeline.dest_dir_inputs:
             self.signals.directory_started.emit(target_qty)
             handler = get_dest_log_filehandler(dest_dir)
             root_logger.addHandler(handler)

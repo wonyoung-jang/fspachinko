@@ -3,19 +3,10 @@
 import logging
 import shutil
 from dataclasses import dataclass
-from filecmp import cmp
-from io import UnsupportedOperation
-from os import link, mkdir, symlink, unlink
+from os import mkdir
 from os.path import dirname, exists, join
-from shutil import copy, copy2, move
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
 
-from fspachinko.constants import DefaultPath, OSCrossError, TransferMode
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
+from fspachinko.constants import DefaultPath
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +68,6 @@ def get_unique_path(path: str, paths: set[str]) -> str:
     return candidate
 
 
-def are_files_equal(src: str, dest: str) -> bool:
-    """Check if two files are the same by comparing their contents."""
-    return cmp(src, dest, shallow=True) and cmp(src, dest, shallow=False)
-
-
 def remove_directory(path: str) -> None:
     """Remove a directory and its contents, with error handling."""
     try:
@@ -90,46 +76,3 @@ def remove_directory(path: str) -> None:
         logger.exception("Directory not found for removal: %s", path)
     except OSError:
         logger.exception("Error occurred while removing directory: %s", path)
-
-
-def get_available_transfer_modes() -> dict[TransferMode, Callable]:
-    """Return the set of available transfer modes based on the current environment."""
-    available = AVAILABLE_TRANSFER_FNS
-
-    def _verify_link_fn(link_func: Callable[[str, str], None], transfer_mode: TransferMode) -> None:
-        """Test link creation."""
-        try:
-            with TemporaryDirectory() as tmpdir:
-                test_src = join(tmpdir, "test_src")
-                test_link = join(tmpdir, "test_link")
-                open(test_src, "w").close()
-                link_func(test_src, test_link)
-                unlink(test_link)
-                unlink(test_src)
-        except OSError, UnsupportedOperation, NotImplementedError:
-            available.pop(transfer_mode)
-
-    _verify_link_fn(symlink, TransferMode.SYMLINK)
-    _verify_link_fn(link, TransferMode.HARDLINK)
-    return available
-
-
-def hardlink(src: str, dst: str) -> None:
-    """Create a hardlink from source to destination."""
-    try:
-        link(src, dst)
-    except OSError as e:
-        if e.winerror == OSCrossError.WINDOWS or e.errno == OSCrossError.UNIX:
-            symlink(src, dst)
-        else:
-            raise
-
-
-AVAILABLE_TRANSFER_FNS = {
-    TransferMode.DRY_RUN: lambda _, __: None,
-    TransferMode.COPY: copy,
-    TransferMode.COPY_PRESERVE: copy2,
-    TransferMode.MOVE: move,
-    TransferMode.SYMLINK: symlink,
-    TransferMode.HARDLINK: hardlink,
-}

@@ -9,8 +9,7 @@ from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 from .domain.commands import (
     Command,
-    CreateDirnamesFn,
-    CreateFilecountFn,
+    CreateDestDirs,
     CreateFilefilterFn,
     CreateFilenameFn,
     CreateRangeFilterFn,
@@ -26,8 +25,7 @@ from .domain.commands import (
 from .domain.events import DirectoryTransferred, Event, FileTransferred
 from .service.eventcollector import CompositeEventCollector
 from .service.handlers import (
-    CreateDirnamesFnHandler,
-    CreateFilecountFnHandler,
+    CreateDestDirsHandler,
     CreateFilefilterFnHandler,
     CreateFilenameFnHandler,
     CreateRangeFilterFnHandler,
@@ -48,7 +46,7 @@ from .service.uow import AbstractUnitOfWork, FileSystemUnitOfWork
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from .configuration.model import ConfigModel, RangeFilterModel
+    from .configuration.model import ConfigModel
 
 
 logger = logging.getLogger(__name__)
@@ -64,33 +62,63 @@ def setup_bus(bus: MessageBus, c: ConfigModel) -> None:
 
     def _setup_commands() -> Iterator[Command]:
         yield from (
-            SetRngSeed(c.options.rng_seed),
-            SetPipelineCreateDir(c.directory.is_enabled),
-            CreateTransferFn(c.options.transfer_mode),
-            CreateFilenameFn(c.filename.template, c.filename.is_enabled),
-            CreateFilecountFn(
-                c.filecount.count, (c.filecount.rand_min, c.filecount.rand_max), c.filecount.is_rand_enabled
+            SetRngSeed(
+                rng_seed=c.options.rng_seed,
             ),
-            CreateDirnamesFn(c.directory.count, c.dest, c.directory.name, c.directory.is_enabled),
-            CreateWalkerFn(c.root, c.options.should_follow_symlink),
+            SetPipelineCreateDir(
+                is_create_dir=c.directory.is_enabled,
+            ),
+            CreateTransferFn(
+                transfermode=c.options.transfer_mode,
+            ),
+            CreateFilenameFn(
+                template=c.filename.template,
+                is_enabled=c.filename.is_enabled,
+            ),
+            CreateDestDirs(
+                dir_count=c.directory.count,
+                directory_dest=c.dest,
+                directory_name=c.directory.name,
+                directory_create_is_enabled=c.directory.is_enabled,
+                filecount_static=c.filecount.count,
+                filecount_randrange=(c.filecount.rand_min, c.filecount.rand_max),
+                filecount_rand_is_enabled=c.filecount.is_rand_enabled,
+            ),
+            CreateWalkerFn(
+                root=c.root,
+                should_follow_symlink=c.options.should_follow_symlink,
+            ),
         )
         text_specs = [
-            (FilterName.DIRNAME, c.dirname, ReStrFmt.DIRECTORY),
-            (FilterName.KEYWORD, c.keyword, ReStrFmt.KEYWORD),
-            (FilterName.EXTENSION, c.extension, ReStrFmt.EXTENSION),
+            (c.dirname, FilterName.DIRNAME, ReStrFmt.DIRECTORY),
+            (c.keyword, FilterName.KEYWORD, ReStrFmt.KEYWORD),
+            (c.extension, FilterName.EXTENSION, ReStrFmt.EXTENSION),
         ]
-        for name, model, fmt in text_specs:
-            yield CreateTextFilterFn(name, model.text, fmt, model.is_enabled, model.should_include)
-        range_specs: list[tuple[str, RangeFilterModel, dict]] = [
-            (FilterName.FILESIZE, c.filesize, SIZE_MAP),
-            (FilterName.DURATION, c.duration, TIME_MAP),
+        for model, name, re_fmt in text_specs:
+            yield CreateTextFilterFn(
+                name=name,
+                text=model.text,
+                re_fmt=re_fmt,
+                is_enabled=model.is_enabled,
+                should_include=model.should_include,
+            )
+        range_specs = [
+            (c.filesize, FilterName.FILESIZE, SIZE_MAP),
+            (c.duration, FilterName.DURATION, TIME_MAP),
         ]
-        for name, model, unit_map in range_specs:
+        for model, name, unit_map in range_specs:
             mul = unit_map.get(model.unit, 1.0)
-            yield CreateRangeFilterFn(name, model.minimum * mul, model.maximum * mul, model.is_enabled)
+            yield CreateRangeFilterFn(
+                name=name,
+                minimum=model.minimum * mul,
+                maximum=model.maximum * mul,
+                is_enabled=model.is_enabled,
+            )
         yield CreateFilefilterFn()
         yield CreateTransferJob(
-            root=c.root, max_per_dir=c.options.max_per_dir, unique_files_only=c.options.is_create_unique_dirs
+            root=c.root,
+            max_per_dir=c.options.max_per_dir,
+            unique_files_only=c.options.is_create_unique_dirs,
         )
 
     for cmd in _setup_commands():
@@ -114,12 +142,11 @@ class FSPachinkoBootstrapper:
         b.collector.register_emitter(b.fs_uow)
         return MessageBus(
             collector=b.collector,
-            event_handlers=b.event_handlers,
-            command_handlers=b.command_handlers,
+            event_handlers=b.get_event_handlers(),
+            command_handlers=b.get_command_handlers(),
         ), b.pipeline
 
-    @property
-    def event_handlers(self) -> dict[type[Event], list[Callable]]:
+    def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""
         log_fn = self.log_fn
         return {
@@ -127,8 +154,7 @@ class FSPachinkoBootstrapper:
             DirectoryTransferred: [DirectoryTransferredHandler(log_fn=log_fn)],
         }
 
-    @property
-    def command_handlers(self) -> dict[type[Command], Callable]:
+    def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""
         uow, pipeline, rng_seed_fn = self.fs_uow, self.pipeline, self.rng_seed_fn
         return {
@@ -139,8 +165,7 @@ class FSPachinkoBootstrapper:
             SetPipelineCreateDir: SetPipelineCreateDirHandler(pipeline=pipeline),
             CreateTransferFn: CreateTransferFnHandler(pipeline=pipeline),
             CreateFilenameFn: CreateFilenameFnHandler(pipeline=pipeline),
-            CreateFilecountFn: CreateFilecountFnHandler(pipeline=pipeline),
-            CreateDirnamesFn: CreateDirnamesFnHandler(pipeline=pipeline),
+            CreateDestDirs: CreateDestDirsHandler(pipeline=pipeline),
             CreateWalkerFn: CreateWalkerFnHandler(pipeline=pipeline),
             CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=pipeline),
             CreateRangeFilterFn: CreateRangeFilterFnHandler(pipeline=pipeline),

@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
-from fspachinko.adapters.filesystemport import get_available_transfer_modes, get_profile_path
+from fspachinko.adapters.filesystemport import get_profile_path
+from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import SIZE_MAP, TIME_MAP
 
@@ -43,7 +44,7 @@ class MainWindow(QMainWindow):
         self.ui = CentralWidget(
             size_units=tuple(SIZE_MAP.keys()),
             dur_units=tuple(TIME_MAP.keys()),
-            transfermodes=tuple(get_available_transfer_modes().keys()),
+            transfermodes=FileTransferFnManager().transfermodes,
         )
         self.ui.add_to_layout(self.logging, self.progress)
         self.setCentralWidget(self.ui)

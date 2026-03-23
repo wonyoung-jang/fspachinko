@@ -60,22 +60,16 @@ class CreateFilenameFn(Command):
 
 
 @dataclass(slots=True, frozen=True)
-class CreateFilecountFn(Command):
-    """Command to create a file count function."""
+class CreateDestDirs(Command):
+    """Command to create destination directories."""
 
-    count: int
-    rand_range: tuple[int, int]
-    is_rand_enabled: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateDirnamesFn(Command):
-    """Command to create a directory name function."""
-
-    count: int
-    dest: str
-    name: str
-    is_enabled: bool
+    dir_count: int
+    directory_dest: str
+    directory_name: str
+    directory_create_is_enabled: bool
+    filecount_static: int
+    filecount_randrange: tuple[int, int]
+    filecount_rand_is_enabled: bool
 
 
 @dataclass(slots=True, frozen=True)
