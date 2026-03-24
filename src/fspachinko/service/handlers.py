@@ -1,5 +1,6 @@
 """Handlers module."""
 
+import logging
 from dataclasses import dataclass
 from functools import partial
 from os import makedirs, scandir
@@ -10,9 +11,13 @@ from typing import TYPE_CHECKING
 from fspachinko.adapters.filenamer import TemplateFilenamer
 from fspachinko.adapters.filesystemport import get_unique_path, remove_directory
 from fspachinko.adapters.fswalker import FSWalker
+from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.adapters.media import get_duration
 from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.constants import FilterName
+from fspachinko.domain.commands import (
+    ProcessDirectory,
+)
 from fspachinko.domain.events import DirectoryStarted, ProcessStarted
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
@@ -31,7 +36,7 @@ if TYPE_CHECKING:
         CreateTransferFn,
         CreateTransferJob,
         CreateWalkerFn,
-        ProcessDirectory,
+        RunTransferJob,
         SaveProfile,
         SetPipelineCreateDir,
         SetRngSeed,
@@ -45,6 +50,25 @@ if TYPE_CHECKING:
 ######################
 ## COMMAND HANDLERS ##
 ######################
+@dataclass(slots=True)
+class RunTransferJobHandler:
+    """Handle the RunTransferJob command."""
+
+    uow: AbstractTransferUnitOfWork
+    pipeline: AbstractPipeline
+
+    def __call__(self, cmd: RunTransferJob) -> None:
+        """Handle the RunTransferJob command."""
+        # Started
+        with self.uow as uow:
+            for dest_dir, target_qty in cmd.dest_dir_inputs:
+                ProcessDirectoryHandler(uow=uow, pipeline=self.pipeline)(
+                    ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
+                )
+            uow.commit()
+        # Finished
+
+
 @dataclass(slots=True)
 class CreateTransferJobHandler:
     """Handle the CreateTransferJob command."""
@@ -71,6 +95,8 @@ class ProcessDirectoryHandler:
         """Handle the StartProcessingDirectory command."""
         dst = DestinationDirectory(cmd.dest_dir, cmd.target_qty)
         with self.uow as uow:
+            handler = get_dest_log_filehandler(cmd.dest_dir)
+            logging.getLogger().addHandler(handler)
             uow.repo.transfer_fn = self.pipeline.transfer_fn
             job = uow.repo.get()
             if job.is_stop_requested or job.is_root_locked:
@@ -90,6 +116,8 @@ class ProcessDirectoryHandler:
             if is_empty_creation:
                 remove_directory(dst.path)
             job.finalize_directory(dst, is_empty_creation=is_empty_creation)
+            logging.getLogger().removeHandler(handler)
+            handler.close()
             uow.commit()
 
 
@@ -160,10 +188,11 @@ class CreateDestDirsHandler:
 
     def __call__(self, cmd: CreateDestDirs) -> None:
         """Handle the CreateDestDirs command."""
+        self.pipeline.dest_dir_inputs.clear()
         filecount_fn = (
-            (lambda: randint(*cmd.filecount_randrange))
+            (lambda rnge=cmd.filecount_randrange: randint(*rnge))
             if cmd.filecount_rand_is_enabled
-            else (lambda: cmd.filecount_static)
+            else (lambda cnt=cmd.filecount_static: cnt)
         )
         if not cmd.directory_create_is_enabled:
             self.pipeline.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))

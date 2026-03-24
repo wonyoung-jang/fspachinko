@@ -1,6 +1,5 @@
 """Unit of Work."""
 
-import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -49,9 +48,6 @@ class JSONConfigUnitOfWork(AbstractConfigUnitOfWork):
 
     def _commit(self) -> None:
         """No I/O to perform for config operations."""
-        dst, data = self.repo.path, self.repo.data
-        with open(dst, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
 
     def rollback(self) -> None:
         """No I/O to rollback for config operations."""

@@ -64,9 +64,9 @@ class MessageBus:
 
     def subscribe(self, message: type[Message], handler: Callable) -> None:
         """Subscribe a handler to a message type."""
-        if isinstance(message, type) and issubclass(message, Event):
+        if issubclass(message, Event):
             self.event_handlers[message].append(handler)
-        elif isinstance(message, type) and issubclass(message, Command):
+        elif issubclass(message, Command):
             self.command_handlers[message] = handler
         else:
             msg = f"Message must be an Event or Command, got {type(message)}"

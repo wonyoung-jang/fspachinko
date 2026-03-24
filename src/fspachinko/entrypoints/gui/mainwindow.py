@@ -8,9 +8,10 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from fspachinko.adapters.filesystemport import get_profile_path
 from fspachinko.adapters.transfer import FileTransferFnManager
+from fspachinko.bootstrap import setup_bus
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import SIZE_MAP, TIME_MAP
-from fspachinko.domain.commands import ProcessDirectory, SaveProfile, StopProcess
+from fspachinko.domain.commands import RunTransferJob, SaveProfile, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 
 from .centralwidget import CentralWidget
@@ -33,12 +34,13 @@ class MainWindow(QMainWindow):
     def __init__(self, bus: MessageBus, pipeline: AbstractPipeline) -> None:
         """Initialize the main window."""
         super().__init__()
+        self.bus: MessageBus = bus
+        self.pipeline: AbstractPipeline = pipeline
         self._actions: Actions = Actions.build()
         self._original_title = ""
         self.config_path = ""
-        self.bus: MessageBus = bus
         self.config_repo = JSONConfigRepository()
-        self.controller = ProcessController(bus=self.bus, pipeline=pipeline)
+        self.controller = ProcessController()
         self.log_signal = setup_gui_logger()
         self.logging = LogWidget()
         self.progress = ProgressWidget()
@@ -57,8 +59,8 @@ class MainWindow(QMainWindow):
 
     def init_ui_connections(self) -> None:
         """Initialize connections."""
-        self.bus.subscribe(FileTransferred, lambda _: self.controller.signals.file_transferred.emit())
-        self.bus.subscribe(DirectoryStarted, lambda c: self.progress.handle_directory_start(c.target_qty))
+        self.bus.subscribe(FileTransferred, self.handle_file_transferred)
+        self.bus.subscribe(DirectoryStarted, self.handle_directory_started)
         self.log_signal.logged.connect(self.logging.append)
         self._actions.save.triggered.connect(self.save_profile)
         self._actions.save_as.triggered.connect(self.save_profile_as_dialog)
@@ -66,10 +68,8 @@ class MainWindow(QMainWindow):
         self._actions.exit.triggered.connect(self.on_close)
         self._actions.start.triggered.connect(self.on_start)
         self._actions.stop.triggered.connect(self.on_stop)
-        self.controller.signals.process_started.connect(self.progress.handle_start_process)
-        self.controller.signals.file_transferred.connect(self.handle_file_transfer)
+        self.controller.signals.process_started.connect(self.handle_start_process)
         self.controller.signals.finished.connect(self.handle_finished)
-        self.controller.signals.process_directory.connect(self.handle_process_directory)
         self.controller.signals.stopped.connect(self.handle_stopped)
 
     def init_ui_settings(self) -> None:
@@ -83,10 +83,11 @@ class MainWindow(QMainWindow):
             self.update_profile_path(profile_path)
             self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
 
-    @Slot(str, int)
-    def handle_process_directory(self, dest_dir: str, target_qty: int) -> None:
-        """Handle the start of a directory process."""
-        self.bus.handle(ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty))
+    @Slot()
+    def handle_start_process(self) -> None:
+        """Handle the start of the process."""
+        self.progress.handle_start_process(len(self.pipeline.dest_dir_inputs))
+        self.bus.handle(RunTransferJob(dest_dir_inputs=self.pipeline.dest_dir_inputs))
 
     @Slot()
     def handle_stopped(self) -> None:
@@ -96,7 +97,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def save_profile(self) -> None:
         """Save the current profile."""
-        self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
+        self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config()))
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -109,7 +110,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
+            self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config()))
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -148,18 +149,23 @@ class MainWindow(QMainWindow):
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
-        self.controller.start(self.config_repo.from_dict(self.ui.config))
+        config = self.config_repo.from_dict(self.ui.config())
+        setup_bus(self.bus, config)
+        self.controller.start()
 
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
         self.controller.stop()
 
-    @Slot()
-    def handle_file_transfer(self) -> None:
+    def handle_file_transferred(self, _evt: FileTransferred) -> None:
         """Update the window title with the current progress."""
         self.progress.handle_file_transfer()
         self.setWindowTitle(f"[{self.progress.file_percentage}%] {self._original_title}")
+
+    def handle_directory_started(self, cmd: DirectoryStarted) -> None:
+        """Update the window title with the current progress."""
+        self.progress.handle_directory_start(cmd.target_qty)
 
     @Slot()
     def handle_finished(self) -> None:

@@ -6,9 +6,9 @@ from random import seed
 from typing import TYPE_CHECKING, Any
 
 from fspachinko.configuration.uow import AbstractConfigUnitOfWork, JSONConfigUnitOfWork
-from fspachinko.domain.commands import SaveProfile
+from fspachinko.domain.commands import RunTransferJob, SaveProfile
 from fspachinko.domain.events import DirectoryStarted
-from fspachinko.service.handlers import DirectoryStartedHandler, SaveProfileHandler
+from fspachinko.service.handlers import DirectoryStartedHandler, RunTransferJobHandler, SaveProfileHandler
 
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
@@ -165,6 +165,7 @@ class FSPachinkoBootstrapper:
         """Get the command handlers."""
         fst_uow, cfg_uow, pipeline, rng_seed_fn = self.fst_uow, self.cfg_uow, self.pipeline, self.rng_seed_fn
         return {
+            RunTransferJob: RunTransferJobHandler(uow=fst_uow, pipeline=pipeline),
             CreateTransferJob: CreateTransferJobHandler(uow=fst_uow),
             ProcessDirectory: ProcessDirectoryHandler(uow=fst_uow, pipeline=pipeline),
             StopProcess: StopProcessHandler(uow=fst_uow),

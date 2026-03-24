@@ -47,7 +47,6 @@ class CentralWidget(QWidget):
         self.setLayout(QVBoxLayout())
         self.add_to_layout(*self._config_widgets, *extra_widgets)
 
-    @property
     def config(self) -> dict:
         """Capture the current configuration from the UI."""
         config = {}
