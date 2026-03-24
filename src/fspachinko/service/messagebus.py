@@ -37,8 +37,8 @@ class MessageBus:
             elif isinstance(msg, Command):
                 self.handle_command(msg)
             else:
-                msg = f"Message must be an Event or Command, got {type(msg)}"
-                raise TypeError(msg)
+                error_msg = f"Message must be an Event or Command, got {type(msg)}"
+                raise TypeError(error_msg)
 
     def handle_event(self, event: Event) -> None:
         """Handle an event by calling its handlers and collecting any new events that are generated."""
@@ -61,3 +61,13 @@ class MessageBus:
         except Exception:
             logger.exception("Exception handling command %s", command)
             raise
+
+    def subscribe(self, message: type[Message], handler: Callable) -> None:
+        """Subscribe a handler to a message type."""
+        if isinstance(message, type) and issubclass(message, Event):
+            self.event_handlers[message].append(handler)
+        elif isinstance(message, type) and issubclass(message, Command):
+            self.command_handlers[message] = handler
+        else:
+            msg = f"Message must be an Event or Command, got {type(message)}"
+            raise TypeError(msg)

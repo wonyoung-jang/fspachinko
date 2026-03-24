@@ -9,12 +9,26 @@ class Event:
 
 
 @dataclass(slots=True, frozen=True)
+class ProcessStarted(Event):
+    """Event after process is started."""
+
+    dir_count: int
+
+
+@dataclass(slots=True, frozen=True)
 class FileTransferred(Event):
     """Event after file is transferred."""
 
     count: int
     src: str
     dst: str
+
+
+@dataclass(slots=True, frozen=True)
+class DirectoryStarted(Event):
+    """Event after directory process is started."""
+
+    target_qty: int
 
 
 @dataclass(slots=True, frozen=True)

@@ -5,10 +5,10 @@ from PySide6.QtWidgets import QApplication
 
 from fspachinko.adapters.loggers import initialize_logging
 from fspachinko.bootstrap import bootstrap
+from fspachinko.entrypoints.gui.qthelpers import get_icon
 
 from .constants_gui import GUIAppSetting
 from .mainwindow import MainWindow
-from .qthelpers import window_icon
 
 QCoreApplication.setOrganizationName(GUIAppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)
@@ -23,13 +23,14 @@ try:
 except ImportError:
     pass
 
+bus, pipeline = bootstrap()
+
 
 def main() -> None:
     """Run the application."""
     initialize_logging()
     app = QApplication()
-    app.setWindowIcon(window_icon())
-    bus, pipeline = bootstrap()
+    app.setWindowIcon(get_icon("window"))
     window = MainWindow(bus, pipeline)
     window.show()
     app.exec()

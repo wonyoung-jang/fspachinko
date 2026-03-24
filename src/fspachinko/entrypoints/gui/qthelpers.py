@@ -7,11 +7,13 @@ from PySide6.QtGui import QIcon, QKeySequence
 
 from fspachinko.adapters.filesystemport import get_icon_path
 
-from .constants_gui import GUIIconFilename
+from .constants_gui import GUIIconFilename, GUILabel, GUIName
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QAction
-    from PySide6.QtWidgets import QWidget
+    from PySide6.QtWidgets import QMainWindow, QMenu, QToolBar, QWidget
+
+    from .components import Actions
 
 
 def set_qt_tips(w: QWidget | QAction, tooltip: str, statustip: str = "") -> None:
@@ -22,101 +24,103 @@ def set_qt_tips(w: QWidget | QAction, tooltip: str, statustip: str = "") -> None
     w.setStatusTip(statustip)
 
 
-@cache
-def window_icon() -> QIcon:
-    """Get the window icon."""
-    return QIcon(get_icon_path(GUIIconFilename.WINDOW))
+MENU_STRUCTURE = {
+    GUILabel.FILEMENU: [
+        "save",
+        "save_as",
+        "load",
+        None,  # Separator
+        "exit",
+    ],
+    GUILabel.RUNMENU: [
+        "start",
+        "stop",
+    ],
+}
+
+
+TOOLBAR_STRUCTURE = [
+    "save",
+    "save_as",
+    "load",
+    None,  # Separator
+    "start",
+    "stop",
+    # Separator
+    "exit",
+]
+
+
+def add_actions_to_bar(bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None]) -> None:
+    """Add actions to a menu or toolbar based on a list of action keys."""
+    for item in actions_names:
+        if item is None:
+            bar.addSeparator()
+        else:
+            action = getattr(actions, item)
+            bar.addAction(action)
+
+
+def build_ui_bars(window: QMainWindow, actions: Actions) -> None:
+    """Build the menu bar."""
+    statusbar = window.statusBar()
+    statusbar.setSizeGripEnabled(True)
+    toolbar = window.addToolBar(GUIName.TOOLBAR)
+    toolbar.setObjectName(GUIName.TOOLBAR)
+    add_actions_to_bar(toolbar, actions, TOOLBAR_STRUCTURE)
+    menubar = window.menuBar()
+    for menu_name, action_keys in MENU_STRUCTURE.items():
+        menu = menubar.addMenu(menu_name)
+        add_actions_to_bar(menu, actions, action_keys)
+
+
+ICON_MAP = {
+    "window": GUIIconFilename.WINDOW,
+    "browse": GUIIconFilename.BROWSE,
+    "open_dir": GUIIconFilename.OPEN_DIR,
+    "save": GUIIconFilename.SAVE,
+    "save_as": GUIIconFilename.SAVE_AS,
+    "load": GUIIconFilename.OPEN,
+    "exit": GUIIconFilename.CLOSE,
+    "start": GUIIconFilename.START,
+    "stop": GUIIconFilename.STOP,
+}
+
+SHORTCUT_MAP = {
+    "save": "Ctrl+S",
+    "save_as": "Ctrl+Shift+S",
+    "load": "Ctrl+O",
+    "exit": "Ctrl+W",
+    "start": "Ctrl+R",
+    "stop": "ESC",
+}
 
 
 @cache
-def save_icon() -> QIcon:
-    """Get the save icon."""
-    return QIcon(get_icon_path(GUIIconFilename.SAVE))
+def get_icon(name: str) -> QIcon:
+    """Get cached icon by declarative name."""
+    filename = ICON_MAP.get(name)
+    if not filename:
+        msg = f"Unknown icon: {name}"
+        raise ValueError(msg)
+    return QIcon(get_icon_path(filename))
 
 
 @cache
-def save_as_icon() -> QIcon:
-    """Get the save as icon."""
-    return QIcon(get_icon_path(GUIIconFilename.SAVE_AS))
-
-
-@cache
-def load_icon() -> QIcon:
-    """Get the load icon."""
-    return QIcon(get_icon_path(GUIIconFilename.OPEN))
-
-
-@cache
-def exit_icon() -> QIcon:
-    """Get the exit icon."""
-    return QIcon(get_icon_path(GUIIconFilename.CLOSE))
-
-
-@cache
-def start_icon() -> QIcon:
-    """Get the start icon."""
-    return QIcon(get_icon_path(GUIIconFilename.START))
-
-
-@cache
-def stop_icon() -> QIcon:
-    """Get the stop icon."""
-    return QIcon(get_icon_path(GUIIconFilename.STOP))
-
-
-@cache
-def browse_icon() -> QIcon:
-    """Get the browse icon."""
-    return QIcon(get_icon_path(GUIIconFilename.BROWSE))
-
-
-@cache
-def open_dir_icon() -> QIcon:
-    """Get the open directory icon."""
-    return QIcon(get_icon_path(GUIIconFilename.OPEN_DIR))
-
-
-@cache
-def save_shortcut() -> QKeySequence:
-    """Get the save shortcut."""
-    return QKeySequence("Ctrl+S")
-
-
-@cache
-def save_as_shortcut() -> QKeySequence:
-    """Get the save as shortcut."""
-    return QKeySequence("Ctrl+Shift+S")
-
-
-@cache
-def load_shortcut() -> QKeySequence:
-    """Get the load shortcut."""
-    return QKeySequence("Ctrl+O")
-
-
-@cache
-def exit_shortcut() -> QKeySequence:
-    """Get the exit shortcut."""
-    return QKeySequence("Ctrl+W")
-
-
-@cache
-def start_shortcut() -> QKeySequence:
-    """Get the start shortcut."""
-    return QKeySequence("Ctrl+R")
-
-
-@cache
-def stop_shortcut() -> QKeySequence:
-    """Get the stop shortcut."""
-    return QKeySequence("ESC")
+def get_shortcut(name: str) -> QKeySequence:
+    """Get cached shortcut by declarative name."""
+    seq = SHORTCUT_MAP.get(name)
+    if not seq:
+        msg = f"Unknown shortcut: {name}"
+        raise ValueError(msg)
+    return QKeySequence(seq)
 
 
 GUI_ACTION_CONFIG = {
-    "save": (save_icon, "&Save Profile", save_shortcut, "Save current profile (Ctrl+S)"),
-    "save_as": (save_as_icon, "Save Profile &As", save_as_shortcut, "Save current profile as ... (Ctrl+Shift+S)"),
-    "load": (load_icon, "&Load Profile", load_shortcut, "Load profile (Ctrl+O)"),
-    "exit": (exit_icon, "&Exit", exit_shortcut, "Exit application (Ctrl+W)"),
-    "start": (start_icon, "&Start", start_shortcut, "Start (Ctrl+R)"),
-    "stop": (stop_icon, "S&top", stop_shortcut, "Stop (ESC)"),
+    "save": ("&Save Profile", "Save current profile (Ctrl+S)"),
+    "save_as": ("Save Profile &As", "Save current profile as ... (Ctrl+Shift+S)"),
+    "load": ("&Load Profile", "Load profile (Ctrl+O)"),
+    "exit": ("&Exit", "Exit application (Ctrl+W)"),
+    "start": ("&Start", "Start (Ctrl+R)"),
+    "stop": ("S&top", "Stop (ESC)"),
 }

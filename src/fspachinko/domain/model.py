@@ -43,30 +43,30 @@ class DiversityQuota:
     root: str = ""
     max_per_dir: int | float = 0
     unique_files_only: bool = False
-    locked_file: set[str] = field(default_factory=set)
-    locked_dir: Counter[str] = field(default_factory=Counter)
+    files: set[str] = field(default_factory=set)
+    directories: Counter[str] = field(default_factory=Counter)
 
     @property
     def is_root_locked(self) -> bool:
         """Check if the root directory is locked."""
-        return self.locked_dir[self.root] >= self.max_per_dir
+        return self.directories[self.root] >= self.max_per_dir
 
     def reset(self) -> None:
         """Reset the locked file and directory sets."""
-        self.locked_dir.clear()
+        self.directories.clear()
         if not self.unique_files_only:
-            self.locked_file.clear()
+            self.files.clear()
 
     def can_accept(self, parent: str, path: str) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
-        if path in self.locked_file:
+        if path in self.files:
             return False
-        return not self.locked_dir[parent] >= self.max_per_dir
+        return not self.directories[parent] >= self.max_per_dir
 
     def update(self, parent: str, path: str) -> None:
         """Update the locked directory count after accepting a file."""
-        self.locked_file.add(path)
-        self.locked_dir[parent] += 1
+        self.files.add(path)
+        self.directories[parent] += 1
 
 
 @dataclass(slots=True)

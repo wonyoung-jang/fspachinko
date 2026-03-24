@@ -13,6 +13,7 @@ from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.media import get_duration
 from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.constants import FilterName
+from fspachinko.domain.events import DirectoryStarted, ProcessStarted
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
@@ -75,6 +76,7 @@ class ProcessDirectoryHandler:
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
+            job.events.append(DirectoryStarted(target_qty=dst.target_qty))
             for entry in self.pipeline.walker_fn():
                 if dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
@@ -296,6 +298,19 @@ class SaveProfileHandler:
 ####################
 ## EVENT HANDLERS ##
 ####################
+
+
+@dataclass(slots=True)
+class ProcessStartedHandler:
+    """Handle the ProcessStarted event."""
+
+    log_fn: Callable
+
+    def __call__(self, event: ProcessStarted) -> None:
+        """Handle the ProcessStarted event."""
+        self.log_fn("Process started with %d directories to process.", event.dir_count)
+
+
 @dataclass(slots=True)
 class FileTransferredHandler:
     """Handle the FileTransferred event."""
@@ -305,6 +320,17 @@ class FileTransferredHandler:
     def __call__(self, event: FileTransferred) -> None:
         """Handle the FileTransferred event."""
         self.log_fn("%s: '%s' -> '%s'", event.count, event.src, event.dst)
+
+
+@dataclass(slots=True)
+class DirectoryStartedHandler:
+    """Handle the DirectoryStarted event."""
+
+    log_fn: Callable
+
+    def __call__(self, event: DirectoryStarted) -> None:
+        """Handle the DirectoryStarted event."""
+        self.log_fn("Processing directory with target quantity: %s", event.target_qty)
 
 
 @dataclass(slots=True)

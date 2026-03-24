@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 
 from fspachinko.constants import FilenameTemplate, TransferMode
 
-from .qthelpers import GUI_ACTION_CONFIG, browse_icon, open_dir_icon, set_qt_tips
+from .qthelpers import GUI_ACTION_CONFIG, get_icon, get_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -56,8 +56,8 @@ class Actions:
     def build(cls) -> Actions:
         """Get file menu actions."""
         actions = {}
-        for name, (icon, text, shortcut, tip) in GUI_ACTION_CONFIG.items():
-            action = QAction(icon(), text, shortcut=shortcut())
+        for name, (text, tip) in GUI_ACTION_CONFIG.items():
+            action = QAction(get_icon(name), text, shortcut=get_shortcut(name))
             set_qt_tips(action, tip)
             actions[name] = action
         return cls(**actions)
@@ -92,8 +92,8 @@ class PathSelectorWidget(BaseGroupBox):
         """Initialize the path selector widget."""
         super().__init__(title, name)
         self.lbl_selected = QLabel()
-        self.btn_browse = QPushButton(browse_icon(), "Browse")
-        self.btn_open = QPushButton(open_dir_icon(), "Open")
+        self.btn_browse = QPushButton(get_icon("browse"), "Browse")
+        self.btn_open = QPushButton(get_icon("open_dir"), "Open")
         self.setAcceptDrops(True)
         self.btn_browse.clicked.connect(self.browse)
         self.btn_open.clicked.connect(self.open)

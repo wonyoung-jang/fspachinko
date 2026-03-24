@@ -22,7 +22,13 @@ if TYPE_CHECKING:
 class CentralWidget(QWidget):
     """Main widget."""
 
-    def __init__(self, size_units: Sequence[str], dur_units: Sequence[str], transfermodes: Sequence[str]) -> None:
+    def __init__(
+        self,
+        size_units: Sequence[str],
+        dur_units: Sequence[str],
+        transfermodes: Sequence[str],
+        *extra_widgets: QWidget,
+    ) -> None:
         """Initialize the main widget."""
         super().__init__()
         self._config_widgets: tuple[BaseGroupBox, ...] = (
@@ -39,7 +45,7 @@ class CentralWidget(QWidget):
             OptionsWidget("Options", "options", transfermodes),
         )
         self.setLayout(QVBoxLayout())
-        self.add_to_layout(*self._config_widgets)
+        self.add_to_layout(*self._config_widgets, *extra_widgets)
 
     @property
     def config(self) -> dict:

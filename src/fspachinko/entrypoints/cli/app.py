@@ -10,9 +10,10 @@ from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import DefaultPath
 from fspachinko.domain.commands import ProcessDirectory
 
-logger = logging.getLogger(__name__)
 app = App(help="fspachinko - Random file transfer utility.")
+bus, pipeline = bootstrap()
 default_config_path = get_config_path(DefaultPath.CONFIG)
+logger = logging.getLogger(__name__)
 
 
 @app.default
@@ -25,7 +26,6 @@ def run(config_path: str = default_config_path) -> None:
     """
     repo = JSONConfigRepository()
     config = repo.from_json(config_path)
-    bus, pipeline = bootstrap()
     setup_bus(bus, config)
     logger.debug("Process started: dir_count=%s", config.directory.count)
     for dest_dir, target_qty in pipeline.dest_dir_inputs:

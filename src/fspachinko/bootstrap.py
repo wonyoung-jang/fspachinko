@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from fspachinko.configuration.uow import AbstractConfigUnitOfWork, JSONConfigUnitOfWork
 from fspachinko.domain.commands import SaveProfile
-from fspachinko.service.handlers import SaveProfileHandler
+from fspachinko.domain.events import DirectoryStarted
+from fspachinko.service.handlers import DirectoryStartedHandler, SaveProfileHandler
 
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
@@ -156,6 +157,7 @@ class FSPachinkoBootstrapper:
         log_fn = self.log_fn
         return {
             FileTransferred: [FileTransferredHandler(log_fn=log_fn)],
+            DirectoryStarted: [DirectoryStartedHandler(log_fn=log_fn)],
             DirectoryTransferred: [DirectoryTransferredHandler(log_fn=log_fn)],
         }
 
