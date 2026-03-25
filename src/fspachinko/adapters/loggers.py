@@ -5,6 +5,8 @@ from os.path import basename, join
 
 from .filesystemport import get_log_path
 
+logger = logging.getLogger(__name__)
+
 
 def initialize_logging() -> logging.Logger:
     """Initialize logging for the application."""
@@ -16,6 +18,7 @@ def initialize_logging() -> logging.Logger:
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(fh)
+    logger.info("Logging initialized. Log file: %s", logfile)
     return root_logger
 
 
@@ -26,6 +29,7 @@ def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
     handler.set_name(dest)
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+    logger.info("Created log handler for destination: %s. Log file: %s", dest, report_path)
     return handler
 
 
@@ -35,4 +39,5 @@ def get_cli_log_handler() -> logging.StreamHandler:
     handler.set_name("console")
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s[%(module)s] %(message)s"))
     handler.setLevel(logging.INFO)
+    logger.info("Created CLI log handler.")
     return handler

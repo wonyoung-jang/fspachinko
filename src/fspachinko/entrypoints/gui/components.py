@@ -35,7 +35,7 @@ from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, TransferM
 from .qthelpers import get_icon, get_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
@@ -92,15 +92,6 @@ class BaseGroupBox(QGroupBox):
     def _section(self, config: dict) -> dict:
         """Get the relevant section of the config."""
         return config.get(self.name, {})
-
-
-@dataclass(slots=True)
-class WidgetTemplate:
-    """Template for creating standard widgets."""
-
-    title: str
-    name: str
-    widget_factory: Callable
 
 
 class PathSelectorWidget(BaseGroupBox):

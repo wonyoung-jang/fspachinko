@@ -36,30 +36,25 @@ class FSWalker(AbstractFSWalker):
         """Walk the filesystem and return an iterator of FSEntry objects."""
         if self.root not in self.board:
             self.get_pin(self.root)
-        root = self.root
+        _root = self.root
         curr = self.root
         pop = self.board.pop
         while True:
             pin = self.get_pin(curr)
             if not pin.is_scanned:
                 self.scan_pin(pin)
-            subdirs, files = pin.subdirs, pin.files
-            if not subdirs and not files:
-                if curr == root:
-                    break
+            if pin.is_empty and curr == _root:
+                break
+            if pin.is_empty:  # Reset pin to root
                 pop(curr)
-                curr = root
+                curr = _root
                 continue
-            n_files = len(files)
-            n_subdirs = len(subdirs)
-            total = n_files + n_subdirs
-            should_descend = random() < n_subdirs / total if total > 0 else False
-            if should_descend:
-                curr = choice(subdirs)
+            if random() < pin.subdir_total_ratio:  # Should descend
+                curr = choice(pin.subdirs)
                 continue
-            if files:
+            if files := pin.files:
                 yield choice(files)
-            curr = root
+            curr = _root
 
     def get_pin(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""
@@ -67,10 +62,10 @@ class FSWalker(AbstractFSWalker):
 
     def scan_pin(self, pin: FSPachinkoPin) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
-        follow = self.should_follow_symlink
+        pin.is_scanned = True
         try:
-            pin.is_scanned = True
             with scandir(pin.path) as it:
+                follow = self.should_follow_symlink
                 subdirs_append = pin.subdirs.append
                 files_append = pin.files.append
                 for e in it:

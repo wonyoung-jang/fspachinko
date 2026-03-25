@@ -39,7 +39,7 @@ if TYPE_CHECKING:
         SetRngSeed,
         StopProcess,
     )
-    from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred, ProcessStarted
+    from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
 
     from .uow import AbstractTransferUnitOfWork
 
@@ -56,14 +56,10 @@ class RunTransferJobHandler:
 
     def __call__(self, cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
-        # Started
-        with self.uow as uow:
-            for dest_dir, target_qty in cmd.dest_dir_inputs:
-                ProcessDirectoryHandler(uow=uow, pipeline=self.pipeline)(
-                    ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
-                )
-            uow.commit()
-        # Finished
+        for dest_dir, target_qty in cmd.dest_dir_inputs:
+            ProcessDirectoryHandler(uow=self.uow, pipeline=self.pipeline)(
+                ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
+            )
 
 
 @dataclass(slots=True)
@@ -92,14 +88,12 @@ class ProcessDirectoryHandler:
         """Handle the StartProcessingDirectory command."""
         dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
         with self.uow as uow:
-            handler = get_dest_log_filehandler(cmd.dest_dir)
-            logging.getLogger().addHandler(handler)
             uow.repo.transfer_fn = self.pipeline.transfer_fn
             job = uow.repo.get()
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
-            job.update_directory(dst)
+            job.start_directory(dst)
             for entry in self.pipeline.walker_fn():
                 if dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
@@ -113,8 +107,6 @@ class ProcessDirectoryHandler:
             if is_empty_creation:
                 remove_directory(dst.path)
             job.finalize_directory(dst, is_empty_creation=is_empty_creation)
-            logging.getLogger().removeHandler(handler)
-            handler.close()
             uow.commit()
 
 
@@ -327,17 +319,6 @@ class SaveProfileHandler:
 
 
 @dataclass(slots=True)
-class ProcessStartedHandler:
-    """Handle the ProcessStarted event."""
-
-    log_fn: Callable
-
-    def __call__(self, event: ProcessStarted) -> None:
-        """Handle the ProcessStarted event."""
-        self.log_fn("Process started with %d directories to process.", event.dir_count)
-
-
-@dataclass(slots=True)
 class FileTransferredHandler:
     """Handle the FileTransferred event."""
 
@@ -354,9 +335,11 @@ class DirectoryStartedHandler:
 
     log_fn: Callable
 
-    def __call__(self, event: DirectoryStarted) -> None:
+    def __call__(self, evt: DirectoryStarted) -> None:
         """Handle the DirectoryStarted event."""
-        self.log_fn("Processing directory with target quantity: %s", event.target_qty)
+        handler = get_dest_log_filehandler(evt.path)
+        logging.getLogger().addHandler(handler)
+        self.log_fn("Processing directory %s with target quantity: %s", evt.path, evt.target_qty)
 
 
 @dataclass(slots=True)
@@ -375,3 +358,6 @@ class DirectoryTransferredHandler:
         )
         report = get_report(event.path, event.size, event.count, event.target_qty)
         self.log_fn("%s\n%s", status, report)
+        handler = logging.getLogger().handlers[-1]
+        logging.getLogger().removeHandler(handler)
+        handler.close()

@@ -5,8 +5,12 @@ import shutil
 from dataclasses import dataclass
 from os import mkdir
 from os.path import dirname, exists, join
+from typing import TYPE_CHECKING
 
 from fspachinko.constants import DefaultPath
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +57,7 @@ get_profile_path = _datapaths.get_profile
 get_log_path = _datapaths.get_log
 
 
-def get_unique_path(path: str, paths: set[str]) -> str:
+def get_unique_path(path: str, paths: Iterable[str]) -> str:
     """Get a new path, ensuring it doesn't already exist."""
     if path not in paths:
         return path
