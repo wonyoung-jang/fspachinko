@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from os.path import exists, isdir
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from PySide6.QtCore import QUrl, Slot
 from PySide6.QtGui import QAction, QDesktopServices
@@ -29,12 +29,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fspachinko.constants import FilenameTemplate, TransferMode
+from fspachinko.adapters.transfer import FileTransferFnManager
+from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
 
-from .qthelpers import GUI_ACTION_CONFIG, get_icon, get_shortcut, set_qt_tips
+from .qthelpers import get_icon, get_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
@@ -51,12 +52,20 @@ class Actions:
     exit: QAction
     start: QAction
     stop: QAction
+    _CONFIG: ClassVar[dict[str, tuple[str, str]]] = {
+        "save": ("&Save Profile", "Save current profile (Ctrl+S)"),
+        "save_as": ("Save Profile &As", "Save current profile as ... (Ctrl+Shift+S)"),
+        "load": ("&Load Profile", "Load profile (Ctrl+O)"),
+        "exit": ("&Exit", "Exit application (Ctrl+W)"),
+        "start": ("&Start", "Start (Ctrl+R)"),
+        "stop": ("S&top", "Stop (ESC)"),
+    }
 
     @classmethod
     def build(cls) -> Actions:
         """Get file menu actions."""
         actions = {}
-        for name, (text, tip) in GUI_ACTION_CONFIG.items():
+        for name, (text, tip) in cls._CONFIG.items():
             action = QAction(get_icon(name), text, shortcut=get_shortcut(name))
             set_qt_tips(action, tip)
             actions[name] = action
@@ -83,6 +92,15 @@ class BaseGroupBox(QGroupBox):
     def _section(self, config: dict) -> dict:
         """Get the relevant section of the config."""
         return config.get(self.name, {})
+
+
+@dataclass(slots=True)
+class WidgetTemplate:
+    """Template for creating standard widgets."""
+
+    title: str
+    name: str
+    widget_factory: Callable
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -458,3 +476,18 @@ class ProgressWidget(QWidget):
         if maximum <= 0:
             return 0
         return int(self.progbar_files.value() * 100 / maximum)
+
+
+COMPONENT_MAP = (
+    (PathSelectorWidget, "Root", "root"),
+    (PathSelectorWidget, "Destination", "dest"),
+    (FileCountWidget, "File count", "filecount"),
+    (DirectoryCreateWidget, "Create directories", "directory"),
+    (FilenamerWidget, "Filenamer", "filename"),
+    (TextFilterWidget, "Directory names", "dirname"),
+    (TextFilterWidget, "Keywords", "keyword"),
+    (TextFilterWidget, "Extensions", "extension"),
+    (RangeFilterWidget, "File size", "filesize", tuple(SIZE_MAP.keys())),
+    (RangeFilterWidget, "Duration", "duration", tuple(TIME_MAP.keys())),
+    (OptionsWidget, "Options", "options", FileTransferFnManager().transfermodes),
+)

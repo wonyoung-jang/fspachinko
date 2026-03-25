@@ -15,10 +15,7 @@ from fspachinko.adapters.loggers import get_dest_log_filehandler
 from fspachinko.adapters.media import get_duration
 from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.constants import FilterName
-from fspachinko.domain.commands import (
-    ProcessDirectory,
-)
-from fspachinko.domain.events import DirectoryStarted, ProcessStarted
+from fspachinko.domain.commands import ProcessDirectory
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 
@@ -42,7 +39,7 @@ if TYPE_CHECKING:
         SetRngSeed,
         StopProcess,
     )
-    from fspachinko.domain.events import DirectoryTransferred, FileTransferred
+    from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred, ProcessStarted
 
     from .uow import AbstractTransferUnitOfWork
 
@@ -93,7 +90,7 @@ class ProcessDirectoryHandler:
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
-        dst = DestinationDirectory(cmd.dest_dir, cmd.target_qty)
+        dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
         with self.uow as uow:
             handler = get_dest_log_filehandler(cmd.dest_dir)
             logging.getLogger().addHandler(handler)
@@ -102,7 +99,7 @@ class ProcessDirectoryHandler:
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
-            job.events.append(DirectoryStarted(target_qty=dst.target_qty))
+            job.update_directory(dst)
             for entry in self.pipeline.walker_fn():
                 if dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
@@ -111,7 +108,7 @@ class ProcessDirectoryHandler:
                 new_path = self.pipeline.get_new_path(dst=dst, e=entry)
                 if new_path:
                     uow.repo.add_transfer(entry.path, new_path)
-                    job.update(dst, entry, new_path)
+                    job.update_file(dst, entry, new_path)
             is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
             if is_empty_creation:
                 remove_directory(dst.path)

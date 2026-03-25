@@ -7,15 +7,13 @@ from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from fspachinko.adapters.filesystemport import get_profile_path
-from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.bootstrap import setup_bus
 from fspachinko.configuration.repository import JSONConfigRepository
-from fspachinko.constants import SIZE_MAP, TIME_MAP
 from fspachinko.domain.commands import RunTransferJob, SaveProfile, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 
 from .centralwidget import CentralWidget
-from .components import Actions, LogWidget, ProgressWidget
+from .components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
 from .constants_gui import GUIFileDialogFilter, GUISettingsKey, GUITitle
 from .loggers_gui import setup_gui_logger
 from .qthelpers import build_ui_bars
@@ -44,13 +42,8 @@ class MainWindow(QMainWindow):
         self.log_signal = setup_gui_logger()
         self.logging = LogWidget()
         self.progress = ProgressWidget()
-        self.ui = CentralWidget(
-            tuple(SIZE_MAP.keys()),
-            tuple(TIME_MAP.keys()),
-            FileTransferFnManager().transfermodes,
-            self.logging,
-            self.progress,
-        )
+        config_widgets = tuple(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP)
+        self.ui = CentralWidget(config_widgets, self.logging, self.progress)
         self.setCentralWidget(self.ui)
         self.setAnimated(True)
         build_ui_bars(self, self._actions)
@@ -97,7 +90,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def save_profile(self) -> None:
         """Save the current profile."""
-        self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config()))
+        self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
 
     @Slot()
     def save_profile_as_dialog(self) -> None:
@@ -110,7 +103,7 @@ class MainWindow(QMainWindow):
         )
         if profile_path:
             self.update_profile_path(profile_path)
-            self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config()))
+            self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
 
     @Slot()
     def open_profile_dialog(self) -> None:
@@ -149,7 +142,7 @@ class MainWindow(QMainWindow):
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
-        config = self.config_repo.from_dict(self.ui.config())
+        config = self.config_repo.from_dict(self.ui.config)
         setup_bus(self.bus, config)
         self.controller.start()
 

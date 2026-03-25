@@ -4,49 +4,20 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from .components import (
-    BaseGroupBox,
-    DirectoryCreateWidget,
-    FileCountWidget,
-    FilenamerWidget,
-    OptionsWidget,
-    PathSelectorWidget,
-    RangeFilterWidget,
-    TextFilterWidget,
-)
-
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from .components import BaseGroupBox
 
 
 class CentralWidget(QWidget):
     """Main widget."""
 
-    def __init__(
-        self,
-        size_units: Sequence[str],
-        dur_units: Sequence[str],
-        transfermodes: Sequence[str],
-        *extra_widgets: QWidget,
-    ) -> None:
+    def __init__(self, config_widgets: tuple[BaseGroupBox, ...], *extra_widgets: QWidget) -> None:
         """Initialize the main widget."""
         super().__init__()
-        self._config_widgets: tuple[BaseGroupBox, ...] = (
-            PathSelectorWidget("Root", "root"),
-            PathSelectorWidget("Destination", "dest"),
-            FileCountWidget("File count", "filecount"),
-            DirectoryCreateWidget("Create directories", "directory"),
-            FilenamerWidget("Filenamer", "filename"),
-            TextFilterWidget("Directory names", "dirname"),
-            TextFilterWidget("Keywords", "keyword"),
-            TextFilterWidget("Extensions", "extension"),
-            RangeFilterWidget("File size", "filesize", size_units),
-            RangeFilterWidget("Duration", "duration", dur_units),
-            OptionsWidget("Options", "options", transfermodes),
-        )
-        self.setLayout(QVBoxLayout())
-        self.add_to_layout(*self._config_widgets, *extra_widgets)
+        self._config_widgets: tuple[BaseGroupBox, ...] = config_widgets
+        self.build_layout(*self._config_widgets, *extra_widgets)
 
+    @property
     def config(self) -> dict:
         """Capture the current configuration from the UI."""
         config = {}
@@ -54,12 +25,9 @@ class CentralWidget(QWidget):
             config.update(w.config)
         return config
 
-    def add_to_layout(self, *widgets: QWidget) -> None:
+    def build_layout(self, *widgets: QWidget) -> None:
         """Build the layout."""
-        layout = self.layout()
-        if layout is None:
-            msg = "Layout is not set"
-            raise RuntimeError(msg)
+        layout = QVBoxLayout(self)
         for w in widgets:
             layout.addWidget(w)
 

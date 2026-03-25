@@ -25,30 +25,10 @@ def set_qt_tips(w: QWidget | QAction, tooltip: str, statustip: str = "") -> None
 
 
 MENU_STRUCTURE = {
-    GUILabel.FILEMENU: [
-        "save",
-        "save_as",
-        "load",
-        None,  # Separator
-        "exit",
-    ],
-    GUILabel.RUNMENU: [
-        "start",
-        "stop",
-    ],
+    GUILabel.FILEMENU: ["save", "save_as", "load", None, "exit"],
+    GUILabel.RUNMENU: ["start", "stop"],
 }
-
-
-TOOLBAR_STRUCTURE = [
-    "save",
-    "save_as",
-    "load",
-    None,  # Separator
-    "start",
-    "stop",
-    # Separator
-    "exit",
-]
+TOOLBAR_STRUCTURE = ["save", "save_as", "load", None, "start", "stop", None, "exit"]
 
 
 def add_actions_to_bar(bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None]) -> None:
@@ -62,7 +42,7 @@ def add_actions_to_bar(bar: QToolBar | QMenu, actions: Actions, actions_names: l
 
 
 def build_ui_bars(window: QMainWindow, actions: Actions) -> None:
-    """Build the menu bar."""
+    """Build the status, tool, and menu bars."""
     statusbar = window.statusBar()
     statusbar.setSizeGripEnabled(True)
     toolbar = window.addToolBar(GUIName.TOOLBAR)
@@ -114,13 +94,3 @@ def get_shortcut(name: str) -> QKeySequence:
         msg = f"Unknown shortcut: {name}"
         raise ValueError(msg)
     return QKeySequence(seq)
-
-
-GUI_ACTION_CONFIG = {
-    "save": ("&Save Profile", "Save current profile (Ctrl+S)"),
-    "save_as": ("Save Profile &As", "Save current profile as ... (Ctrl+Shift+S)"),
-    "load": ("&Load Profile", "Load profile (Ctrl+O)"),
-    "exit": ("&Exit", "Exit application (Ctrl+W)"),
-    "start": ("&Start", "Start (Ctrl+R)"),
-    "stop": ("S&top", "Stop (ESC)"),
-}
