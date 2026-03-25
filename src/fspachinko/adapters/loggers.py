@@ -22,7 +22,7 @@ def initialize_logging() -> logging.Logger:
     return root_logger
 
 
-def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
+def add_dest_log_filehandler(dest: str) -> None:
     """Set up a logger for the job request."""
     report_path = join(dest, f"!_{basename(dest)}_report.log")
     handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
@@ -30,7 +30,19 @@ def get_dest_log_filehandler(dest: str) -> logging.FileHandler:
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
     logger.info("Created log handler for destination: %s. Log file: %s", dest, report_path)
-    return handler
+    logging.getLogger().addHandler(handler)
+
+
+def remove_dest_log_filehandler(dest: str) -> None:
+    """Remove the log handler for the job request."""
+    logger.info("Removing log handler for destination: %s", dest)
+    handler = next((h for h in logging.getLogger().handlers if h.get_name() == dest), None)
+    if handler:
+        logging.getLogger().removeHandler(handler)
+        logger.info("Removed log handler for destination: %s", dest)
+        handler.close()
+    else:
+        logger.warning("No log handler found for destination: %s", dest)
 
 
 def get_cli_log_handler() -> logging.StreamHandler:

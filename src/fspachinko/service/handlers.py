@@ -1,23 +1,14 @@
 """Handlers module."""
 
-import logging
 from dataclasses import dataclass
 from functools import partial
-from os import makedirs, scandir
+from os import mkdir, scandir
 from os.path import join
-from random import randint
 from typing import TYPE_CHECKING
 
-from fspachinko.adapters.filenamer import TemplateFilenamer
-from fspachinko.adapters.filesystemport import get_unique_path, remove_directory
-from fspachinko.adapters.fswalker import FSWalker
-from fspachinko.adapters.loggers import get_dest_log_filehandler
-from fspachinko.adapters.media import get_duration
-from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.constants import FilterName
 from fspachinko.domain.commands import ProcessDirectory
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
-from fspachinko.helpers import get_report, get_status, get_text_patterns
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,11 +44,12 @@ class RunTransferJobHandler:
 
     uow: AbstractTransferUnitOfWork
     pipeline: AbstractPipeline
+    remove_directory: Callable
 
     def __call__(self, cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
         for dest_dir, target_qty in cmd.dest_dir_inputs:
-            ProcessDirectoryHandler(uow=self.uow, pipeline=self.pipeline)(
+            ProcessDirectoryHandler(uow=self.uow, pipeline=self.pipeline, remove_directory=self.remove_directory)(
                 ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
             )
 
@@ -83,6 +75,7 @@ class ProcessDirectoryHandler:
 
     uow: AbstractTransferUnitOfWork
     pipeline: AbstractPipeline
+    remove_directory: Callable
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
@@ -105,7 +98,7 @@ class ProcessDirectoryHandler:
                     job.update_file(dst, entry, new_path)
             is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
             if is_empty_creation:
-                remove_directory(dst.path)
+                self.remove_directory(dst.path)
             job.finalize_directory(dst, is_empty_creation=is_empty_creation)
             uow.commit()
 
@@ -149,10 +142,11 @@ class CreateTransferFnHandler:
     """Handle the CreateTransferFn command."""
 
     pipeline: AbstractPipeline
+    transfer_fn_getter: Callable
 
     def __call__(self, cmd: CreateTransferFn) -> None:
         """Handle the CreateTransferFn command."""
-        self.pipeline.transfer_fn = FileTransferFnManager().get(cmd.transfermode)
+        self.pipeline.transfer_fn = self.transfer_fn_getter(cmd.transfermode)
 
 
 @dataclass(slots=True)
@@ -160,11 +154,12 @@ class CreateFilenameFnHandler:
     """Handle the CreateFilenameFn command."""
 
     pipeline: AbstractPipeline
+    template_filenamer: Callable
 
     def __call__(self, cmd: CreateFilenameFn) -> None:
         """Handle the CreateFilenameFn command."""
         if cmd.is_enabled:
-            self.pipeline.filenamer_fn = TemplateFilenamer(cmd.template)
+            self.pipeline.filenamer_fn = self.template_filenamer(cmd.template)
         else:
             self.pipeline.filenamer_fn = lambda e, _: e.stem
 
@@ -174,23 +169,25 @@ class CreateDestDirsHandler:
     """Handle the CreateDestDirs command."""
 
     pipeline: AbstractPipeline
+    get_unique_path: Callable
+    randcount_fn: Callable
 
     def __call__(self, cmd: CreateDestDirs) -> None:
         """Handle the CreateDestDirs command."""
         self.pipeline.dest_dir_inputs.clear()
         filecount_fn = (
-            (lambda rnge=cmd.filecount_randrange: randint(*rnge))
+            (lambda rnge=cmd.filecount_randrange: self.randcount_fn(*rnge))
             if cmd.filecount_rand_is_enabled
             else (lambda cnt=cmd.filecount_static: cnt)
         )
         if not cmd.directory_create_is_enabled:
             self.pipeline.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
             return
-        existing = {entry.path for entry in scandir(cmd.directory_dest) if entry.is_dir()}
+        existing = {e.path for e in scandir(cmd.directory_dest) if e.is_dir()}
         candidate = join(cmd.directory_dest, cmd.directory_name)
         while len(self.pipeline.dest_dir_inputs) < cmd.dir_count:
-            next_name = get_unique_path(candidate, existing)
-            makedirs(next_name, exist_ok=True)
+            next_name = self.get_unique_path(candidate, existing)
+            mkdir(next_name)
             self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
 
@@ -200,10 +197,11 @@ class CreateWalkerFnHandler:
     """Handle the CreateWalkerFn command."""
 
     pipeline: AbstractPipeline
+    walker: Callable
 
     def __call__(self, cmd: CreateWalkerFn) -> None:
         """Handle the CreateWalkerFn command."""
-        self.pipeline.walker_fn = FSWalker(root=cmd.root, should_follow_symlink=cmd.should_follow_symlink)
+        self.pipeline.walker_fn = self.walker(root=cmd.root, should_follow_symlink=cmd.should_follow_symlink)
 
 
 @dataclass(slots=True)
@@ -211,6 +209,7 @@ class CreateTextFilterFnHandler:
     """Handle the CreateTextFilterFn command."""
 
     pipeline: AbstractPipeline
+    get_text_patterns: Callable
 
     def __call__(self, cmd: CreateTextFilterFn) -> None:
         """Handle the CreateTextFilterFn command."""
@@ -218,7 +217,7 @@ class CreateTextFilterFnHandler:
             return
 
         should_include = cmd.should_include
-        patterns = get_text_patterns(cmd.text, cmd.re_fmt)
+        patterns = self.get_text_patterns(cmd.text, cmd.re_fmt)
 
         def _get_text_filter() -> Callable[[str], bool]:
             match len(patterns), should_include:
@@ -262,29 +261,28 @@ class CreateRangeFilterFnHandler:
         self.pipeline.filters[cmd.name] = _get_range_filter()
 
 
-FILTER_MAPPINGS: dict[str, Callable[[FSEntry, Callable], bool]] = {
-    FilterName.DIRNAME: lambda e, fn: fn(e.parent),
-    FilterName.KEYWORD: lambda e, fn: fn(e.stem),
-    FilterName.EXTENSION: lambda e, fn: fn(e.ext),
-    FilterName.FILESIZE: lambda e, fn: fn(e.size),
-    FilterName.DURATION: lambda e, fn: fn(get_duration(e.path)),
-}
-
-
 @dataclass(slots=True)
 class CreateFilefilterFnHandler:
     """Handle the CreateFilefilterFn command."""
 
     pipeline: AbstractPipeline
+    get_duration: Callable
 
     def __call__(self, _: CreateFilefilterFn) -> None:
         """Handle the CreateFilefilterFn command."""
+        filter_mapping: dict[str, Callable[[FSEntry, Callable], bool]] = {
+            FilterName.DIRNAME: lambda e, fn: fn(e.parent),
+            FilterName.KEYWORD: lambda e, fn: fn(e.stem),
+            FilterName.EXTENSION: lambda e, fn: fn(e.ext),
+            FilterName.FILESIZE: lambda e, fn: fn(e.size),
+            FilterName.DURATION: lambda e, fn: fn(self.get_duration(e.path)),
+        }
 
         def _build(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
-            if name not in FILTER_MAPPINGS:
+            if name not in filter_mapping:
                 msg = f"Unknown filter name: {name}"
                 raise ValueError(msg)
-            return partial(FILTER_MAPPINGS[name], fn=fn)
+            return partial(filter_mapping[name], fn=fn)
 
         filter_fns = tuple(_build(name, fn) for name, fn in self.pipeline.filters.items())
 
@@ -324,9 +322,9 @@ class FileTransferredHandler:
 
     log_fn: Callable
 
-    def __call__(self, event: FileTransferred) -> None:
+    def __call__(self, evt: FileTransferred) -> None:
         """Handle the FileTransferred event."""
-        self.log_fn("%s: '%s' -> '%s'", event.count, event.src, event.dst)
+        self.log_fn("%s: '%s' -> '%s'", evt.count, evt.src, evt.dst)
 
 
 @dataclass(slots=True)
@@ -334,11 +332,11 @@ class DirectoryStartedHandler:
     """Handle the DirectoryStarted event."""
 
     log_fn: Callable
+    add_log_file: Callable
 
     def __call__(self, evt: DirectoryStarted) -> None:
         """Handle the DirectoryStarted event."""
-        handler = get_dest_log_filehandler(evt.path)
-        logging.getLogger().addHandler(handler)
+        self.add_log_file(evt.path)
         self.log_fn("Processing directory %s with target quantity: %s", evt.path, evt.target_qty)
 
 
@@ -347,17 +345,23 @@ class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
     log_fn: Callable
+    remove_log_file: Callable
+    get_status: Callable
+    get_report: Callable
 
-    def __call__(self, event: DirectoryTransferred) -> None:
+    def __call__(self, evt: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
-        status = get_status(
-            success=event.is_success,
-            empty_creation=event.is_empty_creation,
-            stop_requested=event.is_stop_requested,
-            root_locked=event.is_root_locked,
+        status = self.get_status(
+            success=evt.is_success,
+            empty_creation=evt.is_empty_creation,
+            stop_requested=evt.is_stop_requested,
+            root_locked=evt.is_root_locked,
         )
-        report = get_report(event.path, event.size, event.count, event.target_qty)
+        report = self.get_report(
+            evt.path,
+            evt.size,
+            evt.count,
+            evt.target_qty,
+        )
         self.log_fn("%s\n%s", status, report)
-        handler = logging.getLogger().handlers[-1]
-        logging.getLogger().removeHandler(handler)
-        handler.close()
+        self.remove_log_file(evt.path)
