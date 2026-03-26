@@ -53,9 +53,9 @@ class Actions:
     start: QAction
     stop: QAction
     _CONFIG: ClassVar[dict[str, tuple[str, str]]] = {
-        "save": ("&Save Profile", "Save current profile (Ctrl+S)"),
-        "save_as": ("Save Profile &As", "Save current profile as ... (Ctrl+Shift+S)"),
-        "load": ("&Load Profile", "Load profile (Ctrl+O)"),
+        "save": ("&Save Configuration", "Save current configuration (Ctrl+S)"),
+        "save_as": ("Save Configuration &As", "Save current configuration as ... (Ctrl+Shift+S)"),
+        "load": ("&Load Configuration", "Load configuration (Ctrl+O)"),
         "exit": ("&Exit", "Exit application (Ctrl+W)"),
         "start": ("&Start", "Start (Ctrl+R)"),
         "stop": ("S&top", "Stop (ESC)"),

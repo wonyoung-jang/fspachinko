@@ -45,14 +45,14 @@ Or simply:
 fspachinko
 ```
 
-### GUI Profiles
+### GUI Configurations
 
-Save frequently used configurations as profiles:
+Save frequently used configurations:
 
 1. Configure settings in the GUI
-2. Click **File → Save Profile As**
-3. Name your profile (e.g., "music_copy")
-4. Load later with **File → Load Profile**
+2. Click **File → Save Configuration As**
+3. Name your config (e.g., "music_copy")
+4. Load later with **File → Load Configuration**
 
 ## Configuration File
 

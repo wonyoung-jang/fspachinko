@@ -28,7 +28,7 @@ from .domain.commands import (
     CreateWalkerFn,
     ProcessDirectory,
     RunTransferJob,
-    SaveProfile,
+    SaveConfiguration,
     SetPipelineCreateDir,
     SetRngSeed,
     StopProcess,
@@ -167,5 +167,5 @@ class FSPachinkoBootstrapper:
                 pipeline=pipeline,
                 get_duration=get_duration,
             ),
-            SaveProfile: SaveProfileHandler(uow=cfg_uow),
+            SaveConfiguration: SaveProfileHandler(uow=cfg_uow),
         }

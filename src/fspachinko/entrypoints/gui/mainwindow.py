@@ -8,8 +8,8 @@ from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from fspachinko.bootstrap import configure_bus
 from fspachinko.configuration.repository import JSONConfigRepository
-from fspachinko.datapaths import get_profile_path
-from fspachinko.domain.commands import RunTransferJob, SaveProfile, StopProcess
+from fspachinko.datapaths import get_config_path
+from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 
 from .centralwidget import CentralWidget
@@ -53,9 +53,9 @@ class MainWindow(QMainWindow):
         self.bus.subscribe(FileTransferred, self.handle_file_transferred)
         self.bus.subscribe(DirectoryStarted, self.handle_directory_started)
         self.log_signal.logged.connect(self.logging.append)
-        self._actions.save.triggered.connect(self.save_profile)
-        self._actions.save_as.triggered.connect(self.save_profile_as_dialog)
-        self._actions.load.triggered.connect(self.open_profile_dialog)
+        self._actions.save.triggered.connect(self.save_config)
+        self._actions.save_as.triggered.connect(self.save_config_as_dialog)
+        self._actions.load.triggered.connect(self.open_config_dialog)
         self._actions.exit.triggered.connect(self.on_close)
         self._actions.start.triggered.connect(self.on_start)
         self._actions.stop.triggered.connect(self.on_stop)
@@ -70,15 +70,13 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geometry)
         if (state := qsettings.value(GUISettingsKey.STATE)) and isinstance(state, bytes | bytearray):
             self.restoreState(state)
-        if profile_path := str(qsettings.value(GUISettingsKey.PROFILE, "")):
-            self.update_profile_path(profile_path)
+        if profile_path := str(qsettings.value(GUISettingsKey.CONFIG, "")):
+            self.update_config_path(profile_path)
             self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
 
     @Slot()
     def handle_start_process(self) -> None:
         """Handle the start of the process."""
-        _config = self.ui.config["directory"]
-        self.progress.handle_start_process(_config["count"])
         self.bus.handle(RunTransferJob())
 
     @Slot()
@@ -87,39 +85,39 @@ class MainWindow(QMainWindow):
         self.bus.handle(StopProcess())
 
     @Slot()
-    def save_profile(self) -> None:
-        """Save the current profile."""
-        self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
+    def save_config(self) -> None:
+        """Save the current config."""
+        self.bus.handle(SaveConfiguration(path=self.config_path, config=self.ui.config))
 
     @Slot()
-    def save_profile_as_dialog(self) -> None:
-        """Save a GUI profile via dialog."""
-        profile_path, _ = QFileDialog.getSaveFileName(
+    def save_config_as_dialog(self) -> None:
+        """Save a GUI config via dialog."""
+        config_path, _ = QFileDialog.getSaveFileName(
             parent=self,
-            caption=GUITitle.SAVE_PROFILE,
+            caption=GUITitle.SAVE_CONFIG,
             dir=dirname(self.config_path),
             filter=GUIFileDialogFilter.JSON,
         )
-        if profile_path:
-            self.update_profile_path(profile_path)
-            self.bus.handle(SaveProfile(path=self.config_path, config=self.ui.config))
+        if config_path:
+            self.update_config_path(config_path)
+            self.bus.handle(SaveConfiguration(path=self.config_path, config=self.ui.config))
 
     @Slot()
-    def open_profile_dialog(self) -> None:
-        """Load a GUI profile via dialog."""
-        profile_path, _ = QFileDialog.getOpenFileName(
+    def open_config_dialog(self) -> None:
+        """Load a GUI config via dialog."""
+        config_path, _ = QFileDialog.getOpenFileName(
             parent=self,
-            caption=GUITitle.OPEN_PROFILE,
+            caption=GUITitle.OPEN_CONFIG,
             dir=dirname(self.config_path),
             filter=GUIFileDialogFilter.JSON,
         )
-        if profile_path:
-            self.update_profile_path(profile_path)
+        if config_path:
+            self.update_config_path(config_path)
             self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
 
-    def update_profile_path(self, path: str) -> None:
-        """Set the current profile path."""
-        self.config_path = get_profile_path(path)
+    def update_config_path(self, path: str) -> None:
+        """Set the current config path."""
+        self.config_path = get_config_path(path)
         self.setWindowTitle(self.get_window_title())
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
@@ -127,7 +125,7 @@ class MainWindow(QMainWindow):
         qsettings = QSettings()
         qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
         qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        qsettings.setValue(GUISettingsKey.PROFILE, self.config_path)
+        qsettings.setValue(GUISettingsKey.CONFIG, self.config_path)
         super().closeEvent(event)
 
     @Slot()
@@ -143,6 +141,7 @@ class MainWindow(QMainWindow):
         self.ui.toggle(is_enabled=False)
         config = self.config_repo.from_dict(self.ui.config)
         configure_bus(self.bus, config)
+        self.progress.handle_start_process(config.directory.count)
         self.controller.start()
 
     @Slot()
@@ -166,8 +165,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self._original_title)
 
     def get_window_title(self) -> str:
-        """Generate a window title based on the profile path."""
+        """Generate a window title based on the config path."""
         if self.config_path:
-            profile_stem, _ = splitext(basename(self.config_path))
-            return f"{profile_stem} - {GUITitle.WINDOW}"
+            config_stem, _ = splitext(basename(self.config_path))
+            return f"{config_stem} - {GUITitle.WINDOW}"
         return GUITitle.WINDOW

@@ -112,15 +112,15 @@ class CreateFilefilterFn(Command):
 
 
 @dataclass(slots=True, frozen=True)
-class SaveProfile(Command):
-    """Command to save a profile."""
+class SaveConfiguration(Command):
+    """Command to save a configuration."""
 
     path: str
     config: dict
 
 
 @dataclass(slots=True, frozen=True)
-class LoadProfile(Command):
-    """Command to load a profile."""
+class LoadConfiguration(Command):
+    """Command to load a configuration."""
 
     path: str

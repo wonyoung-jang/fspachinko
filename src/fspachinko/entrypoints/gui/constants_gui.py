@@ -30,15 +30,15 @@ class GUISettingsKey(StrEnum):
 
     GEOMETRY = "geometry"
     STATE = "state"
-    PROFILE = "profile"
+    CONFIG = "config"
 
 
 class GUITitle(StrEnum):
     """Enumeration for GUI window titles."""
 
     WINDOW = "fspachinko: Transfer random files"
-    SAVE_PROFILE = "Save Profile As"
-    OPEN_PROFILE = "Open Profile"
+    SAVE_CONFIG = "Save Configuration As"
+    OPEN_CONFIG = "Open Configuration"
 
 
 class GUIName(StrEnum):

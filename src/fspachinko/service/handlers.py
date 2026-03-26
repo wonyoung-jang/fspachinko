@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         CreateTransferJob,
         CreateWalkerFn,
         RunTransferJob,
-        SaveProfile,
+        SaveConfiguration,
         SetPipelineCreateDir,
         SetRngSeed,
         StopProcess,
@@ -306,7 +306,7 @@ class SaveProfileHandler:
 
     uow: AbstractConfigUnitOfWork
 
-    def __call__(self, cmd: SaveProfile) -> None:
+    def __call__(self, cmd: SaveConfiguration) -> None:
         """Handle the SaveProfile command."""
         with self.uow as uow:
             uow.repo.set(cmd.path, cmd.config)

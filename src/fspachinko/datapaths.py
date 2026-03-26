@@ -15,12 +15,11 @@ class DataPaths:
 
     icons: str = join(_DATA, DefaultPath.ICON_DIR)
     configs: str = join(_DATA, DefaultPath.CONFIG_DIR)
-    profiles: str = join(_DATA, DefaultPath.GUI_PROFILE_DIR)
     logs: str = join(_DATA, DefaultPath.LOG_DIR)
 
     def __post_init__(self) -> None:
         """Ensure that all paths are absolute."""
-        for path in (_DATA, self.icons, self.configs, self.profiles, self.logs):
+        for path in (_DATA, self.icons, self.configs, self.logs):
             if not exists(path):
                 mkdir(path)
 
@@ -32,10 +31,6 @@ class DataPaths:
         """Get the full path to a config file."""
         return join(self.configs, path)
 
-    def profile(self, path: str) -> str:
-        """Get the full path to a profile file."""
-        return join(self.profiles, path)
-
     def log(self, path: str) -> str:
         """Get the full path to a log file."""
         return join(self.logs, path)
@@ -44,5 +39,4 @@ class DataPaths:
 DATA_PATHS = DataPaths()
 get_icon_path = DATA_PATHS.icon
 get_config_path = DATA_PATHS.config
-get_profile_path = DATA_PATHS.profile
 get_log_path = DATA_PATHS.log

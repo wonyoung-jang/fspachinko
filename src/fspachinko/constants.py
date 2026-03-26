@@ -16,7 +16,6 @@ class DefaultPath(StrEnum):
     DATA_DIR = "_data"
     ICON_DIR = "icons"
     CONFIG_DIR = "configs"
-    GUI_PROFILE_DIR = "gui_profiles"
     LOG_DIR = "logs"
 
 

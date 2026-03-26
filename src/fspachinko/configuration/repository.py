@@ -12,20 +12,20 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractConfigRepository(ABC):
-    """Abstract class for managing configuration profiles."""
+    """Abstract class for managing configuration."""
 
     @abstractmethod
     def set(self, path: str, data: dict) -> None:
-        """Save configuration from a dict to the profile path."""
+        """Save configuration from a dict to the path."""
 
     @abstractmethod
     def json_to_dict(self, path: str) -> dict:
-        """Load configuration from the profile path and return as a dict."""
+        """Load configuration from the path and return as a dict."""
 
 
 @dataclass(slots=True)
 class JSONConfigRepository(AbstractConfigRepository):
-    """Class for managing configuration profiles."""
+    """Class for managing configuration."""
 
     def set(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""
