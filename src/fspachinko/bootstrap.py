@@ -2,11 +2,13 @@
 
 import logging
 from dataclasses import dataclass, field
+from os import mkdir
+from os.path import join
 from random import randint, seed
 from typing import TYPE_CHECKING, Any
 
 from .adapters.filenamer import TemplateFilenamer
-from .adapters.filesystemport import get_unique_path, remove_directory
+from .adapters.filesystemport import get_existing_directories, get_unique_path, remove_directory
 from .adapters.fswalker import FSWalker
 from .adapters.loggers import add_dest_log_filehandler, remove_dest_log_filehandler
 from .adapters.media import get_duration
@@ -65,7 +67,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def bootstrap(*args: Any, **kwargs: Any) -> tuple[MessageBus, AbstractPipeline]:
+def bootstrap(*args: Any, **kwargs: Any) -> MessageBus:
     """Bootstrap the application and return the message bus."""
     return FSPachinkoBootstrapper.bootstrap(*args, **kwargs)
 
@@ -73,6 +75,11 @@ def bootstrap(*args: Any, **kwargs: Any) -> tuple[MessageBus, AbstractPipeline]:
 def setup_bus_commands(c: ConfigModel) -> Iterator[Command]:
     """Bootstrap the application."""
     yield from (
+        CreateTransferJob(
+            root=c.root,
+            max_per_dir=c.options.max_per_dir,
+            unique_files_only=c.options.is_create_unique_dirs,
+        ),
         SetRngSeed(
             rng_seed=c.options.rng_seed,
         ),
@@ -126,11 +133,6 @@ def setup_bus_commands(c: ConfigModel) -> Iterator[Command]:
             is_enabled=model.is_enabled,
         )
     yield CreateFilefilterFn()
-    yield CreateTransferJob(
-        root=c.root,
-        max_per_dir=c.options.max_per_dir,
-        unique_files_only=c.options.is_create_unique_dirs,
-    )
 
 
 @dataclass(slots=True)
@@ -145,7 +147,7 @@ class FSPachinkoBootstrapper:
     rng_seed_fn: Callable = seed
 
     @classmethod
-    def bootstrap(cls, *args: Any, **kwargs: Any) -> tuple[MessageBus, AbstractPipeline]:
+    def bootstrap(cls, *args: Any, **kwargs: Any) -> MessageBus:
         """Bootstrap the application and return the message bus."""
         b = cls(*args, **kwargs)
         b.collector.register_emitter(b.fst_uow)
@@ -153,7 +155,7 @@ class FSPachinkoBootstrapper:
             collector=b.collector,
             event_handlers=b.get_event_handlers(),
             command_handlers=b.get_command_handlers(),
-        ), b.pipeline
+        )
 
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""
@@ -200,9 +202,12 @@ class FSPachinkoBootstrapper:
             ),
             CreateFilenameFn: CreateFilenameFnHandler(pipeline=pipeline, template_filenamer=TemplateFilenamer),
             CreateDestDirs: CreateDestDirsHandler(
-                pipeline=pipeline,
+                uow=fst_uow,
                 get_unique_path=get_unique_path,
                 randcount_fn=randint,
+                make_directory=mkdir,
+                get_existing_directories=get_existing_directories,
+                join_path=join,
             ),
             CreateWalkerFn: CreateWalkerFnHandler(pipeline=pipeline, walker=FSWalker),
             CreateTextFilterFn: CreateTextFilterFnHandler(pipeline=pipeline, get_text_patterns=get_text_patterns),

@@ -22,18 +22,16 @@ from .workers import ProcessController
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
-    from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.service.messagebus import MessageBus
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self, bus: MessageBus, pipeline: AbstractPipeline) -> None:
+    def __init__(self, bus: MessageBus) -> None:
         """Initialize the main window."""
         super().__init__()
         self.bus: MessageBus = bus
-        self.pipeline: AbstractPipeline = pipeline
         self._actions: Actions = Actions.build()
         self._original_title = ""
         self.config_path = ""
@@ -79,8 +77,9 @@ class MainWindow(QMainWindow):
     @Slot()
     def handle_start_process(self) -> None:
         """Handle the start of the process."""
-        self.progress.handle_start_process(len(self.pipeline.dest_dir_inputs))
-        self.bus.handle(RunTransferJob(dest_dir_inputs=self.pipeline.dest_dir_inputs))
+        _config = self.ui.config["directory"]
+        self.progress.handle_start_process(_config["count"])
+        self.bus.handle(RunTransferJob())
 
     @Slot()
     def handle_stopped(self) -> None:

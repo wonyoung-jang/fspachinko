@@ -1,9 +1,6 @@
 """Handlers module."""
 
 from dataclasses import dataclass
-from functools import partial
-from os import mkdir, scandir
-from os.path import join
 from typing import TYPE_CHECKING
 
 from fspachinko.constants import FilterName
@@ -46,9 +43,10 @@ class RunTransferJobHandler:
     pipeline: AbstractPipeline
     remove_directory: Callable
 
-    def __call__(self, cmd: RunTransferJob) -> None:
+    def __call__(self, _cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
-        for dest_dir, target_qty in cmd.dest_dir_inputs:
+        job = self.uow.repo.get()
+        for dest_dir, target_qty in job.dest_dir_inputs:
             ProcessDirectoryHandler(uow=self.uow, pipeline=self.pipeline, remove_directory=self.remove_directory)(
                 ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
             )
@@ -168,27 +166,31 @@ class CreateFilenameFnHandler:
 class CreateDestDirsHandler:
     """Handle the CreateDestDirs command."""
 
-    pipeline: AbstractPipeline
+    uow: AbstractTransferUnitOfWork
     get_unique_path: Callable
     randcount_fn: Callable
+    make_directory: Callable
+    get_existing_directories: Callable
+    join_path: Callable
 
     def __call__(self, cmd: CreateDestDirs) -> None:
         """Handle the CreateDestDirs command."""
-        self.pipeline.dest_dir_inputs.clear()
+        job = self.uow.repo.get()
+        job.dest_dir_inputs.clear()
         filecount_fn = (
             (lambda rnge=cmd.filecount_randrange: self.randcount_fn(*rnge))
             if cmd.filecount_rand_is_enabled
             else (lambda cnt=cmd.filecount_static: cnt)
         )
         if not cmd.directory_create_is_enabled:
-            self.pipeline.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
+            job.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
             return
-        existing = {e.path for e in scandir(cmd.directory_dest) if e.is_dir()}
-        candidate = join(cmd.directory_dest, cmd.directory_name)
-        while len(self.pipeline.dest_dir_inputs) < cmd.dir_count:
+        existing = self.get_existing_directories(cmd.directory_dest)
+        candidate = self.join_path(cmd.directory_dest, cmd.directory_name)
+        while len(job.dest_dir_inputs) < cmd.dir_count:
             next_name = self.get_unique_path(candidate, existing)
-            mkdir(next_name)
-            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
+            self.make_directory(next_name)
+            job.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
 
 
@@ -282,7 +284,7 @@ class CreateFilefilterFnHandler:
             if name not in filter_mapping:
                 msg = f"Unknown filter name: {name}"
                 raise ValueError(msg)
-            return partial(filter_mapping[name], fn=fn)
+            return lambda e, fn=fn: filter_mapping[name](e, fn)
 
         filter_fns = tuple(_build(name, fn) for name, fn in self.pipeline.filters.items())
 

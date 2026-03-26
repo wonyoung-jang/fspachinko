@@ -24,7 +24,6 @@ class AbstractPipeline(ABC):
     filenamer_fn: Callable[[FSEntry, int], str] = lambda e, _: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
-    dest_dir_inputs: list[tuple[str, int]] = field(default_factory=list)
 
     @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:

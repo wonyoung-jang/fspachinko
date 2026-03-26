@@ -12,8 +12,6 @@ class Command:
 class RunTransferJob(Command):
     """Command to run the transfer job."""
 
-    dest_dir_inputs: list[tuple[str, int]]
-
 
 @dataclass(slots=True, frozen=True)
 class CreateTransferJob(Command):

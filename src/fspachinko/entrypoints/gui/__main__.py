@@ -23,15 +23,14 @@ try:
 except ImportError:
     pass
 
-bus, pipeline = bootstrap()
-
 
 def main() -> None:
     """Run the application."""
     initialize_logging()
     app = QApplication()
     app.setWindowIcon(get_icon("window"))
-    window = MainWindow(bus, pipeline)
+    bus = bootstrap()
+    window = MainWindow(bus)
     window.show()
     app.exec()
 

@@ -3,7 +3,7 @@
 import logging
 import shutil
 from dataclasses import dataclass
-from os import mkdir
+from os import mkdir, scandir
 from os.path import dirname, exists, join
 from typing import TYPE_CHECKING
 
@@ -78,3 +78,8 @@ def remove_directory(path: str) -> None:
         logger.exception("Directory not found for removal: %s", path)
     except OSError:
         logger.exception("Error occurred while removing directory: %s", path)
+
+
+def get_existing_directories(path: str) -> set[str]:
+    """Get a set of existing directory paths within the specified path."""
+    return {e.path for e in scandir(path) if e.is_dir()}
