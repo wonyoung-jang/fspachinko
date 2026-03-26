@@ -7,7 +7,7 @@ from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from fspachinko.adapters.filesystemport import get_profile_path
-from fspachinko.bootstrap import setup_bus_commands
+from fspachinko.bootstrap import configure_bus
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.domain.commands import RunTransferJob, SaveProfile, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
@@ -142,8 +142,7 @@ class MainWindow(QMainWindow):
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
         config = self.config_repo.from_dict(self.ui.config)
-        for cmd in setup_bus_commands(config):
-            self.bus.handle(cmd)
+        configure_bus(self.bus, config)
         self.controller.start()
 
     @Slot()
