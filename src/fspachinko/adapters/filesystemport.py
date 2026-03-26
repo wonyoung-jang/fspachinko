@@ -3,6 +3,7 @@
 import logging
 import shutil
 from dataclasses import dataclass
+from filecmp import cmp
 from os import mkdir, scandir
 from os.path import dirname, exists, join
 from typing import TYPE_CHECKING
@@ -68,6 +69,13 @@ def get_unique_path(path: str, paths: Iterable[str]) -> str:
     while (candidate := f"{stem} ({x}){ext}") in paths:
         x += 1
     return candidate
+
+
+def are_files_identical(path1: str, path2: str) -> bool:
+    """Check if two files are identical by comparing their contents."""
+    if cmp(path1, path2, shallow=True):
+        return cmp(path1, path2, shallow=False)
+    return False
 
 
 def remove_directory(path: str) -> None:

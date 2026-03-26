@@ -2,11 +2,10 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from filecmp import cmp
 from os.path import join
 from typing import TYPE_CHECKING
 
-from .filesystemport import get_unique_path
+from .filesystemport import are_files_identical, get_unique_path
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -24,6 +23,7 @@ class AbstractPipeline(ABC):
     filenamer_fn: Callable[[FSEntry, int], str] = lambda e, _: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
+    dest_dir_inputs: list[tuple[str, int]] = field(default_factory=list)
 
     @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
@@ -33,6 +33,9 @@ class AbstractPipeline(ABC):
 class TransferPipeline(AbstractPipeline):
     """Owns the strategy objects — Engine delegates to this."""
 
+    filecmp_fn: Callable = are_files_identical
+    unique_path_fn: Callable = get_unique_path
+
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
         new_stem = self.filenamer_fn(e, dst.count)
@@ -41,6 +44,6 @@ class TransferPipeline(AbstractPipeline):
         if target not in dst.files:
             return target
         # If the file already exists and is the same, skip transferring it.
-        if cmp(e.path, target, shallow=True) and cmp(e.path, target, shallow=False):
+        if self.filecmp_fn(e.path, target):
             return None
-        return get_unique_path(target, dst.files)
+        return self.unique_path_fn(target, dst.files)

@@ -147,7 +147,7 @@ class FSPachinkoBootstrapper:
                 template_filenamer=TemplateFilenamer,
             ),
             CreateDestDirs: CreateDestDirsHandler(
-                uow=fst_uow,
+                pipeline=pipeline,
                 get_unique_path=get_unique_path,
                 randcount_fn=randint,
                 make_directory=mkdir,

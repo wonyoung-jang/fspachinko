@@ -45,8 +45,7 @@ class RunTransferJobHandler:
 
     def __call__(self, _cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
-        job = self.uow.repo.get()
-        for dest_dir, target_qty in job.dest_dir_inputs:
+        for dest_dir, target_qty in self.pipeline.dest_dir_inputs:
             ProcessDirectoryHandler(uow=self.uow, pipeline=self.pipeline, remove_directory=self.remove_directory)(
                 ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
             )
@@ -166,7 +165,7 @@ class CreateFilenameFnHandler:
 class CreateDestDirsHandler:
     """Handle the CreateDestDirs command."""
 
-    uow: AbstractTransferUnitOfWork
+    pipeline: AbstractPipeline
     get_unique_path: Callable
     randcount_fn: Callable
     make_directory: Callable
@@ -175,22 +174,21 @@ class CreateDestDirsHandler:
 
     def __call__(self, cmd: CreateDestDirs) -> None:
         """Handle the CreateDestDirs command."""
-        job = self.uow.repo.get()
-        job.dest_dir_inputs.clear()
+        self.pipeline.dest_dir_inputs.clear()
         filecount_fn = (
             (lambda rnge=cmd.filecount_randrange: self.randcount_fn(*rnge))
             if cmd.filecount_rand_is_enabled
-            else (lambda cnt=cmd.filecount_static: cnt)
+            else (lambda count=cmd.filecount_static: count)
         )
         if not cmd.directory_create_is_enabled:
-            job.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
+            self.pipeline.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
             return
         existing = self.get_existing_directories(cmd.directory_dest)
         candidate = self.join_path(cmd.directory_dest, cmd.directory_name)
-        while len(job.dest_dir_inputs) < cmd.dir_count:
+        while len(self.pipeline.dest_dir_inputs) < cmd.dir_count:
             next_name = self.get_unique_path(candidate, existing)
             self.make_directory(next_name)
-            job.dest_dir_inputs.append((next_name, filecount_fn()))
+            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
 
 

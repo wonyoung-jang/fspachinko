@@ -94,7 +94,6 @@ class TransferJob:
 
     quota: DiversityQuota = field(default_factory=DiversityQuota)
     is_stop_requested: bool = False
-    dest_dir_inputs: list[tuple[str, int]] = field(default_factory=list)
     events: deque[Event] = field(default_factory=deque)
 
     @property
