@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
-from fspachinko.adapters.filesystemport import get_profile_path
 from fspachinko.bootstrap import configure_bus
 from fspachinko.configuration.repository import JSONConfigRepository
+from fspachinko.datapaths import get_profile_path
 from fspachinko.domain.commands import RunTransferJob, SaveProfile, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 

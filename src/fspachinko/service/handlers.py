@@ -46,9 +46,11 @@ class RunTransferJobHandler:
     def __call__(self, _cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
         for dest_dir, target_qty in self.pipeline.dest_dir_inputs:
-            ProcessDirectoryHandler(uow=self.uow, pipeline=self.pipeline, remove_directory=self.remove_directory)(
-                ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty)
-            )
+            ProcessDirectoryHandler(
+                uow=self.uow,
+                pipeline=self.pipeline,
+                remove_directory=self.remove_directory,
+            )(ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty))
 
 
 @dataclass(slots=True)

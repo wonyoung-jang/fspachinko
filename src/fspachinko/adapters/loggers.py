@@ -3,7 +3,7 @@
 import logging
 from os.path import basename, join
 
-from .filesystemport import get_log_path
+from fspachinko.datapaths import get_log_path
 
 logger = logging.getLogger(__name__)
 

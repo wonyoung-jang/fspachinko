@@ -4,10 +4,10 @@ import logging
 
 from cyclopts import App
 
-from fspachinko.adapters.filesystemport import get_config_path
 from fspachinko.bootstrap import FSPachinkoBootstrapper, configure_bus
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import DefaultPath
+from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import RunTransferJob
 
 default_config_path = get_config_path(DefaultPath.CONFIG)
