@@ -11,11 +11,13 @@ if TYPE_CHECKING:
 class CentralWidget(QWidget):
     """Main widget."""
 
-    def __init__(self, config_widgets: tuple[BaseGroupBox, ...], *extra_widgets: QWidget) -> None:
+    def __init__(self, config_widgets: tuple[BaseGroupBox, ...]) -> None:
         """Initialize the main widget."""
         super().__init__()
         self._config_widgets: tuple[BaseGroupBox, ...] = config_widgets
-        self.build_layout(*self._config_widgets, *extra_widgets)
+        layout = QVBoxLayout(self)
+        for w in self._config_widgets:
+            layout.addWidget(w)
 
     @property
     def config(self) -> dict:
@@ -24,12 +26,6 @@ class CentralWidget(QWidget):
         for w in self._config_widgets:
             config.update(w.config)
         return config
-
-    def build_layout(self, *widgets: QWidget) -> None:
-        """Build the layout."""
-        layout = QVBoxLayout(self)
-        for w in widgets:
-            layout.addWidget(w)
 
     def restore_config(self, config: dict) -> None:
         """Restore the configuration to the UI."""

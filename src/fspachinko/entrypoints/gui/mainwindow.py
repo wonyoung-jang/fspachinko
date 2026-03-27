@@ -3,8 +3,8 @@
 from os.path import basename, dirname, splitext
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QSettings, Slot
-from PySide6.QtWidgets import QFileDialog, QMainWindow
+from PySide6.QtCore import QSettings, Qt, Slot
+from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow
 
 from fspachinko.bootstrap import configure_bus
 from fspachinko.configuration.repository import JSONConfigRepository
@@ -38,12 +38,20 @@ class MainWindow(QMainWindow):
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
         self.log_signal = setup_gui_logger()
-        self.logging = LogWidget()
-        self.progress = ProgressWidget()
+        self.log_widget = LogWidget()
+        self.progress_widget = ProgressWidget()
         config_widgets = tuple(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP)
-        self.ui = CentralWidget(config_widgets, self.logging, self.progress)
-        self.setCentralWidget(self.ui)
+        self.ui = CentralWidget(config_widgets)
+        self.log_dock = QDockWidget()
+        self.log_dock.setWidget(self.log_widget)
+        self.log_dock.setObjectName("LogDock")
+        self.progress_dock = QDockWidget()
+        self.progress_dock.setWidget(self.progress_widget)
+        self.progress_dock.setObjectName("ProgressDock")
         self.setAnimated(True)
+        self.setCentralWidget(self.ui)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_dock)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.progress_dock)
         build_ui_bars(self, self._actions)
         self.init_ui_settings()
         self.init_ui_connections()
@@ -52,7 +60,7 @@ class MainWindow(QMainWindow):
         """Initialize connections."""
         self.bus.subscribe(FileTransferred, self.handle_file_transferred)
         self.bus.subscribe(DirectoryStarted, self.handle_directory_started)
-        self.log_signal.logged.connect(self.logging.append)
+        self.log_signal.logged.connect(self.log_widget.append)
         self._actions.save.triggered.connect(self.save_config)
         self._actions.save_as.triggered.connect(self.save_config_as_dialog)
         self._actions.load.triggered.connect(self.open_config_dialog)
@@ -141,7 +149,7 @@ class MainWindow(QMainWindow):
         self.ui.toggle(is_enabled=False)
         config = self.config_repo.from_dict(self.ui.config)
         configure_bus(self.bus, config)
-        self.progress.handle_start_process(config.directory.count)
+        self.progress_widget.handle_start_process(config.directory.count)
         self.controller.start()
 
     @Slot()
@@ -151,12 +159,12 @@ class MainWindow(QMainWindow):
 
     def handle_file_transferred(self, _evt: FileTransferred) -> None:
         """Update the window title with the current progress."""
-        self.progress.handle_file_transfer()
-        self.setWindowTitle(f"[{self.progress.file_percentage}%] {self._original_title}")
+        self.progress_widget.handle_file_transfer()
+        self.setWindowTitle(f"[{self.progress_widget.file_percentage}%] {self._original_title}")
 
     def handle_directory_started(self, cmd: DirectoryStarted) -> None:
         """Update the window title with the current progress."""
-        self.progress.handle_directory_start(cmd.target_qty)
+        self.progress_widget.handle_directory_start(cmd.target_qty)
 
     @Slot()
     def handle_finished(self) -> None:
