@@ -111,13 +111,24 @@ class TransferJob:
 
     def start_directory(self, dst: DestinationDirectory) -> None:
         """Update the directory count in the diversity quota after processing a file."""
-        self.events.append(DirectoryStarted(path=dst.path, target_qty=dst.target_qty))
+        self.events.append(
+            DirectoryStarted(
+                path=dst.path,
+                target_qty=dst.target_qty,
+            )
+        )
 
     def update_file(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
         """Update the job state after processing a file."""
         dst.accept(entry.size, new_path)
         self.quota.update(entry.parent, entry.path)
-        self.events.append(FileTransferred(dst.count, entry.path, new_path))
+        self.events.append(
+            FileTransferred(
+                count=dst.count,
+                src=entry.path,
+                dst=new_path,
+            )
+        )
 
     def request_stop(self) -> None:
         """Request to stop the process."""

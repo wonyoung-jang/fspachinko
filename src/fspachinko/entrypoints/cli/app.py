@@ -4,11 +4,11 @@ import logging
 
 from cyclopts import App
 
-from fspachinko.bootstrap import FSPachinkoBootstrapper, configure_bus
+from fspachinko.bootstrap import FSPachinkoBootstrapper
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import DefaultPath
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import RunTransferJob
+from fspachinko.domain.commands import BootstrapConfig, CreateTransferJob, RunTransferJob
 
 default_config_path = get_config_path(DefaultPath.CONFIG)
 logger = logging.getLogger(__name__)
@@ -26,5 +26,12 @@ def run(config_path: str = default_config_path) -> None:
     """
     repo = JSONConfigRepository()
     config = repo.from_json(config_path)
-    configure_bus(bus, config)
+    bus.handle(BootstrapConfig(config=config))
+    bus.handle(
+        CreateTransferJob(
+            root=config.root,
+            max_per_dir=config.options.max_per_dir,
+            unique_files_only=config.options.is_create_unique_dirs,
+        )
+    )
     bus.handle(RunTransferJob())

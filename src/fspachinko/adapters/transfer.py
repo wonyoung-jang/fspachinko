@@ -23,7 +23,7 @@ class AbstractTransferFnManager(ABC):
     """Abstract class for file transfer."""
 
     @abstractmethod
-    def get(self, mode: TransferMode) -> Callable:
+    def __call__(self, mode: str) -> Callable:
         """Get the transfer function for the specified mode."""
 
 
@@ -40,14 +40,14 @@ class FileTransferFnManager(AbstractTransferFnManager):
             if not _link_fn_is_available(fn):
                 self.available.pop(mode, None)
 
+    def __call__(self, mode: str) -> Callable:
+        """Get the transfer function for the specified mode."""
+        return self.available.get(mode, self.available[TransferMode.DRY_RUN])
+
     @property
     def transfermodes(self) -> tuple[str, ...]:
         """Return the set of available transfer modes."""
         return tuple(self.available.keys())
-
-    def get(self, mode: str) -> Callable:
-        """Get the transfer function for the specified mode."""
-        return self.available.get(mode, self.available[TransferMode.DRY_RUN])
 
 
 def hardlink(src: str, dst: str) -> None:

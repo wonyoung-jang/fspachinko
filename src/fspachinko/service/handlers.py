@@ -3,30 +3,15 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from fspachinko.constants import FilterName
-from fspachinko.domain.commands import ProcessDirectory
-from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
+from fspachinko.domain.commands import BootstrapConfig, ProcessDirectory
+from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.configuration.uow import AbstractConfigUnitOfWork
-    from fspachinko.domain.commands import (
-        CreateDestDirs,
-        CreateFilefilterFn,
-        CreateFilenameFn,
-        CreateRangeFilterFn,
-        CreateTextFilterFn,
-        CreateTransferFn,
-        CreateTransferJob,
-        CreateWalkerFn,
-        RunTransferJob,
-        SaveConfiguration,
-        SetPipelineCreateDir,
-        SetRngSeed,
-        StopProcess,
-    )
+    from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
 
     from .uow import AbstractTransferUnitOfWork
@@ -41,16 +26,17 @@ class RunTransferJobHandler:
 
     uow: AbstractTransferUnitOfWork
     pipeline: AbstractPipeline
-    remove_directory: Callable
 
     def __call__(self, _cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
-        for dest_dir, target_qty in self.pipeline.dest_dir_inputs:
-            ProcessDirectoryHandler(
+        while self.pipeline.dest_dir_inputs:
+            dest_dir_input = self.pipeline.dest_dir_inputs.pop(0)
+            dest_dir, target_qty = dest_dir_input
+            handler = ProcessDirectoryHandler(
                 uow=self.uow,
                 pipeline=self.pipeline,
-                remove_directory=self.remove_directory,
-            )(ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty))
+            )
+            handler(ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty))
 
 
 @dataclass(slots=True)
@@ -74,7 +60,6 @@ class ProcessDirectoryHandler:
 
     uow: AbstractTransferUnitOfWork
     pipeline: AbstractPipeline
-    remove_directory: Callable
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
@@ -97,7 +82,7 @@ class ProcessDirectoryHandler:
                     job.update_file(dst, entry, new_path)
             is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
             if is_empty_creation:
-                self.remove_directory(dst.path)
+                self.pipeline.remove_directory(dst.path)
             job.finalize_directory(dst, is_empty_creation=is_empty_creation)
             uow.commit()
 
@@ -115,192 +100,6 @@ class StopProcessHandler:
 
 
 @dataclass(slots=True)
-class SetRngSeedHandler:
-    """Handle the SetRngSeed command."""
-
-    rng_seed_fn: Callable
-
-    def __call__(self, cmd: SetRngSeed) -> None:
-        """Handle the SetRngSeed command."""
-        self.rng_seed_fn(cmd.rng_seed)
-
-
-@dataclass(slots=True)
-class SetPipelineCreateDirHandler:
-    """Handle the SetPipelineCreateDir command."""
-
-    pipeline: AbstractPipeline
-
-    def __call__(self, cmd: SetPipelineCreateDir) -> None:
-        """Handle the SetPipelineCreateDir command."""
-        self.pipeline.is_create_dir = cmd.is_create_dir
-
-
-@dataclass(slots=True)
-class CreateTransferFnHandler:
-    """Handle the CreateTransferFn command."""
-
-    pipeline: AbstractPipeline
-    transfer_fn_getter: Callable
-
-    def __call__(self, cmd: CreateTransferFn) -> None:
-        """Handle the CreateTransferFn command."""
-        self.pipeline.transfer_fn = self.transfer_fn_getter(cmd.transfermode)
-
-
-@dataclass(slots=True)
-class CreateFilenameFnHandler:
-    """Handle the CreateFilenameFn command."""
-
-    pipeline: AbstractPipeline
-    template_filenamer: Callable
-
-    def __call__(self, cmd: CreateFilenameFn) -> None:
-        """Handle the CreateFilenameFn command."""
-        if cmd.is_enabled:
-            self.pipeline.filenamer_fn = self.template_filenamer(cmd.template)
-        else:
-            self.pipeline.filenamer_fn = lambda e, _: e.stem
-
-
-@dataclass(slots=True)
-class CreateDestDirsHandler:
-    """Handle the CreateDestDirs command."""
-
-    pipeline: AbstractPipeline
-    get_unique_path: Callable
-    randcount_fn: Callable
-    make_directory: Callable
-    get_existing_directories: Callable
-    join_path: Callable
-
-    def __call__(self, cmd: CreateDestDirs) -> None:
-        """Handle the CreateDestDirs command."""
-        self.pipeline.dest_dir_inputs.clear()
-        filecount_fn = (
-            (lambda rnge=cmd.filecount_randrange: self.randcount_fn(*rnge))
-            if cmd.filecount_rand_is_enabled
-            else (lambda count=cmd.filecount_static: count)
-        )
-        if not cmd.directory_create_is_enabled:
-            self.pipeline.dest_dir_inputs.append((cmd.directory_dest, filecount_fn()))
-            return
-        existing = self.get_existing_directories(cmd.directory_dest)
-        candidate = self.join_path(cmd.directory_dest, cmd.directory_name)
-        while len(self.pipeline.dest_dir_inputs) < cmd.dir_count:
-            next_name = self.get_unique_path(candidate, existing)
-            self.make_directory(next_name)
-            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
-            existing.add(next_name)
-
-
-@dataclass(slots=True)
-class CreateWalkerFnHandler:
-    """Handle the CreateWalkerFn command."""
-
-    pipeline: AbstractPipeline
-    walker: Callable
-
-    def __call__(self, cmd: CreateWalkerFn) -> None:
-        """Handle the CreateWalkerFn command."""
-        self.pipeline.walker_fn = self.walker(root=cmd.root, should_follow_symlink=cmd.should_follow_symlink)
-
-
-@dataclass(slots=True)
-class CreateTextFilterFnHandler:
-    """Handle the CreateTextFilterFn command."""
-
-    pipeline: AbstractPipeline
-    get_text_patterns: Callable
-
-    def __call__(self, cmd: CreateTextFilterFn) -> None:
-        """Handle the CreateTextFilterFn command."""
-        if not (cmd.is_enabled and cmd.text):
-            return
-
-        should_include = cmd.should_include
-        patterns = self.get_text_patterns(cmd.text, cmd.re_fmt)
-
-        def _get_text_filter() -> Callable[[str], bool]:
-            match len(patterns), should_include:
-                case 1, True:
-                    return lambda p: patterns[0].search(p) is not None
-                case 1, False:
-                    return lambda p: patterns[0].search(p) is None
-                case _, True:
-                    return lambda p: any(ptn.search(p) for ptn in patterns)
-                case _, False:
-                    return lambda p: not any(ptn.search(p) for ptn in patterns)
-            return lambda _: True
-
-        self.pipeline.filters[cmd.name] = _get_text_filter()
-
-
-@dataclass(slots=True)
-class CreateRangeFilterFnHandler:
-    """Handle the CreateRangeFilterFn command."""
-
-    pipeline: AbstractPipeline
-
-    def __call__(self, cmd: CreateRangeFilterFn) -> None:
-        """Handle the CreateRangeFilterFn command."""
-        if not cmd.is_enabled:
-            return
-
-        minimum, maximum = cmd.minimum, cmd.maximum
-
-        def _get_range_filter() -> Callable[[int | float], bool]:
-            match minimum >= 0, maximum < float("inf"):
-                case True, True:
-                    return lambda v: minimum <= v <= maximum
-                case True, False:
-                    return lambda v: v >= minimum
-                case False, True:
-                    return lambda v: v <= maximum
-            msg = "Invalid range filter configuration."
-            raise ValueError(msg)
-
-        self.pipeline.filters[cmd.name] = _get_range_filter()
-
-
-@dataclass(slots=True)
-class CreateFilefilterFnHandler:
-    """Handle the CreateFilefilterFn command."""
-
-    pipeline: AbstractPipeline
-    get_duration: Callable
-
-    def __call__(self, _: CreateFilefilterFn) -> None:
-        """Handle the CreateFilefilterFn command."""
-        filter_mapping: dict[str, Callable[[FSEntry, Callable], bool]] = {
-            FilterName.DIRNAME: lambda e, fn: fn(e.parent),
-            FilterName.KEYWORD: lambda e, fn: fn(e.stem),
-            FilterName.EXTENSION: lambda e, fn: fn(e.ext),
-            FilterName.FILESIZE: lambda e, fn: fn(e.size),
-            FilterName.DURATION: lambda e, fn: fn(self.get_duration(e.path)),
-        }
-
-        def _build(name: str, fn: Callable) -> Callable[[FSEntry], bool]:
-            if name not in filter_mapping:
-                msg = f"Unknown filter name: {name}"
-                raise ValueError(msg)
-            return lambda e, fn=fn: filter_mapping[name](e, fn)
-
-        filter_fns = tuple(_build(name, fn) for name, fn in self.pipeline.filters.items())
-
-        def _composite() -> Callable[[FSEntry], bool]:
-            match len(filter_fns):
-                case 0:
-                    return lambda _: True
-                case 1:
-                    return filter_fns[0]
-                case _:
-                    return lambda e: all(f(e) for f in filter_fns)
-
-        self.pipeline.filefilter_fn = _composite()
-
-
-@dataclass(slots=True)
 class SaveProfileHandler:
     """Handle the SaveProfile command."""
 
@@ -311,6 +110,57 @@ class SaveProfileHandler:
         with self.uow as uow:
             uow.repo.set(cmd.path, cmd.config)
             uow.commit()
+
+
+@dataclass(slots=True)
+class BootstrapConfigHandler:
+    """Bootstrapper for translating configuration into commands."""
+
+    pipeline: AbstractPipeline
+    rng_seed_fn: Callable
+    transfer_fn_getter: Callable
+    template_filenamer: Callable
+    walker: Callable
+    get_existing_directories: Callable
+    join_path: Callable
+    get_unique_path: Callable
+    make_directory: Callable
+    randcount_fn: Callable
+    get_text_patterns: Callable
+    get_duration: Callable
+    config_to_file_filter: Callable
+
+    def __call__(self, cmd: BootstrapConfig) -> None:
+        """Translate the configuration into commands."""
+        c = cmd.config
+        self.rng_seed_fn(c.options.rng_seed)
+        self.pipeline.is_create_dir = c.directory.is_enabled
+        self.pipeline.transfer_fn = self.transfer_fn_getter(c.options.transfer_mode)
+        if c.filename.is_enabled:
+            self.pipeline.filenamer_fn = self.template_filenamer(c.filename.template)
+        else:
+            self.pipeline.filenamer_fn = lambda e, _: e.stem
+        self.pipeline.walker_fn = self.walker(root=c.root, should_follow_symlink=c.options.should_follow_symlink)
+        filecount_fn = (
+            (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.randcount_fn(*rnge))
+            if c.filecount.is_rand_enabled
+            else (lambda count=c.filecount.count: count)
+        )
+        if not c.directory.is_enabled:
+            self.pipeline.dest_dir_inputs.append((c.dest, filecount_fn()))
+            return
+        existing = self.get_existing_directories(c.dest)
+        candidate = self.join_path(c.dest, c.directory.name)
+        while len(self.pipeline.dest_dir_inputs) < c.directory.count:
+            next_name = self.get_unique_path(candidate, existing)
+            self.make_directory(next_name)
+            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
+            existing.add(next_name)
+        config_to_file_filter = self.config_to_file_filter(
+            get_text_patterns=self.get_text_patterns,
+            get_duration=self.get_duration,
+        )
+        self.pipeline.filefilter_fn = config_to_file_filter(c)
 
 
 ####################

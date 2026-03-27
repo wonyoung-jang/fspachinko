@@ -1,6 +1,10 @@
 """Commands."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fspachinko.configuration.model import ConfigModel
 
 
 @dataclass(frozen=True)
@@ -36,82 +40,6 @@ class StopProcess(Command):
 
 
 @dataclass(slots=True, frozen=True)
-class SetRngSeed(Command):
-    """Command to set the RNG seed."""
-
-    rng_seed: int | str | bytes | None
-
-
-@dataclass(slots=True, frozen=True)
-class SetPipelineCreateDir(Command):
-    """Command to set the pipeline's create_dir flag."""
-
-    is_create_dir: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateTransferFn(Command):
-    """Command to create a transfer function."""
-
-    transfermode: str
-
-
-@dataclass(slots=True, frozen=True)
-class CreateFilenameFn(Command):
-    """Command to create a filename function."""
-
-    template: str
-    is_enabled: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateDestDirs(Command):
-    """Command to create destination directories."""
-
-    dir_count: int
-    directory_dest: str
-    directory_name: str
-    directory_create_is_enabled: bool
-    filecount_static: int
-    filecount_randrange: tuple[int, int]
-    filecount_rand_is_enabled: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateWalkerFn(Command):
-    """Command to create a walker function."""
-
-    root: str
-    should_follow_symlink: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateTextFilterFn(Command):
-    """Command to create a text filter function."""
-
-    name: str
-    text: str
-    re_fmt: str
-    is_enabled: bool
-    should_include: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateRangeFilterFn(Command):
-    """Command to create a range filter function."""
-
-    name: str
-    minimum: int | float
-    maximum: int | float
-    is_enabled: bool
-
-
-@dataclass(slots=True, frozen=True)
-class CreateFilefilterFn(Command):
-    """Command to create a file filter function."""
-
-
-@dataclass(slots=True, frozen=True)
 class SaveConfiguration(Command):
     """Command to save a configuration."""
 
@@ -124,3 +52,10 @@ class LoadConfiguration(Command):
     """Command to load a configuration."""
 
     path: str
+
+
+@dataclass(slots=True, frozen=True)
+class BootstrapConfig(Command):
+    """Command to bootstrap the configuration."""
+
+    config: ConfigModel

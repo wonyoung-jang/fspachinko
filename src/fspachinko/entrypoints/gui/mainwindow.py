@@ -6,10 +6,15 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Qt, Slot
 from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow
 
-from fspachinko.bootstrap import configure_bus
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
+from fspachinko.domain.commands import (
+    BootstrapConfig,
+    CreateTransferJob,
+    RunTransferJob,
+    SaveConfiguration,
+    StopProcess,
+)
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 
 from .centralwidget import CentralWidget
@@ -148,7 +153,14 @@ class MainWindow(QMainWindow):
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
         config = self.config_repo.from_dict(self.ui.config)
-        configure_bus(self.bus, config)
+        self.bus.handle(BootstrapConfig(config=config))
+        self.bus.handle(
+            CreateTransferJob(
+                root=config.root,
+                max_per_dir=config.options.max_per_dir,
+                unique_files_only=config.options.is_create_unique_dirs,
+            )
+        )
         self.progress_widget.handle_start_process(config.directory.count)
         self.controller.start()
 
