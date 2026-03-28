@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Self
 from fspachinko.adapters.repository import AbstractTransferRepository, TransferRepository
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from fspachinko.domain.events import Event
 
@@ -20,6 +20,7 @@ class AbstractTransferUnitOfWork(ABC):
     """Abstract Unit of Work."""
 
     repo: AbstractTransferRepository
+    transfer_fn: Callable = lambda _, __: None
 
     def __enter__(self) -> Self:
         """Enter the runtime context."""
@@ -64,7 +65,12 @@ class TransferUnitOfWork(AbstractTransferUnitOfWork):
 
     def _commit(self) -> None:
         """Actually perform the I/O."""
-        self.repo.transfer_all()
+        for src, dst in self.repo.pending:
+            try:
+                self.transfer_fn(src, dst)
+            except OSError:
+                logger.debug("Failed to transfer %s to %s", src, dst)
+                continue
 
     def rollback(self) -> None:
         """If something failed, delete the files we just wrote."""

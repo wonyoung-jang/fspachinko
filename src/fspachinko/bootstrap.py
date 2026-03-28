@@ -3,12 +3,10 @@
 import logging
 import random
 from dataclasses import dataclass, field
-from os import mkdir
-from os.path import join
 from typing import TYPE_CHECKING, Any
 
 from .adapters.filenamer import TemplateFilenamer
-from .adapters.filesystemport import are_files_identical, get_existing_directories, get_unique_path, remove_directory
+from .adapters.filesystem import AbstractFilesystem, Filesystem
 from .adapters.fswalker import FSWalker
 from .adapters.loggers import add_dest_log_filehandler, remove_dest_log_filehandler
 from .adapters.media import get_duration
@@ -54,12 +52,8 @@ class FSPachinkoBootstrapper:
     """Bootstrapper for the FSPachinko application."""
 
     collector: CompositeEventCollector = field(default_factory=CompositeEventCollector)
-    pipeline: AbstractPipeline = field(
-        default_factory=lambda: TransferPipeline(
-            filecmp_fn=are_files_identical,
-            unique_path_fn=get_unique_path,
-        )
-    )
+    filesystem: AbstractFilesystem = field(default_factory=Filesystem)
+    pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     fst_uow: AbstractTransferUnitOfWork = field(default_factory=TransferUnitOfWork)
     cfg_uow: AbstractConfigUnitOfWork = field(default_factory=JSONConfigUnitOfWork)
     log_fn: Callable = logger.info
@@ -68,6 +62,7 @@ class FSPachinkoBootstrapper:
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
         self.collector.register_emitter(self.fst_uow)
+        self.pipeline.filesystem = self.filesystem
 
     @classmethod
     def bootstrap(cls, *args: Any, **kwargs: Any) -> MessageBus:
@@ -96,14 +91,20 @@ class FSPachinkoBootstrapper:
                     get_status=get_status,
                     get_report=get_report,
                     remove_log_file=remove_dest_log_filehandler,
-                    remove_directory=remove_directory,
+                    remove_directory=self.filesystem.remove_directory,
                 )
             ],
         }
 
     def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""
-        fst_uow, cfg_uow, pipeline, rng_seed_fn = self.fst_uow, self.cfg_uow, self.pipeline, self.rng_seed_fn
+        fst_uow, cfg_uow, pipeline, filesystem, rng_seed_fn = (
+            self.fst_uow,
+            self.cfg_uow,
+            self.pipeline,
+            self.filesystem,
+            self.rng_seed_fn,
+        )
         return {
             RunTransferJob: RunTransferJobHandler(
                 uow=fst_uow,
@@ -118,14 +119,11 @@ class FSPachinkoBootstrapper:
             SaveConfiguration: SaveProfileHandler(uow=cfg_uow),
             BootstrapConfig: BootstrapConfigHandler(
                 pipeline=pipeline,
+                filesystem=filesystem,
                 rng_seed_fn=rng_seed_fn,
                 transfer_fn_getter=FileTransferFnManager(),
                 template_filenamer=TemplateFilenamer,
                 walker=FSWalker,
-                get_existing_directories=get_existing_directories,
-                join_path=join,
-                get_unique_path=get_unique_path,
-                make_directory=mkdir,
                 randcount_fn=random.randint,
                 get_text_patterns=get_text_patterns,
                 get_duration=get_duration,

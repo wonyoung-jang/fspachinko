@@ -4,9 +4,6 @@ from enum import IntEnum, StrEnum
 
 import fspachinko
 
-# General constants
-INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
-
 
 class DefaultPath(StrEnum):
     """Enumeration for default configuration filenames."""

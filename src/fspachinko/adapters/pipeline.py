@@ -5,8 +5,10 @@ from dataclasses import dataclass, field
 from os.path import join
 from typing import TYPE_CHECKING
 
+from .filesystem import AbstractFilesystem, Filesystem
+
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable, Iterator
 
     from fspachinko.domain.model import DestinationDirectory, FSEntry
 
@@ -15,13 +17,12 @@ if TYPE_CHECKING:
 class AbstractPipeline(ABC):
     """Abstract pipeline."""
 
+    filesystem: AbstractFilesystem = field(default_factory=Filesystem)
     is_create_dir: bool = False
     filefilter_fn: Callable[[FSEntry], bool] = lambda _: True
     filenamer_fn: Callable[[FSEntry, int], str] = lambda e, _: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
-    filecmp_fn: Callable[[str, str], bool] = lambda _, __: True
-    unique_path_fn: Callable[[str, Iterable[str]], str] = lambda _, __: ""
     dest_dir_inputs: list[tuple[str, int]] = field(default_factory=list)
 
     @abstractmethod
@@ -40,6 +41,6 @@ class TransferPipeline(AbstractPipeline):
         if target not in dst.files:
             return target
         # If the file already exists and is the same, skip transferring it.
-        if self.filecmp_fn(e.path, target):
+        if self.filesystem.are_files_identical(e.path, target):
             return None
-        return self.unique_path_fn(target, dst.files)
+        return self.filesystem.get_unique_path(target, dst.files)

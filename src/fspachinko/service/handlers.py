@@ -9,6 +9,7 @@ from fspachinko.domain.model import DestinationDirectory, DiversityQuota, Transf
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.configuration.uow import AbstractConfigUnitOfWork
     from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
@@ -65,7 +66,7 @@ class ProcessDirectoryHandler:
         """Handle the StartProcessingDirectory command."""
         with self.uow as uow:
             dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
-            uow.repo.transfer_fn = self.pipeline.transfer_fn
+            uow.transfer_fn = self.pipeline.transfer_fn
             job = uow.repo.get()
             if job.is_stop_requested or job.is_root_locked:
                 return
@@ -116,14 +117,11 @@ class BootstrapConfigHandler:
     """Bootstrapper for translating configuration into commands."""
 
     pipeline: AbstractPipeline
+    filesystem: AbstractFilesystem
     rng_seed_fn: Callable
     transfer_fn_getter: Callable
     template_filenamer: Callable
     walker: Callable
-    get_existing_directories: Callable
-    join_path: Callable
-    get_unique_path: Callable
-    make_directory: Callable
     randcount_fn: Callable
     get_text_patterns: Callable
     get_duration: Callable
@@ -148,11 +146,11 @@ class BootstrapConfigHandler:
         if not c.directory.is_enabled:
             self.pipeline.dest_dir_inputs.append((c.dest, filecount_fn()))
             return
-        existing = self.get_existing_directories(c.dest)
-        candidate = self.join_path(c.dest, c.directory.name)
+        existing = self.filesystem.get_existing_subdirs(c.dest)
+        candidate = self.filesystem.join_path(c.dest, c.directory.name)
         while len(self.pipeline.dest_dir_inputs) < c.directory.count:
-            next_name = self.get_unique_path(candidate, existing)
-            self.make_directory(next_name)
+            next_name = self.filesystem.get_unique_path(candidate, existing)
+            self.filesystem.make_directory(next_name)
             self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
         _filefilter_builder = self.config_to_file_filter(
