@@ -1,6 +1,5 @@
 """File transfer adapter."""
 
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from io import UnsupportedOperation
@@ -14,8 +13,6 @@ from fspachinko.constants import OSCrossError, TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

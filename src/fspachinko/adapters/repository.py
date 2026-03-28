@@ -1,12 +1,9 @@
 """Repository implementations for handling data access operations."""
 
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 from fspachinko.domain.model import TransferJob
-
-logger = logging.getLogger(__name__)
 
 
 class AbstractTransferRepository(ABC):

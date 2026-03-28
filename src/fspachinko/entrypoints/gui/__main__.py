@@ -3,7 +3,6 @@
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
-from fspachinko.adapters.loggers import AppLogger
 from fspachinko.bootstrap import FSPachinkoBootstrapper
 
 from .constants_gui import GUIAppSetting
@@ -29,8 +28,7 @@ def main() -> None:
     app = QApplication()
     app.setWindowIcon(get_icon("window"))
     bus = FSPachinkoBootstrapper.bootstrap()
-    logger = AppLogger()
-    window = MainWindow(bus, logger)
+    window = MainWindow(bus)
     window.show()
     app.exec()
 

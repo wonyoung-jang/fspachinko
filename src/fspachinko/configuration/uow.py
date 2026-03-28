@@ -1,6 +1,5 @@
 """Unit of Work."""
 
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
@@ -9,8 +8,6 @@ from .repository import JSONConfigRepository
 
 if TYPE_CHECKING:
     from .repository import AbstractConfigRepository
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

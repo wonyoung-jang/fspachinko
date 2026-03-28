@@ -13,6 +13,7 @@ from fspachinko.domain.commands import BootstrapConfig, CreateTransferJob, RunTr
 default_config_path = get_config_path(DefaultPath.CONFIG)
 logger = logging.getLogger(__name__)
 bus = FSPachinkoBootstrapper.bootstrap()
+bus.logger.add_cli_log_handler()
 app = App(help="fspachinko - Random file transfer utility.")
 
 

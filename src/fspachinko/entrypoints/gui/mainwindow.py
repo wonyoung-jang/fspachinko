@@ -27,14 +27,13 @@ from .workers import ProcessController
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
-    from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.service.messagebus import MessageBus
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self, bus: MessageBus, logger: AbstractLogger) -> None:
+    def __init__(self, bus: MessageBus) -> None:
         """Initialize the main window."""
         super().__init__()
         self.bus: MessageBus = bus
@@ -44,7 +43,7 @@ class MainWindow(QMainWindow):
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
         gui_log_handler = QtLogHandler()
-        logger.add_handler("qtgui", gui_log_handler)
+        self.bus.logger.add_handler("qtgui", gui_log_handler)
         self.log_signal = gui_log_handler.signals
         self.log_widget = LogWidget()
         self.progress_widget = ProgressWidget()

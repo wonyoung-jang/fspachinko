@@ -63,11 +63,12 @@ class FSPachinkoBootstrapper:
     @classmethod
     def bootstrap(cls, *args: Any, **kwargs: Any) -> MessageBus:
         """Bootstrap the application and return the message bus."""
-        b = cls(*args, **kwargs)
+        bootstrapper = cls(*args, **kwargs)
         return MessageBus(
-            collector=b.collector,
-            event_handlers=b.get_event_handlers(),
-            command_handlers=b.get_command_handlers(),
+            collector=bootstrapper.collector,
+            event_handlers=bootstrapper.get_event_handlers(),
+            command_handlers=bootstrapper.get_command_handlers(),
+            logger=bootstrapper.logger,
         )
 
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:

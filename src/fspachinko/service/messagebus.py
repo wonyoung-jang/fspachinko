@@ -1,6 +1,5 @@
 """MessageBus."""
 
-import logging
 from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -11,11 +10,12 @@ from fspachinko.domain.events import Event
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from fspachinko.adapters.loggers import AbstractLogger
+
     from .eventcollector import CompositeEventCollector
 
 
 type Message = Command | Event
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -25,6 +25,7 @@ class MessageBus:
     collector: CompositeEventCollector
     event_handlers: dict[type[Event], list[Callable]]
     command_handlers: dict[type[Command], Callable]
+    logger: AbstractLogger
     queue: deque = field(default_factory=deque)
 
     def handle(self, message: Message) -> None:
@@ -44,22 +45,22 @@ class MessageBus:
         """Handle an event by calling its handlers and collecting any new events that are generated."""
         for handler in self.event_handlers[type(event)]:
             try:
-                logger.debug("Event: %s with handler %s", event, handler)
+                self.logger.debug("Event: %s with handler %s", event, handler)
                 handler(event)
                 self.queue.extend(self.collector.collect_new_events())
             except Exception:
-                logger.exception("Exception handling event %s", event)
+                self.logger.exception("Exception handling event %s", event)
                 continue
 
     def handle_command(self, command: Command) -> None:
         """Handle a command by calling its handler and collecting any new events that are generated."""
-        logger.debug("Command: %s", command)
+        self.logger.debug("Command: %s", command)
         try:
             handler = self.command_handlers[type(command)]
             handler(command)
             self.queue.extend(self.collector.collect_new_events())
         except Exception:
-            logger.exception("Exception handling command %s", command)
+            self.logger.exception("Exception handling command %s", command)
             raise
 
     def subscribe(self, message: type[Message], handler: Callable) -> None:

@@ -31,12 +31,20 @@ class AbstractLogger(ABC):
         """Remove the log handler for the job request."""
 
     @abstractmethod
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log a debug message."""
+
+    @abstractmethod
     def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an info message."""
 
     @abstractmethod
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message."""
+
+    @abstractmethod
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log an exception message."""
 
 
 @dataclass(slots=True)
@@ -63,6 +71,10 @@ class AppLogger(AbstractLogger):
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message."""
         self.logger.warning(msg, *args, **kwargs)
+
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log an exception message."""
+        self.logger.exception(msg, *args, **kwargs)
 
     def add_handler(self, name: str, handler: logging.Handler) -> None:
         """Add a logging handler."""
