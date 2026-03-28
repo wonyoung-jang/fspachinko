@@ -1,10 +1,10 @@
 """Builder module for core functionality."""
 
 import logging
+import random
 from dataclasses import dataclass, field
 from os import mkdir
 from os.path import join
-from random import randint, seed
 from typing import TYPE_CHECKING, Any
 
 from .adapters.filenamer import TemplateFilenamer
@@ -58,13 +58,12 @@ class FSPachinkoBootstrapper:
         default_factory=lambda: TransferPipeline(
             filecmp_fn=are_files_identical,
             unique_path_fn=get_unique_path,
-            remove_directory=remove_directory,
         )
     )
     fst_uow: AbstractTransferUnitOfWork = field(default_factory=TransferUnitOfWork)
     cfg_uow: AbstractConfigUnitOfWork = field(default_factory=JSONConfigUnitOfWork)
     log_fn: Callable = logger.info
-    rng_seed_fn: Callable = seed
+    rng_seed_fn: Callable = random.seed
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
@@ -94,9 +93,10 @@ class FSPachinkoBootstrapper:
             DirectoryTransferred: [
                 DirectoryTransferredHandler(
                     log_fn=log_fn,
-                    remove_log_file=remove_dest_log_filehandler,
                     get_status=get_status,
                     get_report=get_report,
+                    remove_log_file=remove_dest_log_filehandler,
+                    remove_directory=remove_directory,
                 )
             ],
         }
@@ -126,7 +126,7 @@ class FSPachinkoBootstrapper:
                 join_path=join,
                 get_unique_path=get_unique_path,
                 make_directory=mkdir,
-                randcount_fn=randint,
+                randcount_fn=random.randint,
                 get_text_patterns=get_text_patterns,
                 get_duration=get_duration,
                 config_to_file_filter=ConfigToFileFilter,

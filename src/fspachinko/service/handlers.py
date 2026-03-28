@@ -47,9 +47,9 @@ class CreateTransferJobHandler:
 
     def __call__(self, cmd: CreateTransferJob) -> None:
         """Handle the CreateTransferJob command."""
-        quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
-        job = TransferJob(quota=quota)
         with self.uow as uow:
+            quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+            job = TransferJob(quota=quota)
             uow.repo.add(job)
             uow.commit()
 
@@ -63,8 +63,8 @@ class ProcessDirectoryHandler:
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
-        dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
         with self.uow as uow:
+            dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
             uow.repo.transfer_fn = self.pipeline.transfer_fn
             job = uow.repo.get()
             if job.is_stop_requested or job.is_root_locked:
@@ -74,16 +74,15 @@ class ProcessDirectoryHandler:
             for entry in self.pipeline.walker_fn():
                 if dst.is_success or job.is_stop_requested or job.is_root_locked:
                     break
-                if not job.process_file(entry) or not self.pipeline.filefilter_fn(entry):
+                if not (
+                    job.process_file(entry)
+                    and self.pipeline.filefilter_fn(entry)
+                    and (new_path := self.pipeline.get_new_path(dst=dst, e=entry))
+                ):
                     continue
-                new_path = self.pipeline.get_new_path(dst=dst, e=entry)
-                if new_path:
-                    uow.repo.add_transfer(entry.path, new_path)
-                    job.update_file(dst, entry, new_path)
-            is_empty_creation = dst.is_none_found and self.pipeline.is_create_dir
-            if is_empty_creation:
-                self.pipeline.remove_directory(dst.path)
-            job.finalize_directory(dst, is_empty_creation=is_empty_creation)
+                uow.repo.add_transfer(entry.path, new_path)
+                job.update_file(dst, entry, new_path)
+            job.finalize_directory(dst, is_empty_creation=(dst.is_none_found and self.pipeline.is_create_dir))
             uow.commit()
 
 
@@ -156,11 +155,11 @@ class BootstrapConfigHandler:
             self.make_directory(next_name)
             self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
-        config_to_file_filter = self.config_to_file_filter(
+        _filefilter_builder = self.config_to_file_filter(
             get_text_patterns=self.get_text_patterns,
             get_duration=self.get_duration,
         )
-        self.pipeline.filefilter_fn = config_to_file_filter(c)
+        self.pipeline.filefilter_fn = _filefilter_builder(c)
 
 
 ####################
@@ -197,9 +196,10 @@ class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
     log_fn: Callable
-    remove_log_file: Callable
     get_status: Callable
     get_report: Callable
+    remove_log_file: Callable
+    remove_directory: Callable
 
     def __call__(self, evt: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
@@ -217,3 +217,5 @@ class DirectoryTransferredHandler:
         )
         self.log_fn("%s\n%s", status, report)
         self.remove_log_file(evt.path)
+        if evt.is_empty_creation:
+            self.remove_directory(evt.path)
