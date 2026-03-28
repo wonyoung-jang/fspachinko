@@ -8,8 +8,6 @@ from typing import Any
 
 from fspachinko.datapaths import get_log_path
 
-logger = logging.getLogger(__name__)
-
 
 class AbstractLogger(ABC):
     """Abstract base class for loggers."""
@@ -59,6 +57,7 @@ class AppLogger(AbstractLogger):
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         self.add_file_log_handler()
+        self.debug("Initialized AppLogger with file log handler.")
 
     def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message."""
@@ -78,13 +77,16 @@ class AppLogger(AbstractLogger):
 
     def add_handler(self, name: str, handler: logging.Handler) -> None:
         """Add a logging handler."""
+        if name in self.handlers:
+            self.warning("Handler '%s' already registered. Skipping addition.", name)
+            return
         self.handlers[name] = handler
         self.logger.addHandler(handler)
 
     def add_file_log_handler(self) -> None:
         """Add a file log handler."""
         logfile = get_log_path("fspachinko.log")
-        handler = logging.FileHandler(filename=logfile, mode="a", encoding="utf-8", delay=True)
+        handler = logging.FileHandler(filename=logfile, mode="w", encoding="utf-8", delay=True)
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s[%(module)s] %(message)s"))
         self.add_handler("file", handler)

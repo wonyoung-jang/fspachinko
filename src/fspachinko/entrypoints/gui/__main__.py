@@ -27,7 +27,7 @@ def main() -> None:
     """Run the application."""
     app = QApplication()
     app.setWindowIcon(get_icon("window"))
-    bus = FSPachinkoBootstrapper.bootstrap()
+    bus = FSPachinkoBootstrapper().bootstrap()
     window = MainWindow(bus)
     window.show()
     app.exec()

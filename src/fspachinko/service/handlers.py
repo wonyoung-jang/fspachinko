@@ -120,12 +120,12 @@ class BootstrapConfigHandler:
     pipeline: AbstractPipeline
     filesystem: AbstractFilesystem
     rng_seed_fn: Callable
-    transfer_fn_getter: Callable
+    transfer_fn_manager: Callable
+    get_duration: Callable
     template_filenamer: Callable
     walker: Callable
     randcount_fn: Callable
     get_text_patterns: Callable
-    get_duration: Callable
     config_to_file_filter: Callable
 
     def __call__(self, cmd: BootstrapConfig) -> None:
@@ -133,7 +133,7 @@ class BootstrapConfigHandler:
         c = cmd.config
         self.rng_seed_fn(c.options.rng_seed)
         self.pipeline.is_create_dir = c.directory.is_enabled
-        self.pipeline.transfer_fn = self.transfer_fn_getter(c.options.transfer_mode)
+        self.pipeline.transfer_fn = self.transfer_fn_manager(c.options.transfer_mode)
         if c.filename.is_enabled:
             self.pipeline.filenamer_fn = self.template_filenamer(c.filename.template)
         else:
