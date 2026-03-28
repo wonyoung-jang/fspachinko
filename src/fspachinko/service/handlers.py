@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
+    from fspachinko.adapters.media import AbstractDurationFnManager
     from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.adapters.transfer import AbstractTransferFnManager
     from fspachinko.configuration.uow import AbstractConfigUnitOfWork
     from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
@@ -120,8 +122,8 @@ class BootstrapConfigHandler:
     pipeline: AbstractPipeline
     filesystem: AbstractFilesystem
     rng_seed_fn: Callable
-    transfer_fn_manager: Callable
-    get_duration: Callable
+    transfer_fn_manager: AbstractTransferFnManager
+    duration_fn_manager: AbstractDurationFnManager
     template_filenamer: Callable
     walker: Callable
     randcount_fn: Callable
@@ -133,7 +135,7 @@ class BootstrapConfigHandler:
         c = cmd.config
         self.rng_seed_fn(c.options.rng_seed)
         self.pipeline.is_create_dir = c.directory.is_enabled
-        self.pipeline.transfer_fn = self.transfer_fn_manager(c.options.transfer_mode)
+        self.pipeline.transfer_fn = self.transfer_fn_manager.get_transfer_fn(c.options.transfer_mode)
         if c.filename.is_enabled:
             self.pipeline.filenamer_fn = self.template_filenamer(c.filename.template)
         else:
@@ -156,7 +158,7 @@ class BootstrapConfigHandler:
             existing.add(next_name)
         _filefilter_builder = self.config_to_file_filter(
             get_text_patterns=self.get_text_patterns,
-            get_duration=self.get_duration,
+            get_duration=self.duration_fn_manager.get_duration,
         )
         self.pipeline.filefilter_fn = _filefilter_builder(c)
 

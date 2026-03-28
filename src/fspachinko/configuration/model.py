@@ -1,17 +1,11 @@
 """Configuration dataclasses."""
 
 import logging
-from collections import deque
-from dataclasses import dataclass, field
 from os.path import isabs, realpath
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from fspachinko.constants import FilenameTemplate, TransferMode
-
-if TYPE_CHECKING:
-    from fspachinko.domain.events import Event
 
 logger = logging.getLogger(__name__)
 
@@ -160,11 +154,3 @@ class ConfigModel(BaseModel):
         if not isabs(val):
             return realpath(val)
         return val
-
-
-@dataclass(slots=True)
-class Configuration:
-    """Configuration dataclass for the application."""
-
-    model: ConfigModel = field(default_factory=ConfigModel)
-    events: deque[Event] = field(default_factory=deque)
