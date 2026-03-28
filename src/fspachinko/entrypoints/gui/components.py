@@ -1,6 +1,5 @@
 """GUI components in PySide6."""
 
-import logging
 from dataclasses import dataclass
 from os.path import exists, isdir
 from typing import TYPE_CHECKING, ClassVar
@@ -38,8 +37,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -139,8 +136,8 @@ class PathSelectorWidget(BaseGroupBox):
         """Open the currently selected path in file explorer."""
         path = self.lbl_selected.text()
         if not path or not exists(path):
-            logger.warning("Failed to open path %s", path)
-            return
+            msg = f"Cannot open {self.title().casefold()} folder. No valid path selected."
+            raise FileNotFoundError(msg)
         QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802

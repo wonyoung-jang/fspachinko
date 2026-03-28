@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
+    from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.configuration.uow import AbstractConfigUnitOfWork
     from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
@@ -169,35 +170,33 @@ class BootstrapConfigHandler:
 class FileTransferredHandler:
     """Handle the FileTransferred event."""
 
-    log_fn: Callable
+    logger: AbstractLogger
 
     def __call__(self, evt: FileTransferred) -> None:
         """Handle the FileTransferred event."""
-        self.log_fn("%s: '%s' -> '%s'", evt.count, evt.src, evt.dst)
+        self.logger.info("%s: '%s' -> '%s'", evt.count, evt.src, evt.dst)
 
 
 @dataclass(slots=True)
 class DirectoryStartedHandler:
     """Handle the DirectoryStarted event."""
 
-    log_fn: Callable
-    add_log_file: Callable
+    logger: AbstractLogger
 
     def __call__(self, evt: DirectoryStarted) -> None:
         """Handle the DirectoryStarted event."""
-        self.add_log_file(evt.path)
-        self.log_fn("Processing directory %s with target quantity: %s", evt.path, evt.target_qty)
+        self.logger.add_dest_log_filehandler(evt.path)
+        self.logger.info("Processing directory %s with target quantity: %s", evt.path, evt.target_qty)
 
 
 @dataclass(slots=True)
 class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
-    log_fn: Callable
     get_status: Callable
     get_report: Callable
-    remove_log_file: Callable
     remove_directory: Callable
+    logger: AbstractLogger
 
     def __call__(self, evt: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
@@ -213,7 +212,7 @@ class DirectoryTransferredHandler:
             evt.count,
             evt.target_qty,
         )
-        self.log_fn("%s\n%s", status, report)
-        self.remove_log_file(evt.path)
+        self.logger.info("%s\n%s", status, report)
+        self.logger.remove_dest_log_filehandler(evt.path)
         if evt.is_empty_creation:
             self.remove_directory(evt.path)

@@ -20,20 +20,21 @@ from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from .centralwidget import CentralWidget
 from .components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
 from .constants_gui import GUIFileDialogFilter, GUISettingsKey, GUITitle
-from .loggers_gui import setup_gui_logger
+from .loggers_gui import QtLogHandler
 from .qthelpers import build_ui_bars
 from .workers import ProcessController
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
+    from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.service.messagebus import MessageBus
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self, bus: MessageBus) -> None:
+    def __init__(self, bus: MessageBus, logger: AbstractLogger) -> None:
         """Initialize the main window."""
         super().__init__()
         self.bus: MessageBus = bus
@@ -42,7 +43,9 @@ class MainWindow(QMainWindow):
         self.config_path = ""
         self.config_repo = JSONConfigRepository()
         self.controller = ProcessController()
-        self.log_signal = setup_gui_logger()
+        gui_log_handler = QtLogHandler()
+        logger.add_handler("qtgui", gui_log_handler)
+        self.log_signal = gui_log_handler.signals
         self.log_widget = LogWidget()
         self.progress_widget = ProgressWidget()
         config_widgets = tuple(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP)

@@ -1,10 +1,6 @@
 """Workers for GUI."""
 
-import logging
-
 from PySide6.QtCore import QObject, QThreadPool, Signal
-
-root_logger = logging.getLogger()
 
 
 class WorkerSignals(QObject):

@@ -3,12 +3,12 @@
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
-from fspachinko.adapters.loggers import initialize_logging
+from fspachinko.adapters.loggers import AppLogger
 from fspachinko.bootstrap import FSPachinkoBootstrapper
-from fspachinko.entrypoints.gui.qthelpers import get_icon
 
 from .constants_gui import GUIAppSetting
 from .mainwindow import MainWindow
+from .qthelpers import get_icon
 
 QCoreApplication.setOrganizationName(GUIAppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)
@@ -26,11 +26,11 @@ except ImportError:
 
 def main() -> None:
     """Run the application."""
-    initialize_logging()
     app = QApplication()
     app.setWindowIcon(get_icon("window"))
     bus = FSPachinkoBootstrapper.bootstrap()
-    window = MainWindow(bus)
+    logger = AppLogger()
+    window = MainWindow(bus, logger)
     window.show()
     app.exec()
 

@@ -6,13 +6,6 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal
 
 
-def setup_gui_logger() -> QtLogHandlerSignals:
-    """Set up the Qt logger."""
-    gui_handler = QtLogHandler()
-    logging.getLogger().addHandler(gui_handler)
-    return gui_handler.signals
-
-
 class QtLogHandlerSignals(QObject):
     """Signals for the LogHandler."""
 

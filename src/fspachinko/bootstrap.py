@@ -1,6 +1,5 @@
 """Builder module for core functionality."""
 
-import logging
 import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -8,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from .adapters.filenamer import TemplateFilenamer
 from .adapters.filesystem import AbstractFilesystem, Filesystem
 from .adapters.fswalker import FSWalker
-from .adapters.loggers import add_dest_log_filehandler, remove_dest_log_filehandler
+from .adapters.loggers import AbstractLogger, AppLogger
 from .adapters.media import get_duration
 from .adapters.pipeline import AbstractPipeline, TransferPipeline
 from .adapters.transfer import FileTransferFnManager
@@ -44,9 +43,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-logger = logging.getLogger(__name__)
-
-
 @dataclass(slots=True)
 class FSPachinkoBootstrapper:
     """Bootstrapper for the FSPachinko application."""
@@ -56,7 +52,7 @@ class FSPachinkoBootstrapper:
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     fst_uow: AbstractTransferUnitOfWork = field(default_factory=TransferUnitOfWork)
     cfg_uow: AbstractConfigUnitOfWork = field(default_factory=JSONConfigUnitOfWork)
-    log_fn: Callable = logger.info
+    logger: AbstractLogger = field(default_factory=AppLogger)
     rng_seed_fn: Callable = random.seed
 
     def __post_init__(self) -> None:
@@ -76,22 +72,19 @@ class FSPachinkoBootstrapper:
 
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""
-        log_fn = self.log_fn
         return {
-            FileTransferred: [FileTransferredHandler(log_fn=log_fn)],
+            FileTransferred: [
+                FileTransferredHandler(logger=self.logger),
+            ],
             DirectoryStarted: [
-                DirectoryStartedHandler(
-                    log_fn=log_fn,
-                    add_log_file=add_dest_log_filehandler,
-                )
+                DirectoryStartedHandler(logger=self.logger),
             ],
             DirectoryTransferred: [
                 DirectoryTransferredHandler(
-                    log_fn=log_fn,
                     get_status=get_status,
                     get_report=get_report,
-                    remove_log_file=remove_dest_log_filehandler,
                     remove_directory=self.filesystem.remove_directory,
+                    logger=self.logger,
                 )
             ],
         }

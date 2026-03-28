@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from os.path import join
 from typing import TYPE_CHECKING
 
 from .filesystem import AbstractFilesystem, Filesystem
@@ -37,7 +36,7 @@ class TransferPipeline(AbstractPipeline):
         """Check if the original file name can be used without transfer."""
         new_stem = self.filenamer_fn(e, dst.count)
         ext = e.ext.casefold()
-        target = join(dst.path, f"{new_stem}{ext}")
+        target = self.filesystem.join_path(dst.path, f"{new_stem}{ext}")
         if target not in dst.files:
             return target
         # If the file already exists and is the same, skip transferring it.

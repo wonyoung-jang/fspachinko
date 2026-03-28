@@ -1,17 +1,14 @@
 """Main entry point for CLI."""
 
-import logging
-
-from fspachinko.adapters.loggers import get_cli_log_handler, initialize_logging
+from fspachinko.adapters.loggers import AppLogger
 
 from .app import app
 
 
 def main() -> None:
     """Enter CLI."""
-    initialize_logging()
-    cli_loghandler = get_cli_log_handler()
-    logging.getLogger().addHandler(cli_loghandler)
+    logger = AppLogger()
+    logger.add_cli_log_handler()
     app()
 
 
