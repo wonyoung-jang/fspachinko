@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from fspachinko.domain.commands import BootstrapConfig, ProcessDirectory
+from fspachinko.domain.commands import ProcessDirectory
 from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
 
 if TYPE_CHECKING:
@@ -11,9 +11,7 @@ if TYPE_CHECKING:
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
-    from fspachinko.adapters.media import AbstractDurationFnManager
     from fspachinko.adapters.pipeline import AbstractPipeline
-    from fspachinko.adapters.transfer import AbstractTransferFnManager
     from fspachinko.configuration.uow import AbstractConfigUnitOfWork
     from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
@@ -31,7 +29,7 @@ class RunTransferJobHandler:
     uow: AbstractTransferUnitOfWork
     pipeline: AbstractPipeline
 
-    def __call__(self, _cmd: RunTransferJob) -> None:
+    def __call__(self, _: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
         while self.pipeline.dest_dir_inputs:
             dest_dir_input = self.pipeline.dest_dir_inputs.pop(0)
@@ -52,7 +50,11 @@ class CreateTransferJobHandler:
     def __call__(self, cmd: CreateTransferJob) -> None:
         """Handle the CreateTransferJob command."""
         with self.uow as uow:
-            quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+            quota = DiversityQuota(
+                root=cmd.root,
+                max_per_dir=cmd.max_per_dir,
+                unique_files_only=cmd.unique_files_only,
+            )
             job = TransferJob(quota=quota)
             uow.repo.add(job)
             uow.commit()
@@ -75,15 +77,7 @@ class ProcessDirectoryHandler:
                 return
             job.reset()
             job.start_directory(dst)
-            for entry in self.pipeline.walker_fn():
-                if dst.is_success or job.is_stop_requested or job.is_root_locked:
-                    break
-                if not (
-                    job.process_file(entry)
-                    and self.pipeline.filefilter_fn(entry)
-                    and (new_path := self.pipeline.get_new_path(dst=dst, e=entry))
-                ):
-                    continue
+            for entry, new_path in job.determine_transfers(dst=dst, pipeline=self.pipeline):
                 uow.repo.add_transfer(entry.path, new_path)
                 job.update_file(dst, entry, new_path)
             job.finalize_directory(dst, is_empty_creation=(dst.is_none_found and self.pipeline.is_create_dir))
@@ -113,54 +107,6 @@ class SaveProfileHandler:
         with self.uow as uow:
             uow.repo.set(cmd.path, cmd.config)
             uow.commit()
-
-
-@dataclass(slots=True)
-class BootstrapConfigHandler:
-    """Bootstrapper for translating configuration into commands."""
-
-    pipeline: AbstractPipeline
-    filesystem: AbstractFilesystem
-    rng_seed_fn: Callable
-    transfer_fn_manager: AbstractTransferFnManager
-    duration_fn_manager: AbstractDurationFnManager
-    template_filenamer: Callable
-    walker: Callable
-    randcount_fn: Callable
-    get_text_patterns: Callable
-    config_to_file_filter: Callable
-
-    def __call__(self, cmd: BootstrapConfig) -> None:
-        """Translate the configuration into commands."""
-        c = cmd.config
-        self.rng_seed_fn(c.options.rng_seed)
-        self.pipeline.is_create_dir = c.directory.is_enabled
-        self.pipeline.transfer_fn = self.transfer_fn_manager.get_transfer_fn(c.options.transfer_mode)
-        if c.filename.is_enabled:
-            self.pipeline.filenamer_fn = self.template_filenamer(c.filename.template)
-        else:
-            self.pipeline.filenamer_fn = lambda e, _: e.stem
-        self.pipeline.walker_fn = self.walker(root=c.root, should_follow_symlink=c.options.should_follow_symlink)
-        filecount_fn = (
-            (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.randcount_fn(*rnge))
-            if c.filecount.is_rand_enabled
-            else (lambda count=c.filecount.count: count)
-        )
-        if not c.directory.is_enabled:
-            self.pipeline.dest_dir_inputs.append((c.dest, filecount_fn()))
-            return
-        existing = self.filesystem.get_existing_subdirs(c.dest)
-        candidate = self.filesystem.join_path(c.dest, c.directory.name)
-        while len(self.pipeline.dest_dir_inputs) < c.directory.count:
-            next_name = self.filesystem.get_unique_path(candidate, existing)
-            self.filesystem.make_directory(next_name)
-            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
-            existing.add(next_name)
-        _filefilter_builder = self.config_to_file_filter(
-            get_text_patterns=self.get_text_patterns,
-            get_duration=self.duration_fn_manager.get_duration,
-        )
-        self.pipeline.filefilter_fn = _filefilter_builder(c)
 
 
 ####################
@@ -197,7 +143,7 @@ class DirectoryTransferredHandler:
 
     get_status: Callable
     get_report: Callable
-    remove_directory: Callable
+    filesystem: AbstractFilesystem
     logger: AbstractLogger
 
     def __call__(self, evt: DirectoryTransferred) -> None:
@@ -217,4 +163,4 @@ class DirectoryTransferredHandler:
         self.logger.info("%s\n%s", status, report)
         self.logger.remove_dest_log_filehandler(evt.path)
         if evt.is_empty_creation:
-            self.remove_directory(evt.path)
+            self.filesystem.remove_directory(evt.path)

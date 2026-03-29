@@ -8,11 +8,12 @@ from fspachinko.bootstrap import FSPachinkoBootstrapper
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.constants import DefaultPath
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import BootstrapConfig, CreateTransferJob, RunTransferJob
+from fspachinko.domain.commands import CreateTransferJob, RunTransferJob
 
 default_config_path = get_config_path(DefaultPath.CONFIG)
 logger = logging.getLogger(__name__)
-bus = FSPachinkoBootstrapper().bootstrap()
+bootstrapper = FSPachinkoBootstrapper()
+bus = bootstrapper.bootstrap()
 bus.logger.add_cli_log_handler()
 app = App(help="fspachinko - Random file transfer utility.")
 
@@ -27,7 +28,7 @@ def run(config_path: str = default_config_path) -> None:
     """
     repo = JSONConfigRepository()
     config = repo.from_json(config_path)
-    bus.handle(BootstrapConfig(config=config))
+    bootstrapper.configure_pipeline_for_run(config)
     bus.handle(
         CreateTransferJob(
             root=config.root,

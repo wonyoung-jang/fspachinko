@@ -16,8 +16,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@dataclass(slots=True)
 class AbstractFSWalker(ABC):
     """Abstract class for filesystem walker."""
+
+    root: str
+    should_follow_symlink: bool
 
     @abstractmethod
     def __call__(self) -> Iterator[FSEntry]:
@@ -28,8 +32,6 @@ class AbstractFSWalker(ABC):
 class FSWalker(AbstractFSWalker):
     """Filesystem walker implementation."""
 
-    root: str
-    should_follow_symlink: bool
     board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
     def __call__(self) -> Iterator[FSEntry]:

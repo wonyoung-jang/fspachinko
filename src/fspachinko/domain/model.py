@@ -2,8 +2,14 @@
 
 from collections import Counter, deque
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from fspachinko.adapters.pipeline import AbstractPipeline
 
 
 @dataclass(slots=True)
@@ -101,12 +107,27 @@ class TransferJob:
         """Check if the root directory is locked."""
         return self.quota.is_root_locked
 
+    def determine_transfers(
+        self, dst: DestinationDirectory, pipeline: AbstractPipeline
+    ) -> Iterator[tuple[FSEntry, str]]:
+        """Determine which files to transfer based on the job state and pipeline rules."""
+        for entry in pipeline.walker_fn():
+            if dst.is_success or self.is_stop_requested or self.is_root_locked:
+                break
+            if not (
+                self.can_accept(entry)
+                and pipeline.filefilter_fn(entry)
+                and (new_path := pipeline.get_new_path(dst=dst, e=entry))
+            ):
+                continue
+            yield (entry, new_path)
+
     def reset(self) -> None:
         """Reset the job state for a new transfer process."""
         self.quota.reset()
 
-    def process_file(self, entry: FSEntry) -> bool:
-        """Process a file transfer, checking the diversity quota and updating the destination directory stats."""
+    def can_accept(self, entry: FSEntry) -> bool:
+        """Check if a file can be accepted based on the diversity quota."""
         return self.quota.can_accept(entry.parent, entry.path)
 
     def start_directory(self, dst: DestinationDirectory) -> None:

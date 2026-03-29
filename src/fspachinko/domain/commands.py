@@ -1,10 +1,6 @@
 """Commands."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from fspachinko.configuration.model import ConfigModel
 
 
 @dataclass(frozen=True)
@@ -52,10 +48,3 @@ class LoadConfiguration(Command):
     """Command to load a configuration."""
 
     path: str
-
-
-@dataclass(slots=True, frozen=True)
-class BootstrapConfig(Command):
-    """Command to bootstrap the configuration."""
-
-    config: ConfigModel

@@ -8,6 +8,13 @@ from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from fspachinko.adapters.filenamer import AbstractFilenamer
+    from fspachinko.adapters.fswalker import AbstractFSWalker
+
+    from .adapters.filesystem import AbstractFilesystem
+    from .adapters.media import AbstractDurationFnManager
+    from .adapters.pipeline import AbstractPipeline
+    from .adapters.transfer import AbstractTransferFnManager
     from .configuration.model import ConfigModel
     from .domain.model import FSEntry
 
@@ -96,3 +103,47 @@ class ConfigToFileFilter:
                 return lambda v: v <= maximum
         msg = "Invalid range filter configuration: minimum must be non-negative and maximum must be finite."
         raise ValueError(msg)
+
+
+@dataclass(slots=True)
+class BootstrapConfigHandler:
+    """Bootstrapper for translating configuration into commands."""
+
+    pipeline: AbstractPipeline
+    filesystem: AbstractFilesystem
+    rng_seed_fn: Callable
+    transfer_fn_manager: AbstractTransferFnManager
+    duration_fn_manager: AbstractDurationFnManager
+    template_filenamer: type[AbstractFilenamer]
+    walker: type[AbstractFSWalker]
+    randcount_fn: Callable
+    get_text_patterns: Callable
+    config_to_file_filter: Callable
+
+    def __call__(self, c: ConfigModel) -> None:
+        """Translate the configuration into commands."""
+        self.rng_seed_fn(c.options.rng_seed)
+        self.pipeline.filesystem = self.filesystem
+        self.pipeline.is_create_dir = c.directory.is_enabled
+        self.pipeline.transfer_fn = self.transfer_fn_manager.get_transfer_fn(c.options.transfer_mode)
+        if c.filename.is_enabled:
+            self.pipeline.filenamer_fn = self.template_filenamer(c.filename.template)
+        else:
+            self.pipeline.filenamer_fn = lambda e, _: e.stem
+        self.pipeline.walker_fn = self.walker(root=c.root, should_follow_symlink=c.options.should_follow_symlink)
+        filecount_fn = (
+            (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.randcount_fn(*rnge))
+            if c.filecount.is_rand_enabled
+            else (lambda count=c.filecount.count: count)
+        )
+        if not c.directory.is_enabled:
+            self.pipeline.dest_dir_inputs.append((c.dest, filecount_fn()))
+            return
+        existing = self.filesystem.get_existing_subdirs(c.dest)
+        candidate = self.filesystem.join_path(c.dest, c.directory.name)
+        while len(self.pipeline.dest_dir_inputs) < c.directory.count:
+            next_name = self.filesystem.get_unique_path(candidate, existing)
+            self.filesystem.make_directory(next_name)
+            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
+            existing.add(next_name)
+        self.pipeline.filefilter_fn = self.config_to_file_filter(c)

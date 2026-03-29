@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import (
-    BootstrapConfig,
     CreateTransferJob,
     RunTransferJob,
     SaveConfiguration,
@@ -27,16 +26,18 @@ from .workers import ProcessController
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
+    from fspachinko.bootstrap import FSPachinkoBootstrapper
     from fspachinko.service.messagebus import MessageBus
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self, bus: MessageBus) -> None:
+    def __init__(self, bootstrapper: FSPachinkoBootstrapper) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.bus: MessageBus = bus
+        self.bootstrapper: FSPachinkoBootstrapper = bootstrapper
+        self.bus: MessageBus = bootstrapper.bootstrap()
         self._actions: Actions = Actions.build()
         self._original_title = ""
         self.config_path = ""
@@ -155,7 +156,7 @@ class MainWindow(QMainWindow):
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
         config = self.config_repo.from_dict(self.ui.config)
-        self.bus.handle(BootstrapConfig(config=config))
+        self.bootstrapper.configure_pipeline_for_run(config)
         self.bus.handle(
             CreateTransferJob(
                 root=config.root,
