@@ -4,10 +4,9 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
 from fspachinko.bootstrap import FSPachinkoBootstrapper
-
-from .constants_gui import GUIAppSetting
-from .mainwindow import MainWindow
-from .qthelpers import get_icon
+from fspachinko.entrypoints.gui.constants_gui import GUIAppSetting
+from fspachinko.entrypoints.gui.mainwindow import MainWindow
+from fspachinko.entrypoints.gui.qthelpers import get_icon
 
 QCoreApplication.setOrganizationName(GUIAppSetting.ORGANIZATION_NAME)
 QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)

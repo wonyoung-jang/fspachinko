@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QIcon, QKeySequence
 
 from fspachinko.datapaths import get_icon_path
-
-from .constants_gui import GUIIconFilename, GUILabel, GUIName
+from fspachinko.entrypoints.gui.constants_gui import GUIIconFilename, GUILabel, GUIName
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QAction

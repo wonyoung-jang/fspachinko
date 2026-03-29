@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .filesystem import AbstractFilesystem, Filesystem
+from fspachinko.adapters.filesystem import AbstractFilesystem, Filesystem
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator

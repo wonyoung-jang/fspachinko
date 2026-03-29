@@ -85,7 +85,7 @@ class FSWalker(AbstractFSWalker):
                                     parent=dirname(e.path),
                                     size=stat.st_size,
                                     mtime=stat.st_mtime,
-                                )
+                                ),
                             )
                     except OSError:
                         logger.debug("Error accessing entry %s, skipping.", e.path)

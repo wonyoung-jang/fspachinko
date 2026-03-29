@@ -1,6 +1,6 @@
 """Main entry point for CLI."""
 
-from .app import app
+from fspachinko.entrypoints.cli.app import app
 
 
 def main() -> None:

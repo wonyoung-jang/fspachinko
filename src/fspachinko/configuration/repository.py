@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from os.path import exists, isfile
 
-from .model import ConfigModel
+from fspachinko.configuration.model import ConfigModel
 
 logger = logging.getLogger(__name__)
 

@@ -15,13 +15,12 @@ from fspachinko.domain.commands import (
     StopProcess,
 )
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
-
-from .centralwidget import CentralWidget
-from .components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
-from .constants_gui import GUIFileDialogFilter, GUISettingsKey, GUITitle
-from .loggers_gui import QtLogHandler
-from .qthelpers import build_ui_bars
-from .workers import ProcessController
+from fspachinko.entrypoints.gui.centralwidget import CentralWidget
+from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
+from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUISettingsKey, GUITitle
+from fspachinko.entrypoints.gui.loggers_gui import QtLogHandler
+from fspachinko.entrypoints.gui.qthelpers import build_ui_bars
+from fspachinko.entrypoints.gui.workers import ProcessController
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -162,7 +161,7 @@ class MainWindow(QMainWindow):
                 root=config.root,
                 max_per_dir=config.options.max_per_dir,
                 unique_files_only=config.options.is_create_unique_dirs,
-            )
+            ),
         )
         self.progress_widget.handle_start_process(config.directory.count)
         self.controller.start()

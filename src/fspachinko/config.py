@@ -3,20 +3,19 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from .constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
+from fspachinko.constants import SIZE_MAP, TIME_MAP, FilterName, ReStrFmt
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fspachinko.adapters.filenamer import AbstractFilenamer
+    from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.fswalker import AbstractFSWalker
-
-    from .adapters.filesystem import AbstractFilesystem
-    from .adapters.media import AbstractDurationFnManager
-    from .adapters.pipeline import AbstractPipeline
-    from .adapters.transfer import AbstractTransferFnManager
-    from .configuration.model import ConfigModel
-    from .domain.model import FSEntry
+    from fspachinko.adapters.media import AbstractDurationFnManager
+    from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.adapters.transfer import AbstractTransferFnManager
+    from fspachinko.configuration.model import ConfigModel
+    from fspachinko.domain.model import FSEntry
 
 
 @dataclass(slots=True)
@@ -106,7 +105,7 @@ class ConfigToFileFilter:
 
 
 @dataclass(slots=True)
-class BootstrapConfigHandler:
+class ConfigToPipeline:
     """Bootstrapper for translating configuration into commands."""
 
     pipeline: AbstractPipeline
@@ -120,7 +119,7 @@ class BootstrapConfigHandler:
     get_text_patterns: Callable
     config_to_file_filter: Callable
 
-    def __call__(self, c: ConfigModel) -> None:
+    def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
         self.rng_seed_fn(c.options.rng_seed)
         self.pipeline.filesystem = self.filesystem

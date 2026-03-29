@@ -2,7 +2,7 @@
 
 import re
 
-from .constants import SIZE_MAP, StateStatus
+from fspachinko.constants import SIZE_MAP, StateStatus
 
 
 def convert_byte_to_human_readable_size(nbytes: int) -> str:

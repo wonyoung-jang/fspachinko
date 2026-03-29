@@ -11,8 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fspachinko.adapters.loggers import AbstractLogger
-
-    from .eventcollector import CompositeEventCollector
+    from fspachinko.service.eventcollector import CompositeEventCollector
 
 
 type Message = Command | Event

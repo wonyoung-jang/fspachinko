@@ -4,7 +4,7 @@ from collections import Counter, deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
+from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -47,7 +47,8 @@ class DestinationDirectory:
 
 @dataclass(slots=True)
 class DiversityQuota:
-    """Represents the diversity quota for the process.
+    """
+    Represents the diversity quota for the process.
 
     This is a "global" object that tracks across multiple directories.
     It has no real "identifier", so it is not an entity.
@@ -108,7 +109,9 @@ class TransferJob:
         return self.quota.is_root_locked
 
     def determine_transfers(
-        self, dst: DestinationDirectory, pipeline: AbstractPipeline
+        self,
+        dst: DestinationDirectory,
+        pipeline: AbstractPipeline,
     ) -> Iterator[tuple[FSEntry, str]]:
         """Determine which files to transfer based on the job state and pipeline rules."""
         for entry in pipeline.walker_fn():
@@ -136,7 +139,7 @@ class TransferJob:
             DirectoryStarted(
                 path=dst.path,
                 target_qty=dst.target_qty,
-            )
+            ),
         )
 
     def update_file(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
@@ -148,7 +151,7 @@ class TransferJob:
                 count=dst.count,
                 src=entry.path,
                 dst=new_path,
-            )
+            ),
         )
 
     def request_stop(self) -> None:
@@ -167,13 +170,14 @@ class TransferJob:
                 is_empty_creation=is_empty_creation,
                 is_stop_requested=self.is_stop_requested,
                 is_root_locked=self.is_root_locked,
-            )
+            ),
         )
 
 
 @dataclass(slots=True, frozen=True)
 class FSEntry:
-    """Value object wrapper for os.DirEntry.
+    """
+    Value object wrapper for os.DirEntry.
 
     The identifires are:
     1. The path attribute

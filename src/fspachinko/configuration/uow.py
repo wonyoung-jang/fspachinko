@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
-from .repository import JSONConfigRepository
+from fspachinko.configuration.repository import JSONConfigRepository
 
 if TYPE_CHECKING:
-    from .repository import AbstractConfigRepository
+    from fspachinko.configuration.repository import AbstractConfigRepository
 
 
 @dataclass(slots=True)

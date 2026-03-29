@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 if TYPE_CHECKING:
-    from .components import BaseGroupBox
+    from fspachinko.entrypoints.gui.components import BaseGroupBox
 
 
 class CentralWidget(QWidget):

@@ -38,18 +38,16 @@ extend-exclude = [
 
 
 [lint]
+select = ["ALL"]
 ignore = [
     "ANN401",
-    "ARG002",
-    "C901",
-    "COM812",
     "D203",
-    "D213",
+    "D212",
+    "COM812",
     "ERA001",
     "PLR2004",
-    "S",
-    "TID252",
     "T201",
+    "S",
     # OS Path to Pathlib warnings
     "PTH102",
     "PTH103",
@@ -70,7 +68,6 @@ ignore = [
 ]
 fixable = ["ALL"]
 unfixable = []
-extend-select = ["ALL"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [format]

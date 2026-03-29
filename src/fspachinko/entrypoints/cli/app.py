@@ -20,7 +20,8 @@ app = App(help="fspachinko - Random file transfer utility.")
 
 @app.default
 def run(config_path: str = default_config_path) -> None:
-    """Run the fspachinko CLI.
+    """
+    Run the fspachinko CLI.
 
     Args:
         config_path (str): Path to configuration file.
@@ -34,6 +35,6 @@ def run(config_path: str = default_config_path) -> None:
             root=config.root,
             max_per_dir=config.options.max_per_dir,
             unique_files_only=config.options.is_create_unique_dirs,
-        )
+        ),
     )
     bus.handle(RunTransferJob())

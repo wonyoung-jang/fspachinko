@@ -15,8 +15,7 @@ if TYPE_CHECKING:
     from fspachinko.configuration.uow import AbstractConfigUnitOfWork
     from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
-
-    from .uow import AbstractTransferUnitOfWork
+    from fspachinko.service.uow import AbstractTransferUnitOfWork
 
 
 ######################

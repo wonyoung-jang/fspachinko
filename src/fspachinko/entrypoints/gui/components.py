@@ -30,8 +30,7 @@ from PySide6.QtWidgets import (
 
 from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
-
-from .qthelpers import get_icon, get_shortcut, set_qt_tips
+from fspachinko.entrypoints.gui.qthelpers import get_icon, get_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -190,7 +189,7 @@ class FileCountWidget(BaseGroupBox):
                 "is_rand_enabled": self.radio_rand.isChecked(),
                 "rand_min": self.spin_min_rand.value(),
                 "rand_max": self.spin_max_rand.value(),
-            }
+            },
         }
 
     def restore(self, config: dict) -> None:
@@ -228,7 +227,7 @@ class DirectoryCreateWidget(BaseGroupBox):
                 "is_enabled": self.isChecked(),
                 "count": self.spinbox_folder_count.value(),
                 "name": self.lineedit_folder_name.text(),
-            }
+            },
         }
 
     def restore(self, config: dict) -> None:
@@ -275,7 +274,7 @@ class FilenamerWidget(BaseGroupBox):
             self.name: {
                 "is_enabled": self.isChecked(),
                 "template": self.lineedit_template.text(),
-            }
+            },
         }
 
     def restore(self, config: dict) -> None:
@@ -310,7 +309,7 @@ class TextFilterWidget(BaseGroupBox):
                 "is_enabled": self.isChecked(),
                 "should_include": self.radio_include.isChecked(),
                 "text": self.lineedit_filter.text(),
-            }
+            },
         }
 
     def restore(self, config: dict) -> None:
@@ -352,7 +351,7 @@ class RangeFilterWidget(BaseGroupBox):
                 "minimum": self.spin_min.value(),
                 "maximum": self.spin_max.value(),
                 "unit": self.combo_unit.currentText(),
-            }
+            },
         }
 
     def restore(self, config: dict) -> None:
@@ -402,7 +401,7 @@ class OptionsWidget(BaseGroupBox):
                 "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
                 "should_follow_symlink": self.chk_follow_symlink.isChecked(),
                 "rng_seed": self.lineedit_rng_seed.text(),
-            }
+            },
         }
 
     def restore(self, config: dict) -> None:
