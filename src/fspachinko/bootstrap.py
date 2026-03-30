@@ -68,7 +68,6 @@ class FSPachinkoBootstrapper:
             filesystem=self.filesystem,
             rng_seed_fn=self.rng_seed_fn,
             transfer_fn_manager=self.transfer_fn_manager,
-            duration_fn_manager=self.duration_fn_manager,
             template_filenamer=TemplateFilenamer,
             walker=FSWalker,
             randcount_fn=random.randint,
@@ -91,6 +90,7 @@ class FSPachinkoBootstrapper:
     def configure_pipeline_for_run(self, c: ConfigModel) -> None:
         """Configure the pipeline based on the configuration model."""
         self.config_to_pipeline.apply(c)
+        self.fst_uow.transfer_fn = self.pipeline.transfer_fn
 
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""

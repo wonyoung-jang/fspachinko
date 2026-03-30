@@ -22,7 +22,7 @@ class AbstractFilesystem(ABC):
         """Get a new path, ensuring it doesn't already exist."""
 
     @abstractmethod
-    def are_files_identical(self, path1: str, path2: str) -> bool:
+    def are_files_identical(self, f1: str, f2: str) -> bool:
         """Check if two files are identical by comparing their contents."""
 
     @abstractmethod
@@ -59,10 +59,10 @@ class Filesystem(AbstractFilesystem):
             x += 1
         return candidate
 
-    def are_files_identical(self, path1: str, path2: str) -> bool:
+    def are_files_identical(self, f1: str, f2: str) -> bool:
         """Check if two files are identical by comparing their contents."""
-        if cmp(path1, path2, shallow=True):
-            return cmp(path1, path2, shallow=False)
+        if cmp(f1, f2, shallow=True):
+            return cmp(f1, f2, shallow=False)
         return False
 
     def remove_directory(self, path: str) -> None:

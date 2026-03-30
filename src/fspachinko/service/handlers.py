@@ -31,7 +31,7 @@ class RunTransferJobHandler:
     def __call__(self, _: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
         while self.pipeline.dest_dir_inputs:
-            dest_dir_input = self.pipeline.dest_dir_inputs.pop(0)
+            dest_dir_input = self.pipeline.dest_dir_inputs.popleft()
             dest_dir, target_qty = dest_dir_input
             handler = ProcessDirectoryHandler(
                 uow=self.uow,
@@ -70,13 +70,13 @@ class ProcessDirectoryHandler:
         """Handle the StartProcessingDirectory command."""
         with self.uow as uow:
             dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
-            uow.transfer_fn = self.pipeline.transfer_fn
             job = uow.repo.get()
             if job.is_stop_requested or job.is_root_locked:
                 return
             job.reset()
             job.start_directory(dst)
-            for entry, new_path in job.determine_transfers(dst=dst, pipeline=self.pipeline):
+            valid_transfers = job.determine_transfers(dst=dst, pipeline=self.pipeline)
+            for entry, new_path in valid_transfers:
                 uow.repo.add_transfer(entry.path, new_path)
                 job.update_file(dst, entry, new_path)
             job.finalize_directory(dst, is_empty_creation=(dst.is_none_found and self.pipeline.is_create_dir))

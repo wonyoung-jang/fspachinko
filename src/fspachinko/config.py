@@ -11,11 +11,10 @@ if TYPE_CHECKING:
     from fspachinko.adapters.filenamer import AbstractFilenamer
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.fswalker import AbstractFSWalker
-    from fspachinko.adapters.media import AbstractDurationFnManager
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.adapters.transfer import AbstractTransferFnManager
     from fspachinko.configuration.model import ConfigModel
-    from fspachinko.domain.model import FSEntry
+    from fspachinko.domain.model import DestinationDirectory, FSEntry
 
 
 @dataclass(slots=True)
@@ -112,7 +111,6 @@ class ConfigToPipeline:
     filesystem: AbstractFilesystem
     rng_seed_fn: Callable
     transfer_fn_manager: AbstractTransferFnManager
-    duration_fn_manager: AbstractDurationFnManager
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
     randcount_fn: Callable
@@ -122,13 +120,8 @@ class ConfigToPipeline:
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
         self.rng_seed_fn(c.options.rng_seed)
-        self.pipeline.filesystem = self.filesystem
         self.pipeline.is_create_dir = c.directory.is_enabled
         self.pipeline.transfer_fn = self.transfer_fn_manager.get_transfer_fn(c.options.transfer_mode)
-        if c.filename.is_enabled:
-            self.pipeline.filenamer_fn = self.template_filenamer(c.filename.template)
-        else:
-            self.pipeline.filenamer_fn = lambda e, _: e.stem
         self.pipeline.walker_fn = self.walker(root=c.root, should_follow_symlink=c.options.should_follow_symlink)
         filecount_fn = (
             (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.randcount_fn(*rnge))
@@ -146,3 +139,17 @@ class ConfigToPipeline:
             self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
         self.pipeline.filefilter_fn = self.config_to_file_filter(c)
+        filenamer = self.template_filenamer(c.filename.template) if c.filename.is_enabled else None
+        self.pipeline.get_new_path_fn = lambda dst, e, fn=filenamer: self._get_new_path_fn(dst, e, fn)
+
+    def _get_new_path_fn(self, dst: DestinationDirectory, e: FSEntry, filenamer: Callable | None = None) -> str | None:
+        """Check if the original file name can be used without transfer."""
+        new_stem = filenamer(e, dst.count) if filenamer else e.stem
+        suffix = e.ext.casefold()
+        target = self.filesystem.join_path(dst.path, f"{new_stem}{suffix}")
+        if target not in dst.files:
+            return target
+        # If the file already exists and is the same, skip transferring it.
+        if self.filesystem.are_files_identical(e.path, target):
+            return None
+        return self.filesystem.get_unique_path(target, dst.files)

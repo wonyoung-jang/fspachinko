@@ -1,5 +1,5 @@
 [files]
-extend-exclude = ["*.log","*.toml"]
+extend-exclude = ["*.log","*.toml",]
 ignore-hidden = true
 ignore-files = true
 ignore-dot = true

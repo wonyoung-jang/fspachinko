@@ -1,6 +1,12 @@
 """Workers for GUI."""
 
-from PySide6.QtCore import QObject, QThreadPool, Signal
+from typing import TYPE_CHECKING
+
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+
+if TYPE_CHECKING:
+    from fspachinko.bootstrap import MessageBus
+    from fspachinko.domain.commands import Command
 
 
 class WorkerSignals(QObject):
@@ -19,13 +25,32 @@ class ProcessController(QObject):
         super().__init__()
         self.signals = WorkerSignals()
         self.threadpool = QThreadPool()
+        self.worker = None
 
-    def start(self) -> None:
+    def on_start(self, bus: MessageBus, cmd: Command) -> None:
         """Start the process."""
-        self.threadpool.start(self.run)
+        self.worker = ProcessWorker(self.signals, bus, cmd)
+        self.threadpool.tryStart(self.worker)
+
+    def on_stop(self) -> None:
+        """Stop the process."""
+        if self.worker:
+            self.worker.stop()
+
+
+class ProcessWorker(QRunnable):
+    """Worker for running the process."""
+
+    def __init__(self, signals: WorkerSignals, bus: MessageBus, cmd: Command) -> None:
+        """Initialize the worker."""
+        super().__init__()
+        self.signals = signals
+        self.bus = bus
+        self.cmd = cmd
 
     def run(self) -> None:
         """Run the process."""
+        self.bus.handle(self.cmd)
         self.signals.process_started.emit()
         self.signals.finished.emit()
 

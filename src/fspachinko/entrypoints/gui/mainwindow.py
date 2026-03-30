@@ -8,12 +8,7 @@ from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow
 
 from fspachinko.configuration.repository import JSONConfigRepository
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import (
-    CreateTransferJob,
-    RunTransferJob,
-    SaveConfiguration,
-    StopProcess,
-)
+from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from fspachinko.entrypoints.gui.centralwidget import CentralWidget
 from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
@@ -50,9 +45,9 @@ class MainWindow(QMainWindow):
         config_widgets = tuple(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP)
         self.ui = CentralWidget(config_widgets)
         self.log_dock = QDockWidget()
+        self.progress_dock = QDockWidget()
         self.log_dock.setWidget(self.log_widget)
         self.log_dock.setObjectName("LogDock")
-        self.progress_dock = QDockWidget()
         self.progress_dock.setWidget(self.progress_widget)
         self.progress_dock.setObjectName("ProgressDock")
         self.setAnimated(True)
@@ -156,20 +151,20 @@ class MainWindow(QMainWindow):
         self.ui.toggle(is_enabled=False)
         config = self.config_repo.from_dict(self.ui.config)
         self.bootstrapper.configure_pipeline_for_run(config)
-        self.bus.handle(
+        self.progress_widget.handle_start_process(config.directory.count)
+        self.controller.on_start(
+            self.bus,
             CreateTransferJob(
                 root=config.root,
                 max_per_dir=config.options.max_per_dir,
                 unique_files_only=config.options.is_create_unique_dirs,
             ),
         )
-        self.progress_widget.handle_start_process(config.directory.count)
-        self.controller.start()
 
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
-        self.controller.stop()
+        self.controller.on_stop()
 
     def handle_file_transferred(self, _evt: FileTransferred) -> None:
         """Update the window title with the current progress."""

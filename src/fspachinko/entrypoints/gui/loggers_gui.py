@@ -19,7 +19,6 @@ class QtLogHandler(logging.Handler):
         """Initialize the handler and its signals."""
         super().__init__(*args, **kwargs)
         self.signals = QtLogHandlerSignals()
-        self.set_name("qtgui")
         self.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
         self.setLevel(logging.INFO)
 
