@@ -11,10 +11,10 @@ if TYPE_CHECKING:
 class CentralWidget(QWidget):
     """Main widget."""
 
-    def __init__(self, config_widgets: tuple[BaseGroupBox, ...]) -> None:
+    def __init__(self, *config_widgets: BaseGroupBox) -> None:
         """Initialize the main widget."""
         super().__init__()
-        self._config_widgets: tuple[BaseGroupBox, ...] = config_widgets
+        self._config_widgets: tuple[BaseGroupBox, ...] = tuple(config_widgets)
         layout = QVBoxLayout(self)
         for w in self._config_widgets:
             layout.addWidget(w)

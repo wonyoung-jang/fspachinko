@@ -3,6 +3,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import StrEnum
 from os.path import basename, join
 from typing import Any
 
@@ -56,7 +57,7 @@ class AppLogger(AbstractLogger):
         """Initialize the root logger."""
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
-        self.add_file_log_handler()
+        self.add_global_file_log_handler()
         self.debug("Initialized AppLogger with file log handler.")
 
     def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -83,35 +84,45 @@ class AppLogger(AbstractLogger):
         self.handlers[name] = handler
         self.logger.addHandler(handler)
 
-    def add_file_log_handler(self) -> None:
+    def add_global_file_log_handler(self) -> None:
         """Add a file log handler."""
-        logfile = get_log_path("fspachinko.log")
-        handler = logging.FileHandler(filename=logfile, mode="w", encoding="utf-8", delay=True)
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s[%(module)s] %(message)s"))
-        self.add_handler("file", handler)
-        self.debug("Added file log handler. Log file: %s", logfile)
+        filename = get_log_path("fspachinko.log")
+        global_file_log_config = {
+            "filename": filename,
+            "mode": "w",
+            "delay": True,
+            "level": logging.DEBUG,
+            "fmt": LogFmt.DEFAULT,
+            "name": "file",
+        }
+        self.add_file_log_handler(global_file_log_config)
+        self.debug("Added file log handler. Log file: %s", filename)
 
     def add_cli_log_handler(self) -> None:
         """Get a logging handler for CLI output."""
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s[%(module)s] %(message)s"))
+        handler.setFormatter(logging.Formatter(LogFmt.DEFAULT))
         handler.setLevel(logging.INFO)
         self.add_handler("console", handler)
         self.debug("Created CLI log handler.")
 
     def add_dest_log_filehandler(self, dest: str) -> None:
         """Set up a logger for the job request."""
-        report_path = join(dest, f"!_{basename(dest)}_report.log")
-        handler = logging.FileHandler(report_path, mode="a", encoding="utf-8", delay=True)
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
-        self.add_handler(dest, handler)
-        self.debug("Created log handler for destination: %s. Log file: %s", dest, report_path)
+        filename = join(dest, f"!_{basename(dest)}_report.log")
+        dest_file_log_config = {
+            "filename": filename,
+            "mode": "a",
+            "delay": True,
+            "level": logging.INFO,
+            "fmt": LogFmt.DEST,
+            "datefmt": "%H:%M:%S",
+            "name": dest,
+        }
+        self.add_file_log_handler(dest_file_log_config)
+        self.debug("Created log handler for destination %s logging to file: %s", dest, filename)
 
     def remove_dest_log_filehandler(self, dest: str) -> None:
         """Remove the log handler for the job request."""
-        self.debug("Removing log handler for destination: %s", dest)
         handler = self.handlers.pop(dest, None)
         if handler:
             self.logger.removeHandler(handler)
@@ -119,3 +130,25 @@ class AppLogger(AbstractLogger):
             handler.close()
         else:
             self.warning("No log handler found for destination: %s", dest)
+
+    def add_file_log_handler(self, kwargs: dict) -> None:
+        """Add a file log handler with an absolute path."""
+        if not all(k in kwargs for k in ("filename", "level", "name")):
+            self.warning("No required parameters provided for file log handler. Skipping addition.")
+            return
+        handler = logging.FileHandler(
+            filename=kwargs["filename"],
+            mode=kwargs.get("mode", "a"),
+            encoding=kwargs.get("encoding", "utf-8"),
+            delay=kwargs.get("delay", False),
+        )
+        handler.setLevel(kwargs["level"])
+        handler.setFormatter(logging.Formatter(kwargs.get("fmt"), datefmt=kwargs.get("datefmt")))
+        self.add_handler(kwargs["name"], handler)
+
+
+class LogFmt(StrEnum):
+    """Enum for log formats."""
+
+    DEFAULT = "[%(asctime)s] %(levelname)s[%(module)s] %(message)s"
+    DEST = "[%(asctime)s] %(message)s"

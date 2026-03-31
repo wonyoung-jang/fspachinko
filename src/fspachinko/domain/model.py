@@ -9,8 +9,6 @@ from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Eve
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from fspachinko.adapters.pipeline import AbstractPipeline
-
 
 @dataclass(slots=True)
 class DestinationDirectory:
@@ -108,23 +106,6 @@ class TransferJob:
         """Check if the root directory is locked."""
         return self.quota.is_root_locked
 
-    def determine_transfers(
-        self,
-        dst: DestinationDirectory,
-        pipeline: AbstractPipeline,
-    ) -> Iterator[tuple[FSEntry, str]]:
-        """Determine which files to transfer based on the job state and pipeline rules."""
-        for entry in pipeline.walker_fn():
-            if dst.is_success or self.is_stop_requested or self.is_root_locked:
-                break
-            if not (
-                self.can_accept(entry)
-                and pipeline.filefilter_fn(entry)
-                and (new_path := pipeline.get_new_path(dst=dst, e=entry))
-            ):
-                continue
-            yield (entry, new_path)
-
     def reset(self) -> None:
         """Reset the job state for a new transfer process."""
         self.quota.reset()
@@ -136,10 +117,7 @@ class TransferJob:
     def start_directory(self, dst: DestinationDirectory) -> None:
         """Update the directory count in the diversity quota after processing a file."""
         self.events.append(
-            DirectoryStarted(
-                path=dst.path,
-                target_qty=dst.target_qty,
-            ),
+            DirectoryStarted(path=dst.path, target_qty=dst.target_qty),
         )
 
     def update_file(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
@@ -147,11 +125,7 @@ class TransferJob:
         dst.accept(entry.size, new_path)
         self.quota.update(entry.parent, entry.path)
         self.events.append(
-            FileTransferred(
-                count=dst.count,
-                src=entry.path,
-                dst=new_path,
-            ),
+            FileTransferred(count=dst.count, src=entry.path, dst=new_path),
         )
 
     def request_stop(self) -> None:
@@ -172,6 +146,11 @@ class TransferJob:
                 is_root_locked=self.is_root_locked,
             ),
         )
+
+    def collect_new_events(self) -> Iterator[Event]:
+        """Collect new events that were generated during the transaction."""
+        while events := self.events:
+            yield events.popleft()
 
 
 @dataclass(slots=True, frozen=True)

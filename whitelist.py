@@ -1,8 +1,8 @@
 """Whitelist for vulture."""
 
 import fspachinko
-import fspachinko.configuration._defaultconfig
-from fspachinko.configuration.model import ConfigModel
+import fspachinko._defaultconfig
+from fspachinko.config import ConfigModel
 from fspachinko.entrypoints.gui.components import PathSelectorWidget
 
 fspachinko.hello  # noqa: B018
@@ -18,4 +18,4 @@ ConfigModel.duration.validate_maximum  # noqa: B018
 ConfigModel.options.validate_rng_seed  # noqa: B018
 ConfigModel.options.validate_max_per_dir  # noqa: B018
 ConfigModel.validate_root_and_dest_paths  # noqa: B018
-fspachinko.configuration._defaultconfig.DEFAULT_CONFIG  # noqa: B018, SLF001
+fspachinko._defaultconfig.DEFAULT_CONFIG  # noqa: B018, SLF001

@@ -1,11 +1,12 @@
 """Filesystem port adapter."""
 
+import json
 import logging
 import shutil
 from abc import ABC, abstractmethod
 from filecmp import cmp
 from os import mkdir, scandir
-from os.path import join
+from os.path import exists, isfile, join
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -40,6 +41,14 @@ class AbstractFilesystem(ABC):
     @abstractmethod
     def make_directory(self, path: str) -> None:
         """Create a directory at the specified path."""
+
+    @abstractmethod
+    def save_json(self, path: str, data: dict) -> None:
+        """Save JSON data to a file."""
+
+    @abstractmethod
+    def json_to_dict(self, path: str) -> dict:
+        """Load JSON data from a file."""
 
 
 class Filesystem(AbstractFilesystem):
@@ -85,3 +94,15 @@ class Filesystem(AbstractFilesystem):
     def make_directory(self, path: str) -> None:
         """Create a directory at the specified path."""
         mkdir(path)
+
+    def save_json(self, path: str, data: dict) -> None:
+        """Save JSON data to a file."""
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
+    def json_to_dict(self, path: str) -> dict:
+        """Load JSON data from a file."""
+        if not (exists(path) and isfile(path)):
+            return {}
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)

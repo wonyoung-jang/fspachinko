@@ -12,20 +12,18 @@ from fspachinko.adapters.media import AbstractDurationFnManager, DurationFnManag
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.config import ConfigToFileFilter, ConfigToPipeline
-from fspachinko.configuration.uow import AbstractConfigUnitOfWork, JSONConfigUnitOfWork
 from fspachinko.domain.commands import (
     Command,
-    CreateTransferJob,
     ProcessDirectory,
     RunTransferJob,
     SaveConfiguration,
     StopProcess,
 )
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
+from fspachinko.domain.model import TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
 from fspachinko.service.eventcollector import CompositeEventCollector
 from fspachinko.service.handlers import (
-    CreateTransferJobHandler,
     DirectoryStartedHandler,
     DirectoryTransferredHandler,
     FileTransferredHandler,
@@ -35,13 +33,12 @@ from fspachinko.service.handlers import (
     StopProcessHandler,
 )
 from fspachinko.service.messagebus import MessageBus
-from fspachinko.service.uow import AbstractTransferUnitOfWork, TransferUnitOfWork
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fspachinko.adapters.transfer import AbstractTransferFnManager
-    from fspachinko.configuration.model import ConfigModel
+    from fspachinko.config import ConfigModel
 
 
 @dataclass(slots=True)
@@ -51,18 +48,17 @@ class FSPachinkoBootstrapper:
     collector: CompositeEventCollector = field(default_factory=CompositeEventCollector)
     filesystem: AbstractFilesystem = field(default_factory=Filesystem)
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
-    fst_uow: AbstractTransferUnitOfWork = field(default_factory=TransferUnitOfWork)
-    cfg_uow: AbstractConfigUnitOfWork = field(default_factory=JSONConfigUnitOfWork)
     logger: AbstractLogger = field(default_factory=AppLogger)
     transfer_fn_manager: AbstractTransferFnManager = field(default_factory=FileTransferFnManager)
     duration_fn_manager: AbstractDurationFnManager = field(default_factory=DurationFnManager)
+    job: TransferJob = field(default_factory=TransferJob)
     rng_seed_fn: Callable = random.seed
 
     config_to_pipeline: ConfigToPipeline = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
-        self.collector.register_emitter(self.fst_uow)
+        self.collector.register_emitter(self.job)
         self.config_to_pipeline = ConfigToPipeline(
             pipeline=self.pipeline,
             filesystem=self.filesystem,
@@ -90,7 +86,6 @@ class FSPachinkoBootstrapper:
     def configure_pipeline_for_run(self, c: ConfigModel) -> None:
         """Configure the pipeline based on the configuration model."""
         self.config_to_pipeline.apply(c)
-        self.fst_uow.transfer_fn = self.pipeline.transfer_fn
 
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""
@@ -119,20 +114,17 @@ class FSPachinkoBootstrapper:
         """Get the command handlers."""
         return {
             RunTransferJob: RunTransferJobHandler(
-                uow=self.fst_uow,
+                job=self.job,
                 pipeline=self.pipeline,
             ),
-            CreateTransferJob: CreateTransferJobHandler(
-                uow=self.fst_uow,
-            ),
             ProcessDirectory: ProcessDirectoryHandler(
-                uow=self.fst_uow,
+                job=self.job,
                 pipeline=self.pipeline,
             ),
             StopProcess: StopProcessHandler(
-                uow=self.fst_uow,
+                job=self.job,
             ),
             SaveConfiguration: SaveProfileHandler(
-                uow=self.cfg_uow,
+                filesystem=self.filesystem,
             ),
         }

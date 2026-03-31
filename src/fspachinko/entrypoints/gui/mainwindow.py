@@ -6,16 +6,15 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Qt, Slot
 from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow
 
-from fspachinko.configuration.repository import JSONConfigRepository
+from fspachinko.config import dict_to_config
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import CreateTransferJob, RunTransferJob, SaveConfiguration, StopProcess
+from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from fspachinko.entrypoints.gui.centralwidget import CentralWidget
 from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
 from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUISettingsKey, GUITitle
 from fspachinko.entrypoints.gui.loggers_gui import QtLogHandler
 from fspachinko.entrypoints.gui.qthelpers import build_ui_bars
-from fspachinko.entrypoints.gui.workers import ProcessController
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -32,18 +31,16 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.bootstrapper: FSPachinkoBootstrapper = bootstrapper
         self.bus: MessageBus = bootstrapper.bootstrap()
+        self.filesystem = bootstrapper.filesystem
         self._actions: Actions = Actions.build()
         self._original_title = ""
         self.config_path = ""
-        self.config_repo = JSONConfigRepository()
-        self.controller = ProcessController()
         gui_log_handler = QtLogHandler()
         self.bus.logger.add_handler("qtgui", gui_log_handler)
         self.log_signal = gui_log_handler.signals
         self.log_widget = LogWidget()
         self.progress_widget = ProgressWidget()
-        config_widgets = tuple(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP)
-        self.ui = CentralWidget(config_widgets)
+        self.ui = CentralWidget(*(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP))
         self.log_dock = QDockWidget()
         self.progress_dock = QDockWidget()
         self.log_dock.setWidget(self.log_widget)
@@ -69,9 +66,6 @@ class MainWindow(QMainWindow):
         self._actions.exit.triggered.connect(self.on_close)
         self._actions.start.triggered.connect(self.on_start)
         self._actions.stop.triggered.connect(self.on_stop)
-        self.controller.signals.process_started.connect(self.handle_start_process)
-        self.controller.signals.finished.connect(self.handle_finished)
-        self.controller.signals.stopped.connect(self.handle_stopped)
 
     def init_ui_settings(self) -> None:
         """Initialize GUI settings manager."""
@@ -82,17 +76,7 @@ class MainWindow(QMainWindow):
             self.restoreState(state)
         if profile_path := str(qsettings.value(GUISettingsKey.CONFIG, "")):
             self.update_config_path(profile_path)
-            self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
-
-    @Slot()
-    def handle_start_process(self) -> None:
-        """Handle the start of the process."""
-        self.bus.handle(RunTransferJob())
-
-    @Slot()
-    def handle_stopped(self) -> None:
-        """Handle the process being stopped."""
-        self.bus.handle(StopProcess())
+            self.ui.restore_config(self.filesystem.json_to_dict(self.config_path))
 
     @Slot()
     def save_config(self) -> None:
@@ -110,7 +94,7 @@ class MainWindow(QMainWindow):
         )
         if config_path:
             self.update_config_path(config_path)
-            self.bus.handle(SaveConfiguration(path=self.config_path, config=self.ui.config))
+            self.save_config()
 
     @Slot()
     def open_config_dialog(self) -> None:
@@ -123,7 +107,7 @@ class MainWindow(QMainWindow):
         )
         if config_path:
             self.update_config_path(config_path)
-            self.ui.restore_config(self.config_repo.json_to_dict(self.config_path))
+            self.ui.restore_config(self.filesystem.json_to_dict(self.config_path))
 
     def update_config_path(self, path: str) -> None:
         """Set the current config path."""
@@ -149,22 +133,22 @@ class MainWindow(QMainWindow):
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
-        config = self.config_repo.from_dict(self.ui.config)
+        config = dict_to_config(self.ui.config)
         self.bootstrapper.configure_pipeline_for_run(config)
         self.progress_widget.handle_start_process(config.directory.count)
-        self.controller.on_start(
-            self.bus,
-            CreateTransferJob(
+        self.bus.handle(
+            RunTransferJob(
                 root=config.root,
                 max_per_dir=config.options.max_per_dir,
                 unique_files_only=config.options.is_create_unique_dirs,
             ),
         )
+        self.handle_finished()
 
     @Slot()
     def on_stop(self) -> None:
         """Stop the process."""
-        self.controller.on_stop()
+        self.bus.handle(StopProcess())
 
     def handle_file_transferred(self, _evt: FileTransferred) -> None:
         """Update the window title with the current progress."""
