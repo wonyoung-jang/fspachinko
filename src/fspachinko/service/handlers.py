@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from fspachinko.domain.commands import ProcessDirectory
-from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
+from fspachinko.domain.model import DestinationDirectory, DiversityPolicy, TransferJob
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,7 +28,7 @@ class RunTransferJobHandler:
 
     def __call__(self, cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
-        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+        self.job.quota = DiversityPolicy(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
         while _inputs := self.pipeline.dest_dir_inputs:
             dest_dir, target_qty = _inputs.popleft()
             handler = ProcessDirectoryHandler(self.job, self.pipeline)
@@ -63,7 +63,7 @@ class ProcessDirectoryHandler:
                 self.pipeline.transfer_fn(entry.path, new_path)
             except OSError:
                 continue
-            job.update_file(dst, entry, new_path)
+            job.register_transfer(dst, entry, new_path)
         job.finalize_directory(dst, is_empty_creation=(dst.is_none_found and self.pipeline.is_create_dir))
 
 

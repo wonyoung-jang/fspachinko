@@ -28,7 +28,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fspachinko.adapters.transfer import FileTransferFnManager
 from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
 from fspachinko.entrypoints.gui.qthelpers import get_icon, get_shortcut, set_qt_tips
 
@@ -476,5 +475,5 @@ COMPONENT_MAP = (
     (TextFilterWidget, "Extensions", "extension"),
     (RangeFilterWidget, "File size", "filesize", tuple(SIZE_MAP.keys())),
     (RangeFilterWidget, "Duration", "duration", tuple(TIME_MAP.keys())),
-    (OptionsWidget, "Options", "options", FileTransferFnManager().transfermodes),
+    (OptionsWidget, "Options", "options", tuple(TransferMode)),  # TODO: Fix this to use actual available
 )

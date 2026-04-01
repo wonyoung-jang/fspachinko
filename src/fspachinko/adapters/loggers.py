@@ -10,8 +10,31 @@ from typing import Any
 from fspachinko.datapaths import get_log_path
 
 
+class LogFmt(StrEnum):
+    """Enum for log formats."""
+
+    DEFAULT = "[%(asctime)s] %(levelname)s[%(module)s] %(message)s"
+    DEST = "[%(asctime)s] %(message)s"
+
+
 class AbstractLogger(ABC):
     """Abstract base class for loggers."""
+
+    @abstractmethod
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log a debug message."""
+
+    @abstractmethod
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log an info message."""
+
+    @abstractmethod
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log a warning message."""
+
+    @abstractmethod
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log an exception message."""
 
     @abstractmethod
     def add_handler(self, name: str, handler: logging.Handler) -> None:
@@ -30,20 +53,8 @@ class AbstractLogger(ABC):
         """Remove the log handler for the job request."""
 
     @abstractmethod
-    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log a debug message."""
-
-    @abstractmethod
-    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log an info message."""
-
-    @abstractmethod
-    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log a warning message."""
-
-    @abstractmethod
-    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log an exception message."""
+    def add_file_log_handler(self, kwargs: dict) -> None:
+        """Add a file log handler with an absolute path."""
 
 
 @dataclass(slots=True)
@@ -123,8 +134,7 @@ class AppLogger(AbstractLogger):
 
     def remove_dest_log_filehandler(self, dest: str) -> None:
         """Remove the log handler for the job request."""
-        handler = self.handlers.pop(dest, None)
-        if handler:
+        if handler := self.handlers.pop(dest, None):
             self.logger.removeHandler(handler)
             self.debug("Removed log handler for destination: %s", dest)
             handler.close()
@@ -145,10 +155,3 @@ class AppLogger(AbstractLogger):
         handler.setLevel(kwargs["level"])
         handler.setFormatter(logging.Formatter(kwargs.get("fmt"), datefmt=kwargs.get("datefmt")))
         self.add_handler(kwargs["name"], handler)
-
-
-class LogFmt(StrEnum):
-    """Enum for log formats."""
-
-    DEFAULT = "[%(asctime)s] %(levelname)s[%(module)s] %(message)s"
-    DEST = "[%(asctime)s] %(message)s"

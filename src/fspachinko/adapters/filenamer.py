@@ -26,6 +26,11 @@ class AbstractFilenamer(ABC):
     """Abstract filenamer."""
 
     template: str = ""
+    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Validate the template."""
+        self._map.update({t.strip("{}"): v for t, v in FILENAME_TEMPLATE_MAP.items() if t in self.template})
 
     @abstractmethod
     def __call__(self, entry: FSEntry, count: int) -> str:
@@ -35,12 +40,6 @@ class AbstractFilenamer(ABC):
 @dataclass(slots=True)
 class TemplateFilenamer(AbstractFilenamer):
     """Filenamer that generates filenames based on templates."""
-
-    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        """Validate the template."""
-        self._map.update({t.strip("{}"): v for t, v in FILENAME_TEMPLATE_MAP.items() if t in self.template})
 
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Generate a filename based on the specified template."""

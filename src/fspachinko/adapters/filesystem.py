@@ -27,10 +27,6 @@ class AbstractFilesystem(ABC):
         """Check if two files are identical by comparing their contents."""
 
     @abstractmethod
-    def remove_directory(self, path: str) -> None:
-        """Remove a directory and its contents, with error handling."""
-
-    @abstractmethod
     def get_existing_subdirs(self, path: str) -> set[str]:
         """Get a set of existing directory paths within the specified path."""
 
@@ -39,16 +35,20 @@ class AbstractFilesystem(ABC):
         """Join path parts into a single path."""
 
     @abstractmethod
-    def make_directory(self, path: str) -> None:
-        """Create a directory at the specified path."""
+    def json_to_dict(self, path: str) -> dict:
+        """Load JSON data from a file."""
 
     @abstractmethod
     def save_json(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""
 
     @abstractmethod
-    def json_to_dict(self, path: str) -> dict:
-        """Load JSON data from a file."""
+    def make_directory(self, path: str) -> None:
+        """Create a directory at the specified path."""
+
+    @abstractmethod
+    def remove_directory(self, path: str) -> None:
+        """Remove a directory and its contents, with error handling."""
 
 
 class Filesystem(AbstractFilesystem):
@@ -74,6 +74,26 @@ class Filesystem(AbstractFilesystem):
             return cmp(f1, f2, shallow=False)
         return False
 
+    def get_existing_subdirs(self, path: str) -> set[str]:
+        """Get a set of existing directory paths within the specified path."""
+        return {e.path for e in scandir(path) if e.is_dir()}
+
+    def join_path(self, *parts: str) -> str:
+        """Join path parts into a single path."""
+        return join(*parts)
+
+    def json_to_dict(self, path: str) -> dict:
+        """Load JSON data from a file."""
+        if not (exists(path) and isfile(path)):
+            return {}
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    def save_json(self, path: str, data: dict) -> None:
+        """Save JSON data to a file."""
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
     def remove_directory(self, path: str) -> None:
         """Remove a directory and its contents, with error handling."""
         try:
@@ -83,26 +103,6 @@ class Filesystem(AbstractFilesystem):
         except OSError:
             logger.exception("Error occurred while removing directory: %s", path)
 
-    def get_existing_subdirs(self, path: str) -> set[str]:
-        """Get a set of existing directory paths within the specified path."""
-        return {e.path for e in scandir(path) if e.is_dir()}
-
-    def join_path(self, *parts: str) -> str:
-        """Join path parts into a single path."""
-        return join(*parts)
-
     def make_directory(self, path: str) -> None:
         """Create a directory at the specified path."""
         mkdir(path)
-
-    def save_json(self, path: str, data: dict) -> None:
-        """Save JSON data to a file."""
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-
-    def json_to_dict(self, path: str) -> dict:
-        """Load JSON data from a file."""
-        if not (exists(path) and isfile(path)):
-            return {}
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)

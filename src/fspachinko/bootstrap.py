@@ -4,21 +4,15 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from fspachinko.adapters.duration import duration_fn_factory
 from fspachinko.adapters.filenamer import TemplateFilenamer
 from fspachinko.adapters.filesystem import AbstractFilesystem, Filesystem
 from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.loggers import AbstractLogger, AppLogger
-from fspachinko.adapters.media import AbstractDurationFnManager, DurationFnManager
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
-from fspachinko.adapters.transfer import FileTransferFnManager
+from fspachinko.adapters.transfer import available_transfer_fn_factory
 from fspachinko.config import ConfigToFileFilter, ConfigToPipeline
-from fspachinko.domain.commands import (
-    Command,
-    ProcessDirectory,
-    RunTransferJob,
-    SaveConfiguration,
-    StopProcess,
-)
+from fspachinko.domain.commands import Command, ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 from fspachinko.domain.model import TransferJob
 from fspachinko.helpers import get_report, get_status, get_text_patterns
@@ -37,7 +31,6 @@ from fspachinko.service.messagebus import MessageBus
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fspachinko.adapters.transfer import AbstractTransferFnManager
     from fspachinko.config import ConfigModel
 
 
@@ -49,10 +42,11 @@ class FSPachinkoBootstrapper:
     filesystem: AbstractFilesystem = field(default_factory=Filesystem)
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     logger: AbstractLogger = field(default_factory=AppLogger)
-    transfer_fn_manager: AbstractTransferFnManager = field(default_factory=FileTransferFnManager)
-    duration_fn_manager: AbstractDurationFnManager = field(default_factory=DurationFnManager)
+    available_transfer_fns: dict[str, Callable] = field(default_factory=available_transfer_fn_factory)
+    duration_fn: Callable[[str], float] = field(default_factory=duration_fn_factory)
     job: TransferJob = field(default_factory=TransferJob)
-    rng_seed_fn: Callable = random.seed
+    rng: random.Random = field(default_factory=random.Random)
+    get_text_patterns: Callable = get_text_patterns
 
     config_to_pipeline: ConfigToPipeline = field(init=False)
 
@@ -62,19 +56,17 @@ class FSPachinkoBootstrapper:
         self.config_to_pipeline = ConfigToPipeline(
             pipeline=self.pipeline,
             filesystem=self.filesystem,
-            rng_seed_fn=self.rng_seed_fn,
-            transfer_fn_manager=self.transfer_fn_manager,
+            rng=self.rng,
+            available_transfer_fns=self.available_transfer_fns,
             template_filenamer=TemplateFilenamer,
             walker=FSWalker,
-            randcount_fn=random.randint,
-            get_text_patterns=get_text_patterns,
             config_to_file_filter=ConfigToFileFilter(
-                get_text_patterns=get_text_patterns,
-                get_duration=self.duration_fn_manager.get_duration,
+                get_text_patterns=self.get_text_patterns,
+                get_duration=self.duration_fn,
             ),
         )
 
-    def bootstrap(self) -> MessageBus:
+    def build_message_bus(self) -> MessageBus:
         """Bootstrap the application and return the message bus."""
         return MessageBus(
             collector=self.collector,

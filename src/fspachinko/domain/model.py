@@ -44,7 +44,7 @@ class DestinationDirectory:
 
 
 @dataclass(slots=True)
-class DiversityQuota:
+class DiversityPolicy:
     """
     Represents the diversity quota for the process.
 
@@ -97,7 +97,7 @@ class DiversityQuota:
 class TransferJob:
     """The Root Aggregate for a file transfer process."""
 
-    quota: DiversityQuota = field(default_factory=DiversityQuota)
+    quota: DiversityPolicy = field(default_factory=DiversityPolicy)
     is_stop_requested: bool = False
     events: deque[Event] = field(default_factory=deque)
 
@@ -120,7 +120,7 @@ class TransferJob:
             DirectoryStarted(path=dst.path, target_qty=dst.target_qty),
         )
 
-    def update_file(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
+    def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
         """Update the job state after processing a file."""
         dst.accept(entry.size, new_path)
         self.quota.update(entry.parent, entry.path)
@@ -149,8 +149,8 @@ class TransferJob:
 
     def collect_new_events(self) -> Iterator[Event]:
         """Collect new events that were generated during the transaction."""
-        while events := self.events:
-            yield events.popleft()
+        while self.events:
+            yield self.events.popleft()
 
 
 @dataclass(slots=True, frozen=True)

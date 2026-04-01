@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         """Initialize the main window."""
         super().__init__()
         self.bootstrapper: FSPachinkoBootstrapper = bootstrapper
-        self.bus: MessageBus = bootstrapper.bootstrap()
+        self.bus: MessageBus = bootstrapper.build_message_bus()
         self.filesystem = bootstrapper.filesystem
         self._actions: Actions = Actions.build()
         self._original_title = ""

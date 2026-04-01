@@ -1,11 +1,11 @@
 """Tests for the model."""
 
-from fspachinko.domain.model import DiversityQuota
+from fspachinko.domain.model import DiversityPolicy
 
 
 def test_diversity_quota() -> None:
     """Test the DiversityQuota class."""
-    quota = DiversityQuota(root="/root", max_per_dir=2, unique_files_only=True)
+    quota = DiversityPolicy(root="/root", max_per_dir=2, unique_files_only=True)
     assert quota.root == "/root"
     assert quota.max_per_dir == 2
     assert quota.unique_files_only is True

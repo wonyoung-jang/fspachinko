@@ -5,13 +5,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import scandir
 from os.path import dirname, splitext
-from random import choice, random
 from typing import TYPE_CHECKING
 
 from fspachinko.domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,8 @@ class AbstractFSWalker(ABC):
 
     root: str
     should_follow_symlink: bool
+    rng_random_fn: Callable
+    rng_choice_fn: Callable
 
     @abstractmethod
     def __call__(self) -> Iterator[FSEntry]:
@@ -41,6 +42,8 @@ class FSWalker(AbstractFSWalker):
         _root = self.root
         curr = self.root
         pop = self.board.pop
+        _random = self.rng_random_fn
+        _choice = self.rng_choice_fn
         while True:
             pin = self.get_pin(curr)
             if not pin.is_scanned:
@@ -51,11 +54,11 @@ class FSWalker(AbstractFSWalker):
                 pop(curr)
                 curr = _root
                 continue
-            if random() < pin.subdir_total_ratio:  # Should descend
-                curr = choice(pin.subdirs)
+            if _random() < pin.subdir_total_ratio:  # Should descend
+                curr = _choice(pin.subdirs)
                 continue
             if files := pin.files:
-                yield choice(files)
+                yield _choice(files)
             curr = _root
 
     def get_pin(self, path: str) -> FSPachinkoPin:

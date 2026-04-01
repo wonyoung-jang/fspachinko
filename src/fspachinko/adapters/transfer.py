@@ -1,7 +1,5 @@
 """File transfer adapter."""
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from io import UnsupportedOperation
 from os import link, symlink, unlink
 from os.path import join
@@ -56,33 +54,10 @@ _LINK_FNS: dict[str, Callable] = {
 }
 
 
-@dataclass(slots=True)
-class AbstractTransferFnManager(ABC):
-    """Abstract class for file transfer."""
-
-    @abstractmethod
-    def get_transfer_fn(self, mode: str) -> Callable:
-        """Get the transfer function for the specified mode."""
-
-
-@dataclass(slots=True)
-class FileTransferFnManager(AbstractTransferFnManager):
-    """File transfer implementation."""
-
-    available: dict[str, Callable] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        """Initialize the available transfer modes."""
-        self.available.update(_TRANSFER_FNS)
-        for mode, fn in _LINK_FNS.items():
-            if not _link_fn_is_available(fn):
-                self.available.pop(mode, None)
-
-    def get_transfer_fn(self, mode: str) -> Callable:
-        """Get the transfer function for the specified mode."""
-        return self.available.get(mode, self.available[TransferMode.DRY_RUN])
-
-    @property
-    def transfermodes(self) -> tuple[str, ...]:
-        """Return the set of available transfer modes."""
-        return tuple(self.available.keys())
+def available_transfer_fn_factory() -> dict[str, Callable]:
+    """Create a transfer function manager."""
+    available = _TRANSFER_FNS.copy()
+    for mode, fn in _LINK_FNS.items():
+        if not _link_fn_is_available(fn):
+            available.pop(mode, None)
+    return available

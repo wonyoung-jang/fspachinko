@@ -10,13 +10,13 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, FilterName, ReStrFmt, TransferMode
 
 if TYPE_CHECKING:
+    import random
     from collections.abc import Callable
 
     from fspachinko.adapters.filenamer import AbstractFilenamer
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.fswalker import AbstractFSWalker
     from fspachinko.adapters.pipeline import AbstractPipeline
-    from fspachinko.adapters.transfer import AbstractTransferFnManager
     from fspachinko.domain.model import DestinationDirectory, FSEntry
 
 logger = logging.getLogger(__name__)
@@ -280,33 +280,38 @@ class ConfigToPipeline:
 
     pipeline: AbstractPipeline
     filesystem: AbstractFilesystem
-    rng_seed_fn: Callable
-    transfer_fn_manager: AbstractTransferFnManager
+    available_transfer_fns: dict[str, Callable]
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
-    randcount_fn: Callable
-    get_text_patterns: Callable
+    rng: random.Random
     config_to_file_filter: Callable
 
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
-        self.rng_seed_fn(c.options.rng_seed)
+        self.rng.seed(c.options.rng_seed)
         self.pipeline.is_create_dir = c.directory.is_enabled
-        self.pipeline.transfer_fn = self.transfer_fn_manager.get_transfer_fn(c.options.transfer_mode)
-        self.pipeline.walker_fn = self.walker(root=c.root, should_follow_symlink=c.options.should_follow_symlink)
+        self.pipeline.transfer_fn = self.available_transfer_fns.get(
+            c.options.transfer_mode, self.available_transfer_fns[TransferMode.DRY_RUN]
+        )
+        self.pipeline.walker_fn = self.walker(
+            root=c.root,
+            should_follow_symlink=c.options.should_follow_symlink,
+            rng_random_fn=self.rng.random,
+            rng_choice_fn=self.rng.choice,
+        )
         filecount_fn = (
-            (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.randcount_fn(*rnge))
+            (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.rng.randint(*rnge))
             if c.filecount.is_rand_enabled
             else (lambda count=c.filecount.count: count)
         )
-        if not c.directory.is_enabled:
+        if not self.pipeline.is_create_dir:
             self.pipeline.dest_dir_inputs.append((c.dest, filecount_fn()))
             return
         existing = self.filesystem.get_existing_subdirs(c.dest)
         candidate = self.filesystem.join_path(c.dest, c.directory.name)
         while len(self.pipeline.dest_dir_inputs) < c.directory.count:
             next_name = self.filesystem.get_unique_path(candidate, existing)
-            self.filesystem.make_directory(next_name)  # This needs to be moved to the uow commit
+            self.filesystem.make_directory(next_name)  # TODO: This needs to be moved to the uow commit
             self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
             existing.add(next_name)
         self.pipeline.filefilter_fn = self.config_to_file_filter(c)
