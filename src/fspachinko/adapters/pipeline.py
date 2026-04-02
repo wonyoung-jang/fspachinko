@@ -1,8 +1,7 @@
 """Model classes for the domain."""
 
 from abc import ABC, abstractmethod
-from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -20,7 +19,6 @@ class AbstractPipeline(ABC):
     get_new_path_fn: Callable[[DestinationDirectory, FSEntry], str | None] = lambda _, e: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
-    dest_dir_inputs: deque[tuple[str, int]] = field(default_factory=deque)
 
     @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:

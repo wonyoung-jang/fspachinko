@@ -1,6 +1,7 @@
 """Builder module for core functionality."""
 
 import random
+from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -11,7 +12,7 @@ from fspachinko.adapters.fswalker import FSWalker
 from fspachinko.adapters.loggers import AbstractLogger, AppLogger
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
-from fspachinko.config import ConfigToFileFilter, ConfigToPipeline
+from fspachinko.config import ConfigModelBootstrapper, ConfigToFileFilter
 from fspachinko.domain.commands import Command, ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 from fspachinko.domain.model import TransferJob
@@ -46,14 +47,15 @@ class FSPachinkoBootstrapper:
     duration_fn: Callable[[str], float] = field(default_factory=duration_fn_factory)
     job: TransferJob = field(default_factory=TransferJob)
     rng: random.Random = field(default_factory=random.Random)
-    get_text_patterns: Callable = get_text_patterns
+    get_text_patterns: Callable[[str, str], tuple] = get_text_patterns
+    inputs: deque[tuple[str, int, bool]] = field(default_factory=deque)
 
-    config_to_pipeline: ConfigToPipeline = field(init=False)
+    config_model_bootstrapper: ConfigModelBootstrapper = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
         self.collector.register_emitter(self.job)
-        self.config_to_pipeline = ConfigToPipeline(
+        self.config_model_bootstrapper = ConfigModelBootstrapper(
             pipeline=self.pipeline,
             filesystem=self.filesystem,
             rng=self.rng,
@@ -66,18 +68,39 @@ class FSPachinkoBootstrapper:
             ),
         )
 
+    def configure_pipeline_for_run(self, c: ConfigModel) -> None:
+        """Configure the pipeline based on the configuration model."""
+        self.config_model_bootstrapper.apply(c)
+        self.inputs.extend(self.config_model_bootstrapper.build_inputs(c))
+
     def build_message_bus(self) -> MessageBus:
         """Bootstrap the application and return the message bus."""
         return MessageBus(
             collector=self.collector,
-            event_handlers=self.get_event_handlers(),
             command_handlers=self.get_command_handlers(),
+            event_handlers=self.get_event_handlers(),
             logger=self.logger,
         )
 
-    def configure_pipeline_for_run(self, c: ConfigModel) -> None:
-        """Configure the pipeline based on the configuration model."""
-        self.config_to_pipeline.apply(c)
+    def get_command_handlers(self) -> dict[type[Command], Callable]:
+        """Get the command handlers."""
+        return {
+            RunTransferJob: RunTransferJobHandler(
+                job=self.job,
+                inputs=self.inputs,
+            ),
+            ProcessDirectory: ProcessDirectoryHandler(
+                job=self.job,
+                filesystem=self.filesystem,
+                pipeline=self.pipeline,
+            ),
+            StopProcess: StopProcessHandler(
+                job=self.job,
+            ),
+            SaveConfiguration: SaveProfileHandler(
+                filesystem=self.filesystem,
+            ),
+        }
 
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""
@@ -100,23 +123,4 @@ class FSPachinkoBootstrapper:
                     logger=self.logger,
                 ),
             ],
-        }
-
-    def get_command_handlers(self) -> dict[type[Command], Callable]:
-        """Get the command handlers."""
-        return {
-            RunTransferJob: RunTransferJobHandler(
-                job=self.job,
-                pipeline=self.pipeline,
-            ),
-            ProcessDirectory: ProcessDirectoryHandler(
-                job=self.job,
-                pipeline=self.pipeline,
-            ),
-            StopProcess: StopProcessHandler(
-                job=self.job,
-            ),
-            SaveConfiguration: SaveProfileHandler(
-                filesystem=self.filesystem,
-            ),
         }

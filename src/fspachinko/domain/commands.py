@@ -23,6 +23,7 @@ class ProcessDirectory(Command):
 
     dest_dir: str
     target_qty: int
+    should_create: bool
 
 
 @dataclass(slots=True, frozen=True)

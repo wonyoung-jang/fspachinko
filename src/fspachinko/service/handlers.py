@@ -3,16 +3,16 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from fspachinko.domain.commands import ProcessDirectory
-from fspachinko.domain.model import DestinationDirectory, DiversityPolicy, TransferJob
+from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
 
 if TYPE_CHECKING:
+    from collections import deque
     from collections.abc import Callable
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.adapters.pipeline import AbstractPipeline
-    from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
+    from fspachinko.domain.commands import ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
 
 
@@ -24,15 +24,14 @@ class RunTransferJobHandler:
     """Handle the RunTransferJob command."""
 
     job: TransferJob
-    pipeline: AbstractPipeline
+    inputs: deque[tuple[str, int, bool]]
 
     def __call__(self, cmd: RunTransferJob) -> None:
         """Handle the RunTransferJob command."""
-        self.job.quota = DiversityPolicy(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
-        while _inputs := self.pipeline.dest_dir_inputs:
-            dest_dir, target_qty = _inputs.popleft()
-            handler = ProcessDirectoryHandler(self.job, self.pipeline)
-            handler(ProcessDirectory(dest_dir, target_qty))
+        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+        while self.inputs:
+            dest_dir, target_qty, should_create = self.inputs.popleft()
+            self.job.dir_ready_to_process(dest_dir, target_qty, should_create=should_create)
 
 
 @dataclass(slots=True)
@@ -40,11 +39,14 @@ class ProcessDirectoryHandler:
     """Handle the StartProcessingDirectory command."""
 
     job: TransferJob
+    filesystem: AbstractFilesystem
     pipeline: AbstractPipeline
 
     def __call__(self, cmd: ProcessDirectory) -> None:
         """Handle the StartProcessingDirectory command."""
-        dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty)
+        dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty, should_create=cmd.should_create)
+        if dst.should_create:
+            self.filesystem.make_directory(dst.path)
         job = self.job
         if job.is_stop_requested or job.is_root_locked:
             return
@@ -64,7 +66,7 @@ class ProcessDirectoryHandler:
             except OSError:
                 continue
             job.register_transfer(dst, entry, new_path)
-        job.finalize_directory(dst, is_empty_creation=(dst.is_none_found and self.pipeline.is_create_dir))
+        job.finalize_directory(dst)
 
 
 @dataclass(slots=True)
@@ -130,8 +132,8 @@ class DirectoryTransferredHandler:
         """Handle the DirectoryTransferred event."""
         status = self.get_status(
             success=evt.is_success,
-            empty_creation=evt.is_empty_creation,
             stop_requested=evt.is_stop_requested,
+            empty_creation=evt.is_empty_creation,
             root_locked=evt.is_root_locked,
         )
         report = self.get_report(evt.path, evt.size, evt.count, evt.target_qty)

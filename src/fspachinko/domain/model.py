@@ -4,6 +4,7 @@ from collections import Counter, deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from fspachinko.domain.commands import Command, ProcessDirectory
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 
 if TYPE_CHECKING:
@@ -16,6 +17,7 @@ class DestinationDirectory:
 
     path: str
     target_qty: int
+    should_create: bool
     files: dict[str, int] = field(default_factory=dict)  # Path: Size
 
     @property
@@ -34,6 +36,11 @@ class DestinationDirectory:
         return self.count == 0
 
     @property
+    def is_empty_creation(self) -> bool:
+        """Check if the directory was created but no files were found."""
+        return self.should_create and self.is_none_found
+
+    @property
     def size(self) -> int:
         """Get the total size of files in the directory."""
         return sum(self.files.values())
@@ -44,7 +51,7 @@ class DestinationDirectory:
 
 
 @dataclass(slots=True)
-class DiversityPolicy:
+class DiversityQuota:
     """
     Represents the diversity quota for the process.
 
@@ -97,9 +104,9 @@ class DiversityPolicy:
 class TransferJob:
     """The Root Aggregate for a file transfer process."""
 
-    quota: DiversityPolicy = field(default_factory=DiversityPolicy)
+    quota: DiversityQuota = field(default_factory=DiversityQuota)
     is_stop_requested: bool = False
-    events: deque[Event] = field(default_factory=deque)
+    events: deque[Event | Command] = field(default_factory=deque)
 
     @property
     def is_root_locked(self) -> bool:
@@ -132,7 +139,7 @@ class TransferJob:
         """Request to stop the process."""
         self.is_stop_requested = True
 
-    def finalize_directory(self, dst: DestinationDirectory, *, is_empty_creation: bool) -> None:
+    def finalize_directory(self, dst: DestinationDirectory) -> None:
         """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
         self.events.append(
             DirectoryTransferred(
@@ -141,7 +148,7 @@ class TransferJob:
                 count=dst.count,
                 target_qty=dst.target_qty,
                 is_success=dst.is_success,
-                is_empty_creation=is_empty_creation,
+                is_empty_creation=dst.is_empty_creation,
                 is_stop_requested=self.is_stop_requested,
                 is_root_locked=self.is_root_locked,
             ),
@@ -151,6 +158,12 @@ class TransferJob:
         """Collect new events that were generated during the transaction."""
         while self.events:
             yield self.events.popleft()
+
+    def dir_ready_to_process(self, dest_dir: str, target_qty: int, *, should_create: bool) -> None:
+        """Check if the directory is ready to be processed."""
+        self.events.append(
+            ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty, should_create=should_create),
+        )
 
 
 @dataclass(slots=True, frozen=True)

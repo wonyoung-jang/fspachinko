@@ -71,16 +71,16 @@ class FSWalker(AbstractFSWalker):
         try:
             with scandir(pin.path) as it:
                 follow = self.should_follow_symlink
-                subdirs_append = pin.subdirs.append
-                files_append = pin.files.append
+                append_subdir = pin.subdirs.append
+                append_file = pin.files.append
                 for e in it:
                     try:
                         if e.is_dir(follow_symlinks=follow):
-                            subdirs_append(e.path)
+                            append_subdir(e.path)
                         elif e.is_file(follow_symlinks=follow):
                             stat = e.stat(follow_symlinks=follow)
                             stem, ext = splitext(e.name)
-                            files_append(
+                            append_file(
                                 FSEntry(
                                     path=e.path,
                                     stem=stem,

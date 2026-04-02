@@ -46,6 +46,7 @@ def _get_duration_ffprobe(path: str) -> float:
     return float("inf")
 
 
+@cache
 def duration_fn_factory() -> Callable[[str], float]:
     """Create a get_duration function based on ffprobe availability."""
     if not shutil.which("ffprobe"):

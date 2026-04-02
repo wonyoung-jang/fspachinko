@@ -1,7 +1,7 @@
 """Translate the configuration model into commands."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os.path import isabs, realpath
 from typing import TYPE_CHECKING, Any
 
@@ -11,7 +11,8 @@ from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, FilterNam
 
 if TYPE_CHECKING:
     import random
-    from collections.abc import Callable
+    import re
+    from collections.abc import Callable, Iterator
 
     from fspachinko.adapters.filenamer import AbstractFilenamer
     from fspachinko.adapters.filesystem import AbstractFilesystem
@@ -192,17 +193,21 @@ def json_to_config(path: str) -> ConfigModel:
 class ConfigToFileFilter:
     """Bootstrapper for translating configuration into a file filter function."""
 
-    get_text_patterns: Callable
+    get_text_patterns: Callable[[str, str], tuple[re.Pattern, ...]]
     get_duration: Callable
+    filter_name: type[FilterName] = FilterName
+    re_str_fmt: type[ReStrFmt] = ReStrFmt
+    size_map: dict[str, int] = field(default_factory=lambda: SIZE_MAP)
+    time_map: dict[str, int] = field(default_factory=lambda: TIME_MAP)
 
     def __call__(self, c: ConfigModel) -> Callable:
         """Translate the configuration into a file filter function."""
         filters = {}
-        text_specs = [
-            (c.dirname, FilterName.DIRNAME, ReStrFmt.DIRECTORY),
-            (c.keyword, FilterName.KEYWORD, ReStrFmt.KEYWORD),
-            (c.extension, FilterName.EXTENSION, ReStrFmt.EXTENSION),
-        ]
+        text_specs = (
+            (c.dirname, self.filter_name.DIRNAME, self.re_str_fmt.DIRECTORY),
+            (c.keyword, self.filter_name.KEYWORD, self.re_str_fmt.KEYWORD),
+            (c.extension, self.filter_name.EXTENSION, self.re_str_fmt.EXTENSION),
+        )
         for model, name, re_fmt in text_specs:
             filters[name] = self.create_text_filter(
                 text=model.text,
@@ -210,10 +215,10 @@ class ConfigToFileFilter:
                 is_enabled=model.is_enabled,
                 should_include=model.should_include,
             )
-        range_specs = [
-            (c.filesize, FilterName.FILESIZE, SIZE_MAP),
-            (c.duration, FilterName.DURATION, TIME_MAP),
-        ]
+        range_specs = (
+            (c.filesize, self.filter_name.FILESIZE, self.size_map),
+            (c.duration, self.filter_name.DURATION, self.time_map),
+        )
         for model, name, unit_map in range_specs:
             mul = unit_map.get(model.unit, 1.0)
             filters[name] = self.create_range_filter(
@@ -233,11 +238,11 @@ class ConfigToFileFilter:
     def create_filter(self, name: str, fn: Callable) -> Any:
         """Create a filter function by name."""
         filter_mapping: dict[str, Callable[[FSEntry, Callable], bool]] = {
-            FilterName.DIRNAME: lambda e, fn: fn(e.parent),
-            FilterName.KEYWORD: lambda e, fn: fn(e.stem),
-            FilterName.EXTENSION: lambda e, fn: fn(e.ext),
-            FilterName.FILESIZE: lambda e, fn: fn(e.size),
-            FilterName.DURATION: lambda e, fn: fn(self.get_duration(e.path)),
+            self.filter_name.DIRNAME: lambda e, fn: fn(e.parent),
+            self.filter_name.KEYWORD: lambda e, fn: fn(e.stem),
+            self.filter_name.EXTENSION: lambda e, fn: fn(e.ext),
+            self.filter_name.FILESIZE: lambda e, fn: fn(e.size),
+            self.filter_name.DURATION: lambda e, fn: fn(self.get_duration(e.path)),
         }
         if filter_fn := filter_mapping.get(name):
             return lambda e, fn=fn: filter_fn(e, fn)
@@ -275,7 +280,7 @@ class ConfigToFileFilter:
 
 
 @dataclass(slots=True)
-class ConfigToPipeline:
+class ConfigModelBootstrapper:
     """Bootstrapper for translating configuration into commands."""
 
     pipeline: AbstractPipeline
@@ -285,38 +290,21 @@ class ConfigToPipeline:
     walker: type[AbstractFSWalker]
     rng: random.Random
     config_to_file_filter: Callable
+    transfer_mode: type[TransferMode] = TransferMode
 
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
         self.rng.seed(c.options.rng_seed)
         self.pipeline.is_create_dir = c.directory.is_enabled
-        self.pipeline.transfer_fn = self.available_transfer_fns.get(
-            c.options.transfer_mode, self.available_transfer_fns[TransferMode.DRY_RUN]
-        )
-        self.pipeline.walker_fn = self.walker(
-            root=c.root,
-            should_follow_symlink=c.options.should_follow_symlink,
-            rng_random_fn=self.rng.random,
-            rng_choice_fn=self.rng.choice,
-        )
-        filecount_fn = (
-            (lambda rnge=(c.filecount.rand_min, c.filecount.rand_max): self.rng.randint(*rnge))
-            if c.filecount.is_rand_enabled
-            else (lambda count=c.filecount.count: count)
-        )
-        if not self.pipeline.is_create_dir:
-            self.pipeline.dest_dir_inputs.append((c.dest, filecount_fn()))
-            return
-        existing = self.filesystem.get_existing_subdirs(c.dest)
-        candidate = self.filesystem.join_path(c.dest, c.directory.name)
-        while len(self.pipeline.dest_dir_inputs) < c.directory.count:
-            next_name = self.filesystem.get_unique_path(candidate, existing)
-            self.filesystem.make_directory(next_name)  # TODO: This needs to be moved to the uow commit
-            self.pipeline.dest_dir_inputs.append((next_name, filecount_fn()))
-            existing.add(next_name)
         self.pipeline.filefilter_fn = self.config_to_file_filter(c)
+        self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
+        self.pipeline.transfer_fn = self._build_transfer_fn(c)
+        self.pipeline.walker_fn = self._build_walker_fn(c)
+
+    def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
+        """Build the get_new_path function based on the configuration."""
         filenamer = self.template_filenamer(c.filename.template) if c.filename.is_enabled else None
-        self.pipeline.get_new_path_fn = lambda dst, e, fn=filenamer: self._get_new_path_fn(dst, e, fn)
+        return lambda dst, e, fn=filenamer: self._get_new_path_fn(dst, e, fn)
 
     def _get_new_path_fn(self, dst: DestinationDirectory, e: FSEntry, filenamer: Callable | None = None) -> str | None:
         """Check if the original file name can be used without transfer."""
@@ -329,3 +317,36 @@ class ConfigToPipeline:
         if self.filesystem.are_files_identical(e.path, target):
             return None
         return self.filesystem.get_unique_path(target, dst.files)
+
+    def _build_transfer_fn(self, c: ConfigModel) -> Callable:
+        """Build the transfer function based on the configuration."""
+        return self.available_transfer_fns.get(
+            c.options.transfer_mode, self.available_transfer_fns[self.transfer_mode.DRY_RUN]
+        )
+
+    def _build_walker_fn(self, c: ConfigModel) -> Callable:
+        """Build the walker function based on the configuration."""
+        return self.walker(
+            root=c.root,
+            should_follow_symlink=c.options.should_follow_symlink,
+            rng_random_fn=self.rng.random,
+            rng_choice_fn=self.rng.choice,
+        )
+
+    def build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:
+        """Build the inputs for the pipeline based on the configuration."""
+        dst = c.dest
+        cf = c.filecount
+        cd = c.directory
+        filecount_fn = (
+            (lambda: self.rng.randint(cf.rand_min, cf.rand_max)) if cf.is_rand_enabled else (lambda: cf.count)
+        )
+        if not cd.is_enabled:
+            yield (dst, filecount_fn(), False)
+            return
+        existing = self.filesystem.get_existing_subdirs(dst)
+        candidate = self.filesystem.join_path(dst, cd.name)
+        for _ in range(cd.count):
+            next_name = self.filesystem.get_unique_path(candidate, existing)
+            yield (next_name, filecount_fn(), True)
+            existing.add(next_name)

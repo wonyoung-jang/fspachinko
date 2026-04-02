@@ -14,19 +14,17 @@ def convert_byte_to_human_readable_size(nbytes: int) -> str:
     return result
 
 
-def get_status(*, success: bool, empty_creation: bool, stop_requested: bool, root_locked: bool) -> str:
+def get_status(*, success: bool, stop_requested: bool, empty_creation: bool, root_locked: bool) -> str:
     """Get the state and message for reporting."""
     if success:
         return StateStatus.SUCCESS
     if stop_requested:
         return StateStatus.USER_STOPPED
-    if empty_creation and root_locked:
-        return StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
-    if empty_creation:
-        return StateStatus.NO_FILES_FOUND_FOLDER_DELETED
-    if root_locked:
-        return StateStatus.ALL_FILES_SEARCHED
-    return StateStatus.UNDEFINED
+    return {
+        (True, True): StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED,
+        (True, False): StateStatus.NO_FILES_FOUND_FOLDER_DELETED,
+        (False, True): StateStatus.ALL_FILES_SEARCHED,
+    }.get((empty_creation, root_locked), StateStatus.UNDEFINED)
 
 
 def get_report(path: str, size: int, count: int, target_qty: int) -> str:

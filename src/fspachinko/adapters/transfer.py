@@ -1,5 +1,6 @@
 """File transfer adapter."""
 
+from functools import cache
 from io import UnsupportedOperation
 from os import link, symlink, unlink
 from os.path import join
@@ -54,6 +55,7 @@ _LINK_FNS: dict[str, Callable] = {
 }
 
 
+@cache
 def available_transfer_fn_factory() -> dict[str, Callable]:
     """Create a transfer function manager."""
     available = _TRANSFER_FNS.copy()
