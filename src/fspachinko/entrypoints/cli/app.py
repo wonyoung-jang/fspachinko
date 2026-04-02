@@ -20,8 +20,7 @@ app = App(help="fspachinko - Random file transfer utility.")
 
 @app.default
 def run(config_path: str = default_config_path) -> None:
-    """
-    Run the fspachinko CLI.
+    """Run the fspachinko CLI.
 
     Args:
         config_path (str): Path to configuration file.

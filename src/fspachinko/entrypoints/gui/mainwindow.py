@@ -4,7 +4,7 @@ from os.path import basename, dirname, splitext
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Qt, Slot
-from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow
+from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow, QMenu, QToolBar
 
 from fspachinko.config import dict_to_config
 from fspachinko.datapaths import get_config_path
@@ -12,9 +12,9 @@ from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopPr
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from fspachinko.entrypoints.gui.centralwidget import CentralWidget
 from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
-from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUISettingsKey, GUITitle
+from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUIName, GUISettingsKey, GUITitle
 from fspachinko.entrypoints.gui.loggers_gui import QtLogHandler
-from fspachinko.entrypoints.gui.qthelpers import build_ui_bars
+from fspachinko.entrypoints.gui.qthelpers import MENU_STRUCTURE, TOOLBAR_STRUCTURE
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -171,3 +171,26 @@ class MainWindow(QMainWindow):
             config_stem, _ = splitext(basename(self.config_path))
             return f"{config_stem} - {GUITitle.WINDOW}"
         return GUITitle.WINDOW
+
+
+def build_ui_bars(window: QMainWindow, actions: Actions) -> None:
+    """Build the status, tool, and menu bars."""
+
+    def add_actions_to_bar(bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None]) -> None:
+        """Add actions to a menu or toolbar based on a list of action keys."""
+        for item in actions_names:
+            if item is None:
+                bar.addSeparator()
+            else:
+                action = getattr(actions, item)
+                bar.addAction(action)
+
+    statusbar = window.statusBar()
+    statusbar.setSizeGripEnabled(True)
+    toolbar = window.addToolBar(GUIName.TOOLBAR)
+    toolbar.setObjectName(GUIName.TOOLBAR)
+    add_actions_to_bar(toolbar, actions, TOOLBAR_STRUCTURE)
+    menubar = window.menuBar()
+    for menu_name, action_keys in MENU_STRUCTURE.items():
+        menu = menubar.addMenu(menu_name)
+        add_actions_to_bar(menu, actions, action_keys)

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import cache
 from os.path import basename, split
 from typing import TYPE_CHECKING
 
@@ -21,6 +22,12 @@ FILENAME_TEMPLATE_MAP: dict[FilenameTemplate, Callable[[FSEntry, int], str | int
 }
 
 
+@cache
+def available_filename_map(template: str) -> dict[str, Callable[[FSEntry, int], str | int]]:
+    """Get the mapping of available filename template variables."""
+    return {t.strip("{}"): v for t, v in FILENAME_TEMPLATE_MAP.items() if t in template}
+
+
 @dataclass(slots=True)
 class AbstractFilenamer(ABC):
     """Abstract filenamer."""
@@ -30,7 +37,7 @@ class AbstractFilenamer(ABC):
 
     def __post_init__(self) -> None:
         """Validate the template."""
-        self._map.update({t.strip("{}"): v for t, v in FILENAME_TEMPLATE_MAP.items() if t in self.template})
+        self._map.update(available_filename_map(self.template))
 
     @abstractmethod
     def __call__(self, entry: FSEntry, count: int) -> str:

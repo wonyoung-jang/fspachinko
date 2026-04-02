@@ -12,48 +12,8 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class DestinationDirectory:
-    """Aggregate: Represents a destination directory for file transfer."""
-
-    path: str
-    target_qty: int
-    should_create: bool
-    files: dict[str, int] = field(default_factory=dict)  # Path: Size
-
-    @property
-    def count(self) -> int:
-        """Get the current count of files in the directory."""
-        return len(self.files)
-
-    @property
-    def is_success(self) -> bool:
-        """Check if the directory has reached its target quantity."""
-        return self.count >= self.target_qty
-
-    @property
-    def is_none_found(self) -> bool:
-        """Check if no valid files were found."""
-        return self.count == 0
-
-    @property
-    def is_empty_creation(self) -> bool:
-        """Check if the directory was created but no files were found."""
-        return self.should_create and self.is_none_found
-
-    @property
-    def size(self) -> int:
-        """Get the total size of files in the directory."""
-        return sum(self.files.values())
-
-    def accept(self, size: int, path: str) -> None:
-        """Update the directory stats after accepting a file."""
-        self.files[path] = size
-
-
-@dataclass(slots=True)
 class DiversityQuota:
-    """
-    Represents the diversity quota for the process.
+    """Represents the diversity quota for the process.
 
     This is a "global" object that tracks across multiple directories.
     It has no real "identifier", so it is not an entity.
@@ -98,6 +58,45 @@ class DiversityQuota:
         """Update the locked directory count after accepting a file."""
         self.files.add(path)
         self.directories[parent] += 1
+
+
+@dataclass(slots=True)
+class DestinationDirectory:
+    """Aggregate: Represents a destination directory for file transfer."""
+
+    path: str
+    target_qty: int
+    should_create: bool
+    files: dict[str, int] = field(default_factory=dict)  # Path: Size
+
+    @property
+    def count(self) -> int:
+        """Get the current count of files in the directory."""
+        return len(self.files)
+
+    @property
+    def is_success(self) -> bool:
+        """Check if the directory has reached its target quantity."""
+        return self.count >= self.target_qty
+
+    @property
+    def is_none_found(self) -> bool:
+        """Check if no valid files were found."""
+        return self.count == 0
+
+    @property
+    def is_empty_creation(self) -> bool:
+        """Check if the directory was created but no files were found."""
+        return self.should_create and self.is_none_found
+
+    @property
+    def size(self) -> int:
+        """Get the total size of files in the directory."""
+        return sum(self.files.values())
+
+    def accept(self, size: int, path: str) -> None:
+        """Update the directory stats after accepting a file."""
+        self.files[path] = size
 
 
 @dataclass(slots=True)
@@ -168,8 +167,7 @@ class TransferJob:
 
 @dataclass(slots=True, frozen=True)
 class FSEntry:
-    """
-    Value object wrapper for os.DirEntry.
+    """Value object wrapper for os.DirEntry.
 
     The identifires are:
     1. The path attribute

@@ -43,30 +43,35 @@ class ProcessDirectoryHandler:
     pipeline: AbstractPipeline
 
     def __call__(self, cmd: ProcessDirectory) -> None:
-        """Handle the StartProcessingDirectory command."""
+        """Handle the StartProcessingDirectory command.
+
+        Side-effects/Outputs:
+        - Destination directory may be created.
+        - Destination logs may be created.
+        - Files may be transferred.
+        """
         dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty, should_create=cmd.should_create)
         if dst.should_create:
             self.filesystem.make_directory(dst.path)
-        job = self.job
-        if job.is_stop_requested or job.is_root_locked:
+        if self.job.is_stop_requested or self.job.is_root_locked:
             return
-        job.reset()
-        job.start_directory(dst)
-        for entry in self.pipeline.walker_fn():
-            if dst.is_success or job.is_stop_requested or job.is_root_locked:
+        self.job.reset()
+        self.job.start_directory(dst)
+        for entry in self.pipeline.walk():
+            if dst.is_success or self.job.is_stop_requested or self.job.is_root_locked:
                 break
             if not (
-                job.can_accept(entry)
-                and self.pipeline.filefilter_fn(entry)
+                self.job.can_accept(entry)
+                and self.pipeline.filter_file(entry)
                 and (new_path := self.pipeline.get_new_path(dst=dst, e=entry))
             ):
                 continue
             try:
-                self.pipeline.transfer_fn(entry.path, new_path)
+                self.pipeline.transfer_file(entry.path, new_path)
             except OSError:
                 continue
-            job.register_transfer(dst, entry, new_path)
-        job.finalize_directory(dst)
+            self.job.register_transfer(dst, entry, new_path)
+        self.job.finalize_directory(dst)
 
 
 @dataclass(slots=True)
