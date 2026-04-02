@@ -16,7 +16,7 @@ from fspachinko.config import ConfigModelBootstrapper, ConfigToFileFilter
 from fspachinko.domain.commands import Command, ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 from fspachinko.domain.model import TransferJob
-from fspachinko.helpers import get_report, get_status, get_text_patterns
+from fspachinko.helpers import get_report, get_status
 from fspachinko.service.eventcollector import CompositeEventCollector
 from fspachinko.service.handlers import (
     DirectoryStartedHandler,
@@ -47,7 +47,6 @@ class FSPachinkoBootstrapper:
     duration_fn: Callable[[str], float] = field(default_factory=duration_fn_factory)
     job: TransferJob = field(default_factory=TransferJob)
     rng: random.Random = field(default_factory=random.Random)
-    get_text_patterns: Callable[[str, str], tuple] = get_text_patterns
     inputs: deque[tuple[str, int, bool]] = field(default_factory=deque)
 
     config_model_bootstrapper: ConfigModelBootstrapper = field(init=False)
@@ -63,7 +62,6 @@ class FSPachinkoBootstrapper:
             template_filenamer=TemplateFilenamer,
             walker=FSWalker,
             config_to_file_filter=ConfigToFileFilter(
-                get_text_patterns=self.get_text_patterns,
                 get_duration=self.duration_fn,
             ),
         )

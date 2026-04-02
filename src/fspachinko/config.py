@@ -1,6 +1,7 @@
 """Translate the configuration model into commands."""
 
 import logging
+import re
 from dataclasses import dataclass, field
 from os.path import isabs, realpath
 from typing import TYPE_CHECKING, Any
@@ -11,7 +12,6 @@ from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, FilterNam
 
 if TYPE_CHECKING:
     import random
-    import re
     from collections.abc import Callable, Iterator
 
     from fspachinko.adapters.filenamer import AbstractFilenamer
@@ -193,7 +193,6 @@ def json_to_config(path: str) -> ConfigModel:
 class ConfigToFileFilter:
     """Bootstrapper for translating configuration into a file filter function."""
 
-    get_text_patterns: Callable[[str, str], tuple[re.Pattern, ...]]
     get_duration: Callable
     filter_name: type[FilterName] = FilterName
     re_str_fmt: type[ReStrFmt] = ReStrFmt
@@ -253,7 +252,7 @@ class ConfigToFileFilter:
         """Create a text filter function."""
         if not (is_enabled and text):
             return None
-        patterns = self.get_text_patterns(text, re_fmt)
+        patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in set(text.split(",")))
         match len(patterns), should_include:
             case 1, True:
                 return lambda p: patterns[0].search(p) is not None
@@ -295,7 +294,6 @@ class ConfigModelBootstrapper:
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
         self.rng.seed(c.options.rng_seed)
-        self.pipeline.is_create_dir = c.directory.is_enabled
         self.pipeline.filefilter_fn = self.config_to_file_filter(c)
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
         self.pipeline.transfer_fn = self._build_transfer_fn(c)

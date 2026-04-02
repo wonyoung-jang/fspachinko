@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 class AbstractPipeline(ABC):
     """Abstract pipeline."""
 
-    is_create_dir: bool = False
     filefilter_fn: Callable[[FSEntry], bool] = lambda _: True
     get_new_path_fn: Callable[[DestinationDirectory, FSEntry], str | None] = lambda _, e: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
