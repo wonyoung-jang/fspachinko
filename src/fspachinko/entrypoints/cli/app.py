@@ -5,7 +5,7 @@ import logging
 from cyclopts import App
 
 from fspachinko.bootstrap import FSPachinkoBootstrapper
-from fspachinko.config import json_to_config
+from fspachinko.config import ConfigModel
 from fspachinko.constants import DefaultPath
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import RunTransferJob
@@ -26,7 +26,9 @@ def run(config_path: str = default_config_path) -> None:
         config_path (str): Path to configuration file.
 
     """
-    config = json_to_config(config_path)
+    with open(config_path, encoding="utf-8") as f:
+        data = f.read()
+    config = ConfigModel.model_validate_json(data)
     bootstrapper.configure_pipeline_for_run(config)
     bus.handle(
         RunTransferJob(

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QSettings, Qt, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar
 
-from fspachinko.config import dict_to_config
+from fspachinko.config import ConfigModel
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
-        config = dict_to_config(self.ui.config)
+        config = ConfigModel.model_validate(self.ui.config)
         self.bootstrapper.configure_pipeline_for_run(config)
         self.progress_widget.handle_start_process(config.directory.count)
         self.bus.handle(
