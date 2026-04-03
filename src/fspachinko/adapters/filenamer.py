@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from fspachinko.domain.model import FSEntry
 
 INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
+
 FILENAME_TEMPLATE_MAP: dict[FilenameTemplate, Callable[[FSEntry, int], str | int]] = {
     FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
     FilenameTemplate.INDEX: lambda _, c: c + 1,

@@ -13,6 +13,7 @@ from fspachinko.adapters.loggers import AbstractLogger, AppLogger
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
 from fspachinko.config import ConfigModelBootstrapper, ConfigToFileFilter
+from fspachinko.datapaths import ensure_data_paths
 from fspachinko.domain.commands import Command, ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 from fspachinko.domain.model import TransferJob
@@ -53,6 +54,7 @@ class FSPachinkoBootstrapper:
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
+        ensure_data_paths()
         self.collector.register_emitter(self.job)
         self.config_model_bootstrapper = ConfigModelBootstrapper(
             pipeline=self.pipeline,

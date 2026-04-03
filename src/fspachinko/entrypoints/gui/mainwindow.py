@@ -11,7 +11,7 @@ from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from fspachinko.entrypoints.gui.centralwidget import CentralWidget
-from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, BaseDockWidget, LogWidget, ProgressWidget
+from fspachinko.entrypoints.gui.components import Actions, BaseDockWidget, LogWidget, ProgressWidget, get_component_map
 from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUIName, GUISettingsKey, GUITitle
 from fspachinko.entrypoints.gui.loggers_gui import QtLogHandler
 from fspachinko.entrypoints.gui.qthelpers import MENU_STRUCTURE, TOOLBAR_STRUCTURE
@@ -38,7 +38,7 @@ class MainWindow(QMainWindow):
         self.bus.logger.add_handler("qtgui", gui_log_handler)
         self.log_signal = gui_log_handler.signals
         self.setAnimated(True)
-        self.ui = CentralWidget(*(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP))
+        self.ui = CentralWidget(*(w(title, name, *args) for w, title, name, *args in get_component_map()))
         self.setCentralWidget(self.ui)
         self.log_widget = LogWidget()
         self.progress_widget = ProgressWidget()
