@@ -9,6 +9,7 @@ from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -66,6 +67,16 @@ class Actions:
             set_qt_tips(action, tip)
             actions[name] = action
         return cls(**actions)
+
+
+class BaseDockWidget(QDockWidget):
+    """Base class for dock widgets with common functionality."""
+
+    def __init__(self, w: QWidget, name: str) -> None:
+        """Initialize the base dock widget."""
+        super().__init__()
+        self.setWidget(w)
+        self.setObjectName(name)
 
 
 class BaseGroupBox(QGroupBox):

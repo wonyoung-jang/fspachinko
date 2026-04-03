@@ -4,14 +4,14 @@ from os.path import basename, dirname, splitext
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, Qt, Slot
-from PySide6.QtWidgets import QDockWidget, QFileDialog, QMainWindow, QMenu, QToolBar
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar
 
 from fspachinko.config import dict_to_config
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from fspachinko.entrypoints.gui.centralwidget import CentralWidget
-from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, LogWidget, ProgressWidget
+from fspachinko.entrypoints.gui.components import COMPONENT_MAP, Actions, BaseDockWidget, LogWidget, ProgressWidget
 from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUIName, GUISettingsKey, GUITitle
 from fspachinko.entrypoints.gui.loggers_gui import QtLogHandler
 from fspachinko.entrypoints.gui.qthelpers import MENU_STRUCTURE, TOOLBAR_STRUCTURE
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
     from fspachinko.bootstrap import FSPachinkoBootstrapper
-    from fspachinko.service.messagebus import MessageBus
 
 
 class MainWindow(QMainWindow):
@@ -29,28 +28,22 @@ class MainWindow(QMainWindow):
     def __init__(self, bootstrapper: FSPachinkoBootstrapper) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.bootstrapper: FSPachinkoBootstrapper = bootstrapper
-        self.bus: MessageBus = bootstrapper.build_message_bus()
+        self.bootstrapper = bootstrapper
+        self.bus = bootstrapper.build_message_bus()
         self.filesystem = bootstrapper.filesystem
-        self._actions: Actions = Actions.build()
+        self._actions = Actions.build()
         self._original_title = ""
         self.config_path = ""
         gui_log_handler = QtLogHandler()
         self.bus.logger.add_handler("qtgui", gui_log_handler)
         self.log_signal = gui_log_handler.signals
+        self.setAnimated(True)
+        self.ui = CentralWidget(*(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP))
+        self.setCentralWidget(self.ui)
         self.log_widget = LogWidget()
         self.progress_widget = ProgressWidget()
-        self.ui = CentralWidget(*(w(title, name, *args) for w, title, name, *args in COMPONENT_MAP))
-        self.log_dock = QDockWidget()
-        self.progress_dock = QDockWidget()
-        self.log_dock.setWidget(self.log_widget)
-        self.log_dock.setObjectName("LogDock")
-        self.progress_dock.setWidget(self.progress_widget)
-        self.progress_dock.setObjectName("ProgressDock")
-        self.setAnimated(True)
-        self.setCentralWidget(self.ui)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_dock)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.progress_dock)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, BaseDockWidget(self.log_widget, "LogDock"))
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, BaseDockWidget(self.progress_widget, "ProgressDock"))
         build_ui_bars(self, self._actions)
         self.init_ui_settings()
         self.init_ui_connections()
@@ -176,7 +169,9 @@ class MainWindow(QMainWindow):
 def build_ui_bars(window: QMainWindow, actions: Actions) -> None:
     """Build the status, tool, and menu bars."""
 
-    def add_actions_to_bar(bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None]) -> None:
+    def add_actions_to_bar(
+        bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None] | list[str]
+    ) -> None:
         """Add actions to a menu or toolbar based on a list of action keys."""
         for item in actions_names:
             if item is None:

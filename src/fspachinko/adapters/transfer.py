@@ -29,7 +29,12 @@ def _link_fn_is_available(link_fn: Callable) -> bool:
     return True
 
 
-def _hardlink(src: str, dst: str) -> None:
+def dry_transfer(_src: str, _dst: str) -> None:
+    """Simulate a file transfer without doing anything."""
+    return
+
+
+def hardlink(src: str, dst: str) -> None:
     """Create a hardlink from source to destination."""
     try:
         link(src, dst)
@@ -41,12 +46,12 @@ def _hardlink(src: str, dst: str) -> None:
 
 
 _TRANSFER_FNS: dict[str, Callable] = {
-    TransferMode.DRY_RUN: lambda _src, _dst: None,
+    TransferMode.DRY_RUN: dry_transfer,
     TransferMode.COPY: copy,
     TransferMode.COPY_PRESERVE: copy2,
     TransferMode.MOVE: move,
     TransferMode.SYMLINK: symlink,
-    TransferMode.HARDLINK: _hardlink,
+    TransferMode.HARDLINK: hardlink,
 }
 
 _LINK_FNS: dict[str, Callable] = {

@@ -10,6 +10,8 @@ from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Eve
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+type Message = Command | Event
+
 
 @dataclass(slots=True)
 class DiversityQuota:
@@ -153,7 +155,7 @@ class TransferJob:
             ),
         )
 
-    def collect_new_events(self) -> Iterator[Event]:
+    def collect_new_events(self) -> Iterator[Message]:
         """Collect new events that were generated during the transaction."""
         while self.events:
             yield self.events.popleft()

@@ -16,9 +16,9 @@ if TYPE_CHECKING:
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
 
 
-######################
-## COMMAND HANDLERS ##
-######################
+##################################################################################
+######## COMMAND HANDLERS ########################################################
+##################################################################################
 @dataclass(slots=True)
 class RunTransferJobHandler:
     """Handle the RunTransferJob command."""
@@ -66,10 +66,7 @@ class ProcessDirectoryHandler:
                 and (new_path := self.pipeline.get_new_path(dst=dst, e=entry))
             ):
                 continue
-            try:
-                self.pipeline.transfer_file(entry.path, new_path)
-            except OSError:
-                continue
+            self.pipeline.transfer_file(entry.path, new_path)
             self.job.register_transfer(dst, entry, new_path)
         self.job.finalize_directory(dst)
 
@@ -96,9 +93,9 @@ class SaveProfileHandler:
         self.filesystem.save_json(cmd.path, cmd.config)
 
 
-####################
-## EVENT HANDLERS ##
-####################
+################################################################################
+######## EVENT HANDLERS ########################################################
+################################################################################
 
 
 @dataclass(slots=True)

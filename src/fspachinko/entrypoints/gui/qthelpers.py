@@ -25,8 +25,8 @@ MENU_STRUCTURE = {
     GUILabel.FILEMENU: ["save", "save_as", "load", None, "exit"],
     GUILabel.RUNMENU: ["start", "stop"],
 }
-TOOLBAR_STRUCTURE = ["save", "save_as", "load", None, "start", "stop", None, "exit"]
 
+TOOLBAR_STRUCTURE = ["save", "save_as", "load", None, "start", "stop", None, "exit"]
 
 ICON_MAP = {
     "window": GUIIconFilename.WINDOW,
