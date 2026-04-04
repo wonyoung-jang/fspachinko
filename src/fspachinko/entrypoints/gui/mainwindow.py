@@ -1,7 +1,6 @@
 """Main module."""
 
 import logging
-from os.path import basename, dirname, splitext
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QObject, QSettings, Qt, Signal, Slot
@@ -19,8 +18,14 @@ from fspachinko.entrypoints.gui.components import (
     ProgressWidget,
     get_component_map,
 )
-from fspachinko.entrypoints.gui.constants import GUIFileDialogFilter, GUIName, GUISettingsKey, GUITitle
-from fspachinko.entrypoints.gui.helpers import MENU_STRUCTURE, TOOLBAR_STRUCTURE
+from fspachinko.entrypoints.gui.constants import (
+    MENU_STRUCTURE,
+    TOOLBAR_STRUCTURE,
+    GUIFileDialogFilter,
+    GUIName,
+    GUISettingsKey,
+    GUITitle,
+)
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
@@ -28,7 +33,7 @@ if TYPE_CHECKING:
     from fspachinko.bootstrap import FSPachinkoBootstrapper
 
 
-class CentralWidget(QWidget):
+class MainConfigWidget(QWidget):
     """Main widget."""
 
     def __init__(self, *config_widgets: BaseGroupBox) -> None:
@@ -116,12 +121,12 @@ class MainWindow(QMainWindow):
         self.filesystem = bootstrapper.filesystem
         self._actions = Actions.build()
         self._original_title = ""
-        self.config_path = ""
+        self._config_path = ""
         gui_log_handler = QtLogHandler()
-        self.bus.logger.add_handler("qtgui", gui_log_handler)
+        bootstrapper.logger.add_handler("qtgui", gui_log_handler)
         self.log_signal = gui_log_handler.signals
         self.setAnimated(True)
-        self.ui = CentralWidget(*(w(title, name, *args) for w, title, name, *args in get_component_map()))
+        self.ui = MainConfigWidget(*(w(title, name, *args) for w, title, name, *args in get_component_map()))
         self.setCentralWidget(self.ui)
         self.log_widget = LogWidget()
         self.progress_widget = ProgressWidget()
@@ -150,14 +155,14 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geometry)
         if (state := qsettings.value(GUISettingsKey.STATE)) and isinstance(state, bytes | bytearray):
             self.restoreState(state)
-        if profile_path := str(qsettings.value(GUISettingsKey.CONFIG, "")):
+        if profile_path := qsettings.value(GUISettingsKey.CONFIG):
             self.update_config_path(profile_path)
-            self.ui.restore_config(self.filesystem.json_to_dict(self.config_path))
+            self.ui.restore_config(self.filesystem.json_to_dict(self._config_path))
 
     @Slot()
     def save_config(self) -> None:
         """Save the current config."""
-        self.bus.handle(SaveConfiguration(path=self.config_path, config=self.ui.config))
+        self.bus.handle(SaveConfiguration(path=self._config_path, config=self.ui.config))
 
     @Slot()
     def save_config_as_dialog(self) -> None:
@@ -165,7 +170,7 @@ class MainWindow(QMainWindow):
         config_path, _ = QFileDialog.getSaveFileName(
             parent=self,
             caption=GUITitle.SAVE_CONFIG,
-            dir=dirname(self.config_path),
+            dir=self.filesystem.get_parent(self._config_path),
             filter=GUIFileDialogFilter.JSON,
         )
         if config_path:
@@ -178,24 +183,25 @@ class MainWindow(QMainWindow):
         config_path, _ = QFileDialog.getOpenFileName(
             parent=self,
             caption=GUITitle.OPEN_CONFIG,
-            dir=dirname(self.config_path),
+            dir=self.filesystem.get_parent(self._config_path),
             filter=GUIFileDialogFilter.JSON,
         )
         if config_path:
             self.update_config_path(config_path)
-            self.ui.restore_config(self.filesystem.json_to_dict(self.config_path))
+            self.ui.restore_config(self.filesystem.json_to_dict(self._config_path))
 
     def update_config_path(self, path: str) -> None:
         """Set the current config path."""
-        self.config_path = get_config_path(path)
+        self._config_path = get_config_path(path)
         self.setWindowTitle(self.get_window_title())
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """Handle window close event."""
+        self.on_stop()
         qsettings = QSettings()
         qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
         qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        qsettings.setValue(GUISettingsKey.CONFIG, self.config_path)
+        qsettings.setValue(GUISettingsKey.CONFIG, self._config_path)
         super().closeEvent(event)
 
     @Slot()
@@ -243,7 +249,8 @@ class MainWindow(QMainWindow):
 
     def get_window_title(self) -> str:
         """Generate a window title based on the config path."""
-        if self.config_path:
-            config_stem, _ = splitext(basename(self.config_path))
-            return f"{config_stem} - {GUITitle.WINDOW}"
-        return GUITitle.WINDOW
+        if self._config_path:
+            stem, _ = self.filesystem.get_stem_and_ext(self._config_path)
+        else:
+            stem = "None"
+        return f"{stem} - {GUITitle.WINDOW}"

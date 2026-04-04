@@ -386,22 +386,22 @@ class OptionsWidget(BaseGroupBox):
         super().__init__(title, name)
         self.combo_transfermode = QComboBox()
         self.combo_transfermode.addItems(transfermodes)
+        self.chk_follow_symlink = QCheckBox()
+        self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
         self.spin_max_per_dir = QSpinBox()
         self.spin_max_per_dir.setSpecialValueText("Unlimited")
         self.chk_unique_folders = QCheckBox()
-        self.chk_follow_symlink = QCheckBox()
-        self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
         set_qt_tips(self.combo_transfermode, "Select the transfer mode to use.")
-        set_qt_tips(self.spin_max_per_dir, "Maximum number of files allowed per input folder. 0 for unlimited.")
-        set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
         set_qt_tips(self.chk_follow_symlink, "If checked, symbolic links will be followed during file traversal.")
         set_qt_tips(self.lineedit_rng_seed, "Seed for random number generator. If empty, system clock used.")
+        set_qt_tips(self.spin_max_per_dir, "Maximum number of files allowed per input folder. 0 for unlimited.")
+        set_qt_tips(self.chk_unique_folders, "If checked, created folder names will have unique files.")
         layout = QFormLayout(self)
         layout.addRow("Transfer mode", self.combo_transfermode)
-        layout.addRow("Max from one directory", self.spin_max_per_dir)
-        layout.addRow("Ensure unique directories", self.chk_unique_folders)
         layout.addRow("Follow symbolic links", self.chk_follow_symlink)
         layout.addRow("Random seed", self.lineedit_rng_seed)
+        layout.addRow("Max from one directory", self.spin_max_per_dir)
+        layout.addRow("Ensure unique directories", self.chk_unique_folders)
 
     @property
     def config(self) -> dict:
@@ -409,10 +409,10 @@ class OptionsWidget(BaseGroupBox):
         return {
             self.name: {
                 "transfer_mode": self.combo_transfermode.currentText(),
-                "max_per_dir": self.spin_max_per_dir.value(),
-                "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
                 "should_follow_symlink": self.chk_follow_symlink.isChecked(),
                 "rng_seed": self.lineedit_rng_seed.text(),
+                "max_per_dir": self.spin_max_per_dir.value(),
+                "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
             },
         }
 
@@ -420,10 +420,10 @@ class OptionsWidget(BaseGroupBox):
         """Restore the options widget from config data."""
         c = self._section(config)
         self.combo_transfermode.setCurrentText(c.get("transfer_mode", TransferMode.DRY_RUN))
-        self.spin_max_per_dir.setValue(c.get("max_per_dir", 0))
-        self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
         self.chk_follow_symlink.setChecked(c.get("should_follow_symlink", False))
         self.lineedit_rng_seed.setText(c.get("rng_seed", ""))
+        self.spin_max_per_dir.setValue(c.get("max_per_dir", 0))
+        self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
 
 
 @cache

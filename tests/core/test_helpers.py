@@ -1,15 +1,15 @@
 """Test helper functions."""
 
 from fspachinko.constants import StateStatus
-from fspachinko.helpers import convert_byte_to_human_readable_size, get_report, get_status
+from fspachinko.helpers import filesize_str, get_report, get_status
 
 
 def test_convert_byte_to_human_readable_size() -> None:
     """Test convert_byte_to_human_readable_size."""
-    assert convert_byte_to_human_readable_size(500) == "500.00 B"
-    assert convert_byte_to_human_readable_size(2048) == "2.00 KB"
-    assert convert_byte_to_human_readable_size(5 * 1024**2) == "5.00 MB"
-    assert convert_byte_to_human_readable_size(3 * 1024**3) == "3.00 GB"
+    assert filesize_str(500) == "500.00 B"
+    assert filesize_str(2048) == "2.00 KB"
+    assert filesize_str(5 * 1024**2) == "5.00 MB"
+    assert filesize_str(3 * 1024**3) == "3.00 GB"
 
 
 def test_get_status() -> None:

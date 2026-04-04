@@ -6,7 +6,7 @@ import shutil
 from abc import ABC, abstractmethod
 from filecmp import cmp
 from os import mkdir, scandir
-from os.path import exists, isfile, join
+from os.path import basename, dirname, exists, isfile, join, splitext
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -37,6 +37,14 @@ class AbstractFilesystem(ABC):
     @abstractmethod
     def json_to_dict(self, path: str) -> dict:
         """Load JSON data from a file."""
+
+    @abstractmethod
+    def get_stem_and_ext(self, path: str) -> tuple[str, str]:
+        """Get the stem and extension of a file path."""
+
+    @abstractmethod
+    def get_parent(self, path: str) -> str:
+        """Get the parent directory of a given path."""
 
     @abstractmethod
     def save_json(self, path: str, data: dict) -> None:
@@ -88,6 +96,14 @@ class Filesystem(AbstractFilesystem):
             with open(path, encoding="utf-8") as f:
                 return json.load(f)
         return {}
+
+    def get_stem_and_ext(self, path: str) -> tuple[str, str]:
+        """Get the stem and extension of a file path."""
+        return splitext(basename(path))
+
+    def get_parent(self, path: str) -> str:
+        """Get the parent directory of a given path."""
+        return dirname(path)
 
     def save_json(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""

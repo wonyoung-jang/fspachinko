@@ -60,3 +60,11 @@ class GUIFileDialogFilter(StrEnum):
     """Enumeration for GUI file dialog filters."""
 
     JSON = "JSON Files (*.json)"
+
+
+MENU_STRUCTURE = {
+    GUILabel.FILEMENU: ["save", "save_as", "load", None, "exit"],
+    GUILabel.RUNMENU: ["start", "stop"],
+}
+
+TOOLBAR_STRUCTURE = ["save", "save_as", "load", None, "start", "stop", None, "exit"]

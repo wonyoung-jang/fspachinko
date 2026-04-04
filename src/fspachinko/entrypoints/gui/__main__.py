@@ -8,14 +8,10 @@ from fspachinko.entrypoints.gui.constants import GUIAppSetting
 from fspachinko.entrypoints.gui.helpers import get_icon
 from fspachinko.entrypoints.gui.mainwindow import MainWindow
 
-QCoreApplication.setOrganizationName(GUIAppSetting.ORGANIZATION_NAME)
-QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)
-QCoreApplication.setApplicationName(GUIAppSetting.APPLICATION_NAME)
-
-# Windows only - taskbar icon fix
 try:
     from ctypes import windll
 
+    # Windows only - taskbar icon fix for PySide6
     myappid = "wonyoungjang.fspachinko.random_file_transfer_utility.0.0.1"
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except ImportError:
@@ -24,6 +20,9 @@ except ImportError:
 
 def main() -> None:
     """Run the application."""
+    QCoreApplication.setOrganizationName(GUIAppSetting.ORGANIZATION_NAME)
+    QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)
+    QCoreApplication.setApplicationName(GUIAppSetting.APPLICATION_NAME)
     app = QApplication()
     app.setWindowIcon(get_icon("window"))
     bootstrapper = FSPachinkoBootstrapper()

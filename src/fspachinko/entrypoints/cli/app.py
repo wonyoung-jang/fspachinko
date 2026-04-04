@@ -14,7 +14,7 @@ default_config_path = get_config_path(DefaultPath.CONFIG)
 logger = logging.getLogger(__name__)
 bootstrapper = FSPachinkoBootstrapper()
 bus = bootstrapper.build_message_bus()
-bus.logger.add_cli_log_handler()
+bootstrapper.logger.add_cli_log_handler()
 app = App(help="fspachinko - Random file transfer utility.")
 
 

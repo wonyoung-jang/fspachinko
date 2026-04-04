@@ -7,13 +7,14 @@ from fspachinko.domain.model import DestinationDirectory, DiversityQuota, Transf
 
 if TYPE_CHECKING:
     from collections import deque
-    from collections.abc import Callable
+    from collections.abc import Iterator
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
-    from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
+    from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
+    from fspachinko.helpers import ReportWriter
 
 
 ##################################################################################
@@ -28,7 +29,7 @@ class RunTransferJobHandler:
     filesystem: AbstractFilesystem
     pipeline: AbstractPipeline
 
-    def __call__(self, cmd: RunTransferJob) -> None:
+    def __call__(self, cmd: RunTransferJob) -> Iterator[Event]:
         """Handle the RunTransferJob command.
 
         Side-effects/Outputs:
@@ -36,27 +37,35 @@ class RunTransferJobHandler:
         - Destination logs may be created.
         - Files may be transferred.
         """
+        self.job.is_stop_requested = False
         self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
-        while self.inputs:
-            dest_dir, target_qty, should_create = self.inputs.popleft()
-            dst = DestinationDirectory(path=dest_dir, target_qty=target_qty, should_create=should_create)
-            if dst.should_create:
-                self.filesystem.make_directory(dst.path)
+        for dst in self._iterate_inputs():
             if self.job.is_stop_condition:
                 return
-            self.job.reset()
-            self.job.start_directory(dst)
-            for entry in self.pipeline.walk():
-                if dst.is_success or self.job.is_stop_condition:
-                    self.job.finalize_directory(dst)
-                    break
-                if (
-                    self.job.can_accept(entry)
-                    and self.pipeline.filter_file(entry)
-                    and (newpath := self.pipeline.get_new_path(dst=dst, e=entry))
-                ):
-                    self.pipeline.transfer_file(entry.path, newpath)
-                    self.job.register_transfer(dst, entry, newpath)
+            yield self.job.start_directory(dst)
+            yield from self._transfer_dir(dst)
+            yield self.job.finalize_directory(dst)
+
+    def _iterate_inputs(self) -> Iterator[DestinationDirectory]:
+        """Iterate over the input destination directories."""
+        while self.inputs:
+            dest_dir, target_qty, should_create = self.inputs.popleft()
+            if should_create:
+                self.filesystem.make_directory(dest_dir)
+            yield DestinationDirectory(path=dest_dir, target_qty=target_qty, should_create=should_create)
+
+    def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
+        """Transfer files to a destination directory."""
+        source = self.pipeline.walk()
+        approved = (e for e in source if self.job.can_accept(e))
+        filtered = (e for e in approved if self.pipeline.filter_file(e))
+        mapped = ((e, self.pipeline.get_new_path(dst=dst, e=e)) for e in filtered)
+        valid = ((e, newpath) for e, newpath in mapped if newpath is not None)
+        for entry, newpath in valid:
+            if dst.is_success or self.job.is_stop_condition:
+                break
+            self.pipeline.transfer_file(entry.path, newpath)
+            yield self.job.register_transfer(dst, entry, newpath)
 
 
 @dataclass(slots=True)
@@ -113,21 +122,25 @@ class DirectoryStartedHandler:
 class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
-    get_status: Callable
-    get_report: Callable
     filesystem: AbstractFilesystem
     logger: AbstractLogger
+    reporter: type[ReportWriter]
 
     def __call__(self, evt: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
-        status = self.get_status(
-            success=evt.is_success,
-            stop_requested=evt.is_stop_requested,
-            empty_creation=evt.is_empty_creation,
-            root_locked=evt.is_root_locked,
+        path = evt.path
+        is_empty_creation = evt.is_empty_creation
+        report = self.reporter(
+            path=path,
+            size=evt.size,
+            count=evt.count,
+            target_qty=evt.target_qty,
+            is_success=evt.is_success,
+            is_empty_creation=is_empty_creation,
+            is_stop_requested=evt.is_stop_requested,
+            is_root_locked=evt.is_root_locked,
         )
-        report = self.get_report(evt.path, evt.size, evt.count, evt.target_qty)
-        self.logger.info("%s\n%s", status, report)
-        self.logger.remove_dest_log_filehandler(evt.path)
-        if evt.is_empty_creation:
-            self.filesystem.remove_directory(evt.path)
+        self.logger.info("%s", report)
+        self.logger.remove_dest_log_filehandler(path)
+        if is_empty_creation:
+            self.filesystem.remove_directory(path)

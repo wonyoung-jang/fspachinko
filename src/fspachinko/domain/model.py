@@ -1,14 +1,10 @@
 """Model classes for the domain."""
 
-from collections import Counter, deque
+from collections import Counter
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from fspachinko.domain.commands import Command
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 type Message = Command | Event
 
@@ -107,7 +103,6 @@ class TransferJob:
 
     quota: DiversityQuota = field(default_factory=DiversityQuota)
     is_stop_requested: bool = False
-    events: deque[Event] = field(default_factory=deque)
 
     @property
     def is_stop_condition(self) -> bool:
@@ -119,10 +114,6 @@ class TransferJob:
         """Check if the root directory is locked."""
         return self.quota.is_root_locked
 
-    def reset(self) -> None:
-        """Reset the job state for a new transfer process."""
-        self.quota.reset()
-
     def can_accept(self, entry: FSEntry) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
         return self.quota.can_accept(entry.parent, entry.path)
@@ -131,38 +122,28 @@ class TransferJob:
         """Request to stop the process."""
         self.is_stop_requested = True
 
-    def collect_new_events(self) -> Iterator[Event]:
-        """Collect new events that were generated during the transaction."""
-        while self.events:
-            yield self.events.popleft()
-
-    def start_directory(self, dst: DestinationDirectory) -> None:
+    def start_directory(self, dst: DestinationDirectory) -> Event:
         """Update the directory count in the diversity quota after processing a file."""
-        self.events.append(
-            DirectoryStarted(path=dst.path, target_qty=dst.target_qty),
-        )
+        self.quota.reset()
+        return DirectoryStarted(path=dst.path, target_qty=dst.target_qty)
 
-    def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, new_path: str) -> None:
+    def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, newpath: str) -> Event:
         """Update the job state after processing a file."""
-        dst.accept(entry.size, new_path)
+        dst.accept(entry.size, newpath)
         self.quota.update(entry.parent, entry.path)
-        self.events.append(
-            FileTransferred(count=dst.count, src=entry.path, dst=new_path),
-        )
+        return FileTransferred(count=dst.count, src=entry.path, dst=newpath)
 
-    def finalize_directory(self, dst: DestinationDirectory) -> None:
+    def finalize_directory(self, dst: DestinationDirectory) -> Event:
         """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
-        self.events.append(
-            DirectoryTransferred(
-                path=dst.path,
-                size=dst.size,
-                count=dst.count,
-                target_qty=dst.target_qty,
-                is_success=dst.is_success,
-                is_empty_creation=dst.is_empty_creation,
-                is_stop_requested=self.is_stop_requested,
-                is_root_locked=self.is_root_locked,
-            ),
+        return DirectoryTransferred(
+            path=dst.path,
+            size=dst.size,
+            count=dst.count,
+            target_qty=dst.target_qty,
+            is_success=dst.is_success,
+            is_empty_creation=dst.is_empty_creation,
+            is_stop_requested=self.is_stop_requested,
+            is_root_locked=self.is_root_locked,
         )
 
 
