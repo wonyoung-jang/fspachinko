@@ -40,7 +40,6 @@ cli = [
 ]
 dev = [
     "line-profiler>=5.0.0",
-    "tprof>=1.1.0",
 ]
 docs = [
     "mkdocstrings-python>=2.0.1",
