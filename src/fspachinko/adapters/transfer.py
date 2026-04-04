@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from fspachinko.constants import OSCrossError, TransferMode
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
 
 def _link_fn_is_available(link_fn: Callable) -> bool:
@@ -68,3 +68,9 @@ def available_transfer_fn_factory() -> dict[str, Callable]:
         if not _link_fn_is_available(fn):
             available.pop(mode, None)
     return available
+
+
+@cache
+def available_transfer_fns() -> Sequence[str]:
+    """Get the available transfer function names."""
+    return tuple(available_transfer_fn_factory().keys())

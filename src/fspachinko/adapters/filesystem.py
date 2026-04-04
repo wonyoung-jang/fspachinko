@@ -84,10 +84,10 @@ class Filesystem(AbstractFilesystem):
 
     def json_to_dict(self, path: str) -> dict:
         """Load JSON data from a file."""
-        if not (exists(path) and isfile(path)):
-            return {}
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
+        if exists(path) and isfile(path):
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        return {}
 
     def save_json(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""

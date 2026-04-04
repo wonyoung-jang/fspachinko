@@ -20,6 +20,7 @@ FFPROBE_DURATION_CMD = [
     "-of",
     "default=noprint_wrappers=1:nokey=1",
 ]
+
 TIMEOUT = 2
 
 

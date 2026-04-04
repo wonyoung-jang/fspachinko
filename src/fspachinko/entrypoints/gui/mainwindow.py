@@ -1,25 +1,83 @@
 """Main module."""
 
+import logging
 from os.path import basename, dirname, splitext
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QSettings, Qt, Slot
-from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar
+from PySide6.QtCore import QObject, QSettings, Qt, Signal, Slot
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar, QVBoxLayout, QWidget
 
 from fspachinko.config import ConfigModel
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
-from fspachinko.entrypoints.gui.centralwidget import CentralWidget
-from fspachinko.entrypoints.gui.components import Actions, BaseDockWidget, LogWidget, ProgressWidget, get_component_map
-from fspachinko.entrypoints.gui.constants_gui import GUIFileDialogFilter, GUIName, GUISettingsKey, GUITitle
-from fspachinko.entrypoints.gui.loggers_gui import QtLogHandler
-from fspachinko.entrypoints.gui.qthelpers import MENU_STRUCTURE, TOOLBAR_STRUCTURE
+from fspachinko.entrypoints.gui.components import (
+    Actions,
+    BaseDockWidget,
+    BaseGroupBox,
+    LogWidget,
+    ProgressWidget,
+    get_component_map,
+)
+from fspachinko.entrypoints.gui.constants import GUIFileDialogFilter, GUIName, GUISettingsKey, GUITitle
+from fspachinko.entrypoints.gui.helpers import MENU_STRUCTURE, TOOLBAR_STRUCTURE
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QCloseEvent
 
     from fspachinko.bootstrap import FSPachinkoBootstrapper
+
+
+class CentralWidget(QWidget):
+    """Main widget."""
+
+    def __init__(self, *config_widgets: BaseGroupBox) -> None:
+        """Initialize the main widget."""
+        super().__init__()
+        self._config_widgets: tuple[BaseGroupBox, ...] = tuple(config_widgets)
+        layout = QVBoxLayout(self)
+        for w in self._config_widgets:
+            layout.addWidget(w)
+
+    @property
+    def config(self) -> dict:
+        """Capture the current configuration from the UI."""
+        config = {}
+        for w in self._config_widgets:
+            config.update(w.config)
+        return config
+
+    def restore_config(self, config: dict) -> None:
+        """Restore the configuration to the UI."""
+        for w in self._config_widgets:
+            w.restore(config)
+
+    def toggle(self, *, is_enabled: bool) -> None:
+        """Lock or unlock UI elements."""
+        for w in self._config_widgets:
+            w.setEnabled(is_enabled)
+
+
+class QtLogHandlerSignals(QObject):
+    """Signals for the LogHandler."""
+
+    logged = Signal(str)
+
+
+class QtLogHandler(logging.Handler):
+    """A logging handler that emits log messages to a Qt signal."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the handler and its signals."""
+        super().__init__(*args, **kwargs)
+        self.signals = QtLogHandlerSignals()
+        self.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+        self.setLevel(logging.INFO)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emit a log record by formatting it and emitting the text_written signal."""
+        msg = self.format(record)
+        self.signals.logged.emit(msg)
 
 
 class MainWindow(QMainWindow):

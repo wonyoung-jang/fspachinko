@@ -30,9 +30,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fspachinko.adapters.transfer import available_transfer_fn_factory
+from fspachinko.adapters.transfer import available_transfer_fns
 from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
-from fspachinko.entrypoints.gui.qthelpers import get_icon, get_shortcut, set_qt_tips
+from fspachinko.entrypoints.gui.helpers import get_icon, get_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -426,6 +426,26 @@ class OptionsWidget(BaseGroupBox):
         self.lineedit_rng_seed.setText(c.get("rng_seed", ""))
 
 
+@cache
+def get_component_map() -> Sequence[
+    tuple[type[BaseGroupBox], str, str] | tuple[type[BaseGroupBox], str, str, Sequence[str]]
+]:
+    """Get the mapping of config sections to component classes and their init args."""
+    return (
+        (PathSelectorWidget, "Root", "root"),
+        (PathSelectorWidget, "Destination", "dest"),
+        (FileCountWidget, "File count", "filecount"),
+        (DirectoryCreateWidget, "Create directories", "directory"),
+        (FilenamerWidget, "Filenamer", "filename"),
+        (TextFilterWidget, "Directory names", "dirname"),
+        (TextFilterWidget, "Keywords", "keyword"),
+        (TextFilterWidget, "Extensions", "extension"),
+        (RangeFilterWidget, "File size", "filesize", tuple(SIZE_MAP.keys())),
+        (RangeFilterWidget, "Duration", "duration", tuple(TIME_MAP.keys())),
+        (OptionsWidget, "Options", "options", available_transfer_fns()),
+    )
+
+
 class LogWidget(QTextBrowser):
     """Logging text box."""
 
@@ -475,23 +495,3 @@ class ProgressWidget(QWidget):
         if maximum <= 0:
             return 0
         return int(self.progbar_files.value() * 100 / maximum)
-
-
-@cache
-def get_component_map() -> Sequence[
-    tuple[type[BaseGroupBox], str, str] | tuple[type[BaseGroupBox], str, str, Sequence[str]]
-]:
-    """Get the mapping of config sections to component classes and their init args."""
-    return (
-        (PathSelectorWidget, "Root", "root"),
-        (PathSelectorWidget, "Destination", "dest"),
-        (FileCountWidget, "File count", "filecount"),
-        (DirectoryCreateWidget, "Create directories", "directory"),
-        (FilenamerWidget, "Filenamer", "filename"),
-        (TextFilterWidget, "Directory names", "dirname"),
-        (TextFilterWidget, "Keywords", "keyword"),
-        (TextFilterWidget, "Extensions", "extension"),
-        (RangeFilterWidget, "File size", "filesize", tuple(SIZE_MAP.keys())),
-        (RangeFilterWidget, "Duration", "duration", tuple(TIME_MAP.keys())),
-        (OptionsWidget, "Options", "options", tuple(available_transfer_fn_factory().keys())),
-    )
