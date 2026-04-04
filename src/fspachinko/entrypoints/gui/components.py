@@ -484,9 +484,9 @@ class ProgressWidget(QWidget):
         self.progbar_files.setMaximum(target)
         self.progbar_files.setValue(0)
 
-    def handle_file_transfer(self) -> None:
+    def handle_file_transfer(self, count: int) -> None:
         """Update the file progress bar."""
-        self.progbar_files.setValue(self.progbar_files.value() + 1)
+        self.progbar_files.setValue(count)
 
     @property
     def file_percentage(self) -> int:

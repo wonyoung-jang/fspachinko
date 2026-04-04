@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.adapters.pipeline import AbstractPipeline
-    from fspachinko.domain.commands import ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
+    from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, FileTransferred
 
 
@@ -25,50 +25,38 @@ class RunTransferJobHandler:
 
     job: TransferJob
     inputs: deque[tuple[str, int, bool]]
-
-    def __call__(self, cmd: RunTransferJob) -> None:
-        """Handle the RunTransferJob command."""
-        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
-        while self.inputs:
-            dest_dir, target_qty, should_create = self.inputs.popleft()
-            self.job.dir_ready_to_process(dest_dir, target_qty, should_create=should_create)
-
-
-@dataclass(slots=True)
-class ProcessDirectoryHandler:
-    """Handle the StartProcessingDirectory command."""
-
-    job: TransferJob
     filesystem: AbstractFilesystem
     pipeline: AbstractPipeline
 
-    def __call__(self, cmd: ProcessDirectory) -> None:
-        """Handle the StartProcessingDirectory command.
+    def __call__(self, cmd: RunTransferJob) -> None:
+        """Handle the RunTransferJob command.
 
         Side-effects/Outputs:
         - Destination directory may be created.
         - Destination logs may be created.
         - Files may be transferred.
         """
-        dst = DestinationDirectory(path=cmd.dest_dir, target_qty=cmd.target_qty, should_create=cmd.should_create)
-        if dst.should_create:
-            self.filesystem.make_directory(dst.path)
-        if self.job.is_stop_requested or self.job.is_root_locked:
-            return
-        self.job.reset()
-        self.job.start_directory(dst)
-        for entry in self.pipeline.walk():
-            if dst.is_success or self.job.is_stop_requested or self.job.is_root_locked:
-                break
-            if not (
-                self.job.can_accept(entry)
-                and self.pipeline.filter_file(entry)
-                and (new_path := self.pipeline.get_new_path(dst=dst, e=entry))
-            ):
-                continue
-            self.pipeline.transfer_file(entry.path, new_path)
-            self.job.register_transfer(dst, entry, new_path)
-        self.job.finalize_directory(dst)
+        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+        while self.inputs:
+            dest_dir, target_qty, should_create = self.inputs.popleft()
+            dst = DestinationDirectory(path=dest_dir, target_qty=target_qty, should_create=should_create)
+            if dst.should_create:
+                self.filesystem.make_directory(dst.path)
+            if self.job.is_stop_condition:
+                return
+            self.job.reset()
+            self.job.start_directory(dst)
+            for entry in self.pipeline.walk():
+                if dst.is_success or self.job.is_stop_condition:
+                    self.job.finalize_directory(dst)
+                    break
+                if (
+                    self.job.can_accept(entry)
+                    and self.pipeline.filter_file(entry)
+                    and (newpath := self.pipeline.get_new_path(dst=dst, e=entry))
+                ):
+                    self.pipeline.transfer_file(entry.path, newpath)
+                    self.job.register_transfer(dst, entry, newpath)
 
 
 @dataclass(slots=True)

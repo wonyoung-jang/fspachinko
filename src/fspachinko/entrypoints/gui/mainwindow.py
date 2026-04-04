@@ -58,6 +58,31 @@ class CentralWidget(QWidget):
             w.setEnabled(is_enabled)
 
 
+def build_ui_bars(window: QMainWindow, actions: Actions) -> None:
+    """Build the status, tool, and menu bars."""
+
+    def add_actions_to_bar(
+        bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None] | list[str]
+    ) -> None:
+        """Add actions to a menu or toolbar based on a list of action keys."""
+        for item in actions_names:
+            if item is None:
+                bar.addSeparator()
+            else:
+                action = getattr(actions, item)
+                bar.addAction(action)
+
+    statusbar = window.statusBar()
+    statusbar.setSizeGripEnabled(True)
+    toolbar = window.addToolBar(GUIName.TOOLBAR)
+    toolbar.setObjectName(GUIName.TOOLBAR)
+    add_actions_to_bar(toolbar, actions, TOOLBAR_STRUCTURE)
+    menubar = window.menuBar()
+    for menu_name, action_keys in MENU_STRUCTURE.items():
+        menu = menubar.addMenu(menu_name)
+        add_actions_to_bar(menu, actions, action_keys)
+
+
 class QtLogHandlerSignals(QObject):
     """Signals for the LogHandler."""
 
@@ -201,9 +226,9 @@ class MainWindow(QMainWindow):
         """Stop the process."""
         self.bus.handle(StopProcess())
 
-    def handle_file_transferred(self, _evt: FileTransferred) -> None:
+    def handle_file_transferred(self, evt: FileTransferred) -> None:
         """Update the window title with the current progress."""
-        self.progress_widget.handle_file_transfer()
+        self.progress_widget.handle_file_transfer(evt.count)
         self.setWindowTitle(f"[{self.progress_widget.file_percentage}%] {self._original_title}")
 
     def handle_directory_started(self, cmd: DirectoryStarted) -> None:
@@ -222,28 +247,3 @@ class MainWindow(QMainWindow):
             config_stem, _ = splitext(basename(self.config_path))
             return f"{config_stem} - {GUITitle.WINDOW}"
         return GUITitle.WINDOW
-
-
-def build_ui_bars(window: QMainWindow, actions: Actions) -> None:
-    """Build the status, tool, and menu bars."""
-
-    def add_actions_to_bar(
-        bar: QToolBar | QMenu, actions: Actions, actions_names: list[str | None] | list[str]
-    ) -> None:
-        """Add actions to a menu or toolbar based on a list of action keys."""
-        for item in actions_names:
-            if item is None:
-                bar.addSeparator()
-            else:
-                action = getattr(actions, item)
-                bar.addAction(action)
-
-    statusbar = window.statusBar()
-    statusbar.setSizeGripEnabled(True)
-    toolbar = window.addToolBar(GUIName.TOOLBAR)
-    toolbar.setObjectName(GUIName.TOOLBAR)
-    add_actions_to_bar(toolbar, actions, TOOLBAR_STRUCTURE)
-    menubar = window.menuBar()
-    for menu_name, action_keys in MENU_STRUCTURE.items():
-        menu = menubar.addMenu(menu_name)
-        add_actions_to_bar(menu, actions, action_keys)

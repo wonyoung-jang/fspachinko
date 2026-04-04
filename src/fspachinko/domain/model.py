@@ -4,7 +4,7 @@ from collections import Counter, deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from fspachinko.domain.commands import Command, ProcessDirectory
+from fspachinko.domain.commands import Command
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 
 if TYPE_CHECKING:
@@ -107,7 +107,12 @@ class TransferJob:
 
     quota: DiversityQuota = field(default_factory=DiversityQuota)
     is_stop_requested: bool = False
-    events: deque[Event | Command] = field(default_factory=deque)
+    events: deque[Event] = field(default_factory=deque)
+
+    @property
+    def is_stop_condition(self) -> bool:
+        """Check if any stop condition is met (either stop requested or root locked)."""
+        return self.is_stop_requested or self.is_root_locked
 
     @property
     def is_root_locked(self) -> bool:
@@ -121,6 +126,15 @@ class TransferJob:
     def can_accept(self, entry: FSEntry) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
         return self.quota.can_accept(entry.parent, entry.path)
+
+    def request_stop(self) -> None:
+        """Request to stop the process."""
+        self.is_stop_requested = True
+
+    def collect_new_events(self) -> Iterator[Event]:
+        """Collect new events that were generated during the transaction."""
+        while self.events:
+            yield self.events.popleft()
 
     def start_directory(self, dst: DestinationDirectory) -> None:
         """Update the directory count in the diversity quota after processing a file."""
@@ -136,10 +150,6 @@ class TransferJob:
             FileTransferred(count=dst.count, src=entry.path, dst=new_path),
         )
 
-    def request_stop(self) -> None:
-        """Request to stop the process."""
-        self.is_stop_requested = True
-
     def finalize_directory(self, dst: DestinationDirectory) -> None:
         """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
         self.events.append(
@@ -153,17 +163,6 @@ class TransferJob:
                 is_stop_requested=self.is_stop_requested,
                 is_root_locked=self.is_root_locked,
             ),
-        )
-
-    def collect_new_events(self) -> Iterator[Message]:
-        """Collect new events that were generated during the transaction."""
-        while self.events:
-            yield self.events.popleft()
-
-    def dir_ready_to_process(self, dest_dir: str, target_qty: int, *, should_create: bool) -> None:
-        """Check if the directory is ready to be processed."""
-        self.events.append(
-            ProcessDirectory(dest_dir=dest_dir, target_qty=target_qty, should_create=should_create),
         )
 
 

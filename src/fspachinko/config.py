@@ -302,7 +302,7 @@ class ConfigModelBootstrapper:
         self.rng.seed(c.options.rng_seed)
         self.pipeline.filefilter_fn = self.config_to_file_filter.build(c)
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
-        self.pipeline.transfer_fn = self._build_transfer_fn(c)
+        self.pipeline.transfer_fn = self._build_transfer_fn(c.options.transfer_mode)
         self.pipeline.walker_fn = self._build_walker_fn(c)
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
@@ -322,11 +322,11 @@ class ConfigModelBootstrapper:
             return None
         return self.filesystem.get_unique_path(target, dst.files)
 
-    def _build_transfer_fn(self, c: ConfigModel) -> Callable:
+    def _build_transfer_fn(self, mode: str) -> Callable:
         """Build the transfer function based on the configuration."""
-        return self.available_transfer_fns.get(
-            c.options.transfer_mode, self.available_transfer_fns[self.transfer_mode.DRY_RUN]
-        )
+        if mode in self.available_transfer_fns:
+            return self.available_transfer_fns[mode]
+        return self.available_transfer_fns[self.transfer_mode.DRY_RUN]
 
     def _build_walker_fn(self, c: ConfigModel) -> Callable:
         """Build the walker function based on the configuration."""

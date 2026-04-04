@@ -14,7 +14,7 @@ from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
 from fspachinko.config import ConfigModelBootstrapper, ConfigToFileFilter
 from fspachinko.datapaths import ensure_data_paths
-from fspachinko.domain.commands import Command, ProcessDirectory, RunTransferJob, SaveConfiguration, StopProcess
+from fspachinko.domain.commands import Command, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
 from fspachinko.domain.model import TransferJob
 from fspachinko.helpers import get_report, get_status
@@ -23,7 +23,6 @@ from fspachinko.service.handlers import (
     DirectoryStartedHandler,
     DirectoryTransferredHandler,
     FileTransferredHandler,
-    ProcessDirectoryHandler,
     RunTransferJobHandler,
     SaveProfileHandler,
     StopProcessHandler,
@@ -88,9 +87,6 @@ class FSPachinkoBootstrapper:
             RunTransferJob: RunTransferJobHandler(
                 job=self.job,
                 inputs=self.inputs,
-            ),
-            ProcessDirectory: ProcessDirectoryHandler(
-                job=self.job,
                 filesystem=self.filesystem,
                 pipeline=self.pipeline,
             ),

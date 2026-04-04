@@ -18,15 +18,6 @@ class RunTransferJob(Command):
 
 
 @dataclass(slots=True, frozen=True)
-class ProcessDirectory(Command):
-    """Command to process a single directory (triggers a UoW transaction)."""
-
-    dest_dir: str
-    target_qty: int
-    should_create: bool
-
-
-@dataclass(slots=True, frozen=True)
 class StopProcess(Command):
     """Command to stop the file transfer process."""
 
