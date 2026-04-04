@@ -50,9 +50,13 @@ class RunTransferJobHandler:
         """Iterate over the input destination directories."""
         while self.inputs:
             dest_dir, target_qty, should_create = self.inputs.popleft()
+            dst = DestinationDirectory(path=dest_dir, target_qty=target_qty, should_create=should_create)
             if should_create:
                 self.filesystem.make_directory(dest_dir)
-            yield DestinationDirectory(path=dest_dir, target_qty=target_qty, should_create=should_create)
+            else:
+                files = self.filesystem.get_existing_content_for_existing_dest(dest_dir)
+                dst.files.update(files)
+            yield dst
 
     def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
         """Transfer files to a destination directory."""

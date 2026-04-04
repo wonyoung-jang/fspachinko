@@ -8,7 +8,7 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from fspachinko.constants import OSCrossError, TransferMode
+from fspachinko.constants import TransferMode
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -39,7 +39,7 @@ def hardlink(src: str, dst: str) -> None:
     try:
         link(src, dst)
     except OSError as e:
-        if e.winerror == OSCrossError.WINDOWS or e.errno == OSCrossError.UNIX:
+        if e.errno == 18:  # Invalid cross-device link
             symlink(src, dst)
         else:
             raise

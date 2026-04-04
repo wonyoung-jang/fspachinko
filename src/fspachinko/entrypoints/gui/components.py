@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from fspachinko.adapters.transfer import available_transfer_fns
-from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
+from fspachinko.constants import MAXIMUM_INT, SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
 from fspachinko.entrypoints.gui.helpers import get_icon, get_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
@@ -171,10 +171,10 @@ class FileCountWidget(BaseGroupBox):
         """Initialize the file count widget."""
         super().__init__(title, name)
         self.radio_fixed = QRadioButton("Fixed")
-        self.spin_fixed = QSpinBox(suffix=" files", minimum=1)
+        self.spin_fixed = QSpinBox(suffix=" files", minimum=1, maximum=MAXIMUM_INT)
         self.radio_rand = QRadioButton("Random")
-        self.spin_min_rand = QSpinBox(prefix="Min: ", minimum=1)
-        self.spin_max_rand = QSpinBox(prefix="Max: ", minimum=2)
+        self.spin_min_rand = QSpinBox(prefix="Min: ", minimum=1, maximum=MAXIMUM_INT)
+        self.spin_max_rand = QSpinBox(prefix="Max: ", minimum=2, maximum=MAXIMUM_INT)
         self.spin_min_rand.valueChanged.connect(self.spin_max_rand.setMinimum)
         self.spin_max_rand.valueChanged.connect(self.spin_min_rand.setMaximum)
         self.radio_fixed.toggled.connect(self.spin_fixed.setEnabled)
@@ -223,7 +223,7 @@ class DirectoryCreateWidget(BaseGroupBox):
     def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
         super().__init__(title, name, checkable=True)
-        self.spinbox_folder_count = QSpinBox(suffix=" directories", minimum=1)
+        self.spinbox_folder_count = QSpinBox(suffix=" directories", minimum=1, maximum=MAXIMUM_INT)
         self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
         set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
         set_qt_tips(self.lineedit_folder_name, "Template for naming created folders.")
@@ -340,8 +340,8 @@ class RangeFilterWidget(BaseGroupBox):
     def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, checkable=True)
-        self.spin_min = QDoubleSpinBox(prefix="Min: ")
-        self.spin_max = QDoubleSpinBox(prefix="Max: ")
+        self.spin_min = QDoubleSpinBox(prefix="Min: ", minimum=0.0, maximum=float("inf"))
+        self.spin_max = QDoubleSpinBox(prefix="Max: ", minimum=0.0, maximum=float("inf"))
         self.combo_unit = QComboBox()
         self.combo_unit.addItems(items)
         set_qt_tips(self.spin_min, f"Minimum value for the {name} filter.")
@@ -388,7 +388,7 @@ class OptionsWidget(BaseGroupBox):
         self.combo_transfermode.addItems(transfermodes)
         self.chk_follow_symlink = QCheckBox()
         self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
-        self.spin_max_per_dir = QSpinBox()
+        self.spin_max_per_dir = QSpinBox(minimum=0, maximum=MAXIMUM_INT)
         self.spin_max_per_dir.setSpecialValueText("Unlimited")
         self.chk_unique_folders = QCheckBox()
         set_qt_tips(self.combo_transfermode, "Select the transfer mode to use.")

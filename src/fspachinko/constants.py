@@ -1,8 +1,10 @@
 """Constants."""
 
-from enum import IntEnum, StrEnum
+from enum import StrEnum
 
 import fspachinko
+
+MAXIMUM_INT = 2**31 - 1
 
 
 class DefaultPath(StrEnum):
@@ -22,13 +24,6 @@ class ReStrFmt(StrEnum):
     DIRECTORY = r"(.*){}(.*)"
     KEYWORD = r"(.*){}(.*)"
     EXTENSION = r"{}$"
-
-
-class OSCrossError(IntEnum):
-    """Enumeration for file error codes."""
-
-    WINDOWS = 17
-    UNIX = 18
 
 
 class TransferMode(StrEnum):

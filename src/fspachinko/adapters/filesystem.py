@@ -27,6 +27,10 @@ class AbstractFilesystem(ABC):
         """Check if two files are identical by comparing their contents."""
 
     @abstractmethod
+    def get_existing_content_for_existing_dest(self, path: str) -> dict[str, int]:
+        """Get a dictionary of existing file paths and their sizes within the specified path."""
+
+    @abstractmethod
     def get_existing_subdirs(self, path: str) -> set[str]:
         """Get a set of existing directory paths within the specified path."""
 
@@ -81,6 +85,10 @@ class Filesystem(AbstractFilesystem):
         if cmp(f1, f2, shallow=True):
             return cmp(f1, f2, shallow=False)
         return False
+
+    def get_existing_content_for_existing_dest(self, path: str) -> dict[str, int]:
+        """Get a set of existing file paths within the specified path."""
+        return {e.path: e.stat().st_size for e in scandir(path) if e.is_file()}
 
     def get_existing_subdirs(self, path: str) -> set[str]:
         """Get a set of existing directory paths within the specified path."""
