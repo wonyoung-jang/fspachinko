@@ -54,8 +54,10 @@ class RunTransferJobHandler:
             if should_create:
                 self.filesystem.make_directory(dest_dir)
             else:
-                files = self.filesystem.get_existing_content_for_existing_dest(dest_dir)
-                dst.files.update(files)
+                # Working with an existing dir, need to populate file tracking
+                # to not overwrite existing files and keep track of stats
+                for path, size in self.filesystem.get_existing_files_for_existing_dest(dest_dir):
+                    dst.add(path, size)
             yield dst
 
     def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:

@@ -65,7 +65,8 @@ class DestinationDirectory:
     path: str
     target_qty: int
     should_create: bool
-    files: dict[str, int] = field(default_factory=dict)  # Path: Size
+    files: set[str] = field(default_factory=set)
+    size: int = 0
 
     @property
     def count(self) -> int:
@@ -87,14 +88,10 @@ class DestinationDirectory:
         """Check if the directory was created but no files were found."""
         return self.should_create and self.is_none_found
 
-    @property
-    def size(self) -> int:
-        """Get the total size of files in the directory."""
-        return sum(self.files.values())
-
-    def accept(self, size: int, path: str) -> None:
+    def add(self, path: str, size: int) -> None:
         """Update the directory stats after accepting a file."""
-        self.files[path] = size
+        self.files.add(path)
+        self.size += size
 
 
 @dataclass(slots=True)
@@ -129,7 +126,7 @@ class TransferJob:
 
     def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, newpath: str) -> Event:
         """Update the job state after processing a file."""
-        dst.accept(entry.size, newpath)
+        dst.add(newpath, entry.size)
         self.quota.update(entry.parent, entry.path)
         return FileTransferred(count=dst.count, src=entry.path, dst=newpath)
 
@@ -178,18 +175,17 @@ class FSPachinkoPin:
     subdirs: list[str] = field(default_factory=list)
     files: list[FSEntry] = field(default_factory=list)
 
-    @property
-    def is_empty(self) -> bool:
-        """Check if the pin has no subdirectories or files."""
-        return not self.subdirs and not self.files
-
-    @property
-    def total_entries(self) -> int:
+    def __len__(self) -> int:
         """Get the total number of entries (subdirectories + files) in the pin."""
         return len(self.subdirs) + len(self.files)
 
     @property
+    def is_empty(self) -> bool:
+        """Check if the pin has no subdirectories or files."""
+        return len(self) == 0
+
+    @property
     def subdir_total_ratio(self) -> float:
         """Get the ratio of subdirectories to total entries."""
-        total = self.total_entries
-        return len(self.subdirs) / total if total > 0 else 0.0
+        total = len(self)
+        return len(self.subdirs) / total if total else 0.0

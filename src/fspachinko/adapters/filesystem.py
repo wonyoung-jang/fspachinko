@@ -10,7 +10,7 @@ from os.path import basename, dirname, exists, isfile, join, splitext
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class AbstractFilesystem(ABC):
         """Check if two files are identical by comparing their contents."""
 
     @abstractmethod
-    def get_existing_content_for_existing_dest(self, path: str) -> dict[str, int]:
+    def get_existing_files_for_existing_dest(self, path: str) -> Iterator[tuple[str, int]]:
         """Get a dictionary of existing file paths and their sizes within the specified path."""
 
     @abstractmethod
@@ -86,9 +86,9 @@ class Filesystem(AbstractFilesystem):
             return cmp(f1, f2, shallow=False)
         return False
 
-    def get_existing_content_for_existing_dest(self, path: str) -> dict[str, int]:
+    def get_existing_files_for_existing_dest(self, path: str) -> Iterator[tuple[str, int]]:
         """Get a set of existing file paths within the specified path."""
-        return {e.path: e.stat().st_size for e in scandir(path) if e.is_file()}
+        yield from ((e.path, e.stat().st_size) for e in scandir(path) if e.is_file())
 
     def get_existing_subdirs(self, path: str) -> set[str]:
         """Get a set of existing directory paths within the specified path."""
