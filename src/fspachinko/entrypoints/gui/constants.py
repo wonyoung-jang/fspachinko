@@ -2,6 +2,15 @@
 
 from enum import StrEnum
 
+ACTIONS_CONFIG: dict[str, tuple[str, str]] = {
+    "save": ("&Save Configuration", "Save current configuration (Ctrl+S)"),
+    "save_as": ("Save Configuration &As", "Save current configuration as ... (Ctrl+Shift+S)"),
+    "load": ("&Load Configuration", "Load configuration (Ctrl+O)"),
+    "exit": ("&Exit", "Exit application (Ctrl+W)"),
+    "start": ("&Start", "Start (Ctrl+R)"),
+    "stop": ("S&top", "Stop (ESC)"),
+}
+
 
 class GUIAppSetting(StrEnum):
     """Enumeration for different settings categories."""

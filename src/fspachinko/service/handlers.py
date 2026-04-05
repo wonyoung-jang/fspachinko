@@ -62,8 +62,7 @@ class RunTransferJobHandler:
 
     def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
         """Transfer files to a destination directory."""
-        source = self.pipeline.walk()
-        approved = (e for e in source if self.job.can_accept(e))
+        approved = (e for e in self.pipeline.walk() if self.job.can_accept(e))
         filtered = (e for e in approved if self.pipeline.filter_file(e))
         mapped = ((e, self.pipeline.get_new_path(dst=dst, e=e)) for e in filtered)
         valid = ((e, newpath) for e, newpath in mapped if newpath is not None)
@@ -86,13 +85,13 @@ class StopProcessHandler:
 
 
 @dataclass(slots=True)
-class SaveProfileHandler:
-    """Handle the SaveProfile command."""
+class SaveConfigurationHandler:
+    """Handle the SaveConfiguration command."""
 
     filesystem: AbstractFilesystem
 
     def __call__(self, cmd: SaveConfiguration) -> None:
-        """Handle the SaveProfile command."""
+        """Handle the SaveConfiguration command."""
         self.filesystem.save_json(cmd.path, cmd.config)
 
 

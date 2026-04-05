@@ -23,7 +23,7 @@ from fspachinko.service.handlers import (
     DirectoryTransferredHandler,
     FileTransferredHandler,
     RunTransferJobHandler,
-    SaveProfileHandler,
+    SaveConfigurationHandler,
     StopProcessHandler,
 )
 from fspachinko.service.messagebus import MessageBus
@@ -67,6 +67,7 @@ class FSPachinkoBootstrapper:
     def configure_pipeline_for_run(self, c: ConfigModel) -> None:
         """Configure the pipeline based on the configuration model."""
         self.config_model_bootstrapper.apply(c)
+        self.inputs.clear()
         self.inputs.extend(self.config_model_bootstrapper.build_inputs(c))
 
     def build_message_bus(self) -> MessageBus:
@@ -88,7 +89,7 @@ class FSPachinkoBootstrapper:
             StopProcess: StopProcessHandler(
                 job=self.job,
             ),
-            SaveConfiguration: SaveProfileHandler(
+            SaveConfiguration: SaveConfigurationHandler(
                 filesystem=self.filesystem,
             ),
         }

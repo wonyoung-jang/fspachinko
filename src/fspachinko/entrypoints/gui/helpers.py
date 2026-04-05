@@ -51,7 +51,7 @@ SHORTCUT_MAP = {
 
 
 @cache
-def get_icon(name: str) -> QIcon:
+def get_qt_icon(name: str) -> QIcon:
     """Get cached icon by declarative name."""
     if filename := ICON_MAP.get(name):
         return QIcon(get_icon_path(filename))
@@ -60,7 +60,7 @@ def get_icon(name: str) -> QIcon:
 
 
 @cache
-def get_shortcut(name: str) -> QKeySequence:
+def get_qt_shortcut(name: str) -> QKeySequence:
     """Get cached shortcut by declarative name."""
     if seq := SHORTCUT_MAP.get(name):
         return QKeySequence(seq)
