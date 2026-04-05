@@ -127,14 +127,14 @@ class Presenter(QObject):
         # Logger
         self._bootstrapper.logger.add_handler("qtgui", self._log_handler)
         self._log_handler.signals.logged.connect(self._view.append_log)
-        # Actions -> Worker (Commands)
+        # Action -> Presenter -> Worker (Commands)
         self._actions.start.triggered.connect(self.start)
         self._actions.stop.triggered.connect(self.stop)
         self._actions.save.triggered.connect(self.save)
         self._actions.save_as.triggered.connect(self.save_as)
         self._actions.load.triggered.connect(self.open)
         self._actions.exit.triggered.connect(self._view.close)
-        # GUI Thread -> Worker Thread (Commands)
+        # Presenter -> Worker (Commands)
         self._sig_cmd.connect(self._worker.handle, Qt.ConnectionType.QueuedConnection)
         self._sig_stop.connect(self._worker.handle, Qt.ConnectionType.DirectConnection)
         # Worker -> Presenter (Events)
@@ -297,8 +297,9 @@ class MainWindow(QMainWindow):
         self._log_w = LogWidget()
         self._prog_w = ProgressWidget()
         self.setCentralWidget(self._ui)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, BaseDockWidget(self._log_w, "LogDock"))
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, BaseDockWidget(self._prog_w, "ProgressDock"))
+        area = Qt.DockWidgetArea.BottomDockWidgetArea
+        self.addDockWidget(area, BaseDockWidget(self._log_w, "Log", "log-dock"))
+        self.addDockWidget(area, BaseDockWidget(self._prog_w, "Progress", "progress-dock"))
         self._presenter = Presenter(self, bootstrapper)
 
     # -- IView -----------------------------------------------------------------

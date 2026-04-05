@@ -66,11 +66,13 @@ class Actions:
 class BaseDockWidget(QDockWidget):
     """Base class for dock widgets with common functionality."""
 
-    def __init__(self, w: QWidget, name: str) -> None:
+    def __init__(self, w: QWidget, title: str, name: str) -> None:
         """Initialize the base dock widget."""
-        super().__init__()
+        super().__init__(title)
         self.setObjectName(name)
         self.setWidget(w)
+        f = QDockWidget.DockWidgetFeature
+        self.setFeatures(f.DockWidgetMovable | f.DockWidgetFloatable)
 
 
 class BaseGroupBox(QGroupBox):
