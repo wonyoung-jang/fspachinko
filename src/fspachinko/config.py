@@ -2,6 +2,7 @@
 
 import logging
 import re
+from collections import deque
 from dataclasses import dataclass, field
 from os.path import isabs, realpath
 from typing import TYPE_CHECKING
@@ -304,6 +305,7 @@ class ConfigModelBootstrapper:
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
         self.pipeline.transfer_fn = self._build_transfer_fn(c.options.transfer_mode)
         self.pipeline.walker_fn = self._build_walker_fn(c)
+        self.pipeline.inputs = deque(self._build_inputs(c))
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
@@ -344,7 +346,7 @@ class ConfigModelBootstrapper:
             rng=self.rng,
         )
 
-    def build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:
+    def _build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:
         """Build the inputs for the pipeline based on the configuration."""
         dst = c.dest
         cf = c.filecount

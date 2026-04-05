@@ -8,7 +8,7 @@ from fspachinko.bootstrap import FSPachinkoBootstrapper
 from fspachinko.config import ConfigModel
 from fspachinko.constants import DefaultPath
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import RunTransferJob
+from fspachinko.domain.commands import ConfigurePipeline, RunTransferJob
 
 default_config_path = get_config_path(DefaultPath.CONFIG)
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def run(config_path: str = default_config_path) -> None:
     with open(config_path, encoding="utf-8") as f:
         data = f.read()
     config = ConfigModel.model_validate_json(data)
-    bootstrapper.configure_pipeline_for_run(config)
+    bus.handle(ConfigurePipeline(config=config))
     bus.handle(
         RunTransferJob(
             root=config.root,

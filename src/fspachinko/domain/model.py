@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from fspachinko.domain.commands import Command
-from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
+from fspachinko.domain.events import Event
 
 type Message = Command | Event
 
@@ -119,29 +119,14 @@ class TransferJob:
         """Request to stop the process."""
         self.is_stop_requested = True
 
-    def start_directory(self, dst: DestinationDirectory) -> Event:
+    def start_directory(self) -> None:
         """Update the directory count in the diversity quota after processing a file."""
         self.quota.reset()
-        return DirectoryStarted(path=dst.path, target_qty=dst.target_qty)
 
-    def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, newpath: str) -> Event:
+    def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, newpath: str) -> None:
         """Update the job state after processing a file."""
         dst.add(newpath, entry.size)
         self.quota.update(entry.parent, entry.path)
-        return FileTransferred(count=dst.count, src=entry.path, dst=newpath)
-
-    def finalize_directory(self, dst: DestinationDirectory) -> Event:
-        """Finalize the processing of a directory (e.g., for cleanup or reporting)."""
-        return DirectoryTransferred(
-            path=dst.path,
-            size=dst.size,
-            count=dst.count,
-            target_qty=dst.target_qty,
-            is_success=dst.is_success,
-            is_empty_creation=dst.is_empty_creation,
-            is_stop_requested=self.is_stop_requested,
-            is_root_locked=self.is_root_locked,
-        )
 
 
 @dataclass(slots=True, frozen=True)

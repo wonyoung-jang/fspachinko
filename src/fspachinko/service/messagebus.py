@@ -58,5 +58,5 @@ class MessageBus:
                 logger.debug("Event: %s with handler %s", evt, handler)
                 handler(evt)
             except Exception:
-                logger.exception("Exception handling event %s", evt)
+                logger.exception("Exception handling event %s with handler %s", evt, handler)
                 continue

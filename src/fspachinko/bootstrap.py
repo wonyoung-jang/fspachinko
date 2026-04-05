@@ -1,7 +1,6 @@
 """Builder module for core functionality."""
 
 import random
-from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -14,14 +13,26 @@ from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
 from fspachinko.config import ConfigModelBootstrapper, ConfigToFileFilter
 from fspachinko.datapaths import ensure_data_paths
-from fspachinko.domain.commands import Command, RunTransferJob, SaveConfiguration, StopProcess
-from fspachinko.domain.events import DirectoryStarted, DirectoryTransferred, Event, FileTransferred
+from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
+from fspachinko.domain.events import (
+    DirectoryStarted,
+    DirectoryTransferred,
+    Event,
+    FileTransferred,
+    PipelineConfigured,
+    RunFinished,
+    RunStarted,
+)
 from fspachinko.domain.model import TransferJob
 from fspachinko.helpers import ReportWriter
 from fspachinko.service.handlers import (
+    ConfigurePipelineHandler,
     DirectoryStartedHandler,
     DirectoryTransferredHandler,
     FileTransferredHandler,
+    PipelineConfiguredHandler,
+    RunFinishedHandler,
+    RunStartedHandler,
     RunTransferJobHandler,
     SaveConfigurationHandler,
     StopProcessHandler,
@@ -30,8 +41,6 @@ from fspachinko.service.messagebus import MessageBus
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from fspachinko.config import ConfigModel
 
 
 @dataclass(slots=True)
@@ -45,30 +54,23 @@ class FSPachinkoBootstrapper:
     duration_fn: Callable[[str], float] = field(default_factory=duration_fn_factory)
     job: TransferJob = field(default_factory=TransferJob)
     rng: random.Random = field(default_factory=random.Random)
-    inputs: deque[tuple[str, int, bool]] = field(default_factory=deque)
-    template_filenamer: type[AbstractFilenamer] = TemplateFilenamer
-    walker: type[AbstractFSWalker] = FSWalker
-    reporter: type[ReportWriter] = ReportWriter
-    config_model_bootstrapper: ConfigModelBootstrapper = field(init=False)
+    filenamer_cls: type[AbstractFilenamer] = TemplateFilenamer
+    walker_cls: type[AbstractFSWalker] = FSWalker
+    reporter_cls: type[ReportWriter] = ReportWriter
+    configurator: ConfigModelBootstrapper = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
         ensure_data_paths()
-        self.config_model_bootstrapper = ConfigModelBootstrapper(
+        self.configurator = ConfigModelBootstrapper(
             pipeline=self.pipeline,
             filesystem=self.filesystem,
             rng=self.rng,
             available_transfer_fns=self.available_transfer_fns,
-            template_filenamer=self.template_filenamer,
-            walker=self.walker,
+            template_filenamer=self.filenamer_cls,
+            walker=self.walker_cls,
             config_to_file_filter=ConfigToFileFilter(get_duration=self.duration_fn),
         )
-
-    def configure_pipeline_for_run(self, c: ConfigModel) -> None:
-        """Configure the pipeline based on the configuration model."""
-        self.config_model_bootstrapper.apply(c)
-        self.inputs.clear()
-        self.inputs.extend(self.config_model_bootstrapper.build_inputs(c))
 
     def build_message_bus(self) -> MessageBus:
         """Bootstrap the application and return the message bus."""
@@ -80,9 +82,11 @@ class FSPachinkoBootstrapper:
     def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""
         return {
+            ConfigurePipeline: ConfigurePipelineHandler(
+                configurator=self.configurator,
+            ),
             RunTransferJob: RunTransferJobHandler(
                 job=self.job,
-                inputs=self.inputs,
                 filesystem=self.filesystem,
                 pipeline=self.pipeline,
             ),
@@ -97,6 +101,16 @@ class FSPachinkoBootstrapper:
     def get_event_handlers(self) -> dict[type[Event], list[Callable]]:
         """Get the event handlers."""
         return {
+            PipelineConfigured: [
+                PipelineConfiguredHandler(
+                    logger=self.logger,
+                ),
+            ],
+            RunStarted: [
+                RunStartedHandler(
+                    logger=self.logger,
+                ),
+            ],
             FileTransferred: [
                 FileTransferredHandler(
                     logger=self.logger,
@@ -111,7 +125,12 @@ class FSPachinkoBootstrapper:
                 DirectoryTransferredHandler(
                     filesystem=self.filesystem,
                     logger=self.logger,
-                    reporter=self.reporter,
+                    reporter=self.reporter_cls,
+                ),
+            ],
+            RunFinished: [
+                RunFinishedHandler(
+                    logger=self.logger,
                 ),
             ],
         }

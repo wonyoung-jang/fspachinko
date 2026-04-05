@@ -1,11 +1,22 @@
 """Commands."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fspachinko.config import ConfigModel
 
 
 @dataclass(frozen=True)
 class Command:
     """Base class for commands."""
+
+
+@dataclass(slots=True, frozen=True)
+class ConfigurePipeline(Command):
+    """Command to configure the pipeline."""
+
+    config: ConfigModel
 
 
 @dataclass(slots=True, frozen=True)

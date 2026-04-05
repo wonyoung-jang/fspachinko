@@ -41,6 +41,7 @@ extend-exclude = [
 select = ["ALL"]
 ignore = [
     "ANN401",
+    "D102",
     "D203",
     "D213",
     "COM812",

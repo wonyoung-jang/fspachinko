@@ -9,6 +9,18 @@ class Event:
 
 
 @dataclass(slots=True, frozen=True)
+class RunStarted(Event):
+    """Event after the transfer job is started."""
+
+
+@dataclass(slots=True, frozen=True)
+class PipelineConfigured(Event):
+    """Event after pipeline is configured."""
+
+    dir_count: int
+
+
+@dataclass(slots=True, frozen=True)
 class FileTransferred(Event):
     """Event after file is transferred."""
 
@@ -37,3 +49,8 @@ class DirectoryTransferred(Event):
     is_empty_creation: bool
     is_stop_requested: bool
     is_root_locked: bool
+
+
+@dataclass(slots=True, frozen=True)
+class RunFinished(Event):
+    """Event after the transfer job is finished."""
