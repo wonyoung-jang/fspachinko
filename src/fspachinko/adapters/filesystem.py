@@ -19,7 +19,7 @@ class AbstractFilesystem(ABC):
     """Abstract interface for filesystem operations."""
 
     @abstractmethod
-    def get_unique_path(self, path: str, paths: Iterable[str]) -> str:
+    def get_unique_path(self, path: str, existing: Iterable[str]) -> str:
         """Get a new path, ensuring it doesn't already exist."""
 
     @abstractmethod
@@ -66,9 +66,9 @@ class AbstractFilesystem(ABC):
 class Filesystem(AbstractFilesystem):
     """Concrete implementation of AbstractFilesystem using the local filesystem."""
 
-    def get_unique_path(self, path: str, paths: Iterable[str]) -> str:
+    def get_unique_path(self, path: str, existing: Iterable[str]) -> str:
         """Get a new path, ensuring it doesn't already exist."""
-        if path not in paths:
+        if path not in existing:
             return path
         stem, _, ext = path.rpartition(".")
         if not stem:
@@ -76,7 +76,7 @@ class Filesystem(AbstractFilesystem):
         else:
             ext = f".{ext}"
         x = 2
-        while (candidate := f"{stem} ({x}){ext}") in paths:
+        while (candidate := f"{stem} ({x}){ext}") in existing:
             x += 1
         return candidate
 

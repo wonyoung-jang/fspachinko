@@ -24,39 +24,39 @@ class MessageBus:
     command_handlers: dict[type[Command], Callable[[Command], Any]]
     event_handlers: dict[type[Event], list[Callable[[Event], None]]]
 
-    def subscribe(self, message: type[Message], handler: Callable) -> None:
+    def subscribe(self, msg: type[Message], handler: Callable) -> None:
         """Subscribe a handler to a message type."""
-        if issubclass(message, Event):
-            self.event_handlers[message].append(handler)
-        elif issubclass(message, Command):
-            self.command_handlers[message] = handler
+        if issubclass(msg, Event):
+            self.event_handlers[msg].append(handler)
+        elif issubclass(msg, Command):
+            self.command_handlers[msg] = handler
 
-    def handle(self, message: Message) -> None:
+    def handle(self, msg: Message) -> None:
         """Handle a message, which can be either a command or an event."""
-        if isinstance(message, Event):
-            self.handle_event(message)
-        elif isinstance(message, Command):
-            self.handle_command(message)
+        if isinstance(msg, Event):
+            self.handle_event(msg)
+        elif isinstance(msg, Command):
+            self.handle_command(msg)
 
-    def handle_command(self, command: Command) -> None:
+    def handle_command(self, cmd: Command) -> None:
         """Handle a command by calling its handler and collecting any new events that are generated."""
-        logger.debug("Command: %s", command)
+        logger.debug("Command: %s", cmd)
         try:
-            handler = self.command_handlers[type(command)]
-            result = handler(command)
+            handler = self.command_handlers[type(cmd)]
+            result = handler(cmd)
             if isinstance(result, Iterator):
                 for msg in result:
                     self.handle(msg)
         except Exception:
-            logger.exception("Exception handling command %s", command)
+            logger.exception("Exception handling command %s", cmd)
             raise
 
-    def handle_event(self, event: Event) -> None:
+    def handle_event(self, evt: Event) -> None:
         """Handle an event by calling its handlers and collecting any new events that are generated."""
-        for handler in self.event_handlers[type(event)]:
+        for handler in self.event_handlers[type(evt)]:
             try:
-                logger.debug("Event: %s with handler %s", event, handler)
-                handler(event)
+                logger.debug("Event: %s with handler %s", evt, handler)
+                handler(evt)
             except Exception:
-                logger.exception("Exception handling event %s", event)
+                logger.exception("Exception handling event %s", evt)
                 continue

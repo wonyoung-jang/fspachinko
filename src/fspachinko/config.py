@@ -307,19 +307,27 @@ class ConfigModelBootstrapper:
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
-        filenamer = self.template_filenamer(c.filename.template) if c.filename.is_enabled else None
-        return lambda dst, e, fn=filenamer: self._get_new_path_fn(dst, e, fn)
+        filename_fn = self.template_filenamer(c.filename.template) if c.filename.is_enabled else None
+        return lambda dst, e, fn=filename_fn: self._get_new_path_fn(dst, e, fn)
 
-    def _get_new_path_fn(self, dst: DestinationDirectory, e: FSEntry, filenamer: Callable | None = None) -> str | None:
+    def _get_new_path_fn(
+        self, dst: DestinationDirectory, e: FSEntry, filename_fn: Callable | None = None
+    ) -> str | None:
         """Check if the original file name can be used without transfer."""
-        new_stem = filenamer(e, dst.count) if filenamer else e.stem
+        new_stem = filename_fn(e, dst.count) if filename_fn else e.stem
         suffix = e.ext.casefold()
         target = self.filesystem.join_path(dst.path, f"{new_stem}{suffix}")
         if target not in dst.files:
             return target
-        # If the file already exists and is the same, skip transferring it.
+        # The target name is already in the destination.
+        # Check if the existing name is the same file.
+        # Cases when it may not be:
+        #   2026_04_05/audio.mp4, 2026_04_05/audio.mp4
+        #   Same name in two different source directories, but different files
         if self.filesystem.are_files_identical(e.path, target):
+            # If the files are the same, then this is not a valid file transfer
             return None
+        # If the files are different, find a new name for it so there's no overwriting or errors
         return self.filesystem.get_unique_path(target, dst.files)
 
     def _build_transfer_fn(self, mode: str) -> Callable:
@@ -333,8 +341,7 @@ class ConfigModelBootstrapper:
         return self.walker(
             root=c.root,
             should_follow_symlink=c.options.should_follow_symlink,
-            rng_random_fn=self.rng.random,
-            rng_choice_fn=self.rng.choice,
+            rng=self.rng,
         )
 
     def build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:

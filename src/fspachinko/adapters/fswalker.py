@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 from fspachinko.domain.model import FSEntry, FSPachinkoPin
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    import random
+    from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,7 @@ class AbstractFSWalker(ABC):
 
     root: str
     should_follow_symlink: bool
-    rng_random_fn: Callable
-    rng_choice_fn: Callable
+    rng: random.Random
 
     @abstractmethod
     def __call__(self) -> Iterator[FSEntry]:
@@ -33,17 +33,15 @@ class AbstractFSWalker(ABC):
 class FSWalker(AbstractFSWalker):
     """Filesystem walker implementation."""
 
-    board: dict[str, FSPachinkoPin] = field(default_factory=dict)
+    _board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
-        if self.root not in self.board:
-            self.get_pin(self.root)
         _root = self.root
         curr = self.root
-        pop = self.board.pop
-        _random = self.rng_random_fn
-        _choice = self.rng_choice_fn
+        pop = self._board.pop
+        _random = self.rng.random
+        _choice = self.rng.choice
         while True:
             pin = self.get_pin(curr)
             if not pin.is_scanned:
@@ -63,7 +61,7 @@ class FSWalker(AbstractFSWalker):
 
     def get_pin(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""
-        return self.board.setdefault(path, FSPachinkoPin(path=path))
+        return self._board.setdefault(path, FSPachinkoPin(path=path))
 
     def scan_pin(self, pin: FSPachinkoPin) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""

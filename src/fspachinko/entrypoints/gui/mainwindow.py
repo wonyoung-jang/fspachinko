@@ -3,12 +3,12 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QObject, QSettings, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QSettings, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar, QVBoxLayout, QWidget
 
 from fspachinko.config import ConfigModel
 from fspachinko.datapaths import get_config_path
-from fspachinko.domain.commands import RunTransferJob, SaveConfiguration, StopProcess
+from fspachinko.domain.commands import Command, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred
 from fspachinko.entrypoints.gui.components import (
     Actions,
@@ -110,18 +110,50 @@ class QtLogHandler(logging.Handler):
         self.signals.logged.emit(msg)
 
 
+class BusWorker(QObject):
+    """Worker for handling the message bus."""
+
+    directory_started = Signal(DirectoryStarted)
+    file_transferred = Signal(FileTransferred)
+    finished = Signal()
+
+    def __init__(self, bootstrapper: FSPachinkoBootstrapper) -> None:
+        """Initialize the worker with the bootstrapper."""
+        super().__init__()
+        self.bootstrapper = bootstrapper
+        self.bus = self.bootstrapper.build_message_bus()
+        self.bus.subscribe(DirectoryStarted, self.directory_started.emit)
+        self.bus.subscribe(FileTransferred, self.file_transferred.emit)
+
+    @Slot()
+    def handle(self, cmd: Command) -> None:
+        """Handle a command and emit a finished signal when done."""
+        self.bus.handle(cmd)
+        if isinstance(cmd, RunTransferJob):
+            self.finished.emit()
+
+    @Slot()
+    def stop(self, cmd: Command) -> None:
+        """Stop the worker."""
+        self.handle(cmd)
+
+    def configure_pipeline(self, config: ConfigModel) -> None:
+        """Configure the pipeline for a run."""
+        self.bootstrapper.configure_pipeline_for_run(config)
+
+
 class MainWindow(QMainWindow):
     """Main application window."""
+
+    _cmd_requested = Signal(Command)
 
     def __init__(self, bootstrapper: FSPachinkoBootstrapper) -> None:
         """Initialize the main window."""
         super().__init__()
-        self.bootstrapper = bootstrapper
-        self.bus = bootstrapper.build_message_bus()
         self.filesystem = bootstrapper.filesystem
-        self._actions = Actions.build()
-        self._original_title = ""
+        self._original_title = self.windowTitle()
         self._config_path = ""
+        self._actions = Actions.build()
         gui_log_handler = QtLogHandler()
         bootstrapper.logger.add_handler("qtgui", gui_log_handler)
         self.log_signal = gui_log_handler.signals
@@ -133,39 +165,34 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, BaseDockWidget(self.log_widget, "LogDock"))
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, BaseDockWidget(self.progress_widget, "ProgressDock"))
         build_ui_bars(self, self._actions)
-        self.init_ui_settings()
-        self.init_ui_connections()
-
-    def init_ui_connections(self) -> None:
-        """Initialize connections."""
-        self.bus.subscribe(FileTransferred, self.handle_file_transferred)
-        self.bus.subscribe(DirectoryStarted, self.handle_directory_started)
+        self._thread = QThread()
+        self._worker = BusWorker(bootstrapper)
+        self._worker.moveToThread(self._thread)
+        self._worker.directory_started.connect(self.handle_directory_started)
+        self._worker.file_transferred.connect(self.handle_file_transferred)
+        self._worker.finished.connect(self.handle_finished)
+        self._thread.finished.connect(self._worker.deleteLater)
+        self._thread.start()
+        self._qsettings = QSettings()
+        if (geometry := self._qsettings.value(GUISettingsKey.GEOMETRY)) and isinstance(geometry, bytes | bytearray):
+            self.restoreGeometry(geometry)
+        if (state := self._qsettings.value(GUISettingsKey.STATE)) and isinstance(state, bytes | bytearray):
+            self.restoreState(state)
+        if config_path := self._qsettings.value(GUISettingsKey.CONFIG):
+            self._config_path = get_config_path(config_path)
+            self.setWindowTitle(self.get_window_title())
+            self.ui.restore_config(self.filesystem.json_to_dict(self._config_path))
+        self._cmd_requested.connect(self._worker.handle)
         self.log_signal.logged.connect(self.log_widget.append)
         self._actions.save.triggered.connect(self.save_config)
-        self._actions.save_as.triggered.connect(self.save_config_as_dialog)
-        self._actions.load.triggered.connect(self.open_config_dialog)
-        self._actions.exit.triggered.connect(self.on_close)
-        self._actions.start.triggered.connect(self.on_start)
-        self._actions.stop.triggered.connect(self.on_stop)
-
-    def init_ui_settings(self) -> None:
-        """Initialize GUI settings manager."""
-        qsettings = QSettings()
-        if (geometry := qsettings.value(GUISettingsKey.GEOMETRY)) and isinstance(geometry, bytes | bytearray):
-            self.restoreGeometry(geometry)
-        if (state := qsettings.value(GUISettingsKey.STATE)) and isinstance(state, bytes | bytearray):
-            self.restoreState(state)
-        if profile_path := qsettings.value(GUISettingsKey.CONFIG):
-            self.update_config_path(profile_path)
-            self.ui.restore_config(self.filesystem.json_to_dict(self._config_path))
+        self._actions.save_as.triggered.connect(self.save_config_as)
+        self._actions.load.triggered.connect(self.open_config)
+        self._actions.exit.triggered.connect(self.close)
+        self._actions.start.triggered.connect(self.start)
+        self._actions.stop.triggered.connect(self.stop)
 
     @Slot()
-    def save_config(self) -> None:
-        """Save the current config."""
-        self.bus.handle(SaveConfiguration(path=self._config_path, config=self.ui.config))
-
-    @Slot()
-    def save_config_as_dialog(self) -> None:
+    def save_config_as(self) -> None:
         """Save a GUI config via dialog."""
         config_path, _ = QFileDialog.getSaveFileName(
             parent=self,
@@ -174,11 +201,12 @@ class MainWindow(QMainWindow):
             filter=GUIFileDialogFilter.JSON,
         )
         if config_path:
-            self.update_config_path(config_path)
+            self._config_path = get_config_path(config_path)
+            self.setWindowTitle(self.get_window_title())
             self.save_config()
 
     @Slot()
-    def open_config_dialog(self) -> None:
+    def open_config(self) -> None:
         """Load a GUI config via dialog."""
         config_path, _ = QFileDialog.getOpenFileName(
             parent=self,
@@ -187,56 +215,44 @@ class MainWindow(QMainWindow):
             filter=GUIFileDialogFilter.JSON,
         )
         if config_path:
-            self.update_config_path(config_path)
+            self._config_path = get_config_path(config_path)
+            self.setWindowTitle(self.get_window_title())
             self.ui.restore_config(self.filesystem.json_to_dict(self._config_path))
 
-    def update_config_path(self, path: str) -> None:
-        """Set the current config path."""
-        self._config_path = get_config_path(path)
-        self.setWindowTitle(self.get_window_title())
-
-    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        """Handle window close event."""
-        self.on_stop()
-        qsettings = QSettings()
-        qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
-        qsettings.setValue(GUISettingsKey.STATE, self.saveState())
-        qsettings.setValue(GUISettingsKey.CONFIG, self._config_path)
-        super().closeEvent(event)
-
     @Slot()
-    def on_close(self) -> None:
-        """Handle the close action."""
-        self.on_stop()
-        self.close()
-
-    @Slot()
-    def on_start(self) -> None:
+    def start(self) -> None:
         """Start the process and disable UI elements."""
         self._original_title = self.windowTitle()
         self.ui.toggle(is_enabled=False)
         config = ConfigModel.model_validate(self.ui.config)
-        self.bootstrapper.configure_pipeline_for_run(config)
+        self._worker.configure_pipeline(config)
         self.progress_widget.handle_start_process(config.directory.count)
-        self.bus.handle(
-            RunTransferJob(
-                root=config.root,
-                max_per_dir=config.options.max_per_dir,
-                unique_files_only=config.options.is_create_unique_dirs,
-            ),
+        run_cmd = RunTransferJob(
+            root=config.root,
+            max_per_dir=config.options.max_per_dir,
+            unique_files_only=config.options.is_create_unique_dirs,
         )
-        self.handle_finished()
+        self._cmd_requested.emit(run_cmd)
 
     @Slot()
-    def on_stop(self) -> None:
+    def stop(self) -> None:
         """Stop the process."""
-        self.bus.handle(StopProcess())
+        stop_cmd = StopProcess()
+        self._worker.stop(stop_cmd)
 
+    @Slot()
+    def save_config(self) -> None:
+        """Save the current config."""
+        save_config_cmd = SaveConfiguration(path=self._config_path, config=self.ui.config)
+        self._cmd_requested.emit(save_config_cmd)
+
+    @Slot(FileTransferred)
     def handle_file_transferred(self, evt: FileTransferred) -> None:
         """Update the window title with the current progress."""
         self.progress_widget.handle_file_transfer(evt.count)
         self.setWindowTitle(f"[{self.progress_widget.file_percentage}%] {self._original_title}")
 
+    @Slot(DirectoryStarted)
     def handle_directory_started(self, cmd: DirectoryStarted) -> None:
         """Update the window title with the current progress."""
         self.progress_widget.handle_directory_start(cmd.target_qty)
@@ -254,3 +270,13 @@ class MainWindow(QMainWindow):
         else:
             stem = "None"
         return f"{stem} - {GUITitle.WINDOW}"
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        """Handle window close event."""
+        self.stop()
+        self._thread.quit()
+        self._thread.wait()
+        self._qsettings.setValue(GUISettingsKey.GEOMETRY, self.saveGeometry())
+        self._qsettings.setValue(GUISettingsKey.STATE, self.saveState())
+        self._qsettings.setValue(GUISettingsKey.CONFIG, self._config_path)
+        super().closeEvent(event)

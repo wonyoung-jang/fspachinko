@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from functools import cache
 from os.path import exists, isdir
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl, Slot
 from PySide6.QtGui import QAction, QDesktopServices
@@ -32,7 +32,8 @@ from PySide6.QtWidgets import (
 
 from fspachinko.adapters.transfer import available_transfer_fns
 from fspachinko.constants import MAXIMUM_INT, SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
-from fspachinko.entrypoints.gui.helpers import get_icon, get_shortcut, set_qt_tips
+from fspachinko.entrypoints.gui.constants import ACTIONS_CONFIG
+from fspachinko.entrypoints.gui.helpers import get_qt_icon, get_qt_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -50,21 +51,13 @@ class Actions:
     exit: QAction
     start: QAction
     stop: QAction
-    _CONFIG: ClassVar[dict[str, tuple[str, str]]] = {
-        "save": ("&Save Configuration", "Save current configuration (Ctrl+S)"),
-        "save_as": ("Save Configuration &As", "Save current configuration as ... (Ctrl+Shift+S)"),
-        "load": ("&Load Configuration", "Load configuration (Ctrl+O)"),
-        "exit": ("&Exit", "Exit application (Ctrl+W)"),
-        "start": ("&Start", "Start (Ctrl+R)"),
-        "stop": ("S&top", "Stop (ESC)"),
-    }
 
     @classmethod
-    def build(cls) -> Actions:
+    def build(cls, config: dict = ACTIONS_CONFIG) -> Actions:
         """Get file menu actions."""
         actions = {}
-        for name, (text, tip) in cls._CONFIG.items():
-            action = QAction(get_icon(name), text, shortcut=get_shortcut(name))
+        for name, (text, tip) in config.items():
+            action = QAction(get_qt_icon(name), text, shortcut=get_qt_shortcut(name))
             set_qt_tips(action, tip)
             actions[name] = action
         return cls(**actions)
@@ -76,8 +69,8 @@ class BaseDockWidget(QDockWidget):
     def __init__(self, w: QWidget, name: str) -> None:
         """Initialize the base dock widget."""
         super().__init__()
-        self.setWidget(w)
         self.setObjectName(name)
+        self.setWidget(w)
 
 
 class BaseGroupBox(QGroupBox):
@@ -85,21 +78,26 @@ class BaseGroupBox(QGroupBox):
 
     def __init__(self, title: str, name: str, *, checkable: bool = False) -> None:
         """Initialize the base group box."""
-        super().__init__(title=title, checkable=checkable, flat=True)
-        self.name = name
+        super().__init__()
+        self.setCheckable(checkable)
+        self.setFlat(True)
+        self.setObjectName(name)
+        self.setTitle(title)
 
     @property
     def config(self) -> dict:
         """Return clean data for the config."""
-        raise NotImplementedError
+        msg = "Config property not implemented for this widget."
+        raise NotImplementedError(msg)
 
     def restore(self, config: dict) -> None:
         """Restore the widget from config data."""
-        raise NotImplementedError
+        msg = "Restore method not implemented for this widget."
+        raise NotImplementedError(msg)
 
     def _section(self, config: dict) -> dict:
         """Get the relevant section of the config."""
-        return config.get(self.name, {})
+        return config.get(self.objectName(), {})
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -109,8 +107,8 @@ class PathSelectorWidget(BaseGroupBox):
         """Initialize the path selector widget."""
         super().__init__(title, name)
         self.lbl_selected = QLabel()
-        self.btn_browse = QPushButton(get_icon("browse"), "Browse")
-        self.btn_open = QPushButton(get_icon("open_dir"), "Open")
+        self.btn_browse = QPushButton(get_qt_icon("browse"), "Browse")
+        self.btn_open = QPushButton(get_qt_icon("open_dir"), "Open")
         self.setAcceptDrops(True)
         self.btn_browse.clicked.connect(self.browse)
         self.btn_open.clicked.connect(self.open)
@@ -126,11 +124,13 @@ class PathSelectorWidget(BaseGroupBox):
     @property
     def config(self) -> dict:
         """Return clean data for the config."""
-        return {self.name: self.lbl_selected.text()}
+        return {
+            self.objectName(): self.lbl_selected.text(),
+        }
 
     def restore(self, config: dict) -> None:
         """Restore the path selector widget from config data."""
-        self.lbl_selected.setText(config.get(self.name, ""))
+        self.lbl_selected.setText(config.get(self.objectName(), ""))
 
     @Slot()
     def browse(self) -> None:
@@ -196,7 +196,7 @@ class FileCountWidget(BaseGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
-            self.name: {
+            self.objectName(): {
                 "count": self.spin_fixed.value(),
                 "is_rand_enabled": self.radio_rand.isChecked(),
                 "rand_min": self.spin_min_rand.value(),
@@ -235,7 +235,7 @@ class DirectoryCreateWidget(BaseGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
-            self.name: {
+            self.objectName(): {
                 "is_enabled": self.isChecked(),
                 "count": self.spinbox_folder_count.value(),
                 "name": self.lineedit_folder_name.text(),
@@ -283,7 +283,7 @@ class FilenamerWidget(BaseGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
-            self.name: {
+            self.objectName(): {
                 "is_enabled": self.isChecked(),
                 "template": self.lineedit_template.text(),
             },
@@ -317,7 +317,7 @@ class TextFilterWidget(BaseGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
-            self.name: {
+            self.objectName(): {
                 "is_enabled": self.isChecked(),
                 "should_include": self.radio_include.isChecked(),
                 "text": self.lineedit_filter.text(),
@@ -358,7 +358,7 @@ class RangeFilterWidget(BaseGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
-            self.name: {
+            self.objectName(): {
                 "is_enabled": self.isChecked(),
                 "minimum": self.spin_min.value(),
                 "maximum": self.spin_max.value(),
@@ -407,7 +407,7 @@ class OptionsWidget(BaseGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         return {
-            self.name: {
+            self.objectName(): {
                 "transfer_mode": self.combo_transfermode.currentText(),
                 "should_follow_symlink": self.chk_follow_symlink.isChecked(),
                 "rng_seed": self.lineedit_rng_seed.text(),
