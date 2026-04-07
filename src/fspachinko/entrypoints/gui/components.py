@@ -1,12 +1,11 @@
 """GUI components in PySide6."""
 
-from dataclasses import dataclass
 from functools import cache
 from os.path import exists, isdir
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl, Slot
-from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -32,35 +31,12 @@ from PySide6.QtWidgets import (
 
 from fspachinko.adapters.transfer import available_transfer_fns
 from fspachinko.constants import MAXIMUM_INT, SIZE_MAP, TIME_MAP, FilenameTemplate, TransferMode
-from fspachinko.entrypoints.gui.constants import ACTIONS_CONFIG
-from fspachinko.entrypoints.gui.helpers import get_qt_icon, get_qt_shortcut, set_qt_tips
+from fspachinko.entrypoints.gui.helpers import get_qt_icon, set_qt_tips
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
-
-
-@dataclass(slots=True)
-class Actions:
-    """Main file menu actions."""
-
-    save: QAction
-    save_as: QAction
-    load: QAction
-    exit: QAction
-    start: QAction
-    stop: QAction
-
-    @classmethod
-    def build(cls, config: dict = ACTIONS_CONFIG) -> Actions:
-        """Get file menu actions."""
-        actions = {}
-        for name, (text, tip) in config.items():
-            action = QAction(get_qt_icon(name), text, shortcut=get_qt_shortcut(name))
-            set_qt_tips(action, tip)
-            actions[name] = action
-        return cls(**actions)
 
 
 class BaseDockWidget(QDockWidget):
@@ -429,7 +405,7 @@ class OptionsWidget(BaseGroupBox):
 
 
 @cache
-def get_component_map() -> Sequence[
+def component_map() -> Sequence[
     tuple[type[BaseGroupBox], str, str] | tuple[type[BaseGroupBox], str, str, Sequence[str]]
 ]:
     """Get the mapping of config sections to component classes and their init args."""

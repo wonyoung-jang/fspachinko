@@ -1,36 +1,57 @@
 """Main module."""
 
 import logging
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from PySide6.QtCore import QByteArray, QObject, QSettings, Qt, QThread, Signal, Slot
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar, QVBoxLayout, QWidget
 
 from fspachinko.config import ConfigModel
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred, PipelineConfigured, RunFinished, RunStarted
-from fspachinko.entrypoints.gui.components import (
-    Actions,
-    BaseDockWidget,
-    BaseGroupBox,
-    LogWidget,
-    ProgressWidget,
-    get_component_map,
-)
+from fspachinko.entrypoints.gui.components import BaseDockWidget, BaseGroupBox, LogWidget, ProgressWidget, component_map
 from fspachinko.entrypoints.gui.constants import (
-    MENU_STRUCTURE,
-    TOOLBAR_STRUCTURE,
-    GUIFileDialogFilter,
-    GUIName,
-    GUISettingsKey,
+    ACTION_CONFIG,
+    FILE_DIALOG_JSON_FILTER,
+    MENU_CONFIG,
+    TOOLBAR_CONFIG,
+    TOOLBAR_NAME,
+    GUIStateKey,
     GUITitle,
 )
+from fspachinko.entrypoints.gui.helpers import get_qt_icon, get_qt_shortcut, set_qt_tips
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from PySide6.QtGui import QCloseEvent
 
     from fspachinko.bootstrap import FSPachinkoBootstrapper
+
+
+# -- Actions ----------------------------------------------------------------
+@dataclass(slots=True)
+class Actions:
+    """Main file menu actions."""
+
+    save: QAction
+    save_as: QAction
+    load: QAction
+    exit: QAction
+    start: QAction
+    stop: QAction
+
+    @classmethod
+    def build(cls, config: dict = ACTION_CONFIG) -> Actions:
+        """Get file menu actions."""
+        actions = {}
+        for name, (text, tip) in config.items():
+            actions[name] = QAction(get_qt_icon(name), text, shortcut=get_qt_shortcut(name))
+            set_qt_tips(actions[name], tip)
+        return cls(**actions)
 
 
 # -- Log handler for GUI ----------------------------------------------------------------
@@ -109,11 +130,11 @@ class Presenter(QObject):
     def _restore_state(self) -> None:
         """Restore the window state from settings."""
         qsettings = QSettings()
-        if geometry := qsettings.value(GUISettingsKey.GEOMETRY):
+        if geometry := qsettings.value(GUIStateKey.GEOMETRY):
             self._view.restore_geometry(geometry) if isinstance(geometry, bytes | bytearray) else None
-        if state := qsettings.value(GUISettingsKey.STATE):
+        if state := qsettings.value(GUIStateKey.STATE):
             self._view.restore_window_state(state) if isinstance(state, bytes | bytearray) else None
-        if path := qsettings.value(GUISettingsKey.CONFIG):
+        if path := qsettings.value(GUIStateKey.CONFIG):
             self._load_config(path)
 
     def _setup_worker(self) -> None:
@@ -170,7 +191,7 @@ class Presenter(QObject):
     def save_as(self) -> None:
         if path := self._file_dialog(save=True):
             self._set_config_path(path)
-            self.save()
+            self._sig_cmd.emit(SaveConfiguration(path=self._config_path, config=self._view.config))
 
     @Slot()
     def open(self) -> None:
@@ -209,9 +230,9 @@ class Presenter(QObject):
         path, _ = fn(
             caption=GUITitle.SAVE_CONFIG if save else GUITitle.OPEN_CONFIG,
             dir=self._fs.get_parent(self._config_path),
-            filter=GUIFileDialogFilter.JSON,
+            filter=FILE_DIALOG_JSON_FILTER,
         )
-        return get_config_path(path) if path else None
+        return path or None
 
     def _set_config_path(self, path: str) -> None:
         self._config_path = get_config_path(path)
@@ -230,9 +251,9 @@ class Presenter(QObject):
         self._thread.quit()
         self._thread.wait()
         settings = QSettings()
-        settings.setValue(GUISettingsKey.GEOMETRY, self._view.save_geometry())
-        settings.setValue(GUISettingsKey.STATE, self._view.save_window_state())
-        settings.setValue(GUISettingsKey.CONFIG, self._config_path)
+        settings.setValue(GUIStateKey.GEOMETRY, self._view.save_geometry())
+        settings.setValue(GUIStateKey.STATE, self._view.save_window_state())
+        settings.setValue(GUIStateKey.CONFIG, self._config_path)
 
 
 # -- View UI/Widgets ----------------------------------------------------------------
@@ -293,7 +314,7 @@ class MainWindow(QMainWindow):
         """Initialize the main window."""
         super().__init__()
         self.setAnimated(True)
-        self._ui = MainConfigWidget(*(w(title, name, *args) for w, title, name, *args in get_component_map()))
+        self._ui = MainConfigWidget(*(w(title, name, *args) for w, title, name, *args in component_map()))
         self._log_w = LogWidget()
         self._prog_w = ProgressWidget()
         self.setCentralWidget(self._ui)
@@ -348,15 +369,15 @@ class MainWindow(QMainWindow):
         return self.windowTitle()
 
     def build_ui_bars(self, actions: Actions) -> None:
-        def _populate_bar(bar: QToolBar | QMenu, items: list[str | None] | list[str]) -> None:
+        def _populate_bar(bar: QToolBar | QMenu, items: Sequence[str | None]) -> None:
             for item in items:
                 bar.addSeparator() if item is None else bar.addAction(getattr(actions, item))
 
         self.statusBar().setSizeGripEnabled(True)
-        toolbar = self.addToolBar(GUIName.TOOLBAR)
-        toolbar.setObjectName(GUIName.TOOLBAR)
-        _populate_bar(toolbar, TOOLBAR_STRUCTURE)
-        for name, keys in MENU_STRUCTURE.items():
+        toolbar = self.addToolBar(TOOLBAR_NAME)
+        toolbar.setObjectName(TOOLBAR_NAME)
+        _populate_bar(toolbar, TOOLBAR_CONFIG)
+        for name, keys in MENU_CONFIG.items():
             _populate_bar(self.menuBar().addMenu(name), keys)
 
     # -- Lifecycle -------------------------------------------------------------
