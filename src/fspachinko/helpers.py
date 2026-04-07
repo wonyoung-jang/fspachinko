@@ -15,8 +15,6 @@ def dest_path_str(path: str) -> str:
 @cache
 def count_ratio_str(count: int, target: int) -> str:
     """Get the count/target ratio string."""
-    if target == 0:
-        return f"{count}/{target} files transferred"
     return f"{count}/{target} ({count / target:.2%}) files transferred"
 
 

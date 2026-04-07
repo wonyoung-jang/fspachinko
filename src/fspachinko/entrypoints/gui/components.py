@@ -114,8 +114,8 @@ class PathSelectorWidget(BaseGroupBox):
     def browse(self) -> None:
         """Return the browse button."""
         d = QFileDialog.getExistingDirectory(
-            caption=f"Select {self.title()}",
             dir=self.lbl_selected.text(),
+            caption=f"Select {self.title()}",
         )
         if d:
             self.lbl_selected.setText(d)

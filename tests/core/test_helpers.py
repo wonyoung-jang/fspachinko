@@ -1,73 +1,46 @@
 """Test helper functions."""
 
+import pytest
+
 from fspachinko.constants import StateStatus
 from fspachinko.helpers import filesize_str, get_report, get_status
 
 
-def test_convert_byte_to_human_readable_size() -> None:
+@pytest.mark.parametrize(
+    ("nbytes", "expected"),
+    [
+        (500, "Size: 500.00 B"),
+        (2048, "Size: 2.00 KB"),
+        (5 * 1024**2, "Size: 5.00 MB"),
+        (3 * 1024**3, "Size: 3.00 GB"),
+    ],
+)
+def test_convert_byte_to_human_readable_size(nbytes: int, expected: str) -> None:
     """Test convert_byte_to_human_readable_size."""
-    assert filesize_str(500) == "500.00 B"
-    assert filesize_str(2048) == "2.00 KB"
-    assert filesize_str(5 * 1024**2) == "5.00 MB"
-    assert filesize_str(3 * 1024**3) == "3.00 GB"
+    assert filesize_str(nbytes) == expected
 
 
-def test_get_status() -> None:
+@pytest.mark.parametrize(
+    ("params", "expected_status"),
+    [
+        ((True, False, False, False), StateStatus.SUCCESS),
+        ((False, True, False, False), StateStatus.NO_FILES_FOUND_FOLDER_DELETED),
+        ((False, True, False, True), StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED),
+        ((False, False, True, False), StateStatus.USER_STOPPED),
+        ((False, False, False, True), StateStatus.ALL_FILES_SEARCHED),
+        ((False, False, False, False), StateStatus.UNDEFINED),
+    ],
+)
+def test_get_status(params: tuple[bool, ...], expected_status: str) -> None:
     """Test get_status."""
-    assert (
-        get_status(
-            success=True,
-            empty_creation=False,
-            stop_requested=False,
-            root_locked=False,
-        )
-        == StateStatus.SUCCESS
+    success, empty_creation, stop_requested, root_locked = params
+    status = get_status(
+        success=success,
+        empty_creation=empty_creation,
+        stop_requested=stop_requested,
+        root_locked=root_locked,
     )
-    assert (
-        get_status(
-            success=False,
-            empty_creation=True,
-            stop_requested=False,
-            root_locked=False,
-        )
-        == StateStatus.NO_FILES_FOUND_FOLDER_DELETED
-    )
-    assert (
-        get_status(
-            success=False,
-            empty_creation=True,
-            stop_requested=False,
-            root_locked=True,
-        )
-        == StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
-    )
-    assert (
-        get_status(
-            success=False,
-            empty_creation=False,
-            stop_requested=True,
-            root_locked=False,
-        )
-        == StateStatus.USER_STOPPED
-    )
-    assert (
-        get_status(
-            success=False,
-            empty_creation=False,
-            stop_requested=False,
-            root_locked=True,
-        )
-        == StateStatus.ALL_FILES_SEARCHED
-    )
-    assert (
-        get_status(
-            success=False,
-            empty_creation=False,
-            stop_requested=False,
-            root_locked=False,
-        )
-        == StateStatus.UNDEFINED
-    )
+    assert status == expected_status
 
 
 def test_get_report() -> None:
@@ -75,10 +48,10 @@ def test_get_report() -> None:
     report = get_report("/path/to/destination", 5 * 1024**2, 3, 10)
     expected_report = (
         "------------------------------------------------------------------------\n"
-        "3/10 files transferred\n"
+        "3/10 (30.00%) files transferred\n"
         "------------------------------------------------------------------------\n"
-        "Destination:  /path/to/destination\n"
-        "Size:         5.00 MB\n"
+        "Destination: /path/to/destination\n"
+        "Size: 5.00 MB\n"
         "========================================================================\n"
     )
     assert report == expected_report
