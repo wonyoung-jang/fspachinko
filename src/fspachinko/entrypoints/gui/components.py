@@ -41,6 +41,7 @@ class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
 
     CONFIG_SPEC: ClassVar[dict] = {}
+    RESTORE_SPEC: ClassVar[dict] = {}
 
     def __init__(self, title: str, name: str, *, checkable: bool = False) -> None:
         """Initialize the base group box."""
@@ -62,17 +63,12 @@ class BaseGroupBox(QGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the widget from config data."""
-        section = self._section(config)
-        self._restore(section)
-
-    def _section(self, config: dict) -> dict:
-        """Get the relevant section of the config."""
-        return config.get(self.objectName(), {})
-
-    def _restore(self, section: dict) -> None:
-        """Restore config values to widgets."""
-        msg = "Restore method not implemented for this widget."
-        raise NotImplementedError(msg)
+        section = config.get(self.objectName(), {})
+        for key, (name, method, fallback) in self.RESTORE_SPEC.items():
+            obj = getattr(self, name) if name else self
+            meth = getattr(obj, method)
+            value = section.get(key, fallback)
+            meth(value)
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -80,6 +76,9 @@ class PathSelectorWidget(BaseGroupBox):
 
     CONFIG_SPEC: ClassVar[dict] = {
         "path": ("lbl_selected", "text"),
+    }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "path": ("lbl_selected", "setText", ""),
     }
 
     def __init__(self, title: str, name: str) -> None:
@@ -99,11 +98,6 @@ class PathSelectorWidget(BaseGroupBox):
         layout.addWidget(self.lbl_selected, stretch=1)
         layout.addWidget(self.btn_browse)
         layout.addWidget(self.btn_open)
-
-    def _restore(self, section: dict) -> None:
-        """Restore the path selector widget from config data."""
-        path = section.get("path", "")
-        self.lbl_selected.setText(path)
 
     @Slot()
     def browse(self) -> None:
@@ -146,6 +140,12 @@ class FileCountWidget(BaseGroupBox):
         "rand_min": ("spin_min_rand", "value"),
         "rand_max": ("spin_max_rand", "value"),
     }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "count": ("spin_fixed", "setValue", 1),
+        "rand_min": ("spin_min_rand", "setValue", 1),
+        "rand_max": ("spin_max_rand", "setValue", 10),
+        "is_rand_enabled": ("", "_restore_randstate", False),
+    }
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the file count widget."""
@@ -172,17 +172,10 @@ class FileCountWidget(BaseGroupBox):
         layout.addWidget(self.spin_min_rand, 1, 1)
         layout.addWidget(self.spin_max_rand, 2, 1)
 
-    def _restore(self, section: dict) -> None:
-        """Restore the file count widget from config data."""
-        count = section.get("count", 1)
-        rand_min = section.get("rand_min", 1)
-        rand_max = section.get("rand_max", 10)
-        is_rand_enabled = section.get("is_rand_enabled", False)
-        self.spin_fixed.setValue(count)
-        self.spin_min_rand.setValue(rand_min)
-        self.spin_max_rand.setValue(rand_max)
-        self.radio_fixed.setChecked(not is_rand_enabled)
+    def _restore_randstate(self, is_rand_enabled: bool) -> None:  # noqa: FBT001
+        """Set the radio buttons based on the is_rand_enabled value."""
         self.radio_rand.setChecked(is_rand_enabled)
+        self.radio_fixed.setChecked(not is_rand_enabled)
         self.spin_fixed.setEnabled(not is_rand_enabled)
         self.spin_min_rand.setEnabled(is_rand_enabled)
         self.spin_max_rand.setEnabled(is_rand_enabled)
@@ -196,6 +189,11 @@ class DirectoryCreateWidget(BaseGroupBox):
         "count": ("spinbox_folder_count", "value"),
         "name": ("lineedit_folder_name", "text"),
     }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "setChecked", False),
+        "count": ("spinbox_folder_count", "setValue", 1),
+        "name": ("lineedit_folder_name", "setText", "fsp_output"),
+    }
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
@@ -208,15 +206,6 @@ class DirectoryCreateWidget(BaseGroupBox):
         layout.addRow("Count:", self.spinbox_folder_count)
         layout.addRow("Name:", self.lineedit_folder_name)
 
-    def _restore(self, section: dict) -> None:
-        """Restore the create folders widget from config data."""
-        is_enabled = section.get("is_enabled", False)
-        count = section.get("count", 1)
-        name = section.get("name", "fsp_output")
-        self.setChecked(is_enabled)
-        self.spinbox_folder_count.setValue(count)
-        self.lineedit_folder_name.setText(name)
-
 
 class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
@@ -224,6 +213,10 @@ class FilenamerWidget(BaseGroupBox):
     CONFIG_SPEC: ClassVar[dict] = {
         "is_enabled": ("", "isChecked"),
         "template": ("lineedit_template", "text"),
+    }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "setChecked", False),
+        "template": ("lineedit_template", "setText", FilenameTemplate.ORIGINAL),
     }
 
     def __init__(self, title: str, name: str) -> None:
@@ -252,13 +245,6 @@ class FilenamerWidget(BaseGroupBox):
         self.lineedit_template.insert(tag)
         self.lineedit_template.setFocus()
 
-    def _restore(self, section: dict) -> None:
-        """Restore the filename template widget from config data."""
-        is_enabled = section.get("is_enabled", False)
-        template = section.get("template", FilenameTemplate.ORIGINAL)
-        self.setChecked(is_enabled)
-        self.lineedit_template.setText(template)
-
 
 class TextFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude text pattern."""
@@ -267,6 +253,11 @@ class TextFilterWidget(BaseGroupBox):
         "is_enabled": ("", "isChecked"),
         "should_include": ("radio_include", "isChecked"),
         "text": ("lineedit_filter", "text"),
+    }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "setChecked", False),
+        "should_include": ("", "_set_radios", True),
+        "text": ("lineedit_filter", "setText", ""),
     }
 
     def __init__(self, title: str, name: str) -> None:
@@ -283,15 +274,10 @@ class TextFilterWidget(BaseGroupBox):
         layout.addWidget(self.radio_include, 1, 0)
         layout.addWidget(self.radio_exclude, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
 
-    def _restore(self, section: dict) -> None:
-        """Restore the text filter widget from config data."""
-        is_enabled = section.get("is_enabled", False)
-        should_include = section.get("should_include", True)
-        text = section.get("text", "")
-        self.setChecked(is_enabled)
+    def _restore_radios(self, should_include: bool) -> None:  # noqa: FBT001
+        """Set the radio buttons based on the should_include value."""
         self.radio_include.setChecked(should_include)
         self.radio_exclude.setChecked(not should_include)
-        self.lineedit_filter.setText(text)
 
 
 class RangeFilterWidget(BaseGroupBox):
@@ -302,6 +288,12 @@ class RangeFilterWidget(BaseGroupBox):
         "minimum": ("spin_min", "value"),
         "maximum": ("spin_max", "value"),
         "unit": ("combo_unit", "currentText"),
+    }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "setChecked", False),
+        "minimum": ("spin_min", "setValue", 0.0),
+        "maximum": ("spin_max", "setValue", 10.0),
+        "unit": ("", "_restore_combo", ""),
     }
 
     def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
@@ -321,15 +313,8 @@ class RangeFilterWidget(BaseGroupBox):
         layout.addRow("Max:", self.spin_max)
         layout.addRow("Unit:", self.combo_unit)
 
-    def _restore(self, section: dict) -> None:
-        """Restore the range filter widget from config data."""
-        is_enabled = section.get("is_enabled", False)
-        minimum = section.get("minimum", 0.0)
-        maximum = section.get("maximum", 10.0)
-        unit = section.get("unit", "")
-        self.setChecked(is_enabled)
-        self.spin_min.setValue(minimum)
-        self.spin_max.setValue(maximum)
+    def _restore_combo(self, unit: str) -> None:
+        """Restore the combo box selection."""
         index = self.combo_unit.findText(unit)
         if index != -1:
             self.combo_unit.setCurrentIndex(index)
@@ -344,6 +329,13 @@ class OptionsWidget(BaseGroupBox):
         "rng_seed": ("lineedit_rng_seed", "text"),
         "max_per_dir": ("spin_max_per_dir", "value"),
         "is_create_unique_dirs": ("chk_unique_folders", "isChecked"),
+    }
+    RESTORE_SPEC: ClassVar[dict] = {
+        "transfer_mode": ("combo_transfermode", "setCurrentText", TransferMode.DRY_RUN),
+        "should_follow_symlink": ("chk_follow_symlink", "setChecked", False),
+        "rng_seed": ("lineedit_rng_seed", "setText", ""),
+        "max_per_dir": ("spin_max_per_dir", "setValue", 0),
+        "is_create_unique_dirs": ("chk_unique_folders", "setChecked", False),
     }
 
     def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
@@ -367,19 +359,6 @@ class OptionsWidget(BaseGroupBox):
         layout.addRow("Random seed", self.lineedit_rng_seed)
         layout.addRow("Max from one directory", self.spin_max_per_dir)
         layout.addRow("Ensure unique directories", self.chk_unique_folders)
-
-    def _restore(self, section: dict) -> None:
-        """Restore the options widget from config data."""
-        transfer_mode = section.get("transfer_mode", TransferMode.DRY_RUN)
-        should_follow_symlink = section.get("should_follow_symlink", False)
-        rng_seed = section.get("rng_seed", "")
-        max_per_dir = section.get("max_per_dir", 0)
-        is_create_unique_dirs = section.get("is_create_unique_dirs", False)
-        self.combo_transfermode.setCurrentText(transfer_mode)
-        self.chk_follow_symlink.setChecked(should_follow_symlink)
-        self.lineedit_rng_seed.setText(rng_seed)
-        self.spin_max_per_dir.setValue(max_per_dir)
-        self.chk_unique_folders.setChecked(is_create_unique_dirs)
 
 
 class MainConfigLayout(QGridLayout):
