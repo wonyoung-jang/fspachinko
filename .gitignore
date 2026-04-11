@@ -133,3 +133,4 @@ src/fspachinko/_data/configs/*
 
 # Temporary ignores
 src/*/web/
+src/fspachinko/adapters/scanner.py

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,7 @@ class AbstractPipeline(ABC):
     get_new_path_fn: Callable[[DestinationDirectory, FSEntry], str | None] = lambda _, e: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
+    duration_fn: Callable[[str], float] = lambda _: float("inf")
     inputs: deque[tuple[str, int, bool]] = field(default_factory=deque)
 
     @abstractmethod
@@ -55,4 +57,16 @@ class TransferPipeline(AbstractPipeline):
 
     def walk(self) -> Iterator[FSEntry]:
         """Walk the source directory and yield FSEntry objects."""
-        return self.walker_fn()
+        with ThreadPoolExecutor(max_workers=32) as executor:
+            futures: dict[Future[float], FSEntry] = {}
+            for entry in self.walker_fn():
+                futures[executor.submit(self.duration_fn, entry.path)] = entry
+                done = [f for f in futures if f.done()]
+                for f in done:
+                    e = futures.pop(f)
+                    e.duration = f.result()
+                    yield e
+            for f in as_completed(futures):
+                e = futures.pop(f)
+                e.duration = f.result()
+                yield e

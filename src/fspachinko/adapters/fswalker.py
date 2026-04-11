@@ -33,7 +33,7 @@ class AbstractFSWalker(ABC):
 class FSWalker(AbstractFSWalker):
     """Filesystem walker implementation."""
 
-    _board: dict[str, FSPachinkoPin] = field(default_factory=dict, init=False, repr=False)
+    _board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""

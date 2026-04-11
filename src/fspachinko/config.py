@@ -257,7 +257,6 @@ class ConfigToRangeFilter:
 class ConfigToFileFilter:
     """Bootstrapper for translating configuration into a file filter function."""
 
-    get_duration: Callable
     filter_name: type[FilterName] = FilterName
     to_text_filter: ConfigToTextFilter = field(default_factory=ConfigToTextFilter)
     to_range_filter: ConfigToRangeFilter = field(default_factory=ConfigToRangeFilter)
@@ -284,7 +283,7 @@ class ConfigToFileFilter:
             self.filter_name.KEYWORD: lambda e, fn: fn(e.stem),
             self.filter_name.EXTENSION: lambda e, fn: fn(e.ext),
             self.filter_name.FILESIZE: lambda e, fn: fn(e.size),
-            self.filter_name.DURATION: lambda e, fn: fn(self.get_duration(e.path)),
+            self.filter_name.DURATION: lambda e, fn: fn(e.duration),
         }
         if filter_fn := filter_mapping.get(name):
             return lambda e, fn=fn: filter_fn(e, fn)
@@ -302,6 +301,7 @@ class ConfigModelBootstrapper:
     walker: type[AbstractFSWalker]
     rng: random.Random
     config_to_file_filter: ConfigToFileFilter
+    duration_fn: Callable[[str], float]
     transfer_mode: type[TransferMode] = TransferMode
 
     def apply(self, c: ConfigModel) -> None:
@@ -311,6 +311,7 @@ class ConfigModelBootstrapper:
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
         self.pipeline.transfer_fn = self._build_transfer_fn(c.options.transfer_mode)
         self.pipeline.walker_fn = self._build_walker_fn(c)
+        self.pipeline.duration_fn = self.duration_fn
         self.pipeline.inputs = deque(self._build_inputs(c))
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:

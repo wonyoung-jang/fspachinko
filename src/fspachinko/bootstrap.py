@@ -69,7 +69,8 @@ class FSPachinkoBootstrapper:
             available_transfer_fns=self.available_transfer_fns,
             template_filenamer=self.filenamer_cls,
             walker=self.walker_cls,
-            config_to_file_filter=ConfigToFileFilter(get_duration=self.duration_fn),
+            config_to_file_filter=ConfigToFileFilter(),
+            duration_fn=self.duration_fn,
         )
 
     def build_message_bus(self) -> MessageBus:

@@ -129,7 +129,7 @@ class TransferJob:
         self.quota.update(entry.parent, entry.path)
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(slots=True)
 class FSEntry:
     """Value object wrapper for os.DirEntry.
 

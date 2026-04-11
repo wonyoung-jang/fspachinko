@@ -20,7 +20,6 @@ FFPROBE_DURATION_CMD = [
     "-of",
     "default=noprint_wrappers=1:nokey=1",
 ]
-
 TIMEOUT = 2
 
 
@@ -28,23 +27,18 @@ TIMEOUT = 2
 def _get_duration_ffprobe(path: str) -> float:
     """Get the duration of a media file."""
     try:
-        completed_proc = subprocess.run(
+        result = subprocess.run(
             args=[*FFPROBE_DURATION_CMD, path],
             timeout=TIMEOUT,
+            capture_output=True,
             check=True,
             encoding="utf-8",
-            capture_output=True,
         )
-        return float(completed_proc.stdout.strip())
-    except ValueError:
-        logger.exception("ffprobe output could not be parsed as float for %s", path)
-    except subprocess.CalledProcessError:
-        logger.debug("ffprobe failed for %s", path)
-    except subprocess.TimeoutExpired:
-        logger.debug("ffprobe timed out for %s", path)
-    except subprocess.SubprocessError:
+        dur = float(result.stdout.strip())
+    except ValueError, subprocess.SubprocessError:
         logger.debug("Unexpected error while getting duration for %s", path)
-    return float("inf")
+        dur = float("inf")
+    return dur
 
 
 @cache
