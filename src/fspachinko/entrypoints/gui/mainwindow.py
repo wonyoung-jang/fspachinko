@@ -96,7 +96,7 @@ class IView(Protocol):
     def append_log(self, text: str) -> None: ...
     def update_progress_start(self, count: int) -> None: ...
     def update_progress_directory(self, qty: int) -> None: ...
-    def update_progress_file(self, count: int) -> None: ...
+    def update_progress_file(self) -> None: ...
     def get_progress_percentage(self) -> int: ...
     def restore_geometry(self, data: bytes) -> bool: ...
     def restore_window_state(self, data: bytes) -> bool: ...
@@ -155,8 +155,8 @@ class MainWindow(QMainWindow):
     def update_progress_directory(self, qty: int) -> None:
         self._prog_w.handle_directory_start(qty)
 
-    def update_progress_file(self, count: int) -> None:
-        self._prog_w.handle_file_transfer(count)
+    def update_progress_file(self) -> None:
+        self._prog_w.handle_file_transfer()
 
     def get_progress_percentage(self) -> int:
         return self._prog_w.file_percentage
@@ -323,8 +323,8 @@ class Presenter(QObject):
         self._view.update_progress_directory(evt.target_qty)
 
     @Slot(FileTransferred)
-    def _on_file_transferred(self, evt: FileTransferred) -> None:
-        self._view.update_progress_file(evt.count)
+    def _on_file_transferred(self, _evt: FileTransferred) -> None:
+        self._view.update_progress_file()
         self._view.set_window_title(f"[{self._view.get_progress_percentage()}%] {self._original_title}")
 
     @Slot(RunFinished)

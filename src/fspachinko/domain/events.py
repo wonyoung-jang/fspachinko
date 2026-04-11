@@ -24,7 +24,6 @@ class PipelineConfigured(Event):
 class FileTransferred(Event):
     """Event after file is transferred."""
 
-    count: int
     src: str
     dst: str
 

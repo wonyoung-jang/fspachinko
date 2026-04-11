@@ -1,6 +1,8 @@
 """Handlers module."""
 
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from itertools import islice
 from typing import TYPE_CHECKING
 
 from fspachinko.domain.events import (
@@ -11,10 +13,10 @@ from fspachinko.domain.events import (
     RunFinished,
     RunStarted,
 )
-from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
+from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
@@ -41,6 +43,16 @@ class ConfigurePipelineHandler:
         c = cmd.config
         self.configurator.apply(c)
         yield PipelineConfigured(dir_count=c.directory.count)
+
+
+def _filter_parallel(walk: Iterator[FSEntry], fn: Callable[[FSEntry], bool]) -> Iterator[FSEntry]:
+    """Filter files in parallel using a ThreadPoolExecutor."""
+    with ThreadPoolExecutor() as executor:
+        while chunk := tuple(islice(walk, 5)):
+            results = executor.map(fn, chunk)
+            for entry, is_valid in zip(chunk, results, strict=True):
+                if is_valid:
+                    yield entry
 
 
 @dataclass(slots=True)
@@ -96,16 +108,29 @@ class RunTransferJobHandler:
 
     def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
         """Transfer files to a destination directory."""
-        approved = (e for e in self.pipeline.walk() if self.job.can_accept(e))
-        filtered = (e for e in approved if self.pipeline.filter_file(e))
-        mapped = ((e, self.pipeline.get_new_path(dst=dst, e=e)) for e in filtered)
-        valid = ((e, newpath) for e, newpath in mapped if newpath is not None)
-        for entry, newpath in valid:
-            if dst.is_success or self.job.is_stop_condition:
-                break
-            self.pipeline.transfer_file(entry.path, newpath)
-            self.job.register_transfer(dst, entry, newpath)
-            yield FileTransferred(count=dst.count, src=entry.path, dst=newpath)
+        walk = self.pipeline.walk()
+        filtered = _filter_parallel(walk, self.pipeline.filter_file)
+        with ThreadPoolExecutor() as executor:
+            futures: dict[Future[None], tuple[FSEntry, str]] = {}
+            for entry in filtered:
+                if dst.is_success or self.job.is_stop_condition:
+                    break
+                if not self.job.can_accept(entry):
+                    continue
+                if (newpath := self.pipeline.get_new_path(dst, entry)) is None:
+                    continue
+                self.job.register_transfer(dst, entry, newpath)
+                future = executor.submit(self.pipeline.transfer_file, entry.path, newpath)
+                futures[future] = (entry, newpath)
+                done = [f for f in futures if f.done()]
+                for f in done:
+                    _entry, _newpath = futures.pop(f)
+                    f.result()
+                    yield FileTransferred(src=_entry.path, dst=_newpath)
+            for f in as_completed(futures):
+                entry, newpath = futures.pop(f)
+                f.result()
+                yield FileTransferred(src=entry.path, dst=newpath)
 
 
 @dataclass(slots=True)
@@ -175,7 +200,7 @@ class FileTransferredHandler:
 
     def __call__(self, evt: FileTransferred) -> None:
         """Handle the FileTransferred event."""
-        self.logger.info("%s: '%s' -> '%s'", evt.count, evt.src, evt.dst)
+        self.logger.info("'%s' -> '%s'", evt.src, evt.dst)
 
 
 @dataclass(slots=True)

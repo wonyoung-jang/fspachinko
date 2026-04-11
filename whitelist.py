@@ -8,6 +8,7 @@ from fspachinko.entrypoints.gui.components import PathSelectorWidget
 fspachinko.hello  # noqa: B018
 PathSelectorWidget.dragEnterEvent  # noqa: B018
 PathSelectorWidget.dropEvent  # noqa: B018
+ConfigModel.root.validate_root_and_dest_paths  # noqa: B018
 ConfigModel.filecount.validate_filecount_model  # noqa: B018
 ConfigModel.directory.validate_count  # noqa: B018
 ConfigModel.directory.validate_directory_model  # noqa: B018

@@ -57,10 +57,11 @@ class TransferPipeline(AbstractPipeline):
 
     def walk(self) -> Iterator[FSEntry]:
         """Walk the source directory and yield FSEntry objects."""
-        with ThreadPoolExecutor(max_workers=32) as executor:
+        with ThreadPoolExecutor() as executor:
             futures: dict[Future[float], FSEntry] = {}
             for entry in self.walker_fn():
-                futures[executor.submit(self.duration_fn, entry.path)] = entry
+                future = executor.submit(self.duration_fn, entry.path)
+                futures[future] = entry
                 done = [f for f in futures if f.done()]
                 for f in done:
                     e = futures.pop(f)

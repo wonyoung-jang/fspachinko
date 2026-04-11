@@ -664,17 +664,19 @@ class ProgressWidget(QWidget):
         self.progbar_dirs.setMaximum(dir_count)
         self.progbar_dirs.setValue(0)
         self.progbar_files.setMaximum(MAXIMUM_INT)
-        self.progbar_files.reset()
+        self.progbar_files.setValue(0)
 
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        self.progbar_dirs.setValue(self.progbar_dirs.value() + 1)
+        curr = self.progbar_dirs.value()
+        self.progbar_dirs.setValue(curr + 1)
         self.progbar_files.setMaximum(target)
-        self.progbar_files.reset()
+        self.progbar_files.setValue(0)
 
-    def handle_file_transfer(self, count: int) -> None:
+    def handle_file_transfer(self) -> None:
         """Update the file progress bar."""
-        self.progbar_files.setValue(count)
+        curr = self.progbar_files.value()
+        self.progbar_files.setValue(curr + 1)
 
     @property
     def file_percentage(self) -> int:
