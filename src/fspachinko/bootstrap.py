@@ -4,6 +4,7 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from fspachinko.adapters.config_manager import ConfigManager
 from fspachinko.adapters.filenamer import AbstractFilenamer, TemplateFilenamer
 from fspachinko.adapters.filesystem import AbstractFilesystem, Filesystem
 from fspachinko.adapters.fswalker import AbstractFSWalker, FSWalker
@@ -55,19 +56,12 @@ class FSPachinkoBootstrapper:
     filenamer_cls: type[AbstractFilenamer] = TemplateFilenamer
     walker_cls: type[AbstractFSWalker] = FSWalker
     reporter_cls: type[ReportWriter] = ReportWriter
-    configurator: ConfigModelBootstrapper = field(init=False)
+    config_manager: ConfigManager = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
         ensure_data_paths()
-        self.configurator = ConfigModelBootstrapper(
-            pipeline=self.pipeline,
-            filesystem=self.filesystem,
-            rng=self.rng,
-            available_transfer_fns=self.available_transfer_fns,
-            template_filenamer=self.filenamer_cls,
-            walker=self.walker_cls,
-        )
+        self.config_manager = ConfigManager(fs=self.filesystem)
 
     def build_message_bus(self) -> MessageBus:
         """Bootstrap the application and return the message bus."""
@@ -78,9 +72,17 @@ class FSPachinkoBootstrapper:
 
     def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""
+        configurator = ConfigModelBootstrapper(
+            pipeline=self.pipeline,
+            filesystem=self.filesystem,
+            rng=self.rng,
+            available_transfer_fns=self.available_transfer_fns,
+            template_filenamer=self.filenamer_cls,
+            walker=self.walker_cls,
+        )
         return {
             ConfigurePipeline: ConfigurePipelineHandler(
-                configurator=self.configurator,
+                configurator=configurator,
             ),
             RunTransferJob: RunTransferJobHandler(
                 job=self.job,

@@ -9,7 +9,6 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar
 
 from fspachinko.config import ConfigModel
-from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred, PipelineConfigured, RunFinished, RunStarted
 from fspachinko.entrypoints.gui.components import BaseDockWidget, LogWidget, MainConfigWidget, ProgressWidget
@@ -98,8 +97,8 @@ class IView(Protocol):
     def update_progress_directory(self, qty: int) -> None: ...
     def update_progress_file(self) -> None: ...
     def get_progress_percentage(self) -> int: ...
-    def restore_geometry(self, data: bytes) -> bool: ...
-    def restore_window_state(self, data: bytes) -> bool: ...
+    def restore_geometry(self, data: QByteArray | bytes | bytearray | memoryview) -> bool: ...
+    def restore_window_state(self, data: QByteArray | bytes | bytearray | memoryview) -> bool: ...
     def save_geometry(self) -> QByteArray: ...
     def save_window_state(self) -> QByteArray: ...
     def close(self) -> bool: ...
@@ -161,10 +160,10 @@ class MainWindow(QMainWindow):
     def get_progress_percentage(self) -> int:
         return self._prog_w.file_percentage
 
-    def restore_geometry(self, data: bytes) -> bool:
+    def restore_geometry(self, data: QByteArray | bytes | bytearray | memoryview) -> bool:
         return self.restoreGeometry(data)
 
-    def restore_window_state(self, data: bytes) -> bool:
+    def restore_window_state(self, data: QByteArray | bytes | bytearray | memoryview) -> bool:
         return self.restoreState(data)
 
     def save_geometry(self) -> QByteArray:
@@ -225,13 +224,13 @@ class Presenter(QObject):
         super().__init__()
         self._bootstrapper = bootstrapper
         self._fs = bootstrapper.filesystem
+        self._configs = bootstrapper.config_manager
         self._worker = BusWorker(bootstrapper.build_message_bus())
         self._thread = QThread(self)
         self._actions = build_actions(self)
         self._view: IView = MainWindow(self)
         self._original_title = self._view.get_window_title()
         self._view.build_ui_bars(self._actions)
-        self._config_path = ""
         self._connect_signals()
         self._restore_state()
         self._setup_worker()
@@ -239,9 +238,13 @@ class Presenter(QObject):
     def _restore_state(self) -> None:
         """Restore the window state from settings."""
         qsettings = QSettings()
-        if (geometry := qsettings.value(self.GUIStateKey.GEOMETRY)) and isinstance(geometry, bytes | bytearray):
+        if (geometry := qsettings.value(self.GUIStateKey.GEOMETRY)) and isinstance(
+            geometry, QByteArray | bytes | bytearray | memoryview
+        ):
             self._view.restore_geometry(geometry)
-        if (state := qsettings.value(self.GUIStateKey.STATE)) and isinstance(state, bytes | bytearray):
+        if (state := qsettings.value(self.GUIStateKey.STATE)) and isinstance(
+            state, QByteArray | bytes | bytearray | memoryview
+        ):
             self._view.restore_window_state(state)
         if path := qsettings.value(self.GUIStateKey.CONFIG):
             self._load_config(path)
@@ -294,13 +297,13 @@ class Presenter(QObject):
 
     @Slot()
     def save(self) -> None:
-        self._sig_cmd.emit(SaveConfiguration(path=self._config_path, config=self._view.config))
+        self._sig_cmd.emit(SaveConfiguration(path=self._configs.current, config=self._view.config))
 
     @Slot()
     def save_as(self) -> None:
         if path := self._file_dialog(save=True):
             self._set_config_path(path)
-            self._sig_cmd.emit(SaveConfiguration(path=self._config_path, config=self._view.config))
+            self._sig_cmd.emit(SaveConfiguration(path=self._configs.current, config=self._view.config))
 
     @Slot()
     def open(self) -> None:
@@ -338,13 +341,13 @@ class Presenter(QObject):
         fn = QFileDialog.getSaveFileName if save else QFileDialog.getOpenFileName
         path, _ = fn(
             caption=self.GUITitle.SAVE_CONFIG if save else self.GUITitle.OPEN_CONFIG,
-            dir=self._fs.get_parent(self._config_path),
+            dir=self._configs.directory,
             filter="JSON Files (*.json)",
         )
         return path or None
 
     def _set_config_path(self, path: str) -> None:
-        self._config_path = get_config_path(path)
+        self._configs.current = path
         stem = self._fs.get_stem_and_ext(path)[0] if path else "None"
         self._view.set_window_title(f"{stem} - {self.GUITitle.WINDOW}")
 
@@ -370,4 +373,4 @@ class Presenter(QObject):
         settings = QSettings()
         settings.setValue(self.GUIStateKey.GEOMETRY, self._view.save_geometry())
         settings.setValue(self.GUIStateKey.STATE, self._view.save_window_state())
-        settings.setValue(self.GUIStateKey.CONFIG, self._config_path)
+        settings.setValue(self.GUIStateKey.CONFIG, self._configs.current)
