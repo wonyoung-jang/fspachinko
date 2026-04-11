@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from fspachinko.adapters.duration import duration_fn_factory, get_duration_null
 from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, FilterName, ReStrFmt, TransferMode
 
 if TYPE_CHECKING:
@@ -300,18 +301,20 @@ class ConfigModelBootstrapper:
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
     rng: random.Random
-    config_to_file_filter: ConfigToFileFilter
-    duration_fn: Callable[[str], float]
+    config_to_file_filter: ConfigToFileFilter = field(default_factory=ConfigToFileFilter)
     transfer_mode: type[TransferMode] = TransferMode
 
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
         self.rng.seed(c.options.rng_seed)
+        duration_fn = duration_fn_factory()
+        if not c.duration.is_enabled:
+            duration_fn = get_duration_null
         self.pipeline.filefilter_fn = self.config_to_file_filter.build(c)
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
         self.pipeline.transfer_fn = self._build_transfer_fn(c.options.transfer_mode)
         self.pipeline.walker_fn = self._build_walker_fn(c)
-        self.pipeline.duration_fn = self.duration_fn
+        self.pipeline.duration_fn = duration_fn
         self.pipeline.inputs = deque(self._build_inputs(c))
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:

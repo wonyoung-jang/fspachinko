@@ -24,7 +24,7 @@ TIMEOUT = 2
 
 
 @cache
-def _get_duration_ffprobe(path: str) -> float:
+def get_duration_ffprobe(path: str) -> float:
     """Get the duration of a media file."""
     try:
         result = subprocess.run(
@@ -41,10 +41,15 @@ def _get_duration_ffprobe(path: str) -> float:
     return dur
 
 
+def get_duration_null(_: str) -> float:
+    """Fallback duration function that returns infinity."""
+    return float("inf")
+
+
 @cache
 def duration_fn_factory() -> Callable[[str], float]:
     """Create a get_duration function based on ffprobe availability."""
     if not shutil.which("ffprobe"):
         logger.warning("ffprobe not found in system PATH. Cannot evaluate media duration.")
-        return lambda _: float("inf")
-    return _get_duration_ffprobe
+        return get_duration_null
+    return get_duration_ffprobe

@@ -21,9 +21,7 @@ if TYPE_CHECKING:
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.config import ConfigModelBootstrapper
     from fspachinko.domain.commands import ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
-    from fspachinko.domain.events import (
-        Event,
-    )
+    from fspachinko.domain.events import Event
     from fspachinko.helpers import ReportWriter
 
 

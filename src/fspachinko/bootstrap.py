@@ -4,14 +4,13 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from fspachinko.adapters.duration import duration_fn_factory
 from fspachinko.adapters.filenamer import AbstractFilenamer, TemplateFilenamer
 from fspachinko.adapters.filesystem import AbstractFilesystem, Filesystem
 from fspachinko.adapters.fswalker import AbstractFSWalker, FSWalker
 from fspachinko.adapters.loggers import AbstractLogger, AppLogger
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
-from fspachinko.config import ConfigModelBootstrapper, ConfigToFileFilter
+from fspachinko.config import ConfigModelBootstrapper
 from fspachinko.datapaths import ensure_data_paths
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import (
@@ -51,7 +50,6 @@ class FSPachinkoBootstrapper:
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     logger: AbstractLogger = field(default_factory=AppLogger)
     available_transfer_fns: dict[str, Callable] = field(default_factory=available_transfer_fn_factory)
-    duration_fn: Callable[[str], float] = field(default_factory=duration_fn_factory)
     job: TransferJob = field(default_factory=TransferJob)
     rng: random.Random = field(default_factory=random.Random)
     filenamer_cls: type[AbstractFilenamer] = TemplateFilenamer
@@ -69,8 +67,6 @@ class FSPachinkoBootstrapper:
             available_transfer_fns=self.available_transfer_fns,
             template_filenamer=self.filenamer_cls,
             walker=self.walker_cls,
-            config_to_file_filter=ConfigToFileFilter(),
-            duration_fn=self.duration_fn,
         )
 
     def build_message_bus(self) -> MessageBus:
