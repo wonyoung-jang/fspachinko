@@ -26,9 +26,8 @@ def run(config_path: str = default_config_path) -> None:
         config_path (str): Path to configuration file.
 
     """
-    with open(config_path, encoding="utf-8") as f:
-        data = f.read()
-    config = ConfigModel.model_validate_json(data)
+    with open(config_path, "rb") as f:
+        config = ConfigModel.model_validate_json(f.read())
     bus.handle(ConfigurePipeline(config=config))
     bus.handle(
         RunTransferJob(

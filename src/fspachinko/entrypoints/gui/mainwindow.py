@@ -1,7 +1,8 @@
 """Main module."""
 
 import logging
-from typing import TYPE_CHECKING, Protocol
+from enum import StrEnum
+from typing import TYPE_CHECKING, ClassVar, Protocol
 
 from PySide6.QtCore import QByteArray, QObject, QSettings, Qt, QThread, Signal, Slot
 from PySide6.QtGui import QAction
@@ -12,15 +13,6 @@ from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred, PipelineConfigured, RunFinished, RunStarted
 from fspachinko.entrypoints.gui.components import BaseDockWidget, LogWidget, MainConfigWidget, ProgressWidget
-from fspachinko.entrypoints.gui.constants import (
-    ACTION_CONFIG,
-    FILE_DIALOG_JSON_FILTER,
-    MENU_CONFIG,
-    TOOLBAR_CONFIG,
-    TOOLBAR_NAME,
-    GUIStateKey,
-    GUITitle,
-)
 from fspachinko.entrypoints.gui.helpers import get_qt_icon, get_qt_shortcut
 
 if TYPE_CHECKING:
@@ -36,7 +28,14 @@ if TYPE_CHECKING:
 def build_actions(parent: QObject | None = None) -> dict[str, QAction]:
     """Build actions for the UI."""
     actions = {}
-    for name, (text, tip) in ACTION_CONFIG.items():
+    for name, (text, tip) in {
+        "save": ("&Save Configuration", "Save current configuration (Ctrl+S)"),
+        "save_as": ("Save Configuration &As", "Save current configuration as ... (Ctrl+Shift+S)"),
+        "load": ("&Load Configuration", "Load configuration (Ctrl+O)"),
+        "exit": ("&Exit", "Exit application (Ctrl+W)"),
+        "start": ("&Start", "Start (Ctrl+R)"),
+        "stop": ("S&top", "Stop (ESC)"),
+    }.items():
         icon = get_qt_icon(name)
         shortcut = get_qt_shortcut(name)
         actions[name] = QAction(icon, text, parent, shortcut=shortcut, toolTip=tip, statusTip=tip)
@@ -113,6 +112,13 @@ class IView(Protocol):
 class MainWindow(QMainWindow):
     """Main application window."""
 
+    MENU_CONFIG: ClassVar[dict[str, Sequence[str | None]]] = {
+        "&File": ("save", "save_as", "load", None, "exit"),
+        "&Run": ("start", "stop"),
+    }
+    TOOLBAR_NAME: ClassVar[str] = "Toolbar"
+    TOOLBAR_CONFIG: ClassVar[Sequence[str | None]] = ("save", "save_as", "load", None, "start", "stop", None, "exit")
+
     def __init__(self, presenter: Presenter) -> None:
         """Initialize the main window."""
         super().__init__(animated=True)
@@ -179,10 +185,10 @@ class MainWindow(QMainWindow):
                     bar.addAction(actions[item])
 
         self.statusBar().setSizeGripEnabled(True)
-        toolbar = self.addToolBar(TOOLBAR_NAME)
-        toolbar.setObjectName(TOOLBAR_NAME)
-        _populate(toolbar, TOOLBAR_CONFIG)
-        for submenu, config in MENU_CONFIG.items():
+        toolbar = self.addToolBar(self.TOOLBAR_NAME)
+        toolbar.setObjectName(self.TOOLBAR_NAME)
+        _populate(toolbar, self.TOOLBAR_CONFIG)
+        for submenu, config in self.MENU_CONFIG.items():
             _populate(self.menuBar().addMenu(submenu), config)
 
     # -- Lifecycle -------------------------------------------------------------
@@ -199,6 +205,20 @@ class Presenter(QObject):
     _sig_cmd = Signal(Command)
     _sig_stop = Signal(StopProcess)
     _sig_logged = Signal(str)
+
+    class GUIStateKey(StrEnum):
+        """Enumeration for QSettings keys."""
+
+        CONFIG = "config"
+        GEOMETRY = "geometry"
+        STATE = "state"
+
+    class GUITitle(StrEnum):
+        """Enumeration for GUI window titles."""
+
+        OPEN_CONFIG = "Open Configuration"
+        SAVE_CONFIG = "Save Configuration As"
+        WINDOW = "fspachinko: Transfer random files"
 
     def __init__(self, bootstrapper: FSPachinkoBootstrapper) -> None:
         """Initialize the presenter with the bootstrapper."""
@@ -219,11 +239,11 @@ class Presenter(QObject):
     def _restore_state(self) -> None:
         """Restore the window state from settings."""
         qsettings = QSettings()
-        if (geometry := qsettings.value(GUIStateKey.GEOMETRY)) and isinstance(geometry, bytes | bytearray):
+        if (geometry := qsettings.value(self.GUIStateKey.GEOMETRY)) and isinstance(geometry, bytes | bytearray):
             self._view.restore_geometry(geometry)
-        if (state := qsettings.value(GUIStateKey.STATE)) and isinstance(state, bytes | bytearray):
+        if (state := qsettings.value(self.GUIStateKey.STATE)) and isinstance(state, bytes | bytearray):
             self._view.restore_window_state(state)
-        if path := qsettings.value(GUIStateKey.CONFIG):
+        if path := qsettings.value(self.GUIStateKey.CONFIG):
             self._load_config(path)
 
     def _setup_worker(self) -> None:
@@ -317,16 +337,16 @@ class Presenter(QObject):
     def _file_dialog(self, *, save: bool) -> str | None:
         fn = QFileDialog.getSaveFileName if save else QFileDialog.getOpenFileName
         path, _ = fn(
-            caption=GUITitle.SAVE_CONFIG if save else GUITitle.OPEN_CONFIG,
+            caption=self.GUITitle.SAVE_CONFIG if save else self.GUITitle.OPEN_CONFIG,
             dir=self._fs.get_parent(self._config_path),
-            filter=FILE_DIALOG_JSON_FILTER,
+            filter="JSON Files (*.json)",
         )
         return path or None
 
     def _set_config_path(self, path: str) -> None:
         self._config_path = get_config_path(path)
         stem = self._fs.get_stem_and_ext(path)[0] if path else "None"
-        self._view.set_window_title(f"{stem} - {GUITitle.WINDOW}")
+        self._view.set_window_title(f"{stem} - {self.GUITitle.WINDOW}")
 
     def _load_config(self, path: str) -> None:
         self._set_config_path(path)
@@ -348,6 +368,6 @@ class Presenter(QObject):
         self._thread.quit()
         self._thread.wait()
         settings = QSettings()
-        settings.setValue(GUIStateKey.GEOMETRY, self._view.save_geometry())
-        settings.setValue(GUIStateKey.STATE, self._view.save_window_state())
-        settings.setValue(GUIStateKey.CONFIG, self._config_path)
+        settings.setValue(self.GUIStateKey.GEOMETRY, self._view.save_geometry())
+        settings.setValue(self.GUIStateKey.STATE, self._view.save_window_state())
+        settings.setValue(self.GUIStateKey.CONFIG, self._config_path)

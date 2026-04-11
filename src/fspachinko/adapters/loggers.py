@@ -61,39 +61,39 @@ class AbstractLogger(ABC):
 class AppLogger(AbstractLogger):
     """Logger implementation."""
 
-    logger: logging.Logger = field(init=False)
-    handlers: dict[str, logging.Handler] = field(default_factory=dict)
+    _logger: logging.Logger = field(init=False)
+    _handlers: dict[str, logging.Handler] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize the root logger."""
-        self.logger = logging.getLogger()
-        self.logger.setLevel(logging.DEBUG)
+        self._logger = logging.getLogger("fspachinko")
+        self._logger.setLevel(logging.DEBUG)
         self.add_global_file_log_handler()
         self.debug("Initialized AppLogger with file log handler.")
 
     def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message."""
-        self.logger.debug(msg, *args, **kwargs)
+        self._logger.debug(msg, *args, **kwargs)
 
     def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an info message."""
-        self.logger.info(msg, *args, **kwargs)
+        self._logger.info(msg, *args, **kwargs)
 
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message."""
-        self.logger.warning(msg, *args, **kwargs)
+        self._logger.warning(msg, *args, **kwargs)
 
     def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an exception message."""
-        self.logger.exception(msg, *args, **kwargs)
+        self._logger.exception(msg, *args, **kwargs)
 
     def add_handler(self, name: str, handler: logging.Handler) -> None:
         """Add a logging handler."""
-        if name in self.handlers:
+        if name in self._handlers:
             self.warning("Handler '%s' already registered. Skipping addition.", name)
             return
-        self.handlers[name] = handler
-        self.logger.addHandler(handler)
+        self._handlers[name] = handler
+        self._logger.addHandler(handler)
 
     def add_global_file_log_handler(self) -> None:
         """Add a file log handler."""
@@ -134,8 +134,8 @@ class AppLogger(AbstractLogger):
 
     def remove_dest_log_filehandler(self, dest: str) -> None:
         """Remove the log handler for the job request."""
-        if handler := self.handlers.pop(dest, None):
-            self.logger.removeHandler(handler)
+        if handler := self._handlers.pop(dest, None):
+            self._logger.removeHandler(handler)
             self.debug("Removed log handler for destination: %s", dest)
             handler.close()
         else:

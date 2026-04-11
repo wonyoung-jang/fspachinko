@@ -1,24 +1,20 @@
 """Utility functions."""
 
 from dataclasses import dataclass
-from functools import cache
 
 from fspachinko.constants import SIZE_MAP, StateStatus
 
 
-@cache
 def dest_path_str(path: str) -> str:
     """Get the destination path string."""
     return f"Destination: {path}"
 
 
-@cache
 def count_ratio_str(count: int, target: int) -> str:
     """Get the count/target ratio string."""
     return f"{count}/{target} ({count / target:.2%}) files transferred"
 
 
-@cache
 def filesize_str(nbytes: int) -> str:
     """Convert bytes to human readable string."""
     for unit, threshold in SIZE_MAP.items():
@@ -28,7 +24,6 @@ def filesize_str(nbytes: int) -> str:
     return result
 
 
-@cache
 def get_report(path: str, size: int, count: int, target: int) -> str:
     """Generate a summary report string."""
     return (
@@ -41,7 +36,6 @@ def get_report(path: str, size: int, count: int, target: int) -> str:
     )
 
 
-@cache
 def get_status(
     *,
     success: bool,

@@ -62,12 +62,17 @@ class BaseGroupBox(QGroupBox):
 
     def restore(self, config: dict) -> None:
         """Restore the widget from config data."""
-        msg = "Restore method not implemented for this widget."
-        raise NotImplementedError(msg)
+        section = self._section(config)
+        self._restore(section)
 
     def _section(self, config: dict) -> dict:
         """Get the relevant section of the config."""
         return config.get(self.objectName(), {})
+
+    def _restore(self, section: dict) -> None:
+        """Restore config values to widgets."""
+        msg = "Restore method not implemented for this widget."
+        raise NotImplementedError(msg)
 
 
 class PathSelectorWidget(BaseGroupBox):
@@ -95,10 +100,10 @@ class PathSelectorWidget(BaseGroupBox):
         layout.addWidget(self.btn_browse)
         layout.addWidget(self.btn_open)
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the path selector widget from config data."""
-        c = self._section(config)
-        self.lbl_selected.setText(c.get("path", ""))
+        path = section.get("path", "")
+        self.lbl_selected.setText(path)
 
     @Slot()
     def browse(self) -> None:
@@ -167,17 +172,18 @@ class FileCountWidget(BaseGroupBox):
         layout.addWidget(self.spin_min_rand, 1, 1)
         layout.addWidget(self.spin_max_rand, 2, 1)
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the file count widget from config data."""
-        c = self._section(config)
-        is_rand_enabled = c.get("is_rand_enabled", False)
-        is_fixed_enabled = not is_rand_enabled
-        self.spin_fixed.setValue(c.get("count", 1))
-        self.spin_min_rand.setValue(c.get("rand_min", 1))
-        self.spin_max_rand.setValue(c.get("rand_max", 10))
-        self.radio_fixed.setChecked(is_fixed_enabled)
+        count = section.get("count", 1)
+        rand_min = section.get("rand_min", 1)
+        rand_max = section.get("rand_max", 10)
+        is_rand_enabled = section.get("is_rand_enabled", False)
+        self.spin_fixed.setValue(count)
+        self.spin_min_rand.setValue(rand_min)
+        self.spin_max_rand.setValue(rand_max)
+        self.radio_fixed.setChecked(not is_rand_enabled)
         self.radio_rand.setChecked(is_rand_enabled)
-        self.spin_fixed.setEnabled(is_fixed_enabled)
+        self.spin_fixed.setEnabled(not is_rand_enabled)
         self.spin_min_rand.setEnabled(is_rand_enabled)
         self.spin_max_rand.setEnabled(is_rand_enabled)
 
@@ -202,12 +208,14 @@ class DirectoryCreateWidget(BaseGroupBox):
         layout.addRow("Count:", self.spinbox_folder_count)
         layout.addRow("Name:", self.lineedit_folder_name)
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the create folders widget from config data."""
-        c = self._section(config)
-        self.setChecked(c.get("is_enabled", False))
-        self.spinbox_folder_count.setValue(c.get("count", 1))
-        self.lineedit_folder_name.setText(c.get("name", "fsp_output"))
+        is_enabled = section.get("is_enabled", False)
+        count = section.get("count", 1)
+        name = section.get("name", "fsp_output")
+        self.setChecked(is_enabled)
+        self.spinbox_folder_count.setValue(count)
+        self.lineedit_folder_name.setText(name)
 
 
 class FilenamerWidget(BaseGroupBox):
@@ -244,11 +252,12 @@ class FilenamerWidget(BaseGroupBox):
         self.lineedit_template.insert(tag)
         self.lineedit_template.setFocus()
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the filename template widget from config data."""
-        c = self._section(config)
-        self.setChecked(c.get("is_enabled", False))
-        self.lineedit_template.setText(c.get("template", FilenameTemplate.ORIGINAL))
+        is_enabled = section.get("is_enabled", False)
+        template = section.get("template", FilenameTemplate.ORIGINAL)
+        self.setChecked(is_enabled)
+        self.lineedit_template.setText(template)
 
 
 class TextFilterWidget(BaseGroupBox):
@@ -274,14 +283,15 @@ class TextFilterWidget(BaseGroupBox):
         layout.addWidget(self.radio_include, 1, 0)
         layout.addWidget(self.radio_exclude, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the text filter widget from config data."""
-        c = self._section(config)
-        should_include = c.get("should_include", True)
-        self.setChecked(c.get("is_enabled", False))
+        is_enabled = section.get("is_enabled", False)
+        should_include = section.get("should_include", True)
+        text = section.get("text", "")
+        self.setChecked(is_enabled)
         self.radio_include.setChecked(should_include)
         self.radio_exclude.setChecked(not should_include)
-        self.lineedit_filter.setText(c.get("text", ""))
+        self.lineedit_filter.setText(text)
 
 
 class RangeFilterWidget(BaseGroupBox):
@@ -311,13 +321,15 @@ class RangeFilterWidget(BaseGroupBox):
         layout.addRow("Max:", self.spin_max)
         layout.addRow("Unit:", self.combo_unit)
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the range filter widget from config data."""
-        c = self._section(config)
-        self.setChecked(c.get("is_enabled", False))
-        self.spin_min.setValue(c.get("minimum", 0.0))
-        self.spin_max.setValue(c.get("maximum", 10.0))
-        unit = c.get("unit", "")
+        is_enabled = section.get("is_enabled", False)
+        minimum = section.get("minimum", 0.0)
+        maximum = section.get("maximum", 10.0)
+        unit = section.get("unit", "")
+        self.setChecked(is_enabled)
+        self.spin_min.setValue(minimum)
+        self.spin_max.setValue(maximum)
         index = self.combo_unit.findText(unit)
         if index != -1:
             self.combo_unit.setCurrentIndex(index)
@@ -356,14 +368,18 @@ class OptionsWidget(BaseGroupBox):
         layout.addRow("Max from one directory", self.spin_max_per_dir)
         layout.addRow("Ensure unique directories", self.chk_unique_folders)
 
-    def restore(self, config: dict) -> None:
+    def _restore(self, section: dict) -> None:
         """Restore the options widget from config data."""
-        c = self._section(config)
-        self.combo_transfermode.setCurrentText(c.get("transfer_mode", TransferMode.DRY_RUN))
-        self.chk_follow_symlink.setChecked(c.get("should_follow_symlink", False))
-        self.lineedit_rng_seed.setText(c.get("rng_seed", ""))
-        self.spin_max_per_dir.setValue(c.get("max_per_dir", 0))
-        self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
+        transfer_mode = section.get("transfer_mode", TransferMode.DRY_RUN)
+        should_follow_symlink = section.get("should_follow_symlink", False)
+        rng_seed = section.get("rng_seed", "")
+        max_per_dir = section.get("max_per_dir", 0)
+        is_create_unique_dirs = section.get("is_create_unique_dirs", False)
+        self.combo_transfermode.setCurrentText(transfer_mode)
+        self.chk_follow_symlink.setChecked(should_follow_symlink)
+        self.lineedit_rng_seed.setText(rng_seed)
+        self.spin_max_per_dir.setValue(max_per_dir)
+        self.chk_unique_folders.setChecked(is_create_unique_dirs)
 
 
 class MainConfigLayout(QGridLayout):

@@ -6,7 +6,7 @@ import shutil
 from abc import ABC, abstractmethod
 from filecmp import cmp
 from os import mkdir, scandir
-from os.path import basename, dirname, exists, isfile, join, splitext
+from os.path import basename, dirname, join, splitext
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -100,10 +100,11 @@ class Filesystem(AbstractFilesystem):
 
     def json_to_dict(self, path: str) -> dict:
         """Load JSON data from a file."""
-        if exists(path) and isfile(path):
+        try:
             with open(path, encoding="utf-8") as f:
                 return json.load(f)
-        return {}
+        except OSError:
+            return {}
 
     def get_stem_and_ext(self, path: str) -> tuple[str, str]:
         """Get the stem and extension of a file path."""
@@ -115,8 +116,11 @@ class Filesystem(AbstractFilesystem):
 
     def save_json(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+        except OSError:
+            logger.exception("Error occurred while saving JSON file: %s", path)
 
     def remove_directory(self, path: str) -> None:
         """Remove a directory and its contents, with error handling."""

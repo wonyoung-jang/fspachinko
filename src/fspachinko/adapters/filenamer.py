@@ -13,8 +13,7 @@ if TYPE_CHECKING:
 
     from fspachinko.domain.model import FSEntry
 
-INVALID_FILENAME_CHARS: set[str] = set(r'\/:*?"<>|')
-
+INVALID_FILENAME_CHARS: set[str] = {"\\", "/", ":", "*", "?", '"', "<", ">", "|"}
 FILENAME_TEMPLATE_MAP: dict[FilenameTemplate, Callable[[FSEntry, int], str | int]] = {
     FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
     FilenameTemplate.INDEX: lambda _, c: c + 1,
@@ -34,7 +33,7 @@ class AbstractFilenamer(ABC):
     """Abstract filenamer."""
 
     template: str = ""
-    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(default_factory=dict)
+    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Validate the template."""
