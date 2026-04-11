@@ -32,7 +32,7 @@ def run(config_path: str = default_config_path) -> None:
     bus.handle(ConfigurePipeline(config=config))
     bus.handle(
         RunTransferJob(
-            root=config.root,
+            root=config.root.path,
             max_per_dir=config.options.max_per_dir,
             unique_files_only=config.options.is_create_unique_dirs,
         )

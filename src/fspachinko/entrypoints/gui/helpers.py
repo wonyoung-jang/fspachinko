@@ -15,10 +15,8 @@ if TYPE_CHECKING:
 
 def set_qt_tips(w: QWidget | QAction, tooltip: str, statustip: str = "") -> None:
     """Set the tooltip and status tip for a widget."""
-    if not statustip:
-        statustip = f"{tooltip} | ({w.metaObject().className()})"
     w.setToolTip(tooltip)
-    w.setStatusTip(statustip)
+    w.setStatusTip(statustip or tooltip)
 
 
 @cache

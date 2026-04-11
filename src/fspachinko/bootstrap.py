@@ -74,10 +74,10 @@ class FSPachinkoBootstrapper:
 
     def build_message_bus(self) -> MessageBus:
         """Bootstrap the application and return the message bus."""
-        return MessageBus(
-            command_handlers=self.get_command_handlers(),
-            event_handlers=self.get_event_handlers(),
-        )
+        bus = MessageBus()
+        bus.command_handlers.update(self.get_command_handlers())
+        bus.event_handlers.update(self.get_event_handlers())
+        return bus
 
     def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""

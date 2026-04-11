@@ -1,6 +1,10 @@
 {
-    "root": "E:/",
-    "dest": "fspachinko_output/",
+    "root": {
+        "path": "E:/"
+    },
+    "dest": {
+        "path": "fspachinko_output"
+    },
     "filecount": {
         "count": 10,
         "is_rand_enabled": false,

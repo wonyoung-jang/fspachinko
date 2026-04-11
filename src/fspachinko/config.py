@@ -24,6 +24,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class PathSelectorModel(BaseModel):
+    """Model for path selection configuration."""
+
+    path: str = Field(default="")
+
+    @field_validator("path")
+    @classmethod
+    def validate_root_and_dest_paths(cls, val: str) -> str:
+        """Ensure root and dest paths are absolute."""
+        if not isabs(val):
+            return realpath(val)
+        return val
+
+
 class FilecountModel(BaseModel):
     """Model for file count configuration."""
 
@@ -149,8 +163,8 @@ class OptionsModel(BaseModel):
 class ConfigModel(BaseModel):
     """Model for configuration."""
 
-    root: str = "C:/"
-    dest: str = "/fspachinko_output"
+    root: PathSelectorModel = Field(default_factory=PathSelectorModel)
+    dest: PathSelectorModel = Field(default_factory=PathSelectorModel)
     filecount: FilecountModel = Field(default_factory=FilecountModel)
     directory: DirectoryModel = Field(default_factory=DirectoryModel)
     filename: FilenameModel = Field(default_factory=FilenameModel)
@@ -160,14 +174,6 @@ class ConfigModel(BaseModel):
     filesize: RangeFilterModel = Field(default_factory=RangeFilterModel)
     duration: RangeFilterModel = Field(default_factory=RangeFilterModel)
     options: OptionsModel = Field(default_factory=OptionsModel)
-
-    @field_validator("root", "dest")
-    @classmethod
-    def validate_root_and_dest_paths(cls, val: str) -> str:
-        """Ensure root and dest paths are absolute."""
-        if not isabs(val):
-            return realpath(val)
-        return val
 
 
 @dataclass(slots=True)
@@ -341,14 +347,14 @@ class ConfigModelBootstrapper:
     def _build_walker_fn(self, c: ConfigModel) -> Callable:
         """Build the walker function based on the configuration."""
         return self.walker(
-            root=c.root,
+            root=c.root.path,
             should_follow_symlink=c.options.should_follow_symlink,
             rng=self.rng,
         )
 
     def _build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:
         """Build the inputs for the pipeline based on the configuration."""
-        dst = c.dest
+        dst = c.dest.path
         cf = c.filecount
         cd = c.directory
         filecount_fn = (

@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QApplication
 
 from fspachinko.bootstrap import FSPachinkoBootstrapper
 from fspachinko.entrypoints.gui.helpers import get_qt_icon
-from fspachinko.entrypoints.gui.mainwindow import MainWindow
+from fspachinko.entrypoints.gui.mainwindow import Presenter
 
 
 class GUIAppSetting(StrEnum):
@@ -37,7 +37,7 @@ def main() -> None:
     app = QApplication()
     app.setWindowIcon(get_qt_icon("window"))
     bootstrapper = FSPachinkoBootstrapper()
-    window = MainWindow(bootstrapper=bootstrapper)
+    window = Presenter(bootstrapper=bootstrapper)
     window.show()
     app.exec()
 

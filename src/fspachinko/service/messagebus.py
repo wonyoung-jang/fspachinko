@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from fspachinko.domain.commands import Command
@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 class MessageBus:
     """A simple message bus for handling commands and events."""
 
-    command_handlers: dict[type[Command], Callable[[Command], Any]]
-    event_handlers: dict[type[Event], list[Callable[[Event], None]]]
+    command_handlers: dict[type[Command], Callable[[Command], Any]] = field(default_factory=dict)
+    event_handlers: dict[type[Event], list[Callable[[Event], None]]] = field(default_factory=dict)
 
     def subscribe(self, msg: type[Message], handler: Callable) -> None:
         """Subscribe a handler to a message type."""

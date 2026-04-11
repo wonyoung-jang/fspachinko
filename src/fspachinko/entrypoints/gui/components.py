@@ -1,10 +1,9 @@
 """GUI components in PySide6."""
 
-from functools import cache
 from os.path import exists, isdir
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from PySide6.QtCore import QUrl, Slot
+from PySide6.QtCore import Qt, QUrl, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -25,7 +24,6 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QTextBrowser,
     QTextEdit,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -39,34 +37,28 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 
-class BaseDockWidget(QDockWidget):
-    """Base class for dock widgets with common functionality."""
-
-    def __init__(self, w: QWidget, title: str, name: str) -> None:
-        """Initialize the base dock widget."""
-        super().__init__(title)
-        self.setObjectName(name)
-        self.setWidget(w)
-        f = QDockWidget.DockWidgetFeature
-        self.setFeatures(f.DockWidgetMovable | f.DockWidgetFloatable)
-
-
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
+
+    CONFIG_SPEC: ClassVar[dict] = {}
 
     def __init__(self, title: str, name: str, *, checkable: bool = False) -> None:
         """Initialize the base group box."""
         super().__init__()
+        self.setTitle(title)
+        self.setObjectName(name)
         self.setCheckable(checkable)
         self.setFlat(True)
-        self.setObjectName(name)
-        self.setTitle(title)
 
     @property
     def config(self) -> dict:
         """Return clean data for the config."""
-        msg = "Config property not implemented for this widget."
-        raise NotImplementedError(msg)
+        config = {}
+        for key, (name, method) in self.CONFIG_SPEC.items():
+            obj = getattr(self, name) if name else self
+            meth = getattr(obj, method)
+            config[key] = meth()
+        return {self.objectName(): config}
 
     def restore(self, config: dict) -> None:
         """Restore the widget from config data."""
@@ -81,13 +73,17 @@ class BaseGroupBox(QGroupBox):
 class PathSelectorWidget(BaseGroupBox):
     """Handles logic for selecting a path."""
 
+    CONFIG_SPEC: ClassVar[dict] = {
+        "path": ("lbl_selected", "text"),
+    }
+
     def __init__(self, title: str, name: str) -> None:
         """Initialize the path selector widget."""
         super().__init__(title, name)
+        self.setAcceptDrops(True)
         self.lbl_selected = QLabel()
         self.btn_browse = QPushButton(get_qt_icon("browse"), "Browse")
         self.btn_open = QPushButton(get_qt_icon("open_dir"), "Open")
-        self.setAcceptDrops(True)
         self.btn_browse.clicked.connect(self.browse)
         self.btn_open.clicked.connect(self.open)
         titlenorm = self.title().casefold()
@@ -99,16 +95,10 @@ class PathSelectorWidget(BaseGroupBox):
         layout.addWidget(self.btn_browse)
         layout.addWidget(self.btn_open)
 
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): self.lbl_selected.text(),
-        }
-
     def restore(self, config: dict) -> None:
         """Restore the path selector widget from config data."""
-        self.lbl_selected.setText(config.get(self.objectName(), ""))
+        c = self._section(config)
+        self.lbl_selected.setText(c.get("path", ""))
 
     @Slot()
     def browse(self) -> None:
@@ -145,19 +135,26 @@ class PathSelectorWidget(BaseGroupBox):
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
+    CONFIG_SPEC: ClassVar[dict] = {
+        "count": ("spin_fixed", "value"),
+        "is_rand_enabled": ("radio_rand", "isChecked"),
+        "rand_min": ("spin_min_rand", "value"),
+        "rand_max": ("spin_max_rand", "value"),
+    }
+
     def __init__(self, title: str, name: str) -> None:
         """Initialize the file count widget."""
         super().__init__(title, name)
         self.radio_fixed = QRadioButton("Fixed")
-        self.spin_fixed = QSpinBox(suffix=" files", minimum=1, maximum=MAXIMUM_INT)
+        self.spin_fixed = QSpinBox(minimum=1, maximum=MAXIMUM_INT)
         self.radio_rand = QRadioButton("Random")
-        self.spin_min_rand = QSpinBox(prefix="Min: ", minimum=1, maximum=MAXIMUM_INT)
-        self.spin_max_rand = QSpinBox(prefix="Max: ", minimum=2, maximum=MAXIMUM_INT)
+        self.spin_min_rand = QSpinBox(minimum=1, maximum=MAXIMUM_INT)
+        self.spin_max_rand = QSpinBox(minimum=2, maximum=MAXIMUM_INT)
         self.spin_min_rand.valueChanged.connect(self.spin_max_rand.setMinimum)
         self.spin_max_rand.valueChanged.connect(self.spin_min_rand.setMaximum)
         self.radio_fixed.toggled.connect(self.spin_fixed.setEnabled)
-        self.radio_fixed.toggled.connect(self.spin_min_rand.setDisabled)
-        self.radio_fixed.toggled.connect(self.spin_max_rand.setDisabled)
+        self.radio_rand.toggled.connect(self.spin_min_rand.setEnabled)
+        self.radio_rand.toggled.connect(self.spin_max_rand.setEnabled)
         set_qt_tips(self.radio_fixed, "Select fixed file count.")
         set_qt_tips(self.spin_fixed, "Number of files to copy.")
         set_qt_tips(self.radio_rand, "Select random file count.")
@@ -165,38 +162,34 @@ class FileCountWidget(BaseGroupBox):
         set_qt_tips(self.spin_max_rand, "Maximum random file count.")
         layout = QGridLayout(self)
         layout.addWidget(self.radio_fixed, 0, 0)
-        layout.addWidget(self.spin_fixed, 0, 1)
         layout.addWidget(self.radio_rand, 1, 0)
+        layout.addWidget(self.spin_fixed, 0, 1)
         layout.addWidget(self.spin_min_rand, 1, 1)
         layout.addWidget(self.spin_max_rand, 2, 1)
-
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): {
-                "count": self.spin_fixed.value(),
-                "is_rand_enabled": self.radio_rand.isChecked(),
-                "rand_min": self.spin_min_rand.value(),
-                "rand_max": self.spin_max_rand.value(),
-            },
-        }
 
     def restore(self, config: dict) -> None:
         """Restore the file count widget from config data."""
         c = self._section(config)
         is_rand_enabled = c.get("is_rand_enabled", False)
+        is_fixed_enabled = not is_rand_enabled
         self.spin_fixed.setValue(c.get("count", 1))
-        self.radio_fixed.setChecked(not is_rand_enabled)
-        self.radio_rand.setChecked(is_rand_enabled)
         self.spin_min_rand.setValue(c.get("rand_min", 1))
         self.spin_max_rand.setValue(c.get("rand_max", 10))
+        self.radio_fixed.setChecked(is_fixed_enabled)
+        self.radio_rand.setChecked(is_rand_enabled)
+        self.spin_fixed.setEnabled(is_fixed_enabled)
         self.spin_min_rand.setEnabled(is_rand_enabled)
         self.spin_max_rand.setEnabled(is_rand_enabled)
 
 
 class DirectoryCreateWidget(BaseGroupBox):
     """Handles logic for creating folders."""
+
+    CONFIG_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "isChecked"),
+        "count": ("spinbox_folder_count", "value"),
+        "name": ("lineedit_folder_name", "text"),
+    }
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
@@ -205,20 +198,9 @@ class DirectoryCreateWidget(BaseGroupBox):
         self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
         set_qt_tips(self.spinbox_folder_count, "Number of folders to create.")
         set_qt_tips(self.lineedit_folder_name, "Template for naming created folders.")
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.spinbox_folder_count)
-        layout.addWidget(self.lineedit_folder_name)
-
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): {
-                "is_enabled": self.isChecked(),
-                "count": self.spinbox_folder_count.value(),
-                "name": self.lineedit_folder_name.text(),
-            },
-        }
+        layout = QFormLayout(self)
+        layout.addRow("Count:", self.spinbox_folder_count)
+        layout.addRow("Name:", self.lineedit_folder_name)
 
     def restore(self, config: dict) -> None:
         """Restore the create folders widget from config data."""
@@ -230,6 +212,11 @@ class DirectoryCreateWidget(BaseGroupBox):
 
 class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
+
+    CONFIG_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "isChecked"),
+        "template": ("lineedit_template", "text"),
+    }
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the filename template settings widget."""
@@ -244,28 +231,18 @@ class FilenamerWidget(BaseGroupBox):
             action = self.menu.addAction(lbl)
             action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
         self.btn_insert.setMenu(self.menu)
-        set_qt_tips(self.lineedit_template, "Template for renaming files. Use the 'Insert Tag' button to add tags.")
+        set_qt_tips(self.lineedit_template, "Template for renaming files. Use the 'Insert tag' button to add tags.")
         set_qt_tips(self.btn_insert, "Insert a tag into the template at the cursor position.")
         set_qt_tips(self.menu, "Select a tag to insert into the filename template.")
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.lineedit_template)
-        layout.addWidget(self.btn_insert)
+        layout = QFormLayout(self)
+        layout.addRow("Template:", self.lineedit_template)
+        layout.addRow("Tags:", self.btn_insert)
 
     @Slot(str)
     def insert_tag(self, tag: str) -> None:
         """Insert a tag into the template at the cursor position."""
         self.lineedit_template.insert(tag)
         self.lineedit_template.setFocus()
-
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): {
-                "is_enabled": self.isChecked(),
-                "template": self.lineedit_template.text(),
-            },
-        }
 
     def restore(self, config: dict) -> None:
         """Restore the filename template widget from config data."""
@@ -277,6 +254,12 @@ class FilenamerWidget(BaseGroupBox):
 class TextFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude text pattern."""
 
+    CONFIG_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "isChecked"),
+        "should_include": ("radio_include", "isChecked"),
+        "text": ("lineedit_filter", "text"),
+    }
+
     def __init__(self, title: str, name: str) -> None:
         """Initialize the dual list widget."""
         super().__init__(title, name, checkable=True)
@@ -286,21 +269,10 @@ class TextFilterWidget(BaseGroupBox):
         set_qt_tips(self.lineedit_filter, f"Enter {name}s separated by commas.")
         set_qt_tips(self.radio_include, f"Include only items matching the {name}s filter.")
         set_qt_tips(self.radio_exclude, f"Exclude items matching the {name}s filter.")
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.lineedit_filter)
-        layout.addWidget(self.radio_include)
-        layout.addWidget(self.radio_exclude)
-
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): {
-                "is_enabled": self.isChecked(),
-                "should_include": self.radio_include.isChecked(),
-                "text": self.lineedit_filter.text(),
-            },
-        }
+        layout = QGridLayout(self)
+        layout.addWidget(self.lineedit_filter, 0, 0, 1, 2)
+        layout.addWidget(self.radio_include, 1, 0)
+        layout.addWidget(self.radio_exclude, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
 
     def restore(self, config: dict) -> None:
         """Restore the text filter widget from config data."""
@@ -315,11 +287,18 @@ class TextFilterWidget(BaseGroupBox):
 class RangeFilterWidget(BaseGroupBox):
     """Handles logic for ranges (min/max), e.g., Size or Duration."""
 
+    CONFIG_SPEC: ClassVar[dict] = {
+        "is_enabled": ("", "isChecked"),
+        "minimum": ("spin_min", "value"),
+        "maximum": ("spin_max", "value"),
+        "unit": ("combo_unit", "currentText"),
+    }
+
     def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
         """Initialize the range filter widget."""
         super().__init__(title, name, checkable=True)
-        self.spin_min = QDoubleSpinBox(prefix="Min: ", minimum=0.0, maximum=float("inf"))
-        self.spin_max = QDoubleSpinBox(prefix="Max: ", minimum=0.0, maximum=float("inf"))
+        self.spin_min = QDoubleSpinBox(minimum=0.0, maximum=float("inf"))
+        self.spin_max = QDoubleSpinBox(minimum=0.0, maximum=float("inf"))
         self.combo_unit = QComboBox()
         self.combo_unit.addItems(items)
         set_qt_tips(self.spin_min, f"Minimum value for the {name} filter.")
@@ -327,22 +306,10 @@ class RangeFilterWidget(BaseGroupBox):
         set_qt_tips(self.combo_unit, f"Unit multiplier for the {name} filter.")
         self.spin_min.valueChanged.connect(self.spin_max.setMinimum)
         self.spin_max.valueChanged.connect(self.spin_min.setMaximum)
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.spin_min)
-        layout.addWidget(self.spin_max)
-        layout.addWidget(self.combo_unit)
-
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): {
-                "is_enabled": self.isChecked(),
-                "minimum": self.spin_min.value(),
-                "maximum": self.spin_max.value(),
-                "unit": self.combo_unit.currentText(),
-            },
-        }
+        layout = QFormLayout(self)
+        layout.addRow("Min:", self.spin_min)
+        layout.addRow("Max:", self.spin_max)
+        layout.addRow("Unit:", self.combo_unit)
 
     def restore(self, config: dict) -> None:
         """Restore the range filter widget from config data."""
@@ -358,6 +325,14 @@ class RangeFilterWidget(BaseGroupBox):
 
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
+
+    CONFIG_SPEC: ClassVar[dict] = {
+        "transfer_mode": ("combo_transfermode", "currentText"),
+        "should_follow_symlink": ("chk_follow_symlink", "isChecked"),
+        "rng_seed": ("lineedit_rng_seed", "text"),
+        "max_per_dir": ("spin_max_per_dir", "value"),
+        "is_create_unique_dirs": ("chk_unique_folders", "isChecked"),
+    }
 
     def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
         """Initialize the options widget."""
@@ -381,19 +356,6 @@ class OptionsWidget(BaseGroupBox):
         layout.addRow("Max from one directory", self.spin_max_per_dir)
         layout.addRow("Ensure unique directories", self.chk_unique_folders)
 
-    @property
-    def config(self) -> dict:
-        """Return clean data for the config."""
-        return {
-            self.objectName(): {
-                "transfer_mode": self.combo_transfermode.currentText(),
-                "should_follow_symlink": self.chk_follow_symlink.isChecked(),
-                "rng_seed": self.lineedit_rng_seed.text(),
-                "max_per_dir": self.spin_max_per_dir.value(),
-                "is_create_unique_dirs": self.chk_unique_folders.isChecked(),
-            },
-        }
-
     def restore(self, config: dict) -> None:
         """Restore the options widget from config data."""
         c = self._section(config)
@@ -404,24 +366,75 @@ class OptionsWidget(BaseGroupBox):
         self.chk_unique_folders.setChecked(c.get("is_create_unique_dirs", False))
 
 
-@cache
-def component_map() -> Sequence[
-    tuple[type[BaseGroupBox], str, str] | tuple[type[BaseGroupBox], str, str, Sequence[str]]
-]:
-    """Get the mapping of config sections to component classes and their init args."""
-    return (
-        (PathSelectorWidget, "Root", "root"),
-        (PathSelectorWidget, "Destination", "dest"),
-        (FileCountWidget, "File count", "filecount"),
-        (DirectoryCreateWidget, "Create directories", "directory"),
-        (FilenamerWidget, "Filenamer", "filename"),
-        (TextFilterWidget, "Directory names", "dirname"),
-        (TextFilterWidget, "Keywords", "keyword"),
-        (TextFilterWidget, "Extensions", "extension"),
-        (RangeFilterWidget, "File size", "filesize", tuple(SIZE_MAP.keys())),
-        (RangeFilterWidget, "Duration", "duration", tuple(TIME_MAP.keys())),
-        (OptionsWidget, "Options", "options", available_transfer_fns()),
-    )
+class MainConfigLayout(QGridLayout):
+    """Layout for MainConfigWidget. Owns the grid, not the widgets."""
+
+    _POSITIONS: ClassVar[dict[str, tuple[int, int, int, int]]] = {
+        "root": (0, 0, 1, 3),
+        "dest": (1, 0, 1, 3),
+        "filecount": (2, 0, 1, 1),
+        "directory": (2, 1, 1, 1),
+        "filename": (2, 2, 1, 1),
+        "dirname": (3, 0, 1, 1),
+        "keyword": (3, 1, 1, 1),
+        "extension": (3, 2, 1, 1),
+        "filesize": (4, 0, 1, 1),
+        "duration": (4, 1, 1, 1),
+        "options": (4, 2, 1, 1),
+    }
+
+    def populate(self, widgets: dict[str, BaseGroupBox]) -> None:
+        for name, (row, col, rowspan, colspan) in self._POSITIONS.items():
+            self.addWidget(widgets[name], row, col, rowspan, colspan)
+
+
+class MainConfigWidget(QWidget):
+    """Main widget."""
+
+    def __init__(self) -> None:
+        """Initialize the main widget."""
+        super().__init__()
+        self._widgets: dict[str, BaseGroupBox] = {
+            "root": PathSelectorWidget("Root", "root"),
+            "dest": PathSelectorWidget("Destination", "dest"),
+            "filecount": FileCountWidget("File count", "filecount"),
+            "directory": DirectoryCreateWidget("Create directories", "directory"),
+            "filename": FilenamerWidget("Filenamer", "filename"),
+            "dirname": TextFilterWidget("Directory names", "dirname"),
+            "keyword": TextFilterWidget("Keywords", "keyword"),
+            "extension": TextFilterWidget("Extensions", "extension"),
+            "filesize": RangeFilterWidget("File size", "filesize", tuple(SIZE_MAP.keys())),
+            "duration": RangeFilterWidget("Duration", "duration", tuple(TIME_MAP.keys())),
+            "options": OptionsWidget("Options", "options", available_transfer_fns()),
+        }
+        layout = MainConfigLayout(self)
+        layout.populate(self._widgets)
+
+    @property
+    def config(self) -> dict:
+        """Capture the current configuration from the UI."""
+        return {k: v for w in self._widgets.values() for k, v in w.config.items()}
+
+    def restore(self, config: dict) -> None:
+        """Restore the configuration to the UI."""
+        for w in self._widgets.values():
+            w.restore(config)
+
+    def toggle(self, *, is_enabled: bool) -> None:
+        for w in self._widgets.values():
+            w.setEnabled(is_enabled)
+
+
+class BaseDockWidget(QDockWidget):
+    """Base class for dock widgets with common functionality."""
+
+    def __init__(self, w: QWidget, title: str, name: str) -> None:
+        """Initialize the base dock widget."""
+        super().__init__(title)
+        self.setObjectName(name)
+        self.setWidget(w)
+        f = QDockWidget.DockWidgetFeature
+        self.setFeatures(f.DockWidgetMovable | f.DockWidgetFloatable)
 
 
 class LogWidget(QTextBrowser):
@@ -445,22 +458,21 @@ class ProgressWidget(QWidget):
         set_qt_tips(self.progbar_dirs, "Total progress bar, max is set at number of output folders.")
         set_qt_tips(self.progbar_files, "Current folder progress bar, max is set at number of files to copy.")
         layout = QFormLayout(self)
-        layout.addRow("Directories", self.progbar_dirs)
+        layout.addRow("Dirs", self.progbar_dirs)
         layout.addRow("Files", self.progbar_files)
 
     def handle_start_process(self, dir_count: int) -> None:
         """Set up the progress bars at the start of the process."""
         self.progbar_dirs.setMaximum(dir_count)
         self.progbar_dirs.setValue(0)
-        self.progbar_files.setMaximum(0)
-        self.progbar_files.setValue(0)
+        self.progbar_files.setMaximum(MAXIMUM_INT)
+        self.progbar_files.reset()
 
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        curr = self.progbar_dirs.value()
-        self.progbar_dirs.setValue(curr + 1)
+        self.progbar_dirs.setValue(self.progbar_dirs.value() + 1)
         self.progbar_files.setMaximum(target)
-        self.progbar_files.setValue(0)
+        self.progbar_files.reset()
 
     def handle_file_transfer(self, count: int) -> None:
         """Update the file progress bar."""

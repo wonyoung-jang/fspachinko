@@ -11,6 +11,7 @@ from fspachinko.config import (
     FilecountModel,
     FilenameModel,
     OptionsModel,
+    PathSelectorModel,
     RangeFilterModel,
 )
 
@@ -100,12 +101,12 @@ def test_config_model() -> None:
     """Test ConfigModel validation."""
     # Test default factory
     m = ConfigModel()
-    assert m.root == "C:/"
-    assert m.dest == "/fspachinko_output"
+    assert m.root.path == ""
+    assert m.dest.path == ""
     # Test valid model
-    m = ConfigModel(root="/source", dest="/destination")
-    assert m.root == realpath("/source")
-    assert m.dest == realpath("/destination")
-    m = ConfigModel(root="C:/source", dest="C:/destination")
-    assert m.root == "C:/source"
-    assert m.dest == "C:/destination"
+    m = ConfigModel(root=PathSelectorModel(path="/source"), dest=PathSelectorModel(path="/destination"))
+    assert m.root.path == realpath("/source")
+    assert m.dest.path == realpath("/destination")
+    m = ConfigModel(root=PathSelectorModel(path="C:/source"), dest=PathSelectorModel(path="C:/destination"))
+    assert m.root.path == "C:/source"
+    assert m.dest.path == "C:/destination"

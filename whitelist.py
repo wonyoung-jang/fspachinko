@@ -17,5 +17,4 @@ ConfigModel.duration.validate_minimum  # noqa: B018
 ConfigModel.duration.validate_maximum  # noqa: B018
 ConfigModel.options.validate_rng_seed  # noqa: B018
 ConfigModel.options.validate_max_per_dir  # noqa: B018
-ConfigModel.validate_root_and_dest_paths  # noqa: B018
 fspachinko._defaultconfig.DEFAULT_CONFIG  # noqa: B018, SLF001

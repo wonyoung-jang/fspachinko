@@ -65,8 +65,8 @@ class DestinationDirectory:
     path: str
     target_qty: int
     should_create: bool
-    files: set[str] = field(default_factory=set)
     size: int = 0
+    files: set[str] = field(default_factory=set, init=False, repr=False)
 
     @property
     def count(self) -> int:
@@ -157,8 +157,8 @@ class FSPachinkoPin:
 
     path: str
     is_scanned: bool = False
-    subdirs: list[str] = field(default_factory=list)
-    files: list[FSEntry] = field(default_factory=list)
+    subdirs: list[str] = field(default_factory=list, init=False, repr=False)
+    files: list[FSEntry] = field(default_factory=list, init=False, repr=False)
 
     def __len__(self) -> int:
         """Get the total number of entries (subdirectories + files) in the pin."""

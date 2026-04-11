@@ -33,23 +33,22 @@ class AbstractFSWalker(ABC):
 class FSWalker(AbstractFSWalker):
     """Filesystem walker implementation."""
 
-    _board: dict[str, FSPachinkoPin] = field(default_factory=dict)
+    _board: dict[str, FSPachinkoPin] = field(default_factory=dict, init=False, repr=False)
 
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
         _root = self.root
         curr = self.root
-        pop = self._board.pop
         _random = self.rng.random
         _choice = self.rng.choice
         while True:
             pin = self.get_pin(curr)
             if not pin.is_scanned:
                 self.scan_pin(pin)
-            if pin.is_empty and curr == _root:
-                break
-            if pin.is_empty:  # Reset pin to root
-                pop(curr)
+            if pin.is_empty:
+                if curr == _root:
+                    break
+                self._board.pop(curr)
                 curr = _root
                 continue
             if _random() < pin.subdir_total_ratio:  # Should descend
