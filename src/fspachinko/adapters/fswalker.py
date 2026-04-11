@@ -39,16 +39,15 @@ class FSWalker(AbstractFSWalker):
         """Walk the filesystem and return an iterator of FSEntry objects."""
         _root = self.root
         curr = self.root
+        _pop = self._board.pop
         _random = self.rng.random
         _choice = self.rng.choice
         while True:
-            pin = self.get_pin(curr)
-            if not pin.is_scanned:
-                self.scan_pin(pin)
+            pin = self.pin_from_path(curr)
             if pin.is_empty:
                 if curr == _root:
                     break
-                self._board.pop(curr)
+                _pop(curr)
                 curr = _root
                 continue
             if _random() < pin.subdir_total_ratio:  # Should descend
@@ -58,9 +57,12 @@ class FSWalker(AbstractFSWalker):
                 yield _choice(files)
             curr = _root
 
-    def get_pin(self, path: str) -> FSPachinkoPin:
+    def pin_from_path(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""
-        return self._board.setdefault(path, FSPachinkoPin(path=path))
+        pin = self._board.setdefault(path, FSPachinkoPin(path=path))
+        if not pin.is_scanned:
+            self.scan_pin(pin)
+        return pin
 
     def scan_pin(self, pin: FSPachinkoPin) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
