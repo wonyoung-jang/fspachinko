@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from os.path import exists, isdir
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from PySide6.QtCore import Qt, QUrl, Slot
 from PySide6.QtGui import QDesktopServices
@@ -78,15 +78,6 @@ class FieldSpec:
     tip: str = ""
 
 
-@dataclass(slots=True)
-class LayoutSpec:
-    """Specification for widget layouts."""
-
-    layout: type
-    adder: str
-    args: Sequence[Any]
-
-
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
 
@@ -101,7 +92,6 @@ class BaseGroupBox(QGroupBox):
         self.setFlat(True)
         self._wire_slots()
         self._set_tips()
-        self._set_layout()
 
     @property
     def config(self) -> dict:
@@ -147,21 +137,6 @@ class BaseGroupBox(QGroupBox):
         for field in self.FIELDS:
             if widget := getattr(self, field.name, None):
                 set_qt_tips(widget, field.tip)
-
-    def _set_layout(self) -> None:
-        """Set the layout for the group box."""
-        _layout = getattr(self, "_layout", None)
-        if _layout is None or not isinstance(_layout, LayoutSpec):
-            return
-        layout_cls = _layout.layout
-        layout = layout_cls(self)
-        adder = getattr(layout, _layout.adder)
-        for args in _layout.args:
-            if isinstance(args, tuple):
-                widget, *params = args
-                adder(widget, *params)
-            else:
-                adder(args)
 
 
 class PathSelectorWidget(BaseGroupBox):
