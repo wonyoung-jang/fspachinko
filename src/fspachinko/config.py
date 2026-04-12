@@ -307,10 +307,10 @@ class ConfigModelBootstrapper:
         self, dst: DestinationDirectory, e: FSEntry, filename_fn: Callable | None = None
     ) -> str | None:
         """Check if the original file name can be used without transfer."""
-        new_stem = filename_fn(e, dst.count) if filename_fn else e.stem
+        new_stem = filename_fn(e, len(dst)) if filename_fn else e.stem
         suffix = e.ext.casefold()
         target = self.fs.join_path(dst.path, f"{new_stem}{suffix}")
-        if target not in dst.files:
+        if target not in dst:
             return target
         # The target name is already in the destination.
         # Check if the existing name is the same file.
@@ -321,7 +321,7 @@ class ConfigModelBootstrapper:
             # If the files are the same, then this is not a valid file transfer
             return None
         # If the files are different, find a new name for it so there's no overwriting or errors
-        return self.fs.get_unique_path(target, dst.files)
+        return self.fs.get_unique_path(target, dst)
 
     def _build_transfer_fn(self, mode: str) -> Callable:
         """Build the transfer function based on the configuration."""

@@ -2,52 +2,15 @@
 
 from collections import Counter
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from fspachinko.domain.commands import Command
 from fspachinko.domain.events import Event
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 type Message = Command | Event
-
-
-@dataclass(slots=True)
-class DiversityQuota:
-    """Represents the diversity quota for the process.
-
-    This is a "global" object that tracks across multiple directories.
-    It has no real "identifier", so it is not an entity.
-    It is not really a value object either.
-    It is purely a rule enforcer.
-
-    The main rule:
-        If the max_per_dir is set, then no more than that number of files
-        can be accepted from the same parent directory.
-            - For example, if max_per_dir is 2, then a dest can have at most 2 files from parent A.
-
-    There is also an implicit special rule for the root:
-        - If the root is locked because max_per_dir is set, then no more files can be accepted.
-        - Root locking = process is stopped.
-    """
-
-    root: str = ""
-    max_per_dir: int | float = 0
-    directories: Counter[str] = field(default_factory=Counter)
-
-    @property
-    def is_root_locked(self) -> bool:
-        """Check if the root directory is locked."""
-        return self.directories[self.root] >= self.max_per_dir
-
-    def reset(self) -> None:
-        """Reset the locked file and directory sets."""
-        self.directories.clear()
-
-    def can_accept(self, parent: str) -> bool:
-        """Check if a file can be accepted based on the diversity quota."""
-        return not self.directories[parent] >= self.max_per_dir
-
-    def update(self, parent: str) -> None:
-        """Update the locked directory count after accepting a file."""
-        self.directories[parent] += 1
 
 
 @dataclass(slots=True)
@@ -58,22 +21,29 @@ class DestinationDirectory:
     target_qty: int
     should_create: bool
     size: int = 0
-    files: set[str] = field(default_factory=set, init=False, repr=False)
+    _files: set[str] = field(default_factory=set, init=False)
 
-    @property
-    def count(self) -> int:
-        """Get the current count of files in the directory."""
-        return len(self.files)
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over the file paths in the directory."""
+        return iter(self._files)
+
+    def __contains__(self, item: str) -> bool:
+        """Check if a file path is already in the directory."""
+        return item in self._files
+
+    def __len__(self) -> int:
+        """Get the number of files currently in the directory."""
+        return len(self._files)
 
     @property
     def is_success(self) -> bool:
         """Check if the directory has reached its target quantity."""
-        return self.count >= self.target_qty
+        return len(self) >= self.target_qty
 
     @property
     def is_none_found(self) -> bool:
         """Check if no valid files were found."""
-        return self.count == 0
+        return len(self) == 0
 
     @property
     def is_empty_creation(self) -> bool:
@@ -82,7 +52,7 @@ class DestinationDirectory:
 
     def add(self, path: str, size: int) -> None:
         """Update the directory stats after accepting a file."""
-        self.files.add(path)
+        self._files.add(path)
         self.size += size
 
 
@@ -90,8 +60,10 @@ class DestinationDirectory:
 class TransferJob:
     """The Root Aggregate for a file transfer process."""
 
-    quota: DiversityQuota = field(default_factory=DiversityQuota)
+    root: str = ""
+    max_per_dir: int | float = 0
     is_stop_requested: bool = False
+    _directories: Counter[str] = field(default_factory=Counter)
 
     @property
     def is_stop_condition(self) -> bool:
@@ -101,24 +73,23 @@ class TransferJob:
     @property
     def is_root_locked(self) -> bool:
         """Check if the root directory is locked."""
-        return self.quota.is_root_locked
+        return self._directories[self.root] >= self.max_per_dir
 
     def can_accept(self, entry: FSEntry) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
-        return self.quota.can_accept(entry.parent)
+        return not self._directories[entry.parent] >= self.max_per_dir
 
     def request_stop(self) -> None:
-        """Request to stop the process."""
+        """Set the stop request flag."""
         self.is_stop_requested = True
 
-    def start_directory(self) -> None:
-        """Update the directory count in the diversity quota after processing a file."""
-        self.quota.reset()
+    def reset(self) -> None:
+        """Reset the job state for a new directory."""
+        self._directories.clear()
 
-    def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, newpath: str) -> None:
+    def register_transfer(self, entry: FSEntry) -> None:
         """Update the job state after processing a file."""
-        dst.add(newpath, entry.size)
-        self.quota.update(entry.parent)
+        self._directories[entry.parent] += 1
 
 
 @dataclass(slots=True)

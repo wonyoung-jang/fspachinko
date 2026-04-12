@@ -12,7 +12,7 @@ from fspachinko.domain.events import (
     RunFinished,
     RunStarted,
 )
-from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
+from fspachinko.domain.model import DestinationDirectory, TransferJob
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -61,18 +61,19 @@ class RunTransferJobHandler:
         - Files may be transferred.
         """
         yield RunStarted()
+        self.job.root = cmd.root
+        self.job.max_per_dir = cmd.max_per_dir
         self.job.is_stop_requested = False
-        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir)
         for dst in self._iterate_inputs():
             if self.job.is_stop_condition:
                 break
-            self.job.start_directory()
+            self.job.reset()
             yield DirectoryStarted(path=dst.path, target_qty=dst.target_qty)
             yield from self._transfer_dir(dst)
             yield DirectoryTransferred(
                 path=dst.path,
                 size=dst.size,
-                count=dst.count,
+                count=len(dst),
                 target_qty=dst.target_qty,
                 is_success=dst.is_success,
                 is_empty_creation=dst.is_empty_creation,
@@ -109,7 +110,8 @@ class RunTransferJobHandler:
                         continue
                     if (newpath := self.pipeline.get_new_path(dst, entry)) is None:
                         continue
-                    self.job.register_transfer(dst, entry, newpath)
+                    dst.add(newpath, entry.size)
+                    self.job.register_transfer(entry)
                     future = executor.submit(self.pipeline.transfer_file, entry.path, newpath)
                     futures[future] = FileTransferred(src=entry.path, dst=newpath)
 
