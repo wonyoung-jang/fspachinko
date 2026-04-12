@@ -1,18 +1,12 @@
 """Utility functions."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from fspachinko.constants import SIZE_MAP, StateStatus
 
-
-def dest_path_str(path: str) -> str:
-    """Get the destination path string."""
-    return f"Destination: {path}"
-
-
-def count_ratio_str(count: int, target: int) -> str:
-    """Get the count/target ratio string."""
-    return f"{count}/{target} ({count / target:.2%}) files transferred"
+if TYPE_CHECKING:
+    from fspachinko.domain.events import DirectoryTransferred
 
 
 def filesize_str(nbytes: int) -> str:
@@ -28,9 +22,9 @@ def get_report(path: str, size: int, count: int, target: int) -> str:
     """Generate a summary report string."""
     return (
         "------------------------------------------------------------------------\n"
-        f"{count_ratio_str(count, target)}\n"
+        f"{count}/{target} ({count / target:.2%}) files transferred\n"
         "------------------------------------------------------------------------\n"
-        f"{dest_path_str(path)}\n"
+        f"Destination: {path}\n"
         f"{filesize_str(size)}\n"
         "========================================================================\n"
     )
@@ -62,32 +56,25 @@ def get_status(
 class ReportWriter:
     """Helper class to write report."""
 
-    path: str
-    size: int
-    count: int
-    target_qty: int
-    is_success: bool
-    is_empty_creation: bool
-    is_stop_requested: bool
-    is_root_locked: bool
-    _report: str = ""
-    _status: str = ""
+    evt: DirectoryTransferred
+    _report_str: str = ""
 
     def __post_init__(self) -> None:
         """Generate the report string after initialization."""
-        self._status = get_status(
-            success=self.is_success,
-            stop_requested=self.is_stop_requested,
-            empty_creation=self.is_empty_creation,
-            root_locked=self.is_root_locked,
+        _status = get_status(
+            success=self.evt.is_success,
+            stop_requested=self.evt.is_stop_requested,
+            empty_creation=self.evt.is_empty_creation,
+            root_locked=self.evt.is_root_locked,
         )
-        self._report = get_report(
-            path=self.path,
-            size=self.size,
-            count=self.count,
-            target=self.target_qty,
+        _report = get_report(
+            path=self.evt.path,
+            size=self.evt.size,
+            count=self.evt.count,
+            target=self.evt.target_qty,
         )
+        self._report_str = f"\n\n{_status}\n{_report}\n"
 
     def __str__(self) -> str:
         """Get the full report string."""
-        return f"\n\n{self._status}\n{self._report}\n"
+        return self._report_str

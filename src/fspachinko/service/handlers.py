@@ -2,7 +2,6 @@
 
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from itertools import islice
 from typing import TYPE_CHECKING
 
 from fspachinko.domain.events import (
@@ -13,10 +12,10 @@ from fspachinko.domain.events import (
     RunFinished,
     RunStarted,
 )
-from fspachinko.domain.model import DestinationDirectory, DiversityQuota, FSEntry, TransferJob
+from fspachinko.domain.model import DestinationDirectory, DiversityQuota, TransferJob
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
 
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
@@ -43,16 +42,6 @@ class ConfigurePipelineHandler:
         c = cmd.config
         self.configurator.apply(c)
         yield PipelineConfigured(dir_count=c.directory.count)
-
-
-def _filter_parallel(walk: Iterator[FSEntry], fn: Callable[[FSEntry], bool]) -> Iterator[FSEntry]:
-    """Filter files in parallel using a ThreadPoolExecutor."""
-    with ThreadPoolExecutor() as executor:
-        while chunk := tuple(islice(walk, 5)):
-            results = executor.map(fn, chunk)
-            for entry, is_valid in zip(chunk, results, strict=True):
-                if is_valid:
-                    yield entry
 
 
 @dataclass(slots=True)
@@ -108,29 +97,33 @@ class RunTransferJobHandler:
 
     def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
         """Transfer files to a destination directory."""
-        walk = self.pipeline.walk()
-        filtered = _filter_parallel(walk, self.pipeline.filter_file)
         with ThreadPoolExecutor() as executor:
-            futures: dict[Future[None], tuple[FSEntry, str]] = {}
-            for entry in filtered:
-                if dst.is_success or self.job.is_stop_condition:
-                    break
-                if not self.job.can_accept(entry):
-                    continue
-                if (newpath := self.pipeline.get_new_path(dst, entry)) is None:
-                    continue
-                self.job.register_transfer(dst, entry, newpath)
-                future = executor.submit(self.pipeline.transfer_file, entry.path, newpath)
-                futures[future] = (entry, newpath)
-                done = [f for f in futures if f.done()]
-                for f in done:
-                    _entry, _newpath = futures.pop(f)
+            src = self.pipeline.walk(executor)
+            futures: dict[Future[None], FileTransferred] = {}
+
+            def fill() -> None:
+                for entry in src:
+                    if dst.is_success or self.job.is_stop_condition:
+                        break
+                    if not self.job.can_accept(entry):
+                        continue
+                    if (newpath := self.pipeline.get_new_path(dst, entry)) is None:
+                        continue
+                    self.job.register_transfer(dst, entry, newpath)
+                    future = executor.submit(self.pipeline.transfer_file, entry.path, newpath)
+                    futures[future] = FileTransferred(src=entry.path, dst=newpath)
+
+            fill()
+            while futures:
+                for f in as_completed(futures):
                     f.result()
-                    yield FileTransferred(src=_entry.path, dst=_newpath)
-            for f in as_completed(futures):
-                entry, newpath = futures.pop(f)
-                f.result()
-                yield FileTransferred(src=entry.path, dst=newpath)
+                    yield futures.pop(f)
+                    break
+                if self.job.is_stop_condition:
+                    for f in futures:
+                        f.cancel()
+                    break
+                fill()
 
 
 @dataclass(slots=True)
@@ -213,22 +206,10 @@ class DirectoryTransferredHandler:
 
     def __call__(self, evt: DirectoryTransferred) -> None:
         """Handle the DirectoryTransferred event."""
-        path = evt.path
-        is_empty_creation = evt.is_empty_creation
-        report = self.reporter(
-            path=path,
-            size=evt.size,
-            count=evt.count,
-            target_qty=evt.target_qty,
-            is_success=evt.is_success,
-            is_empty_creation=is_empty_creation,
-            is_stop_requested=evt.is_stop_requested,
-            is_root_locked=evt.is_root_locked,
-        )
-        self.logger.info("%s", report)
-        self.logger.remove_dest_log_filehandler(path)
-        if is_empty_creation:
-            self.filesystem.remove_directory(path)
+        self.logger.info("%s", self.reporter(evt))
+        self.logger.remove_dest_log_filehandler(evt.path)
+        if evt.is_empty_creation:
+            self.filesystem.remove_directory(evt.path)
 
 
 @dataclass(slots=True)

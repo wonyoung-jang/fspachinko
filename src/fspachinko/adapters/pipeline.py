@@ -2,14 +2,17 @@
 
 from abc import ABC, abstractmethod
 from collections import deque
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from itertools import islice
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
+    from concurrent.futures import Future, ThreadPoolExecutor
 
     from fspachinko.domain.model import DestinationDirectory, FSEntry
+
+_MAX_CHUNK_SIZE = 32
 
 
 @dataclass(slots=True)
@@ -24,8 +27,12 @@ class AbstractPipeline(ABC):
     inputs: deque[tuple[str, int, bool]] = field(default_factory=deque)
 
     @abstractmethod
-    def filter_file(self, e: FSEntry) -> bool:
-        """Check if a file should be processed."""
+    def _walk_parallel(self, executor: ThreadPoolExecutor) -> Iterator[FSEntry]:
+        """Walk the source directory and yield FSEntry objects."""
+
+    @abstractmethod
+    def walk(self, executor: ThreadPoolExecutor) -> Iterator[FSEntry]:
+        """Walk filtered entries."""
 
     @abstractmethod
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
@@ -35,17 +42,43 @@ class AbstractPipeline(ABC):
     def transfer_file(self, src: str, dst: str) -> None:
         """Transfer a file from source to destination."""
 
-    @abstractmethod
-    def walk(self) -> Iterator[FSEntry]:
-        """Walk the source directory and yield FSEntry objects."""
-
 
 class TransferPipeline(AbstractPipeline):
     """Owns the strategy objects — Engine delegates to this."""
 
-    def filter_file(self, e: FSEntry) -> bool:
-        """Check if a file should be processed."""
-        return self.filefilter_fn(e)
+    def _walk_parallel(self, executor: ThreadPoolExecutor) -> Iterator[FSEntry]:
+        """Walk the source directory and yield FSEntry objects."""
+        src = self.walker_fn()
+        pending: deque[tuple[FSEntry, Future[float]]] = deque()
+
+        def fill() -> None:
+            for entry in islice(src, _MAX_CHUNK_SIZE - len(pending)):
+                future = executor.submit(self.duration_fn, entry.path)
+                pending.append((entry, future))
+
+        fill()
+        while pending:
+            entry, fut = pending.popleft()
+            fill()
+            entry.duration = fut.result()
+            yield entry
+
+    def walk(self, executor: ThreadPoolExecutor) -> Iterator[FSEntry]:
+        """Walk filtered entries."""
+        src = self._walk_parallel(executor)
+        pending: deque[tuple[FSEntry, Future[bool]]] = deque()
+
+        def fill() -> None:
+            for entry in islice(src, _MAX_CHUNK_SIZE - len(pending)):
+                future = executor.submit(self.filefilter_fn, entry)
+                pending.append((entry, future))
+
+        fill()
+        while pending:
+            entry, fut = pending.popleft()
+            fill()
+            if fut.result():
+                yield entry
 
     def get_new_path(self, dst: DestinationDirectory, e: FSEntry) -> str | None:
         """Check if the original file name can be used without transfer."""
@@ -54,20 +87,3 @@ class TransferPipeline(AbstractPipeline):
     def transfer_file(self, src: str, dst: str) -> None:
         """Transfer a file from source to destination."""
         self.transfer_fn(src, dst)
-
-    def walk(self) -> Iterator[FSEntry]:
-        """Walk the source directory and yield FSEntry objects."""
-        with ThreadPoolExecutor() as executor:
-            futures: dict[Future[float], FSEntry] = {}
-            for entry in self.walker_fn():
-                future = executor.submit(self.duration_fn, entry.path)
-                futures[future] = entry
-                done = [f for f in futures if f.done()]
-                for f in done:
-                    e = futures.pop(f)
-                    e.duration = f.result()
-                    yield e
-            for f in as_completed(futures):
-                e = futures.pop(f)
-                e.duration = f.result()
-                yield e

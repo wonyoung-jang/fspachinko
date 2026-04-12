@@ -38,24 +38,24 @@ class FSWalker(AbstractFSWalker):
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
         _root = self.root
-        curr = self.root
+        _curr = self.root
         _pop = self._board.pop
         _random = self.rng.random
         _choice = self.rng.choice
         while True:
-            pin = self.pin_from_path(curr)
+            pin = self.pin_from_path(_curr)
             if pin.is_empty:
-                if curr == _root:
+                if _curr == _root:
                     break
-                _pop(curr)
-                curr = _root
+                _pop(_curr)
+                _curr = _root
                 continue
             if _random() < pin.subdir_total_ratio:  # Should descend
-                curr = _choice(pin.subdirs)
+                _curr = _choice(pin.subdirs)
                 continue
             if files := pin.files:
                 yield _choice(files)
-            curr = _root
+            _curr = _root
 
     def pin_from_path(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""

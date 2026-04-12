@@ -36,7 +36,6 @@ def get_duration_ffprobe(path: str) -> float:
         )
         dur = float(result.stdout.strip())
     except ValueError, subprocess.SubprocessError:
-        logger.debug("Unexpected error while getting duration for %s", path)
         dur = float("inf")
     return dur
 
