@@ -4,14 +4,13 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from fspachinko.adapters.config_manager import ConfigManager
 from fspachinko.adapters.filenamer import AbstractFilenamer, TemplateFilenamer
 from fspachinko.adapters.filesystem import AbstractFilesystem, Filesystem
 from fspachinko.adapters.fswalker import AbstractFSWalker, FSWalker
 from fspachinko.adapters.loggers import AbstractLogger, AppLogger
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
-from fspachinko.config import ConfigModelBootstrapper
+from fspachinko.config import ConfigManager, ConfigModelBootstrapper
 from fspachinko.datapaths import ensure_data_paths
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import (
