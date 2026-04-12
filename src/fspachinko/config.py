@@ -299,7 +299,7 @@ class ConfigModelBootstrapper:
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
-        filename_fn = self.template_filenamer(c.filename.template) if c.filename.is_enabled else None
+        filename_fn = self.template_filenamer(template=c.filename.template) if c.filename.is_enabled else None
         newpath_fn = self._get_new_path_fn
         return lambda dst, e, fn=filename_fn, newpath_fn=newpath_fn: newpath_fn(dst, e, fn)
 

@@ -25,33 +25,33 @@ FILENAME_TEMPLATE_MAP: dict[FilenameTemplate, Callable[[FSEntry, int], str | int
 @cache
 def available_filename_map(template: str) -> dict[str, Callable[[FSEntry, int], str | int]]:
     """Get the mapping of available filename template variables."""
-    return {t.strip("{}"): v for t, v in FILENAME_TEMPLATE_MAP.items() if t in template}
+    return {templ.strip("{}"): fn for templ, fn in FILENAME_TEMPLATE_MAP.items() if templ in template}
 
 
 @dataclass(slots=True)
 class AbstractFilenamer(ABC):
     """Abstract filenamer."""
 
-    template: str = ""
-    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(default_factory=dict, init=False, repr=False)
+    template: str
+    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(init=False)
 
     def __post_init__(self) -> None:
         """Validate the template."""
-        self._map.update(available_filename_map(self.template))
+        self.template = "".join(c for c in self.template if c not in INVALID_FILENAME_CHARS)
+        self._map = available_filename_map(self.template)
 
     @abstractmethod
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Generate a filename."""
 
 
-@dataclass(slots=True)
 class TemplateFilenamer(AbstractFilenamer):
     """Filenamer that generates filenames based on templates."""
 
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Generate a filename based on the specified template."""
-        mapping = {t: v(entry, count) for t, v in self._map.items()}
         try:
-            return "".join(c for c in self.template.format_map(mapping) if c not in INVALID_FILENAME_CHARS)
+            mapping = {templ: fn(entry, count) for templ, fn in self._map.items()}
+            return self.template.format_map(mapping)
         except KeyError, ValueError, IndexError:
             return entry.stem
