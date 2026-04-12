@@ -25,7 +25,6 @@ class RunTransferJob(Command):
 
     root: str
     max_per_dir: int | float
-    unique_files_only: bool
 
 
 @dataclass(slots=True, frozen=True)

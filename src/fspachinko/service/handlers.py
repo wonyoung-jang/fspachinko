@@ -62,7 +62,7 @@ class RunTransferJobHandler:
         """
         yield RunStarted()
         self.job.is_stop_requested = False
-        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir, cmd.unique_files_only)
+        self.job.quota = DiversityQuota(cmd.root, cmd.max_per_dir)
         for dst in self._iterate_inputs():
             if self.job.is_stop_condition:
                 break

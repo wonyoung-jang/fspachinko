@@ -84,16 +84,15 @@ def test_rangefilter_model() -> None:
 def test_options_model() -> None:
     """Test OptionsModel validation."""
     # Test valid model
-    m = OptionsModel(transfer_mode="copy", rng_seed=42, max_per_dir=5, is_create_unique_dirs=True)
+    m = OptionsModel(transfer_mode="copy", rng_seed=42, max_per_dir=5)
     assert m.transfer_mode == "copy"
     assert m.rng_seed == 42
     assert m.max_per_dir == 5
-    assert m.is_create_unique_dirs is True
     # Test max_per_dir validation
-    m = OptionsModel(transfer_mode="copy", rng_seed=42, max_per_dir=-1, is_create_unique_dirs=True)
+    m = OptionsModel(transfer_mode="copy", rng_seed=42, max_per_dir=-1)
     assert m.max_per_dir == float("inf")
     # Test rng_seed validation
-    m = OptionsModel(transfer_mode="copy", rng_seed="", max_per_dir=5, is_create_unique_dirs=True)
+    m = OptionsModel(transfer_mode="copy", rng_seed="", max_per_dir=5)
     assert m.rng_seed is None
 
 

@@ -18,11 +18,10 @@ class DiversityQuota:
     It is not really a value object either.
     It is purely a rule enforcer.
 
-    There are two main rules:
-    1. If the max_per_dir is set, then no more than that number of files can be accepted from the same parent directory.
-        - For example, if max_per_dir is 2, then a dest can have at most 2 files from parent A.
-    2. If unique_files_only is set, then no file can be accepted more than once across the entire process.
-        - Otherwise, dest 1 may have file A and dest 2 may also have file A.
+    The main rule:
+        If the max_per_dir is set, then no more than that number of files
+        can be accepted from the same parent directory.
+            - For example, if max_per_dir is 2, then a dest can have at most 2 files from parent A.
 
     There is also an implicit special rule for the root:
         - If the root is locked because max_per_dir is set, then no more files can be accepted.
@@ -31,8 +30,6 @@ class DiversityQuota:
 
     root: str = ""
     max_per_dir: int | float = 0
-    unique_files_only: bool = False
-    files: set[str] = field(default_factory=set)
     directories: Counter[str] = field(default_factory=Counter)
 
     @property
@@ -43,18 +40,13 @@ class DiversityQuota:
     def reset(self) -> None:
         """Reset the locked file and directory sets."""
         self.directories.clear()
-        if not self.unique_files_only:
-            self.files.clear()
 
-    def can_accept(self, parent: str, path: str) -> bool:
+    def can_accept(self, parent: str) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
-        if path in self.files:
-            return False
         return not self.directories[parent] >= self.max_per_dir
 
-    def update(self, parent: str, path: str) -> None:
+    def update(self, parent: str) -> None:
         """Update the locked directory count after accepting a file."""
-        self.files.add(path)
         self.directories[parent] += 1
 
 
@@ -113,7 +105,7 @@ class TransferJob:
 
     def can_accept(self, entry: FSEntry) -> bool:
         """Check if a file can be accepted based on the diversity quota."""
-        return self.quota.can_accept(entry.parent, entry.path)
+        return self.quota.can_accept(entry.parent)
 
     def request_stop(self) -> None:
         """Request to stop the process."""
@@ -126,7 +118,7 @@ class TransferJob:
     def register_transfer(self, dst: DestinationDirectory, entry: FSEntry, newpath: str) -> None:
         """Update the job state after processing a file."""
         dst.add(newpath, entry.size)
-        self.quota.update(entry.parent, entry.path)
+        self.quota.update(entry.parent)
 
 
 @dataclass(slots=True)

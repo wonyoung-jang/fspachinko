@@ -5,7 +5,7 @@ from enum import StrEnum
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 
-from fspachinko.bootstrap import FSPachinkoBootstrapper
+from fspachinko.bootstrap import Bootstrapper
 from fspachinko.entrypoints.gui.helpers import get_qt_icon
 from fspachinko.entrypoints.gui.mainwindow import Presenter
 
@@ -36,7 +36,7 @@ def main() -> None:
     QCoreApplication.setApplicationName(GUIAppSetting.APPLICATION_NAME)
     app = QApplication()
     app.setWindowIcon(get_qt_icon("window"))
-    bootstrapper = FSPachinkoBootstrapper()
+    bootstrapper = Bootstrapper()
     window = Presenter(bootstrapper=bootstrapper)
     window.show()
     app.exec()

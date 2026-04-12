@@ -528,12 +528,6 @@ class OptionsWidget(BaseGroupBox):
             setters=[SetterSpec(key="max_per_dir", fn="setValue", fallback=0)],
             tip="Maximum number of files allowed per input folder, 0 for unlimited",
         ),
-        FieldSpec(
-            name="chk_unique_folders",
-            getter=GetterSpec(key="is_create_unique_dirs", fn="isChecked"),
-            setters=[SetterSpec(key="is_create_unique_dirs", fn="setChecked", fallback=False)],
-            tip="If checked, created folders will have unique files",
-        ),
     )
 
     def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
@@ -544,7 +538,6 @@ class OptionsWidget(BaseGroupBox):
         self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
         self.spin_max_per_dir = QSpinBox(minimum=0, maximum=MAXIMUM_INT)
         self.spin_max_per_dir.setSpecialValueText("Unlimited")
-        self.chk_unique_folders = QCheckBox()
         self._layout = LayoutSpec(
             layout=QGridLayout,
             adder="addWidget",
@@ -557,8 +550,6 @@ class OptionsWidget(BaseGroupBox):
                 (self.lineedit_rng_seed, 2, 1),
                 (QLabel("Max from one directory:"), 3, 0),
                 (self.spin_max_per_dir, 3, 1),
-                (QLabel("Ensure unique directories:"), 4, 0),
-                (self.chk_unique_folders, 4, 1),
             ),
         )
         super().__init__(title, name)

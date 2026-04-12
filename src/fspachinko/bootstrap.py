@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class FSPachinkoBootstrapper:
+class Bootstrapper:
     """Bootstrapper for the FSPachinko application."""
 
     filesystem: AbstractFilesystem = field(default_factory=Filesystem)

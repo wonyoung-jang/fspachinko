@@ -54,7 +54,7 @@ class FSWalker(AbstractFSWalker):
                 _curr = _choice(pin.subdirs)
                 continue
             if files := pin.files:
-                yield _choice(files)
+                yield files.pop()
             _curr = _root
 
     def pin_from_path(self, path: str) -> FSPachinkoPin:
@@ -91,5 +91,6 @@ class FSWalker(AbstractFSWalker):
                             )
                     except OSError:
                         logger.debug("Error accessing entry %s, skipping.", e.path)
+            self.rng.shuffle(pin.files)
         except OSError:
             logger.debug("Error scanning directory %s, skipping.", pin.path)

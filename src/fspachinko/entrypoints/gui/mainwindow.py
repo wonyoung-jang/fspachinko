@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from PySide6.QtGui import QCloseEvent
 
-    from fspachinko.bootstrap import FSPachinkoBootstrapper
+    from fspachinko.bootstrap import Bootstrapper
     from fspachinko.service.messagebus import MessageBus
 
 
@@ -219,7 +219,7 @@ class Presenter(QObject):
         SAVE_CONFIG = "Save Configuration As"
         WINDOW = "fspachinko: Transfer random files"
 
-    def __init__(self, bootstrapper: FSPachinkoBootstrapper) -> None:
+    def __init__(self, bootstrapper: Bootstrapper) -> None:
         """Initialize the presenter with the bootstrapper."""
         super().__init__()
         self._bootstrapper = bootstrapper
@@ -287,7 +287,6 @@ class Presenter(QObject):
             RunTransferJob(
                 root=cfg.root.path,
                 max_per_dir=cfg.options.max_per_dir,
-                unique_files_only=cfg.options.is_create_unique_dirs,
             )
         )
 

@@ -49,9 +49,8 @@
     },
     "options": {
         "transfer_mode": "Dry Run",
-        "max_per_dir": 0,
-        "is_create_unique_folders": true,
         "should_follow_symlink": true,
+        "max_per_dir": 0,
         "rng_seed": null
     }
 }

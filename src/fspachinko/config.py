@@ -142,7 +142,6 @@ class OptionsModel(BaseModel):
 
     transfer_mode: str = TransferMode.DRY_RUN
     max_per_dir: int | float = 0
-    is_create_unique_dirs: bool = False
     should_follow_symlink: bool = False
     rng_seed: int | str | bytes | None = None
 
