@@ -4,7 +4,6 @@ import logging
 import re
 from collections import deque
 from dataclasses import dataclass
-from functools import cache
 from os.path import isabs, realpath
 from typing import TYPE_CHECKING
 
@@ -202,7 +201,6 @@ def config_to_text_filter(c: ConfigModel) -> Iterator[tuple[str, Callable]]:
             yield name, fn
 
 
-@cache
 def build_text_filter(text: str, re_fmt: str, *, is_enabled: bool, should_include: bool) -> Callable | None:
     """Create a text filter function."""
     if not (is_enabled and text):
@@ -223,11 +221,12 @@ def config_to_range_filter(c: ConfigModel) -> Iterator[tuple[str, Callable]]:
     """Translate the configuration into a range filter function."""
     for m, name, unit_map in c.range_filter_specs:
         mul = unit_map.get(m.unit, 1.0)
-        if fn := build_range_filter(m.minimum * mul, m.maximum * mul, is_enabled=m.is_enabled):
+        minimum = m.minimum * mul
+        maximum = m.maximum * mul
+        if fn := build_range_filter(minimum, maximum, is_enabled=m.is_enabled):
             yield name, fn
 
 
-@cache
 def build_range_filter(minimum: float, maximum: float, *, is_enabled: bool) -> Callable | None:
     """Create a range filter function."""
     if not is_enabled:
@@ -252,24 +251,25 @@ FILTER_MAP: dict[str, Callable[[FSEntry, Callable], bool]] = {
 }
 
 
-def get_valid_filters(filters: Sequence[tuple[str, Callable | None]]) -> Iterator[Callable]:
+def get_valid_filters(*filters: tuple[str, Callable]) -> Iterator[Callable]:
     """Get valid filter functions from the configuration."""
     for name, fn in filters:
-        if fn is not None and name in FILTER_MAP:
-            yield lambda e, fn=fn, name=name: FILTER_MAP[name](e, fn)
+        if _filter := FILTER_MAP.get(name):
+            yield lambda e, fn=fn, _filter=_filter: _filter(e, fn)
 
 
 def config_to_file_filter(c: ConfigModel) -> Callable:
     """Translate the configuration into a file filter function."""
-    filter_from_config = (*config_to_text_filter(c), *config_to_range_filter(c))
-    filter_fn = tuple(get_valid_filters(filter_from_config))
-    match len(filter_fn):
+    text_filters = config_to_text_filter(c)
+    range_filters = config_to_range_filter(c)
+    file_filters = tuple(get_valid_filters(*text_filters, *range_filters))
+    match len(file_filters):
         case 0:
             return lambda _: True
         case 1:
-            return filter_fn[0]
+            return file_filters[0]
         case _:
-            return lambda e: all(f(e) for f in filter_fn)
+            return lambda e, file_filters=file_filters: all(f(e) for f in file_filters)
 
 
 @dataclass(slots=True)
@@ -277,7 +277,7 @@ class ConfigModelBootstrapper:
     """Bootstrapper for translating configuration into commands."""
 
     pipeline: AbstractPipeline
-    filesystem: AbstractFilesystem
+    fs: AbstractFilesystem
     available_transfer_fns: dict[str, Callable]
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
@@ -300,7 +300,8 @@ class ConfigModelBootstrapper:
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
         filename_fn = self.template_filenamer(c.filename.template) if c.filename.is_enabled else None
-        return lambda dst, e, fn=filename_fn: self._get_new_path_fn(dst, e, fn)
+        newpath_fn = self._get_new_path_fn
+        return lambda dst, e, fn=filename_fn, newpath_fn=newpath_fn: newpath_fn(dst, e, fn)
 
     def _get_new_path_fn(
         self, dst: DestinationDirectory, e: FSEntry, filename_fn: Callable | None = None
@@ -308,7 +309,7 @@ class ConfigModelBootstrapper:
         """Check if the original file name can be used without transfer."""
         new_stem = filename_fn(e, dst.count) if filename_fn else e.stem
         suffix = e.ext.casefold()
-        target = self.filesystem.join_path(dst.path, f"{new_stem}{suffix}")
+        target = self.fs.join_path(dst.path, f"{new_stem}{suffix}")
         if target not in dst.files:
             return target
         # The target name is already in the destination.
@@ -316,11 +317,11 @@ class ConfigModelBootstrapper:
         # Cases when it may not be:
         #   2026_04_05/audio.mp4, 2026_04_05/audio.mp4
         #   Same name in two different source directories, but different files
-        if self.filesystem.are_files_identical(e.path, target):
+        if self.fs.are_files_identical(e.path, target):
             # If the files are the same, then this is not a valid file transfer
             return None
         # If the files are different, find a new name for it so there's no overwriting or errors
-        return self.filesystem.get_unique_path(target, dst.files)
+        return self.fs.get_unique_path(target, dst.files)
 
     def _build_transfer_fn(self, mode: str) -> Callable:
         """Build the transfer function based on the configuration."""
@@ -338,19 +339,19 @@ class ConfigModelBootstrapper:
 
     def _build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:
         """Build the inputs for the pipeline based on the configuration."""
-        dst = c.dest.path
+        dstpath = c.dest.path
         cf = c.filecount
         cd = c.directory
         filecount_fn = (
             (lambda: self.rng.randint(cf.rand_min, cf.rand_max)) if cf.is_rand_enabled else (lambda: cf.count)
         )
         if not cd.is_enabled:
-            yield (dst, filecount_fn(), False)
+            yield (dstpath, filecount_fn(), False)
             return
-        existing = self.filesystem.get_existing_subdirs(dst)
-        candidate = self.filesystem.join_path(dst, cd.name)
+        existing = self.fs.get_existing_subdirs(dstpath)
+        candidate = self.fs.join_path(dstpath, cd.name)
         for _ in range(cd.count):
-            next_name = self.filesystem.get_unique_path(candidate, existing)
+            next_name = self.fs.get_unique_path(candidate, existing)
             yield (next_name, filecount_fn(), True)
             existing.add(next_name)
 

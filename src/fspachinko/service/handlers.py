@@ -83,16 +83,16 @@ class RunTransferJobHandler:
 
     def _iterate_inputs(self) -> Iterator[DestinationDirectory]:
         """Iterate over the input destination directories."""
-        while self.pipeline.inputs:
-            dest_dir, target_qty, should_create = self.pipeline.inputs.popleft()
-            dst = DestinationDirectory(path=dest_dir, target_qty=target_qty, should_create=should_create)
+        while inputs := self.pipeline.inputs:
+            path, target_qty, should_create = inputs.popleft()
+            dst = DestinationDirectory(path=path, target_qty=target_qty, should_create=should_create)
             if should_create:
-                self.filesystem.make_directory(dest_dir)
+                self.filesystem.make_directory(path)
             else:
                 # Working with an existing dir, need to populate file tracking
                 # to not overwrite existing files and keep track of stats
-                for path, size in self.filesystem.get_existing_files_for_existing_dest(dest_dir):
-                    dst.add(path, size)
+                for _path, size in self.filesystem.get_existing_files_for_existing_dest(path):
+                    dst.add(_path, size)
             yield dst
 
     def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:

@@ -73,7 +73,7 @@ class Bootstrapper:
         """Get the command handlers."""
         configurator = ConfigModelBootstrapper(
             pipeline=self.pipeline,
-            filesystem=self.filesystem,
+            fs=self.filesystem,
             rng=self.rng,
             available_transfer_fns=self.available_transfer_fns,
             template_filenamer=self.filenamer_cls,

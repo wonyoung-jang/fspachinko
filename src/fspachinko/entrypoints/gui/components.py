@@ -191,16 +191,12 @@ class PathSelectorWidget(BaseGroupBox):
         self.lbl_selected = QLabel()
         self.btn_browse = QPushButton(get_qt_icon("browse"), "")
         self.btn_open = QPushButton(get_qt_icon("open_dir"), "")
-        self._layout = LayoutSpec(
-            layout=QHBoxLayout,
-            adder="addWidget",
-            args=(
-                (self.lbl_selected, 1),
-                self.btn_browse,
-                self.btn_open,
-            ),
-        )
         super().__init__(title, name)
+        layout = QHBoxLayout(self)
+        layout.addWidget(self.lbl_selected, 1)
+        layout.addWidget(self.btn_browse)
+        layout.addWidget(self.btn_open)
+        self.setLayout(layout)
         self.setAcceptDrops(True)
 
     @Slot()
@@ -286,18 +282,13 @@ class FileCountWidget(BaseGroupBox):
         self.radio_rand = QRadioButton("Random")
         self.spin_min_rand = QSpinBox(minimum=1, maximum=MAXIMUM_INT)
         self.spin_max_rand = QSpinBox(minimum=2, maximum=MAXIMUM_INT)
-        self._layout = LayoutSpec(
-            layout=QGridLayout,
-            adder="addWidget",
-            args=(
-                (self.radio_fixed, 0, 0),
-                (self.radio_rand, 1, 0),
-                (self.spin_fixed, 0, 1),
-                (self.spin_min_rand, 1, 1),
-                (self.spin_max_rand, 2, 1),
-            ),
-        )
         super().__init__(title, name)
+        layout = QGridLayout(self)
+        layout.addWidget(self.radio_fixed, 0, 0)
+        layout.addWidget(self.radio_rand, 1, 0)
+        layout.addWidget(self.spin_fixed, 0, 1)
+        layout.addWidget(self.spin_min_rand, 1, 1)
+        layout.addWidget(self.spin_max_rand, 2, 1)
 
     def restore_randstate(self, is_rand_enabled: bool) -> None:  # noqa: FBT001
         """Set the radio buttons based on the is_rand_enabled value."""
@@ -333,19 +324,12 @@ class DirectoryCreateWidget(BaseGroupBox):
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
-        self.spinbox_folder_count = QSpinBox(suffix=" directories", minimum=1, maximum=MAXIMUM_INT)
+        self.spinbox_folder_count = QSpinBox(minimum=1, maximum=MAXIMUM_INT)
         self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
-        self._layout = LayoutSpec(
-            layout=QGridLayout,
-            adder="addWidget",
-            args=(
-                (QLabel("Count:"), 0, 0),
-                (self.spinbox_folder_count, 0, 1),
-                (QLabel("Name:"), 1, 0),
-                (self.lineedit_folder_name, 1, 1),
-            ),
-        )
         super().__init__(title, name, checkable=True)
+        layout = QFormLayout(self)
+        layout.addRow("Count:", self.spinbox_folder_count)
+        layout.addRow("Name:", self.lineedit_folder_name)
 
 
 class FilenamerWidget(BaseGroupBox):
@@ -385,17 +369,10 @@ class FilenamerWidget(BaseGroupBox):
             action = self.menu.addAction(lbl)
             action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
         self.btn_insert.setMenu(self.menu)
-        self._layout = LayoutSpec(
-            layout=QGridLayout,
-            adder="addWidget",
-            args=(
-                (QLabel("Template:"), 0, 0),
-                (self.lineedit_template, 0, 1),
-                (QLabel("Tags:"), 1, 0),
-                (self.btn_insert, 1, 1),
-            ),
-        )
         super().__init__(title, name, checkable=True)
+        layout = QFormLayout(self)
+        layout.addRow("Template:", self.lineedit_template)
+        layout.addRow("Tags:", self.btn_insert)
 
     @Slot(str)
     def insert_tag(self, tag: str) -> None:
@@ -436,16 +413,11 @@ class TextFilterWidget(BaseGroupBox):
         self.lineedit_filter = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
         self.radio_include = QRadioButton("Include")
         self.radio_exclude = QRadioButton("Exclude")
-        self._layout = LayoutSpec(
-            layout=QGridLayout,
-            adder="addWidget",
-            args=(
-                (self.lineedit_filter, 0, 0, 1, 2),
-                (self.radio_include, 1, 0),
-                (self.radio_exclude, 1, 1, Qt.AlignmentFlag.AlignLeft),
-            ),
-        )
         super().__init__(title, name, checkable=True)
+        layout = QGridLayout(self)
+        layout.addWidget(self.lineedit_filter, 0, 0, 1, 2)
+        layout.addWidget(self.radio_include, 1, 0)
+        layout.addWidget(self.radio_exclude, 1, 1, Qt.AlignmentFlag.AlignLeft)
 
 
 class RangeFilterWidget(BaseGroupBox):
@@ -485,19 +457,11 @@ class RangeFilterWidget(BaseGroupBox):
         self.spin_max = QDoubleSpinBox(minimum=0.0, maximum=float("inf"))
         self.combo_unit = QComboBox()
         self.combo_unit.addItems(items)
-        self._layout = LayoutSpec(
-            layout=QGridLayout,
-            adder="addWidget",
-            args=(
-                (QLabel("Min:"), 0, 0),
-                (self.spin_min, 0, 1),
-                (QLabel("Max:"), 1, 0),
-                (self.spin_max, 1, 1),
-                (QLabel("Unit:"), 2, 0),
-                (self.combo_unit, 2, 1),
-            ),
-        )
         super().__init__(title, name, checkable=True)
+        layout = QFormLayout(self)
+        layout.addRow("Min:", self.spin_min)
+        layout.addRow("Max:", self.spin_max)
+        layout.addRow("Unit:", self.combo_unit)
 
 
 class OptionsWidget(BaseGroupBox):
@@ -538,21 +502,12 @@ class OptionsWidget(BaseGroupBox):
         self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
         self.spin_max_per_dir = QSpinBox(minimum=0, maximum=MAXIMUM_INT)
         self.spin_max_per_dir.setSpecialValueText("Unlimited")
-        self._layout = LayoutSpec(
-            layout=QGridLayout,
-            adder="addWidget",
-            args=(
-                (QLabel("Transfer mode:"), 0, 0),
-                (self.combo_transfermode, 0, 1),
-                (QLabel("Follow symbolic links:"), 1, 0),
-                (self.chk_follow_symlink, 1, 1),
-                (QLabel("RNG Seed:"), 2, 0),
-                (self.lineedit_rng_seed, 2, 1),
-                (QLabel("Max from one directory:"), 3, 0),
-                (self.spin_max_per_dir, 3, 1),
-            ),
-        )
         super().__init__(title, name)
+        layout = QFormLayout(self)
+        layout.addRow("Transfer mode:", self.combo_transfermode)
+        layout.addRow("Follow symbolic links:", self.chk_follow_symlink)
+        layout.addRow("RNG Seed:", self.lineedit_rng_seed)
+        layout.addRow("Max from one directory:", self.spin_max_per_dir)
 
 
 class MainConfigLayout(QGridLayout):

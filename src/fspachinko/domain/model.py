@@ -148,18 +148,12 @@ class FSPachinkoPin:
     """Represents a 'pin' on the Pachinko board."""
 
     path: str
-    is_scanned: bool = False
-    subdirs: list[str] = field(default_factory=list, init=False, repr=False)
-    files: list[FSEntry] = field(default_factory=list, init=False, repr=False)
+    subdirs: list[str] = field(default_factory=list, init=False)
+    files: list[FSEntry] = field(default_factory=list, init=False)
 
     def __len__(self) -> int:
         """Get the total number of entries (subdirectories + files) in the pin."""
         return len(self.subdirs) + len(self.files)
-
-    @property
-    def is_empty(self) -> bool:
-        """Check if the pin has no subdirectories or files."""
-        return len(self) == 0
 
     @property
     def subdir_total_ratio(self) -> float:

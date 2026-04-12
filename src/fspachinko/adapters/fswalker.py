@@ -1,5 +1,6 @@
 """Filesystem walker adapter for FSPachinko."""
 
+import contextlib
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -37,36 +38,42 @@ class FSWalker(AbstractFSWalker):
 
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
-        _root = self.root
         _curr = self.root
         _pop = self._board.pop
+        _randint = self.rng.randint
         _random = self.rng.random
         _choice = self.rng.choice
         while True:
             pin = self.pin_from_path(_curr)
-            if pin.is_empty:
-                if _curr == _root:
+            if len(pin) == 0:
+                if _curr == self.root:
                     break
                 _pop(_curr)
-                _curr = _root
+                parent = dirname(_curr)
+                if parent in self._board:
+                    with contextlib.suppress(ValueError):
+                        self._board[parent].subdirs.remove(_curr)
+                _curr = self.root
                 continue
             if _random() < pin.subdir_total_ratio:  # Should descend
                 _curr = _choice(pin.subdirs)
                 continue
             if files := pin.files:
-                yield files.pop()
-            _curr = _root
+                idx = _randint(0, len(files) - 1)
+                yield files.pop(idx)
+            _curr = self.root
 
     def pin_from_path(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""
-        pin = self._board.setdefault(path, FSPachinkoPin(path=path))
-        if not pin.is_scanned:
-            self.scan_pin(pin)
+        if path in self._board:
+            return self._board[path]
+        pin = FSPachinkoPin(path=path)
+        self.scan_pin(pin)
+        self._board[path] = pin
         return pin
 
     def scan_pin(self, pin: FSPachinkoPin) -> None:
         """Only look at the OS file system when a ball hits a specific folder for the first time."""
-        pin.is_scanned = True
         try:
             with scandir(pin.path) as it:
                 follow = self.should_follow_symlink
@@ -91,6 +98,5 @@ class FSWalker(AbstractFSWalker):
                             )
                     except OSError:
                         logger.debug("Error accessing entry %s, skipping.", e.path)
-            self.rng.shuffle(pin.files)
         except OSError:
             logger.debug("Error scanning directory %s, skipping.", pin.path)
