@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from os.path import exists, isdir
 from typing import TYPE_CHECKING, ClassVar
 
-from PySide6.QtCore import Qt, QUrl, Slot
+from PySide6.QtCore import Qt, QUrl, SignalInstance, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -33,61 +33,32 @@ from fspachinko.constants import MAXIMUM_INT, SIZE_MAP, TIME_MAP, FilenameTempla
 from fspachinko.entrypoints.gui.helpers import get_qt_icon, set_qt_tips
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 
-SELF = ""  # Sentinel value for referring to the widget itself in FieldSpec
-
-
 @dataclass(slots=True)
-class GetterSpec:
-    """Specification for config keys."""
+class SetupSpecs:
+    """Specifications for setting up a component."""
 
-    key: str = ""
-    fn: str = ""
-
-
-@dataclass(slots=True)
-class SetterSpec:
-    """Specification for config keys."""
-
-    key: str = ""
-    fn: str = ""
-    fallback: object = None
-
-
-@dataclass(slots=True)
-class SignalSpec:
-    """Specification for signals/slots."""
-
-    signal: str = ""
-    slot_attr: str = ""
-    slot: str = ""
-
-
-@dataclass(slots=True)
-class FieldSpec:
-    """Specification for subwidgets."""
-
-    name: str = ""
-    getter: GetterSpec | None = None
-    setters: list[SetterSpec] | None = None
-    signals: list[SignalSpec] | None = None
-    tip: str = ""
+    tips: Sequence[tuple[QWidget, str]] = ()
+    getters: Sequence[tuple[Callable, str]] = ()
+    setters: Sequence[tuple[Callable, str, object]] = ()
+    signals: Sequence[tuple[SignalInstance, Callable]] = ()
 
 
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
 
-    FIELDS: ClassVar[Sequence[FieldSpec]] = ()
+    _specs: SetupSpecs
 
     def __init__(self, title: str, name: str, *, checkable: bool = False) -> None:
         """Initialize the base group box."""
         super().__init__()
-        self.setTitle(title)
         self.setObjectName(name)
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.setTitle(title)
         self.setCheckable(checkable)
         self.setFlat(True)
         self._wire_slots()
@@ -97,81 +68,58 @@ class BaseGroupBox(QGroupBox):
     def config(self) -> dict:
         """Return clean data for the config."""
         config = {}
-        for field in self.FIELDS:
-            _name, _getter = field.name, field.getter
-            if _getter is None:
-                continue
-            obj = getattr(self, _name) if _name else self
-            getter = getattr(obj, _getter.fn)
-            config[_getter.key] = getter()
+        for getter_set in self._specs.getters:
+            getter, key = getter_set
+            config[key] = getter()
         return {self.objectName(): config}
 
     def restore(self, config: dict) -> None:
         """Restore the widget from config data."""
         section = config.get(self.objectName(), {})
-        for field in self.FIELDS:
-            _name, _setters = field.name, field.setters
-            if _setters is None:
-                continue
-            obj = getattr(self, _name) if _name else self
-            for _setter in _setters:
-                setter = getattr(obj, _setter.fn)
-                value = section.get(_setter.key, _setter.fallback)
-                setter(value)
+        for setter_set in self._specs.setters:
+            setter, key, fallback = setter_set
+            value = section.get(key, fallback)
+            setter(value)
 
     def _wire_slots(self) -> None:
         """Wire up any custom signals/slots."""
-        for field in self.FIELDS:
-            _name, _signals = field.name, field.signals
-            if _signals is None:
-                continue
-            widget = getattr(self, _name) if _name else self
-            for _signal in _signals:
-                signal = getattr(widget, _signal.signal)
-                slot_attr = getattr(self, _signal.slot_attr) if _signal.slot_attr else self
-                slot = getattr(slot_attr, _signal.slot)
-                signal.connect(slot)
+        for signal_set in self._specs.signals:
+            signal, slot = signal_set
+            signal.connect(slot)
 
     def _set_tips(self) -> None:
         """Set tooltips for all widgets based on TIPS_SPEC."""
-        for field in self.FIELDS:
-            if widget := getattr(self, field.name, None):
-                set_qt_tips(widget, field.tip)
+        for tip_set in self._specs.tips:
+            widget, tip = tip_set
+            set_qt_tips(widget, tip)
 
 
 class PathSelectorWidget(BaseGroupBox):
     """Handles logic for selecting a path."""
-
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name="lbl_selected",
-            getter=GetterSpec(key="path", fn="text"),
-            setters=[SetterSpec(key="path", fn="setText", fallback="")],
-            tip="Currently selected folder",
-        ),
-        FieldSpec(
-            name="btn_browse",
-            signals=[SignalSpec(signal="clicked", slot_attr="", slot="browse")],
-            tip="Browse",
-        ),
-        FieldSpec(
-            name="btn_open",
-            signals=[SignalSpec(signal="clicked", slot_attr="", slot="open")],
-            tip="Open in file explorer",
-        ),
-    )
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the path selector widget."""
         self.lbl_selected = QLabel()
         self.btn_browse = QPushButton(get_qt_icon("browse"), "")
         self.btn_open = QPushButton(get_qt_icon("open_dir"), "")
+        self._specs = SetupSpecs(
+            tips=(
+                (self.lbl_selected, "Currently selected folder"),
+                (self.btn_browse, "Browse"),
+                (self.btn_open, "Open in file explorer"),
+            ),
+            getters=((self.lbl_selected.text, "path"),),
+            setters=((self.lbl_selected.setText, "path", ""),),
+            signals=(
+                (self.btn_browse.clicked, self.browse),
+                (self.btn_open.clicked, self.open),
+            ),
+        )
         super().__init__(title, name)
         layout = QHBoxLayout(self)
         layout.addWidget(self.lbl_selected, 1)
         layout.addWidget(self.btn_browse)
         layout.addWidget(self.btn_open)
-        self.setLayout(layout)
         self.setAcceptDrops(True)
 
     @Slot()
@@ -209,47 +157,6 @@ class PathSelectorWidget(BaseGroupBox):
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name=SELF,
-            setters=[SetterSpec(key="is_rand_enabled", fn="restore_randstate", fallback=False)],
-        ),
-        FieldSpec(
-            name="radio_fixed",
-            signals=[SignalSpec(signal="toggled", slot_attr="spin_fixed", slot="setEnabled")],
-            tip="Select fixed file count",
-        ),
-        FieldSpec(
-            name="radio_rand",
-            getter=GetterSpec(key="is_rand_enabled", fn="isChecked"),
-            signals=[
-                SignalSpec(signal="toggled", slot_attr="spin_min_rand", slot="setEnabled"),
-                SignalSpec(signal="toggled", slot_attr="spin_max_rand", slot="setEnabled"),
-            ],
-            tip="Select random file count",
-        ),
-        FieldSpec(
-            name="spin_fixed",
-            getter=GetterSpec(key="count", fn="value"),
-            setters=[SetterSpec(key="count", fn="setValue", fallback=1)],
-            tip="Number of files to copy",
-        ),
-        FieldSpec(
-            name="spin_min_rand",
-            getter=GetterSpec(key="rand_min", fn="value"),
-            setters=[SetterSpec(key="rand_min", fn="setValue", fallback=1)],
-            signals=[SignalSpec(signal="valueChanged", slot_attr="spin_max_rand", slot="setMinimum")],
-            tip="Minimum random file count",
-        ),
-        FieldSpec(
-            name="spin_max_rand",
-            getter=GetterSpec(key="rand_max", fn="value"),
-            setters=[SetterSpec(key="rand_max", fn="setValue", fallback=10)],
-            signals=[SignalSpec(signal="valueChanged", slot_attr="spin_min_rand", slot="setMaximum")],
-            tip="Maximum random file count",
-        ),
-    )
-
     def __init__(self, title: str, name: str) -> None:
         """Initialize the file count widget."""
         self.radio_fixed = QRadioButton("Fixed")
@@ -257,6 +164,38 @@ class FileCountWidget(BaseGroupBox):
         self.radio_rand = QRadioButton("Random")
         self.spin_min_rand = QSpinBox(minimum=1, maximum=MAXIMUM_INT)
         self.spin_max_rand = QSpinBox(minimum=2, maximum=MAXIMUM_INT)
+        self._specs = SetupSpecs(
+            tips=(
+                (self.radio_fixed, "Select fixed file count"),
+                (self.spin_fixed, "Number of files to copy"),
+                (self.radio_rand, "Select random file count"),
+                (self.spin_min_rand, "Minimum random file count"),
+                (self.spin_max_rand, "Maximum random file count"),
+            ),
+            getters=(
+                (self.radio_rand.isChecked, "is_rand_enabled"),
+                (self.spin_fixed.value, "count"),
+                (self.spin_min_rand.value, "rand_min"),
+                (self.spin_max_rand.value, "rand_max"),
+            ),
+            setters=(
+                (lambda ire: self.radio_fixed.setChecked(not ire), "is_rand_enabled", False),
+                (lambda ire: self.spin_fixed.setEnabled(not ire), "is_rand_enabled", False),
+                (self.radio_rand.setChecked, "is_rand_enabled", False),
+                (self.spin_min_rand.setEnabled, "is_rand_enabled", False),
+                (self.spin_max_rand.setEnabled, "is_rand_enabled", False),
+                (self.spin_fixed.setValue, "count", 1),
+                (self.spin_min_rand.setValue, "rand_min", 1),
+                (self.spin_max_rand.setValue, "rand_max", 10),
+            ),
+            signals=(
+                (self.radio_fixed.toggled, self.spin_fixed.setEnabled),
+                (self.radio_rand.toggled, self.spin_min_rand.setEnabled),
+                (self.radio_rand.toggled, self.spin_max_rand.setEnabled),
+                (self.spin_min_rand.valueChanged, self.spin_max_rand.setMinimum),
+                (self.spin_max_rand.valueChanged, self.spin_min_rand.setMaximum),
+            ),
+        )
         super().__init__(title, name)
         layout = QGridLayout(self)
         layout.addWidget(self.radio_fixed, 0, 0)
@@ -265,42 +204,30 @@ class FileCountWidget(BaseGroupBox):
         layout.addWidget(self.spin_min_rand, 1, 1)
         layout.addWidget(self.spin_max_rand, 2, 1)
 
-    def restore_randstate(self, is_rand_enabled: bool) -> None:  # noqa: FBT001
-        """Set the radio buttons based on the is_rand_enabled value."""
-        self.radio_rand.setChecked(is_rand_enabled)
-        self.radio_fixed.setChecked(not is_rand_enabled)
-        self.spin_fixed.setEnabled(not is_rand_enabled)
-        self.spin_min_rand.setEnabled(is_rand_enabled)
-        self.spin_max_rand.setEnabled(is_rand_enabled)
-
 
 class DirectoryCreateWidget(BaseGroupBox):
     """Handles logic for creating folders."""
-
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name=SELF,
-            getter=GetterSpec(key="is_enabled", fn="isChecked"),
-            setters=[SetterSpec(key="is_enabled", fn="setChecked", fallback=False)],
-        ),
-        FieldSpec(
-            name="spinbox_folder_count",
-            getter=GetterSpec(key="count", fn="value"),
-            setters=[SetterSpec(key="count", fn="setValue", fallback=1)],
-            tip="Number of folders to create",
-        ),
-        FieldSpec(
-            name="lineedit_folder_name",
-            getter=GetterSpec(key="name", fn="text"),
-            setters=[SetterSpec(key="name", fn="setText", fallback="fsp_output")],
-            tip="Template for naming created folders",
-        ),
-    )
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
         self.spinbox_folder_count = QSpinBox(minimum=1, maximum=MAXIMUM_INT)
         self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
+        self._specs = SetupSpecs(
+            tips=(
+                (self.spinbox_folder_count, "Number of folders to create"),
+                (self.lineedit_folder_name, "Template for naming created folders"),
+            ),
+            getters=(
+                (self.isChecked, "is_enabled"),
+                (self.spinbox_folder_count.value, "count"),
+                (self.lineedit_folder_name.text, "name"),
+            ),
+            setters=(
+                (self.setChecked, "is_enabled", False),
+                (self.spinbox_folder_count.setValue, "count", 1),
+                (self.lineedit_folder_name.setText, "name", "fsp_output"),
+            ),
+        )
         super().__init__(title, name, checkable=True)
         layout = QFormLayout(self)
         layout.addRow("Count:", self.spinbox_folder_count)
@@ -309,28 +236,6 @@ class DirectoryCreateWidget(BaseGroupBox):
 
 class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
-
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name=SELF,
-            getter=GetterSpec(key="is_enabled", fn="isChecked"),
-            setters=[SetterSpec(key="is_enabled", fn="setChecked", fallback=False)],
-        ),
-        FieldSpec(
-            name="lineedit_template",
-            getter=GetterSpec(key="template", fn="text"),
-            setters=[SetterSpec(key="template", fn="setText", fallback=FilenameTemplate.ORIGINAL)],
-            tip="File rename template, use 'Insert tag' button to add tags",
-        ),
-        FieldSpec(
-            name="btn_insert",
-            tip="Insert tag into template at cursor position",
-        ),
-        FieldSpec(
-            name="menu",
-            tip="Select tag to insert into template",
-        ),
-    )
 
     def __init__(self, title: str, name: str) -> None:
         """Initialize the filename template settings widget."""
@@ -344,6 +249,21 @@ class FilenamerWidget(BaseGroupBox):
             action = self.menu.addAction(lbl)
             action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
         self.btn_insert.setMenu(self.menu)
+        self._specs = SetupSpecs(
+            tips=(
+                (self.lineedit_template, "File rename template, use 'Insert tag' button to add tags"),
+                (self.btn_insert, "Insert tag into template at cursor position"),
+                (self.menu, "Select tag to insert into template"),
+            ),
+            getters=(
+                (self.isChecked, "is_enabled"),
+                (self.lineedit_template.text, "template"),
+            ),
+            setters=(
+                (self.setChecked, "is_enabled", False),
+                (self.lineedit_template.setText, "template", FilenameTemplate.ORIGINAL),
+            ),
+        )
         super().__init__(title, name, checkable=True)
         layout = QFormLayout(self)
         layout.addRow("Template:", self.lineedit_template)
@@ -359,35 +279,28 @@ class FilenamerWidget(BaseGroupBox):
 class TextFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude text pattern."""
 
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name=SELF,
-            getter=GetterSpec(key="is_enabled", fn="isChecked"),
-            setters=[SetterSpec(key="is_enabled", fn="setChecked", fallback=False)],
-        ),
-        FieldSpec(
-            name="lineedit_filter",
-            getter=GetterSpec(key="text", fn="text"),
-            setters=[SetterSpec(key="text", fn="setText", fallback="")],
-            tip="Enter items separated by commas",
-        ),
-        FieldSpec(
-            name="radio_include",
-            getter=GetterSpec(key="should_include", fn="isChecked"),
-            setters=[SetterSpec(key="should_include", fn="setChecked", fallback=True)],
-            tip="Include only items matching filter",
-        ),
-        FieldSpec(
-            name="radio_exclude",
-            tip="Exclude any items matching filter",
-        ),
-    )
-
     def __init__(self, title: str, name: str) -> None:
         """Initialize the dual list widget."""
         self.lineedit_filter = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
         self.radio_include = QRadioButton("Include")
         self.radio_exclude = QRadioButton("Exclude")
+        self._specs = SetupSpecs(
+            tips=(
+                (self.lineedit_filter, "Enter items separated by commas"),
+                (self.radio_include, "Include only items matching filter"),
+                (self.radio_exclude, "Exclude any items matching filter"),
+            ),
+            getters=(
+                (self.isChecked, "is_enabled"),
+                (self.lineedit_filter.text, "text"),
+                (self.radio_include.isChecked, "should_include"),
+            ),
+            setters=(
+                (self.setChecked, "is_enabled", False),
+                (self.lineedit_filter.setText, "text", ""),
+                (self.radio_include.setChecked, "should_include", True),
+            ),
+        )
         super().__init__(title, name, checkable=True)
         layout = QGridLayout(self)
         layout.addWidget(self.lineedit_filter, 0, 0, 1, 2)
@@ -398,40 +311,35 @@ class TextFilterWidget(BaseGroupBox):
 class RangeFilterWidget(BaseGroupBox):
     """Handles logic for ranges (min/max), e.g., Size or Duration."""
 
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name=SELF,
-            getter=GetterSpec(key="is_enabled", fn="isChecked"),
-            setters=[SetterSpec(key="is_enabled", fn="setChecked", fallback=False)],
-        ),
-        FieldSpec(
-            name="spin_min",
-            getter=GetterSpec(key="minimum", fn="value"),
-            setters=[SetterSpec(key="minimum", fn="setValue", fallback=0.0)],
-            signals=[SignalSpec(signal="valueChanged", slot_attr="spin_max", slot="setMinimum")],
-            tip="Minimum value",
-        ),
-        FieldSpec(
-            name="spin_max",
-            getter=GetterSpec(key="maximum", fn="value"),
-            setters=[SetterSpec(key="maximum", fn="setValue", fallback=10.0)],
-            signals=[SignalSpec(signal="valueChanged", slot_attr="spin_min", slot="setMaximum")],
-            tip="Maximum value",
-        ),
-        FieldSpec(
-            name="combo_unit",
-            getter=GetterSpec(key="unit", fn="currentText"),
-            setters=[SetterSpec(key="unit", fn="setCurrentText", fallback="")],
-            tip="Unit",
-        ),
-    )
-
     def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
         """Initialize the range filter widget."""
         self.spin_min = QDoubleSpinBox(minimum=0.0, maximum=float("inf"))
         self.spin_max = QDoubleSpinBox(minimum=0.0, maximum=float("inf"))
         self.combo_unit = QComboBox()
         self.combo_unit.addItems(items)
+        self._specs = SetupSpecs(
+            tips=(
+                (self.spin_min, "Minimum value"),
+                (self.spin_max, "Maximum value"),
+                (self.combo_unit, "Unit"),
+            ),
+            getters=(
+                (self.isChecked, "is_enabled"),
+                (self.spin_min.value, "minimum"),
+                (self.spin_max.value, "maximum"),
+                (self.combo_unit.currentText, "unit"),
+            ),
+            setters=(
+                (self.setChecked, "is_enabled", False),
+                (self.spin_min.setValue, "minimum", 0.0),
+                (self.spin_max.setValue, "maximum", 10.0),
+                (self.combo_unit.setCurrentText, "unit", items[0] if items else ""),
+            ),
+            signals=(
+                (self.spin_min.valueChanged, self.spin_max.setMinimum),
+                (self.spin_max.valueChanged, self.spin_min.setMaximum),
+            ),
+        )
         super().__init__(title, name, checkable=True)
         layout = QFormLayout(self)
         layout.addRow("Min:", self.spin_min)
@@ -442,33 +350,6 @@ class RangeFilterWidget(BaseGroupBox):
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    FIELDS: ClassVar[Sequence[FieldSpec]] = (
-        FieldSpec(
-            name="combo_transfermode",
-            getter=GetterSpec(key="transfer_mode", fn="currentText"),
-            setters=[SetterSpec(key="transfer_mode", fn="setCurrentText", fallback=TransferMode.DRY_RUN)],
-            tip="Select transfer mode",
-        ),
-        FieldSpec(
-            name="chk_follow_symlink",
-            getter=GetterSpec(key="should_follow_symlink", fn="isChecked"),
-            setters=[SetterSpec(key="should_follow_symlink", fn="setChecked", fallback=False)],
-            tip="If checked, symbolic links followed during file traversal",
-        ),
-        FieldSpec(
-            name="lineedit_rng_seed",
-            getter=GetterSpec(key="rng_seed", fn="text"),
-            setters=[SetterSpec(key="rng_seed", fn="setText", fallback="")],
-            tip="Seed for random number generator, system clock used if empty",
-        ),
-        FieldSpec(
-            name="spin_max_per_dir",
-            getter=GetterSpec(key="max_per_dir", fn="value"),
-            setters=[SetterSpec(key="max_per_dir", fn="setValue", fallback=0)],
-            tip="Maximum number of files allowed per input folder, 0 for unlimited",
-        ),
-    )
-
     def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
         """Initialize the options widget."""
         self.combo_transfermode = QComboBox()
@@ -477,6 +358,26 @@ class OptionsWidget(BaseGroupBox):
         self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
         self.spin_max_per_dir = QSpinBox(minimum=0, maximum=MAXIMUM_INT)
         self.spin_max_per_dir.setSpecialValueText("Unlimited")
+        self._specs = SetupSpecs(
+            tips=(
+                (self.combo_transfermode, "Select transfer mode"),
+                (self.chk_follow_symlink, "If checked, symbolic links followed during file traversal"),
+                (self.lineedit_rng_seed, "Seed for random number generator, system clock used if empty"),
+                (self.spin_max_per_dir, "Maximum number of files allowed per input folder, 0 for unlimited"),
+            ),
+            getters=(
+                (self.combo_transfermode.currentText, "transfer_mode"),
+                (self.chk_follow_symlink.isChecked, "should_follow_symlink"),
+                (self.lineedit_rng_seed.text, "rng_seed"),
+                (self.spin_max_per_dir.value, "max_per_dir"),
+            ),
+            setters=(
+                (self.combo_transfermode.setCurrentText, "transfer_mode", TransferMode.DRY_RUN),
+                (self.chk_follow_symlink.setChecked, "should_follow_symlink", False),
+                (self.lineedit_rng_seed.setText, "rng_seed", ""),
+                (self.spin_max_per_dir.setValue, "max_per_dir", 0),
+            ),
+        )
         super().__init__(title, name)
         layout = QFormLayout(self)
         layout.addRow("Transfer mode:", self.combo_transfermode)
@@ -580,6 +481,14 @@ class ProgressWidget(QWidget):
         layout.addRow("Dirs", self.progbar_dirs)
         layout.addRow("Files", self.progbar_files)
 
+    @property
+    def file_percentage(self) -> int:
+        """Calculate the current file progress percentage."""
+        maximum = self.progbar_files.maximum()
+        if maximum <= 0:
+            return 0
+        return int(self.progbar_files.value() * 100 / maximum)
+
     def handle_start_process(self, dir_count: int) -> None:
         """Set up the progress bars at the start of the process."""
         self.progbar_dirs.setMaximum(dir_count)
@@ -598,11 +507,3 @@ class ProgressWidget(QWidget):
         """Update the file progress bar."""
         curr = self.progbar_files.value()
         self.progbar_files.setValue(curr + 1)
-
-    @property
-    def file_percentage(self) -> int:
-        """Calculate the current file progress percentage."""
-        maximum = self.progbar_files.maximum()
-        if maximum <= 0:
-            return 0
-        return int(self.progbar_files.value() * 100 / maximum)
