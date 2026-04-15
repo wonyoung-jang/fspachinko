@@ -1,6 +1,5 @@
 """Translate the configuration model into commands."""
 
-import logging
 import re
 from collections import deque
 from dataclasses import dataclass
@@ -10,8 +9,8 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from fspachinko.adapters.duration import duration_fn_factory, get_duration_null
-from fspachinko.constants import SIZE_MAP, TIME_MAP, FilenameTemplate, FilterName, ReStrFmt, TransferMode
 from fspachinko.datapaths import configs_path, get_config_path
+from fspachinko.fp import Fp
 
 if TYPE_CHECKING:
     import random
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
     from fspachinko.adapters.fswalker import AbstractFSWalker
     from fspachinko.adapters.pipeline import AbstractPipeline
     from fspachinko.domain.model import DestinationDirectory, FSEntry
-
-logger = logging.getLogger(__name__)
 
 
 class PathSelectorModel(BaseModel):
@@ -84,14 +81,14 @@ class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     is_enabled: bool = False
-    template: str = FilenameTemplate.ORIGINAL
+    template: str = Fp.FilenameTemplate.ORIGINAL
 
     @field_validator("template")
     @classmethod
     def validate_template(cls, val: str) -> str:
         """Validate that the template is not empty."""
         if val.strip() == "":
-            return FilenameTemplate.ORIGINAL
+            return Fp.FilenameTemplate.ORIGINAL
         return val
 
 
@@ -132,14 +129,14 @@ class RangeFilterModel(BaseModel):
     def validate_maximum(cls, val: float) -> float:
         """Validate that maximum is non-negative."""
         if val <= 0:
-            return float("inf")
+            return Fp.MAXFLOAT
         return val
 
 
 class OptionsModel(BaseModel):
     """Model for additional options."""
 
-    transfer_mode: str = TransferMode.DRY_RUN
+    transfer_mode: str = Fp.TransferMode.DRY_RUN
     max_per_dir: int | float = 0
     should_follow_symlink: bool = False
     rng_seed: int | str | bytes | None = None
@@ -149,7 +146,7 @@ class OptionsModel(BaseModel):
     def validate_max_per_dir(cls, val: float) -> int | float:
         """Validate that max_per_dir is non-negative."""
         if val <= 0:
-            return float("inf")
+            return Fp.MAXFLOAT
         return val
 
     @field_validator("rng_seed")
@@ -180,17 +177,17 @@ class ConfigModel(BaseModel):
     def text_filter_specs(self) -> Sequence[tuple[TextFilterModel, str, str]]:
         """Get text filter specifications."""
         return (
-            (self.dirname, FilterName.DIRNAME, ReStrFmt.DIRECTORY),
-            (self.keyword, FilterName.KEYWORD, ReStrFmt.KEYWORD),
-            (self.extension, FilterName.EXTENSION, ReStrFmt.EXTENSION),
+            (self.dirname, Fp.FilterName.DIRNAME, Fp.ReStrFmt.DIRECTORY),
+            (self.keyword, Fp.FilterName.KEYWORD, Fp.ReStrFmt.KEYWORD),
+            (self.extension, Fp.FilterName.EXTENSION, Fp.ReStrFmt.EXTENSION),
         )
 
     @property
     def range_filter_specs(self) -> Sequence[tuple[RangeFilterModel, str, dict[str, int]]]:
         """Get range filter specifications."""
         return (
-            (self.filesize, FilterName.FILESIZE, SIZE_MAP),
-            (self.duration, FilterName.DURATION, TIME_MAP),
+            (self.filesize, Fp.FilterName.FILESIZE, Fp.SIZE_MAP),
+            (self.duration, Fp.FilterName.DURATION, Fp.TIME_MAP),
         )
 
 
@@ -231,7 +228,7 @@ def build_range_filter(minimum: float, maximum: float, *, is_enabled: bool) -> C
     """Create a range filter function."""
     if not is_enabled:
         return None
-    match minimum >= 0, maximum < float("inf"):
+    match minimum >= 0, maximum < Fp.MAXFLOAT:
         case True, True:
             return lambda v: minimum <= v <= maximum
         case True, False:
@@ -243,11 +240,11 @@ def build_range_filter(minimum: float, maximum: float, *, is_enabled: bool) -> C
 
 
 FILTER_MAP: dict[str, Callable[[FSEntry, Callable], bool]] = {
-    FilterName.DIRNAME: lambda e, fn: fn(e.parent),
-    FilterName.KEYWORD: lambda e, fn: fn(e.stem),
-    FilterName.EXTENSION: lambda e, fn: fn(e.ext),
-    FilterName.FILESIZE: lambda e, fn: fn(e.size),
-    FilterName.DURATION: lambda e, fn: fn(e.duration),
+    Fp.FilterName.DIRNAME: lambda e, fn: fn(e.parent),
+    Fp.FilterName.KEYWORD: lambda e, fn: fn(e.stem),
+    Fp.FilterName.EXTENSION: lambda e, fn: fn(e.ext),
+    Fp.FilterName.FILESIZE: lambda e, fn: fn(e.size),
+    Fp.FilterName.DURATION: lambda e, fn: fn(e.duration),
 }
 
 
@@ -282,7 +279,7 @@ class ConfigModelBootstrapper:
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
     rng: random.Random
-    transfer_mode: type[TransferMode] = TransferMode
+    transfer_mode: type[Fp.TransferMode] = Fp.TransferMode
 
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
@@ -292,7 +289,7 @@ class ConfigModelBootstrapper:
             duration_fn = get_duration_null
         self.pipeline.filefilter_fn = config_to_file_filter(c)
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
-        self.pipeline.transfer_fn = self._build_transfer_fn(c.options.transfer_mode)
+        self.pipeline.transfer_fn = self._build_transfer_fn(c)
         self.pipeline.walker_fn = self._build_walker_fn(c)
         self.pipeline.duration_fn = duration_fn
         self.pipeline.inputs = deque(self._build_inputs(c))
@@ -323,8 +320,9 @@ class ConfigModelBootstrapper:
         # If the files are different, find a new name for it so there's no overwriting or errors
         return self.fs.get_unique_path(target, dst)
 
-    def _build_transfer_fn(self, mode: str) -> Callable:
+    def _build_transfer_fn(self, c: ConfigModel) -> Callable:
         """Build the transfer function based on the configuration."""
+        mode = c.options.transfer_mode
         if mode in self.available_transfer_fns:
             return self.available_transfer_fns[mode]
         return self.available_transfer_fns[self.transfer_mode.DRY_RUN]

@@ -1,9 +1,9 @@
 """Utility functions."""
 
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from typing import TYPE_CHECKING
 
-from fspachinko.constants import SIZE_MAP, StateStatus
+from fspachinko.fp import Fp
 
 if TYPE_CHECKING:
     from fspachinko.domain.events import DirectoryTransferred
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 def filesize_str(nbytes: int) -> str:
     """Convert bytes to human readable string."""
-    for unit, threshold in SIZE_MAP.items():
+    for unit, threshold in Fp.SIZE_MAP.items():
         if nbytes < threshold * 1024:
             result = f"Size: {nbytes / threshold:.2f} {unit}"
             break
@@ -39,39 +39,39 @@ def get_status(
 ) -> str:
     """Get the state and message for reporting."""
     if success:
-        return StateStatus.SUCCESS
+        return Fp.StateStatus.SUCCESS
     if stop_requested:
-        return StateStatus.USER_STOPPED
+        return Fp.StateStatus.USER_STOPPED
     match empty_creation, root_locked:
         case True, True:
-            return StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
+            return Fp.StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
         case True, False:
-            return StateStatus.NO_FILES_FOUND_FOLDER_DELETED
+            return Fp.StateStatus.NO_FILES_FOUND_FOLDER_DELETED
         case False, True:
-            return StateStatus.ALL_FILES_SEARCHED
-    return StateStatus.UNDEFINED
+            return Fp.StateStatus.ALL_FILES_SEARCHED
+    return Fp.StateStatus.UNDEFINED
 
 
 @dataclass(slots=True)
 class ReportWriter:
     """Helper class to write report."""
 
-    evt: DirectoryTransferred
+    evt: InitVar[DirectoryTransferred]
     _report_str: str = ""
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, evt: DirectoryTransferred) -> None:
         """Generate the report string after initialization."""
         _status = get_status(
-            success=self.evt.is_success,
-            stop_requested=self.evt.is_stop_requested,
-            empty_creation=self.evt.is_empty_creation,
-            root_locked=self.evt.is_root_locked,
+            success=evt.is_success,
+            stop_requested=evt.is_stop_requested,
+            empty_creation=evt.is_empty_creation,
+            root_locked=evt.is_root_locked,
         )
         _report = get_report(
-            path=self.evt.path,
-            size=self.evt.size,
-            count=self.evt.count,
-            target=self.evt.target_qty,
+            path=evt.path,
+            size=evt.size,
+            count=evt.count,
+            target=evt.target_qty,
         )
         self._report_str = f"\n\n{_status}\n{_report}\n"
 

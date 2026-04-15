@@ -6,11 +6,11 @@ from cyclopts import App
 
 from fspachinko.bootstrap import Bootstrapper
 from fspachinko.config import ConfigModel
-from fspachinko.constants import DefaultPath
 from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import ConfigurePipeline, RunTransferJob
+from fspachinko.fp import Fp
 
-default_config_path = get_config_path(DefaultPath.CONFIG)
+default_config_path = get_config_path(Fp.Paths.CONFIG)
 logger = logging.getLogger(__name__)
 bootstrapper = Bootstrapper()
 bus = bootstrapper.build_message_bus()

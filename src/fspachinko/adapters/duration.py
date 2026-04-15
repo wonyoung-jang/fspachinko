@@ -6,12 +6,14 @@ import subprocess
 from functools import cache
 from typing import TYPE_CHECKING
 
+from fspachinko.fp import Fp
+
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
 logger = logging.getLogger(__name__)
 
-FFPROBE_DURATION_CMD = [
+FFPROBE_DURATION_CMD: Sequence[str] = (
     "ffprobe",
     "-v",
     "error",
@@ -19,7 +21,7 @@ FFPROBE_DURATION_CMD = [
     "format=duration",
     "-of",
     "default=noprint_wrappers=1:nokey=1",
-]
+)
 TIMEOUT = 2
 
 
@@ -36,13 +38,13 @@ def get_duration_ffprobe(path: str) -> float:
         )
         dur = float(result.stdout.strip())
     except ValueError, subprocess.SubprocessError:
-        dur = float("inf")
+        dur = Fp.MAXFLOAT
     return dur
 
 
 def get_duration_null(_: str) -> float:
     """Fallback duration function that returns infinity."""
-    return float("inf")
+    return Fp.MAXFLOAT
 
 
 @cache

@@ -2,7 +2,7 @@
 
 import pytest
 
-from fspachinko.constants import StateStatus
+from fspachinko.fp import Fp
 from fspachinko.helpers import filesize_str, get_report, get_status
 
 
@@ -23,12 +23,12 @@ def test_convert_byte_to_human_readable_size(nbytes: int, expected: str) -> None
 @pytest.mark.parametrize(
     ("params", "expected_status"),
     [
-        ((True, False, False, False), StateStatus.SUCCESS),
-        ((False, True, False, False), StateStatus.NO_FILES_FOUND_FOLDER_DELETED),
-        ((False, True, False, True), StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED),
-        ((False, False, True, False), StateStatus.USER_STOPPED),
-        ((False, False, False, True), StateStatus.ALL_FILES_SEARCHED),
-        ((False, False, False, False), StateStatus.UNDEFINED),
+        ((True, False, False, False), Fp.StateStatus.SUCCESS),
+        ((False, True, False, False), Fp.StateStatus.NO_FILES_FOUND_FOLDER_DELETED),
+        ((False, True, False, True), Fp.StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED),
+        ((False, False, True, False), Fp.StateStatus.USER_STOPPED),
+        ((False, False, False, True), Fp.StateStatus.ALL_FILES_SEARCHED),
+        ((False, False, False, False), Fp.StateStatus.UNDEFINED),
     ],
 )
 def test_get_status(params: tuple[bool, ...], expected_status: str) -> None:

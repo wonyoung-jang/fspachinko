@@ -6,7 +6,7 @@ from functools import cache
 from os.path import basename, split
 from typing import TYPE_CHECKING
 
-from fspachinko.constants import FilenameTemplate
+from fspachinko.fp import Fp
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from fspachinko.domain.model import FSEntry
 
 INVALID_FILENAME_CHARS: set[str] = {"\\", "/", ":", "*", "?", '"', "<", ">", "|"}
-FILENAME_TEMPLATE_MAP: dict[FilenameTemplate, Callable[[FSEntry, int], str | int]] = {
-    FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
-    FilenameTemplate.INDEX: lambda _, c: c + 1,
-    FilenameTemplate.PARENT: lambda e, _: basename(e.parent),
-    FilenameTemplate.PARENTS_TO_ROOT: lambda e, _: split(e.path)[0],
+FILENAME_TEMPLATE_MAP: dict[Fp.FilenameTemplate, Callable[[FSEntry, int], str | int]] = {
+    Fp.FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
+    Fp.FilenameTemplate.INDEX: lambda _, c: c + 1,
+    Fp.FilenameTemplate.PARENT: lambda e, _: basename(e.parent),
+    Fp.FilenameTemplate.PARENTS_TO_ROOT: lambda e, _: split(e.path)[0],
 }
 
 

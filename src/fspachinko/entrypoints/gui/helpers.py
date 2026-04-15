@@ -1,5 +1,6 @@
 """Helper functions for Qt GUI elements."""
 
+from enum import StrEnum
 from functools import cache
 from typing import TYPE_CHECKING
 
@@ -12,24 +13,51 @@ if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget
 
 
-QT_ICON_CONFIG = {
-    "window": "windowIcon.png",
-    "browse": "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "open_dir": "open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "save": "save_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "save_as": "save_as_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "load": "file_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "exit": "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "start": "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
-    "stop": "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+class Keys(StrEnum):
+    """Declarative keys for icons and shortcuts."""
+
+    WINDOW = "window"
+    BROWSE = "browse"
+    OPEN_DIR = "open_dir"
+
+
+class QtActionKeys(StrEnum):
+    """Declarative keys for icons and shortcuts."""
+
+    SAVE = "save"
+    SAVE_AS = "save_as"
+    LOAD = "load"
+    EXIT = "exit"
+    START = "start"
+    STOP = "stop"
+
+
+QT_ICON_CONFIG: dict[str, str] = {
+    Keys.WINDOW: "windowIcon.png",
+    Keys.BROWSE: "folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    Keys.OPEN_DIR: "open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    QtActionKeys.SAVE: "save_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    QtActionKeys.SAVE_AS: "save_as_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    QtActionKeys.LOAD: "file_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    QtActionKeys.EXIT: "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    QtActionKeys.START: "play_arrow_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+    QtActionKeys.STOP: "stop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
 }
-QT_SHORTCUT_CONFIG = {
-    "save": "Ctrl+S",
-    "save_as": "Ctrl+Shift+S",
-    "load": "Ctrl+O",
-    "exit": "Ctrl+W",
-    "start": "Ctrl+R",
-    "stop": "ESC",
+QT_SHORTCUT_CONFIG: dict[str, str] = {
+    QtActionKeys.SAVE: "Ctrl+S",
+    QtActionKeys.SAVE_AS: "Ctrl+Shift+S",
+    QtActionKeys.LOAD: "Ctrl+O",
+    QtActionKeys.EXIT: "Ctrl+W",
+    QtActionKeys.START: "Ctrl+R",
+    QtActionKeys.STOP: "ESC",
+}
+QT_ACTION_CONFIG: dict[str, tuple[str, str]] = {
+    QtActionKeys.SAVE: ("&Save Configuration", "Save current configuration (Ctrl+S)"),
+    QtActionKeys.SAVE_AS: ("Save Configuration &As", "Save current configuration as ... (Ctrl+Shift+S)"),
+    QtActionKeys.LOAD: ("&Load Configuration", "Load configuration (Ctrl+O)"),
+    QtActionKeys.EXIT: ("&Exit", "Exit application (Ctrl+W)"),
+    QtActionKeys.START: ("&Start", "Start (Ctrl+R)"),
+    QtActionKeys.STOP: ("S&top", "Stop (ESC)"),
 }
 
 

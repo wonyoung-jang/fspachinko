@@ -6,13 +6,13 @@ from dataclasses import dataclass, field
 from itertools import islice
 from typing import TYPE_CHECKING
 
+from fspachinko.fp import Fp
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from concurrent.futures import Future, ThreadPoolExecutor
 
     from fspachinko.domain.model import DestinationDirectory, FSEntry
-
-_MAX_CHUNK_SIZE = 32
 
 
 @dataclass(slots=True)
@@ -23,7 +23,7 @@ class AbstractPipeline(ABC):
     get_new_path_fn: Callable[[DestinationDirectory, FSEntry], str | None] = lambda _, e: e.stem
     transfer_fn: Callable[[str, str], None] = lambda _, __: None
     walker_fn: Callable[[], Iterator[FSEntry]] = lambda: iter(())
-    duration_fn: Callable[[str], float] = lambda _: float("inf")
+    duration_fn: Callable[[str], float] = lambda _: Fp.MAXFLOAT
     inputs: deque[tuple[str, int, bool]] = field(default_factory=deque)
 
     @abstractmethod
@@ -52,7 +52,7 @@ class TransferPipeline(AbstractPipeline):
         pending: deque[tuple[FSEntry, Future[float]]] = deque()
 
         def fill() -> None:
-            for entry in islice(src, _MAX_CHUNK_SIZE - len(pending)):
+            for entry in islice(src, Fp.MAXCHUNK - len(pending)):
                 future = executor.submit(self.duration_fn, entry.path)
                 pending.append((entry, future))
 
@@ -69,7 +69,7 @@ class TransferPipeline(AbstractPipeline):
         pending: deque[tuple[FSEntry, Future[bool]]] = deque()
 
         def fill() -> None:
-            for entry in islice(src, _MAX_CHUNK_SIZE - len(pending)):
+            for entry in islice(src, Fp.MAXCHUNK - len(pending)):
                 future = executor.submit(self.filefilter_fn, entry)
                 pending.append((entry, future))
 

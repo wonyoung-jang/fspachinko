@@ -1,7 +1,6 @@
 """Filesystem port adapter."""
 
 import json
-import logging
 import shutil
 from abc import ABC, abstractmethod
 from filecmp import cmp
@@ -11,8 +10,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
-
-logger = logging.getLogger(__name__)
 
 
 class AbstractFilesystem(ABC):
@@ -116,20 +113,12 @@ class Filesystem(AbstractFilesystem):
 
     def save_json(self, path: str, data: dict) -> None:
         """Save JSON data to a file."""
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-        except OSError:
-            logger.exception("Error occurred while saving JSON file: %s", path)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
 
     def remove_directory(self, path: str) -> None:
         """Remove a directory and its contents, with error handling."""
-        try:
-            shutil.rmtree(path)
-        except FileNotFoundError:
-            logger.exception("Directory not found for removal: %s", path)
-        except OSError:
-            logger.exception("Error occurred while removing directory: %s", path)
+        shutil.rmtree(path)
 
     def make_directory(self, path: str) -> None:
         """Create a directory at the specified path."""

@@ -3,18 +3,11 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import StrEnum
 from os.path import basename, join
 from typing import Any
 
 from fspachinko.datapaths import get_log_path
-
-
-class LogFmt(StrEnum):
-    """Enum for log formats."""
-
-    DEFAULT = "[%(asctime)s] %(levelname)s[%(module)s] %(message)s"
-    DEST = "[%(asctime)s] %(message)s"
+from fspachinko.fp import Fp
 
 
 class AbstractLogger(ABC):
@@ -66,7 +59,7 @@ class AppLogger(AbstractLogger):
 
     def __post_init__(self) -> None:
         """Initialize the root logger."""
-        self._logger = logging.getLogger("fspachinko")
+        self._logger = logging.getLogger(Fp.LogData.NAME)
         self._logger.setLevel(logging.DEBUG)
         self.add_global_file_log_handler()
         self.debug("Initialized AppLogger with file log handler.")
@@ -97,13 +90,13 @@ class AppLogger(AbstractLogger):
 
     def add_global_file_log_handler(self) -> None:
         """Add a file log handler."""
-        filename = get_log_path("fspachinko.log")
+        filename = get_log_path(Fp.Paths.LOG_FILE)
         global_file_log_config = {
             "filename": filename,
             "mode": "w",
             "delay": True,
             "level": logging.DEBUG,
-            "fmt": LogFmt.DEFAULT,
+            "fmt": Fp.LogFmt.DEFAULT,
             "name": "file",
         }
         self.add_file_log_handler(global_file_log_config)
@@ -112,7 +105,7 @@ class AppLogger(AbstractLogger):
     def add_cli_log_handler(self) -> None:
         """Get a logging handler for CLI output."""
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(LogFmt.DEFAULT))
+        handler.setFormatter(logging.Formatter(Fp.LogFmt.DEFAULT))
         handler.setLevel(logging.INFO)
         self.add_handler("console", handler)
         self.debug("Created CLI log handler.")
@@ -125,7 +118,7 @@ class AppLogger(AbstractLogger):
             "mode": "a",
             "delay": True,
             "level": logging.INFO,
-            "fmt": LogFmt.DEST,
+            "fmt": Fp.LogFmt.DEST,
             "datefmt": "%H:%M:%S",
             "name": dest,
         }

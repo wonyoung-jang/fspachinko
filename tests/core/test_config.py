@@ -14,6 +14,7 @@ from fspachinko.config import (
     PathSelectorModel,
     RangeFilterModel,
 )
+from fspachinko.fp import Fp
 
 
 def test_filecount_model() -> None:
@@ -75,7 +76,7 @@ def test_rangefilter_model() -> None:
     assert m.minimum == 0
     # Test maximum validation
     m = RangeFilterModel(is_enabled=True, minimum=100, maximum=-1)
-    assert m.maximum == float("inf")
+    assert m.maximum == Fp.MAXFLOAT
     # Test minimum greater than maximum validation
     with pytest.raises(ValueError, check=lambda e: "Minimum cannot be greater than maximum." in str(e)):
         m = RangeFilterModel(is_enabled=True, minimum=1000, maximum=100)
@@ -90,7 +91,7 @@ def test_options_model() -> None:
     assert m.max_per_dir == 5
     # Test max_per_dir validation
     m = OptionsModel(transfer_mode="copy", rng_seed=42, max_per_dir=-1)
-    assert m.max_per_dir == float("inf")
+    assert m.max_per_dir == Fp.MAXFLOAT
     # Test rng_seed validation
     m = OptionsModel(transfer_mode="copy", rng_seed="", max_per_dir=5)
     assert m.rng_seed is None

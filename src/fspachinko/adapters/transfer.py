@@ -8,7 +8,7 @@ from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from fspachinko.constants import TransferMode
+from fspachinko.fp import Fp
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def _link_fn_is_available(link_fn: Callable) -> bool:
     """Test if a link function works in the current environment."""
     try:
-        with TemporaryDirectory() as tmpdir:
+        with TemporaryDirectory(delete=True) as tmpdir:
             test_src = join(tmpdir, "test_src")
             test_link = join(tmpdir, "test_link")
             open(test_src, "w").close()
@@ -46,17 +46,17 @@ def hardlink(src: str, dst: str) -> None:
 
 
 _TRANSFER_FNS: dict[str, Callable] = {
-    TransferMode.DRY_RUN: dry_transfer,
-    TransferMode.COPY: copy,
-    TransferMode.COPY_PRESERVE: copy2,
-    TransferMode.MOVE: move,
-    TransferMode.SYMLINK: symlink,
-    TransferMode.HARDLINK: hardlink,
+    Fp.TransferMode.DRY_RUN: dry_transfer,
+    Fp.TransferMode.COPY: copy,
+    Fp.TransferMode.COPY_PRESERVE: copy2,
+    Fp.TransferMode.MOVE: move,
+    Fp.TransferMode.SYMLINK: symlink,
+    Fp.TransferMode.HARDLINK: hardlink,
 }
 
 _LINK_FNS: dict[str, Callable] = {
-    TransferMode.SYMLINK: symlink,
-    TransferMode.HARDLINK: link,
+    Fp.TransferMode.SYMLINK: symlink,
+    Fp.TransferMode.HARDLINK: link,
 }
 
 
