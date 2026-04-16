@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
     from fspachinko.domain.model import FSEntry
 
-INVALID_FILENAME_CHARS: set[str] = {"\\", "/", ":", "*", "?", '"', "<", ">", "|"}
 FILENAME_TEMPLATE_MAP: dict[Fp.FilenameTemplate, Callable[[FSEntry, int], str | int]] = {
     Fp.FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
     Fp.FilenameTemplate.INDEX: lambda _, c: c + 1,
@@ -25,7 +24,7 @@ FILENAME_TEMPLATE_MAP: dict[Fp.FilenameTemplate, Callable[[FSEntry, int], str | 
 @cache
 def available_filename_map(template: str) -> dict[str, Callable[[FSEntry, int], str | int]]:
     """Get the mapping of available filename template variables."""
-    return {templ.strip("{}"): fn for templ, fn in FILENAME_TEMPLATE_MAP.items() if templ in template}
+    return {templ[1:-1]: fn for templ, fn in FILENAME_TEMPLATE_MAP.items() if templ in template}
 
 
 @dataclass(slots=True)
@@ -37,7 +36,7 @@ class AbstractFilenamer(ABC):
 
     def __post_init__(self) -> None:
         """Validate the template."""
-        self.template = "".join(c for c in self.template if c not in INVALID_FILENAME_CHARS)
+        self.template = "".join(c for c in self.template if c not in Fp.INVALID_FILENAME_CHARS)
         self._map = available_filename_map(self.template)
 
     @abstractmethod

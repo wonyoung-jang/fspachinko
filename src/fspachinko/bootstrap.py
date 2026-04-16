@@ -41,6 +41,8 @@ from fspachinko.service.messagebus import MessageBus
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from fspachinko.fp import Fp
+
 
 @dataclass(slots=True)
 class Bootstrapper:
@@ -49,7 +51,7 @@ class Bootstrapper:
     filesystem: AbstractFilesystem = field(default_factory=Filesystem)
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     logger: AbstractLogger = field(default_factory=AppLogger)
-    available_transfer_fns: dict[str, Callable] = field(default_factory=available_transfer_fn_factory)
+    available_transfer_fns: dict[Fp.TransferMode, Callable] = field(default_factory=available_transfer_fn_factory)
     job: TransferJob = field(default_factory=TransferJob)
     rng: random.Random = field(default_factory=random.Random)
     filenamer_cls: type[AbstractFilenamer] = TemplateFilenamer

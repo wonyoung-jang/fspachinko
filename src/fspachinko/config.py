@@ -174,7 +174,7 @@ class ConfigModel(BaseModel):
     options: OptionsModel = Field(default_factory=OptionsModel)
 
     @property
-    def text_filter_specs(self) -> Sequence[tuple[TextFilterModel, str, str]]:
+    def text_filter_specs(self) -> Sequence[tuple[TextFilterModel, Fp.FilterName, Fp.ReStrFmt]]:
         """Get text filter specifications."""
         return (
             (self.dirname, Fp.FilterName.DIRNAME, Fp.ReStrFmt.DIRECTORY),
@@ -183,7 +183,7 @@ class ConfigModel(BaseModel):
         )
 
     @property
-    def range_filter_specs(self) -> Sequence[tuple[RangeFilterModel, str, dict[str, int]]]:
+    def range_filter_specs(self) -> Sequence[tuple[RangeFilterModel, Fp.FilterName, dict[str, int]]]:
         """Get range filter specifications."""
         return (
             (self.filesize, Fp.FilterName.FILESIZE, Fp.SIZE_MAP),
@@ -191,14 +191,14 @@ class ConfigModel(BaseModel):
         )
 
 
-def config_to_text_filter(c: ConfigModel) -> Iterator[tuple[str, Callable]]:
+def config_to_text_filter(c: ConfigModel) -> Iterator[tuple[Fp.FilterName, Callable]]:
     """Translate the configuration into a text filter function."""
     for m, name, re_fmt in c.text_filter_specs:
         if fn := build_text_filter(m.text, re_fmt, is_enabled=m.is_enabled, should_include=m.should_include):
             yield name, fn
 
 
-def build_text_filter(text: str, re_fmt: str, *, is_enabled: bool, should_include: bool) -> Callable | None:
+def build_text_filter(text: str, re_fmt: Fp.ReStrFmt, *, is_enabled: bool, should_include: bool) -> Callable | None:
     """Create a text filter function."""
     if not (is_enabled and text):
         return None
@@ -214,7 +214,7 @@ def build_text_filter(text: str, re_fmt: str, *, is_enabled: bool, should_includ
             return lambda p: not any(ptn.search(p) for ptn in patterns)
 
 
-def config_to_range_filter(c: ConfigModel) -> Iterator[tuple[str, Callable]]:
+def config_to_range_filter(c: ConfigModel) -> Iterator[tuple[Fp.FilterName, Callable]]:
     """Translate the configuration into a range filter function."""
     for m, name, unit_map in c.range_filter_specs:
         mul = unit_map.get(m.unit, 1.0)
@@ -239,7 +239,7 @@ def build_range_filter(minimum: float, maximum: float, *, is_enabled: bool) -> C
             return None
 
 
-FILTER_MAP: dict[str, Callable[[FSEntry, Callable], bool]] = {
+FILTER_MAP: dict[Fp.FilterName, Callable[[FSEntry, Callable], bool]] = {
     Fp.FilterName.DIRNAME: lambda e, fn: fn(e.parent),
     Fp.FilterName.KEYWORD: lambda e, fn: fn(e.stem),
     Fp.FilterName.EXTENSION: lambda e, fn: fn(e.ext),
@@ -248,7 +248,7 @@ FILTER_MAP: dict[str, Callable[[FSEntry, Callable], bool]] = {
 }
 
 
-def get_valid_filters(*filters: tuple[str, Callable]) -> Iterator[Callable]:
+def get_valid_filters(*filters: tuple[Fp.FilterName, Callable]) -> Iterator[Callable]:
     """Get valid filter functions from the configuration."""
     for name, fn in filters:
         if _filter := FILTER_MAP.get(name):
@@ -275,11 +275,10 @@ class ConfigModelBootstrapper:
 
     pipeline: AbstractPipeline
     fs: AbstractFilesystem
-    available_transfer_fns: dict[str, Callable]
+    available_transfer_fns: dict[Fp.TransferMode, Callable]
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
     rng: random.Random
-    transfer_mode: type[Fp.TransferMode] = Fp.TransferMode
 
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
@@ -322,10 +321,10 @@ class ConfigModelBootstrapper:
 
     def _build_transfer_fn(self, c: ConfigModel) -> Callable:
         """Build the transfer function based on the configuration."""
-        mode = c.options.transfer_mode
+        mode = Fp.TransferMode(c.options.transfer_mode)
         if mode in self.available_transfer_fns:
             return self.available_transfer_fns[mode]
-        return self.available_transfer_fns[self.transfer_mode.DRY_RUN]
+        return self.available_transfer_fns[Fp.TransferMode.DRY_RUN]
 
     def _build_walker_fn(self, c: ConfigModel) -> Callable:
         """Build the walker function based on the configuration."""

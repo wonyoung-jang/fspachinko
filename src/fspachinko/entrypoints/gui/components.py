@@ -54,9 +54,9 @@ def set_tips(*tips: tuple[QWidget, str]) -> None:
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
 
-    def __init__(self, title: str, name: str, *, checkable: bool = False) -> None:
+    def __init__(self, title: str, name: str, parent: QWidget | None = None, *, checkable: bool = False) -> None:
         """Initialize the base group box."""
-        super().__init__()
+        super().__init__(parent)
         self.setObjectName(name)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.setTitle(title)
@@ -80,12 +80,12 @@ class BaseGroupBox(QGroupBox):
 class PathSelectorWidget(BaseGroupBox):
     """Handles logic for selecting a path."""
 
-    def __init__(self, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the path selector widget."""
-        super().__init__(title, name)
+        super().__init__(title, name, parent)
         self.lbl_selected = QLabel(self)
-        self.btn_browse = QPushButton(get_qt_icon("browse"), "", self)
-        self.btn_open = QPushButton(get_qt_icon("open_dir"), "", self)
+        self.btn_browse = QPushButton(get_qt_icon("folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"), "", self)
+        self.btn_open = QPushButton(get_qt_icon("open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"), "", self)
         self._getters = ((self.lbl_selected.text, "path"),)
         self._setters = ((self.lbl_selected.setText, "path", ""),)
         set_tips(
@@ -139,9 +139,9 @@ class PathSelectorWidget(BaseGroupBox):
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    def __init__(self, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the file count widget."""
-        super().__init__(title, name)
+        super().__init__(title, name, parent)
         self.radio_fixed = QRadioButton("Fixed", self)
         self.spin_fixed = QSpinBox(self)
         self.spin_fixed.setRange(1, Fp.MAXINT)
@@ -192,9 +192,9 @@ class FileCountWidget(BaseGroupBox):
 class DirectoryCreateWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    def __init__(self, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the create folders widget."""
-        super().__init__(title, name, checkable=True)
+        super().__init__(title, name, parent, checkable=True)
         self.spinbox_folder_count = QSpinBox(self)
         self.spinbox_folder_count.setRange(1, Fp.MAXINT)
         self.lineedit_folder_name = QLineEdit(self)
@@ -223,9 +223,9 @@ class DirectoryCreateWidget(BaseGroupBox):
 class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
 
-    def __init__(self, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the filename template settings widget."""
-        super().__init__(title, name, checkable=True)
+        super().__init__(title, name, parent, checkable=True)
         self.lineedit_template = QLineEdit(self)
         self.lineedit_template.setPlaceholderText(f"Ex: {Fp.FilenameTemplate.ORIGINAL}_{Fp.FilenameTemplate.INDEX}")
         self.lineedit_template.setClearButtonEnabled(True)
@@ -263,9 +263,9 @@ class FilenamerWidget(BaseGroupBox):
 class TextFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude text pattern."""
 
-    def __init__(self, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
         """Initialize the dual list widget."""
-        super().__init__(title, name, checkable=True)
+        super().__init__(title, name, parent, checkable=True)
         self.lineedit_filter = QLineEdit(self)
         self.lineedit_filter.setPlaceholderText("comma,separated,items")
         self.lineedit_filter.setClearButtonEnabled(True)
@@ -296,9 +296,9 @@ class TextFilterWidget(BaseGroupBox):
 class RangeFilterWidget(BaseGroupBox):
     """Handles logic for ranges (min/max), e.g., Size or Duration."""
 
-    def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
+    def __init__(self, title: str, name: str, items: Sequence[str], parent: QWidget | None = None) -> None:
         """Initialize the range filter widget."""
-        super().__init__(title, name, checkable=True)
+        super().__init__(title, name, parent, checkable=True)
         self.spin_min = QDoubleSpinBox(self)
         self.spin_min.setRange(0.0, Fp.MAXFLOAT)
         self.spin_max = QDoubleSpinBox(self)
@@ -336,9 +336,9 @@ class RangeFilterWidget(BaseGroupBox):
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
+    def __init__(self, title: str, name: str, transfermodes: Sequence[str], parent: QWidget | None = None) -> None:
         """Initialize the options widget."""
-        super().__init__(title, name)
+        super().__init__(title, name, parent)
         self.combo_transfermode = QComboBox(self)
         self.combo_transfermode.addItems(transfermodes)
         self.chk_follow_symlink = QCheckBox(self)
@@ -377,21 +377,21 @@ class OptionsWidget(BaseGroupBox):
 class MainConfigWidget(QWidget):
     """Main widget."""
 
-    def __init__(self) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the main widget."""
-        super().__init__()
+        super().__init__(parent)
         self._widgets: dict[str, BaseGroupBox] = {
-            "root": PathSelectorWidget("Root", "root"),
-            "dest": PathSelectorWidget("Destination", "dest"),
-            "filecount": FileCountWidget("File count", "filecount"),
-            "directory": DirectoryCreateWidget("Create directories", "directory"),
-            "filename": FilenamerWidget("Filenamer", "filename"),
-            "dirname": TextFilterWidget("Directory names", "dirname"),
-            "keyword": TextFilterWidget("Keywords", "keyword"),
-            "extension": TextFilterWidget("Extensions", "extension"),
-            "filesize": RangeFilterWidget("File size", "filesize", tuple(Fp.SIZE_MAP.keys())),
-            "duration": RangeFilterWidget("Duration", "duration", tuple(Fp.TIME_MAP.keys())),
-            "options": OptionsWidget("Options", "options", available_transfer_fns()),
+            "root": PathSelectorWidget("Root", "root", self),
+            "dest": PathSelectorWidget("Destination", "dest", self),
+            "filecount": FileCountWidget("File count", "filecount", self),
+            "directory": DirectoryCreateWidget("Create directories", "directory", self),
+            "filename": FilenamerWidget("Filenamer", "filename", self),
+            "dirname": TextFilterWidget("Directory names", "dirname", self),
+            "keyword": TextFilterWidget("Keywords", "keyword", self),
+            "extension": TextFilterWidget("Extensions", "extension", self),
+            "filesize": RangeFilterWidget("File size", "filesize", tuple(Fp.SIZE_MAP.keys()), self),
+            "duration": RangeFilterWidget("Duration", "duration", tuple(Fp.TIME_MAP.keys()), self),
+            "options": OptionsWidget("Options", "options", available_transfer_fns(), self),
         }
         layout = QGridLayout(self)
         layout.setContentsMargins(25, 5, 25, 5)
@@ -433,9 +433,9 @@ class MainConfigWidget(QWidget):
 class BaseDockWidget(QDockWidget):
     """Base class for dock widgets with common functionality."""
 
-    def __init__(self, w: QWidget, title: str, name: str) -> None:
+    def __init__(self, title: str, name: str, w: QWidget, parent: QWidget | None = None) -> None:
         """Initialize the base dock widget."""
-        super().__init__(title)
+        super().__init__(title, parent)
         self.setObjectName(name)
         self.setWidget(w)
         f = QDockWidget.DockWidgetFeature
@@ -445,21 +445,23 @@ class BaseDockWidget(QDockWidget):
 class LogWidget(QTextBrowser):
     """Logging text box."""
 
-    def __init__(self) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the log widget."""
-        super().__init__()
+        super().__init__(parent)
         self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-        set_qt_tips(self, "Log for output messages.")
+        set_tips((self, "Log for output messages."))
 
 
 class ProgressWidget(QWidget):
     """Progress bars."""
 
-    def __init__(self) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the progress widget."""
-        super().__init__()
-        self.progbar_dirs = QProgressBar(textVisible=True)
-        self.progbar_files = QProgressBar(textVisible=True)
+        super().__init__(parent)
+        self.progbar_dirs = QProgressBar(self)
+        self.progbar_dirs.setTextVisible(True)
+        self.progbar_files = QProgressBar(self)
+        self.progbar_files.setTextVisible(True)
         set_tips(
             (self.progbar_dirs, "Total progress bar, max is set at number of output folders."),
             (self.progbar_files, "Current folder progress bar, max is set at number of files to copy."),

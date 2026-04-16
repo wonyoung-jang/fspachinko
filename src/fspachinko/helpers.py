@@ -36,7 +36,7 @@ def get_status(
     stop_requested: bool,
     empty_creation: bool,
     root_locked: bool,
-) -> str:
+) -> Fp.StateStatus:
     """Get the state and message for reporting."""
     if success:
         return Fp.StateStatus.SUCCESS

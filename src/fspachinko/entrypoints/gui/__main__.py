@@ -35,7 +35,7 @@ def main() -> None:
     QCoreApplication.setOrganizationDomain(GUIAppSetting.ORGANIZATION_DOMAIN)
     QCoreApplication.setApplicationName(GUIAppSetting.APPLICATION_NAME)
     app = QApplication()
-    app.setWindowIcon(get_qt_icon("window"))
+    app.setWindowIcon(get_qt_icon("windowIcon.png"))
     bootstrapper = Bootstrapper()
     window = Presenter(bootstrapper=bootstrapper)
     window.show()

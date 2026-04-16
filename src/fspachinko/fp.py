@@ -9,6 +9,7 @@ import fspachinko
 class Fp:
     """Namespace for various identifiers in a namespace."""
 
+    INVALID_FILENAME_CHARS: frozenset[str] = frozenset(("\\", "/", ":", "*", "?", '"', "<", ">", "|"))
     MAXCHUNK = 32
     MAXFLOAT = float("inf")
     MAXINT = 2**31 - 1

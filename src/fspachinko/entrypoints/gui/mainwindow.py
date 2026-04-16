@@ -2,7 +2,7 @@
 
 import logging
 from enum import StrEnum
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QByteArray, QObject, QSettings, Qt, QThread, Signal, Slot
 from PySide6.QtGui import QAction
@@ -12,7 +12,14 @@ from fspachinko.config import ConfigModel
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred, PipelineConfigured, RunFinished, RunStarted
 from fspachinko.entrypoints.gui.components import BaseDockWidget, LogWidget, MainConfigWidget, ProgressWidget
-from fspachinko.entrypoints.gui.helpers import QT_ACTION_CONFIG, QtActionKeys, get_qt_icon, get_qt_shortcut
+from fspachinko.entrypoints.gui.helpers import (
+    QtActionKey,
+    get_qt_icon,
+    get_qt_shortcut,
+    menu_config,
+    qt_action_config,
+    toolbar_config,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -27,11 +34,11 @@ if TYPE_CHECKING:
 def build_actions(parent: QObject | None = None) -> dict[str, QAction]:
     """Build actions for the UI."""
     actions = {}
-    for name, (text, tip) in QT_ACTION_CONFIG.items():
-        actions[name] = QAction(get_qt_icon(name), text, parent)
-        actions[name].setShortcut(get_qt_shortcut(name))
-        actions[name].setToolTip(tip)
-        actions[name].setStatusTip(tip)
+    for a in qt_action_config():
+        actions[a.name] = QAction(get_qt_icon(a.iconfile), a.text, parent)
+        actions[a.name].setShortcut(get_qt_shortcut(a.shortcut))
+        actions[a.name].setToolTip(a.tip)
+        actions[a.name].setStatusTip(a.tip)
     return actions
 
 
@@ -81,32 +88,19 @@ class BusWorker(QObject):
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    MENU_CONFIG: ClassVar[dict[str, Sequence[str | None]]] = {
-        "&File": (QtActionKeys.SAVE, QtActionKeys.SAVE_AS, QtActionKeys.LOAD, None, QtActionKeys.EXIT),
-        "&Run": (QtActionKeys.START, QtActionKeys.STOP),
-    }
-    TOOLBAR_CONFIG: ClassVar[Sequence[str | None]] = (
-        QtActionKeys.SAVE,
-        QtActionKeys.SAVE_AS,
-        QtActionKeys.LOAD,
-        None,
-        QtActionKeys.START,
-        QtActionKeys.STOP,
-        None,
-        QtActionKeys.EXIT,
-    )
-
     def __init__(self, presenter: Presenter) -> None:
         """Initialize the main window."""
         super().__init__(animated=True)
         self._presenter = presenter
-        self._ui = MainConfigWidget()
+        self._ui = MainConfigWidget(self)
         self.setCentralWidget(self._ui)
-        self._log_w = LogWidget()
-        self._prog_w = ProgressWidget()
+        self._log_w = LogWidget(self)
+        self._prog_w = ProgressWidget(self)
         area = Qt.DockWidgetArea.BottomDockWidgetArea
-        self.addDockWidget(area, BaseDockWidget(self._log_w, "Log", "log-dock"))
-        self.addDockWidget(area, BaseDockWidget(self._prog_w, "Progress", "progress-dock"))
+        logdock = BaseDockWidget("Log", "log-dock", self._log_w, self)
+        progdock = BaseDockWidget("Progress", "progress-dock", self._prog_w, self)
+        self.addDockWidget(area, logdock)
+        self.addDockWidget(area, progdock)
 
     # -- IView -----------------------------------------------------------------
 
@@ -164,8 +158,8 @@ class MainWindow(QMainWindow):
         self.statusBar().setSizeGripEnabled(True)
         toolbar = self.addToolBar("Toolbar")
         toolbar.setObjectName("Toolbar")
-        _populate(toolbar, self.TOOLBAR_CONFIG)
-        for submenu, config in self.MENU_CONFIG.items():
+        _populate(toolbar, toolbar_config())
+        for submenu, config in menu_config().items():
             _populate(self.menuBar().addMenu(submenu), config)
 
     # -- Lifecycle -------------------------------------------------------------
@@ -239,12 +233,12 @@ class Presenter(QObject):
         self._bootstrapper.logger.add_handler("qtgui", QtLogHandler(self._sig_logged.emit))
         self._sig_logged.connect(self._view.append_log)
         # Action -> Presenter -> Worker (Commands)
-        self._actions[QtActionKeys.START].triggered.connect(self.start)
-        self._actions[QtActionKeys.STOP].triggered.connect(self.stop)
-        self._actions[QtActionKeys.SAVE].triggered.connect(self.save)
-        self._actions[QtActionKeys.SAVE_AS].triggered.connect(self.save_as)
-        self._actions[QtActionKeys.LOAD].triggered.connect(self.open)
-        self._actions[QtActionKeys.EXIT].triggered.connect(self.close)
+        self._actions[QtActionKey.START].triggered.connect(self.start)
+        self._actions[QtActionKey.STOP].triggered.connect(self.stop)
+        self._actions[QtActionKey.SAVE].triggered.connect(self.save)
+        self._actions[QtActionKey.SAVE_AS].triggered.connect(self.save_as)
+        self._actions[QtActionKey.LOAD].triggered.connect(self.open)
+        self._actions[QtActionKey.EXIT].triggered.connect(self.close)
         # Presenter -> Worker (Commands)
         self._sig_cmd.connect(self._worker.handle, Qt.ConnectionType.QueuedConnection)
         self._sig_stop.connect(self._worker.handle, Qt.ConnectionType.DirectConnection)
@@ -274,13 +268,23 @@ class Presenter(QObject):
 
     @Slot()
     def save(self) -> None:
-        self._sig_cmd.emit(SaveConfiguration(path=self._configs.current, config=self._view.config))
+        self._sig_cmd.emit(
+            SaveConfiguration(
+                path=self._configs.current,
+                config=self._view.config,
+            )
+        )
 
     @Slot()
     def save_as(self) -> None:
         if path := self._file_dialog(save=True):
             self._set_config_path(path)
-            self._sig_cmd.emit(SaveConfiguration(path=self._configs.current, config=self._view.config))
+            self._sig_cmd.emit(
+                SaveConfiguration(
+                    path=self._configs.current,
+                    config=self._view.config,
+                )
+            )
 
     @Slot()
     def open(self) -> None:

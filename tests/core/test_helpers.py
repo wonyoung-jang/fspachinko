@@ -31,7 +31,7 @@ def test_convert_byte_to_human_readable_size(nbytes: int, expected: str) -> None
         ((False, False, False, False), Fp.StateStatus.UNDEFINED),
     ],
 )
-def test_get_status(params: tuple[bool, ...], expected_status: str) -> None:
+def test_get_status(params: tuple[bool, ...], expected_status: Fp.StateStatus) -> None:
     """Test get_status."""
     success, empty_creation, stop_requested, root_locked = params
     status = get_status(

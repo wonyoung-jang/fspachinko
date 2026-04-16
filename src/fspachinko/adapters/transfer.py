@@ -45,7 +45,7 @@ def hardlink(src: str, dst: str) -> None:
             raise
 
 
-_TRANSFER_FNS: dict[str, Callable] = {
+_TRANSFER_FNS: dict[Fp.TransferMode, Callable] = {
     Fp.TransferMode.DRY_RUN: dry_transfer,
     Fp.TransferMode.COPY: copy,
     Fp.TransferMode.COPY_PRESERVE: copy2,
@@ -54,14 +54,14 @@ _TRANSFER_FNS: dict[str, Callable] = {
     Fp.TransferMode.HARDLINK: hardlink,
 }
 
-_LINK_FNS: dict[str, Callable] = {
+_LINK_FNS: dict[Fp.TransferMode, Callable] = {
     Fp.TransferMode.SYMLINK: symlink,
     Fp.TransferMode.HARDLINK: link,
 }
 
 
 @cache
-def available_transfer_fn_factory() -> dict[str, Callable]:
+def available_transfer_fn_factory() -> dict[Fp.TransferMode, Callable]:
     """Create a transfer function manager."""
     available = _TRANSFER_FNS.copy()
     for mode, fn in _LINK_FNS.items():
@@ -71,6 +71,6 @@ def available_transfer_fn_factory() -> dict[str, Callable]:
 
 
 @cache
-def available_transfer_fns() -> Sequence[str]:
+def available_transfer_fns() -> Sequence[Fp.TransferMode]:
     """Get the available transfer function names."""
     return tuple(available_transfer_fn_factory().keys())
