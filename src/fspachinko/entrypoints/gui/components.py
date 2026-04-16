@@ -125,8 +125,11 @@ class PathSelectorWidget(BaseGroupBox):
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
         """Handle drag enter event for folder paths."""
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+        if event.mimeData().hasFormat("text/uri-list"):
+            for url in event.mimeData().urls():
+                if isdir(url.toLocalFile()):
+                    event.acceptProposedAction()
+                    return
 
     def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
         """Handle drop event for folder paths."""
@@ -134,6 +137,7 @@ class PathSelectorWidget(BaseGroupBox):
             path = url.toLocalFile()
             if isdir(path):
                 self.lbl_selected.setText(path)
+                return
 
 
 class FileCountWidget(BaseGroupBox):
