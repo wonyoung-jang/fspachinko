@@ -1,8 +1,12 @@
 """A dictionary with default values for configuration settings."""
 
 DEFAULT_CONFIG: dict = {
-    "root": "C:/",
-    "dest": "/fspachinko_output",
+    "root": {
+        "path": "C:/",
+    },
+    "dest": {
+        "path": "/fspachinko_output",
+    },
     "filecount": {
         "count": 10,
         "is_rand_enabled": False,
