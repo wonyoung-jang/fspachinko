@@ -29,9 +29,27 @@ requires = ["uv_build>=0.9.27"]
 build-backend = "uv_build"
 
 [tool.vulture]
-paths = ["./src/fspachinko", "whitelist.py"]
-ignore_decorators = ["@app.*"]
+paths = [
+    "src", 
+]
+ignore_decorators = [
+    "@app", 
+    "@field_validator", 
+    "@model_validator",
+]
+ignore_names = [
+    "model_config",
+    "cls",
+    "dragEnterEvent",
+    "dropEvent",
+    "DEFAULT_CONFIG",
+]
+exclude = [
+    ".venv/",
+    "*__init__.py",
+]
 min_confidence = 40
+sort_by_size = true
 verbose = false
 
 [dependency-groups]
