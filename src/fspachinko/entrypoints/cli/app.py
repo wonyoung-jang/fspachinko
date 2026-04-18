@@ -10,7 +10,7 @@ from fspachinko.datapaths import get_config_path
 from fspachinko.domain.commands import ConfigurePipeline, RunTransferJob
 from fspachinko.fp import Fp
 
-default_config_path = get_config_path(Fp.Paths.CONFIG)
+default_config_path = get_config_path(Fp.Path.CONFIG)
 logger = logging.getLogger(__name__)
 bootstrapper = Bootstrapper()
 bus = bootstrapper.build_message_bus()

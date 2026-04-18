@@ -1,6 +1,5 @@
 """Main module."""
 
-import logging
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -8,6 +7,7 @@ from PySide6.QtCore import QByteArray, QObject, QSettings, Qt, QThread, Signal, 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMenu, QToolBar
 
+from fspachinko.adapters.loggers import AttachedLogHandler
 from fspachinko.config import ConfigModel
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import DirectoryStarted, FileTransferred, PipelineConfigured, RunFinished, RunStarted
@@ -22,7 +22,7 @@ from fspachinko.entrypoints.gui.helpers import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
 
     from PySide6.QtGui import QCloseEvent
 
@@ -34,28 +34,13 @@ if TYPE_CHECKING:
 def build_actions(parent: QObject | None = None) -> dict[str, QAction]:
     """Build actions for the UI."""
     actions = {}
-    for a in qt_action_config():
-        actions[a.name] = QAction(get_qt_icon(a.iconfile), a.text, parent)
-        actions[a.name].setShortcut(get_qt_shortcut(a.shortcut))
-        actions[a.name].setToolTip(a.tip)
-        actions[a.name].setStatusTip(a.tip)
+    for ac in qt_action_config():
+        action = QAction(get_qt_icon(ac.iconfile), ac.text, parent)
+        action.setShortcut(get_qt_shortcut(ac.shortcut))
+        action.setToolTip(ac.tip)
+        action.setStatusTip(ac.tip)
+        actions[ac.name] = action
     return actions
-
-
-# -- Log handler for GUI (Model <> Presenter) ----------------------------------------------------------------
-class QtLogHandler(logging.Handler):
-    """A logging handler that emits log messages to a Qt signal."""
-
-    def __init__(self, log_fn: Callable[[str], None]) -> None:
-        """Initialize the handler and its signals."""
-        super().__init__()
-        self.log_fn = log_fn
-        self.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
-        self.setLevel(logging.INFO)
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """Emit a log record by formatting it and emitting the text_written signal."""
-        self.log_fn(self.format(record))
 
 
 # -- BusWorker (Model) ----------------------------------------------------------------
@@ -71,17 +56,17 @@ class BusWorker(QObject):
     def __init__(self, bus: MessageBus) -> None:
         """Initialize the worker with the message bus."""
         super().__init__()
-        bus.subscribe(PipelineConfigured, self.pipeline_configured.emit)
-        bus.subscribe(RunStarted, self.run_started.emit)
-        bus.subscribe(DirectoryStarted, self.directory_started.emit)
-        bus.subscribe(FileTransferred, self.file_transferred.emit)
-        bus.subscribe(RunFinished, self.run_finished.emit)
-        self.bus = bus
+        self._bus = bus
+        self._bus.subscribe(PipelineConfigured, self.pipeline_configured.emit)
+        self._bus.subscribe(RunStarted, self.run_started.emit)
+        self._bus.subscribe(DirectoryStarted, self.directory_started.emit)
+        self._bus.subscribe(FileTransferred, self.file_transferred.emit)
+        self._bus.subscribe(RunFinished, self.run_finished.emit)
 
     @Slot(Command)
     def handle(self, cmd: Command) -> None:
         """Handle a command by passing it to the message bus."""
-        self.bus.handle(cmd)
+        self._bus.handle(cmd)
 
 
 # -- MainWindow (View) -------------------------------------------------------------
@@ -92,7 +77,7 @@ class MainWindow(QMainWindow):
         """Initialize the main window."""
         super().__init__(animated=True)
         self._presenter = presenter
-        self._ui = MainConfigWidget(self)
+        self._ui = MainConfigWidget()
         self.setCentralWidget(self._ui)
         self._log_w = LogWidget(self)
         self._prog_w = ProgressWidget(self)
@@ -108,14 +93,15 @@ class MainWindow(QMainWindow):
     def config(self) -> dict:
         return self._ui.config
 
+    @property
+    def file_prog_percentage(self) -> int:
+        return self._prog_w.file_percentage
+
     def restore_config(self, config: dict) -> None:
         self._ui.restore(config)
 
     def toggle_ui(self, *, is_enabled: bool) -> None:
         self._ui.toggle(is_enabled=is_enabled)
-
-    def set_window_title(self, title: str) -> None:
-        self.setWindowTitle(title)
 
     def append_log(self, text: str) -> None:
         self._log_w.append(text)
@@ -128,24 +114,6 @@ class MainWindow(QMainWindow):
 
     def update_progress_file(self) -> None:
         self._prog_w.handle_file_transfer()
-
-    def get_progress_percentage(self) -> int:
-        return self._prog_w.file_percentage
-
-    def restore_geometry(self, data: QByteArray | bytes | bytearray | memoryview) -> bool:
-        return self.restoreGeometry(data)
-
-    def restore_window_state(self, data: QByteArray | bytes | bytearray | memoryview) -> bool:
-        return self.restoreState(data)
-
-    def save_geometry(self) -> QByteArray:
-        return self.saveGeometry()
-
-    def save_window_state(self) -> QByteArray:
-        return self.saveState()
-
-    def get_window_title(self) -> str:
-        return self.windowTitle()
 
     def build_ui_bars(self, actions: dict[str, QAction]) -> None:
         def _populate(bar: QToolBar | QMenu, items: Sequence[str | None]) -> None:
@@ -201,7 +169,7 @@ class Presenter(QObject):
         self._thread = QThread(self)
         self._actions = build_actions(self)
         self._view = MainWindow(self)
-        self._original_title = self._view.get_window_title()
+        self._original_title = self._view.windowTitle()
         self._view.build_ui_bars(self._actions)
         self._connect_signals()
         self._restore_state()
@@ -213,12 +181,12 @@ class Presenter(QObject):
         if (geometry := qsettings.value(Presenter.GUIStateKey.GEOMETRY)) and isinstance(
             geometry, QByteArray | bytes | bytearray | memoryview
         ):
-            self._view.restore_geometry(geometry)
+            self._view.restoreGeometry(geometry)
         if (state := qsettings.value(Presenter.GUIStateKey.STATE)) and isinstance(
             state, QByteArray | bytes | bytearray | memoryview
         ):
-            self._view.restore_window_state(state)
-        if path := qsettings.value(Presenter.GUIStateKey.CONFIG):
+            self._view.restoreState(state)
+        if (path := qsettings.value(Presenter.GUIStateKey.CONFIG)) and isinstance(path, str):
             self._load_config(path)
 
     def _setup_worker(self) -> None:
@@ -230,7 +198,7 @@ class Presenter(QObject):
     def _connect_signals(self) -> None:
         """Connect signals for the UI."""
         # Logger
-        self._bootstrapper.logger.add_handler("qtgui", QtLogHandler(self._sig_logged.emit))
+        self._bootstrapper.logger.add_handler("qtgui", AttachedLogHandler(self._sig_logged.emit))
         self._sig_logged.connect(self._view.append_log)
         # Action -> Presenter -> Worker (Commands)
         self._actions[QtActionKey.START].triggered.connect(self.start)
@@ -300,7 +268,7 @@ class Presenter(QObject):
     @Slot(RunStarted)
     def _on_run_started(self, _evt: RunStarted) -> None:
         self._view.toggle_ui(is_enabled=False)
-        self._original_title = self._view.get_window_title()
+        self._original_title = self._view.windowTitle()
 
     @Slot(DirectoryStarted)
     def _on_directory_started(self, evt: DirectoryStarted) -> None:
@@ -309,18 +277,19 @@ class Presenter(QObject):
     @Slot(FileTransferred)
     def _on_file_transferred(self, _evt: FileTransferred) -> None:
         self._view.update_progress_file()
-        self._view.set_window_title(f"[{self._view.get_progress_percentage()}%] {self._original_title}")
+        self._view.setWindowTitle(f"[{self._view.file_prog_percentage}%] {self._original_title}")
 
     @Slot(RunFinished)
     def _on_run_finished(self, _evt: RunFinished) -> None:
         self._view.toggle_ui(is_enabled=True)
-        self._view.set_window_title(self._original_title)
+        self._view.setWindowTitle(self._original_title)
 
     # -- Helpers ---------------------------------------------------------------
 
     def _file_dialog(self, *, save: bool) -> str | None:
         fn = QFileDialog.getSaveFileName if save else QFileDialog.getOpenFileName
         path, _ = fn(
+            parent=self._view,
             caption=Presenter.GUITitle.SAVE_CONFIG if save else Presenter.GUITitle.OPEN_CONFIG,
             dir=self._configs.directory,
             filter="JSON Files (*.json)",
@@ -330,7 +299,7 @@ class Presenter(QObject):
     def _set_config_path(self, path: str) -> None:
         self._configs.current = path
         stem = self._fs.get_stem_and_ext(path)[0] if path else "None"
-        self._view.set_window_title(f"{stem} - {Presenter.GUITitle.WINDOW}")
+        self._view.setWindowTitle(f"{stem} - {Presenter.GUITitle.WINDOW}")
 
     def _load_config(self, path: str) -> None:
         self._set_config_path(path)
@@ -352,6 +321,6 @@ class Presenter(QObject):
         self._thread.quit()
         self._thread.wait()
         settings = QSettings()
-        settings.setValue(Presenter.GUIStateKey.GEOMETRY, self._view.save_geometry())
-        settings.setValue(Presenter.GUIStateKey.STATE, self._view.save_window_state())
+        settings.setValue(Presenter.GUIStateKey.GEOMETRY, self._view.saveGeometry())
+        settings.setValue(Presenter.GUIStateKey.STATE, self._view.saveState())
         settings.setValue(Presenter.GUIStateKey.CONFIG, self._configs.current)

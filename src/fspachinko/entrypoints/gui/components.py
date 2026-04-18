@@ -54,9 +54,9 @@ def set_tips(*tips: tuple[QWidget, str]) -> None:
 class BaseGroupBox(QGroupBox):
     """Base class for group boxes with common functionality."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None, *, checkable: bool = False) -> None:
+    def __init__(self, title: str, name: str, *, checkable: bool = False) -> None:
         """Initialize the base group box."""
-        super().__init__(parent)
+        super().__init__()
         self.setObjectName(name)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.setTitle(title)
@@ -80,12 +80,12 @@ class BaseGroupBox(QGroupBox):
 class PathSelectorWidget(BaseGroupBox):
     """Handles logic for selecting a path."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the path selector widget."""
-        super().__init__(title, name, parent)
-        self.lbl_selected = QLabel(self)
-        self.btn_browse = QPushButton(get_qt_icon("folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"), "", self)
-        self.btn_open = QPushButton(get_qt_icon("open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"), "", self)
+        super().__init__(title, name)
+        self.lbl_selected = QLabel()
+        self.btn_browse = QPushButton(get_qt_icon("folder_open_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"), "")
+        self.btn_open = QPushButton(get_qt_icon("open_in_new_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"), "")
         self._getters = ((self.lbl_selected.text, "path"),)
         self._setters = ((self.lbl_selected.setText, "path", ""),)
         set_tips(
@@ -143,17 +143,14 @@ class PathSelectorWidget(BaseGroupBox):
 class FileCountWidget(BaseGroupBox):
     """Handles logic for file count settings."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the file count widget."""
-        super().__init__(title, name, parent)
-        self.radio_fixed = QRadioButton("Fixed", self)
-        self.spin_fixed = QSpinBox(self)
-        self.spin_fixed.setRange(1, Fp.MAXINT)
-        self.radio_rand = QRadioButton("Random", self)
-        self.spin_min_rand = QSpinBox(self)
-        self.spin_min_rand.setRange(1, Fp.MAXINT)
-        self.spin_max_rand = QSpinBox(self)
-        self.spin_max_rand.setRange(2, Fp.MAXINT)
+        super().__init__(title, name)
+        self.radio_fixed = QRadioButton("Fixed")
+        self.spin_fixed = QSpinBox(minimum=1, maximum=Fp.MAXINT)
+        self.radio_rand = QRadioButton("Random")
+        self.spin_min_rand = QSpinBox(minimum=1, maximum=Fp.MAXINT)
+        self.spin_max_rand = QSpinBox(minimum=2, maximum=Fp.MAXINT)
         self._getters = (
             (self.radio_rand.isChecked, "is_rand_enabled"),
             (self.spin_fixed.value, "count"),
@@ -196,14 +193,11 @@ class FileCountWidget(BaseGroupBox):
 class DirectoryCreateWidget(BaseGroupBox):
     """Handles logic for creating folders."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the create folders widget."""
-        super().__init__(title, name, parent, checkable=True)
-        self.spinbox_folder_count = QSpinBox(self)
-        self.spinbox_folder_count.setRange(1, Fp.MAXINT)
-        self.lineedit_folder_name = QLineEdit(self)
-        self.lineedit_folder_name.setPlaceholderText("Ex: Random_Files")
-        self.lineedit_folder_name.setClearButtonEnabled(True)
+        super().__init__(title, name, checkable=True)
+        self.spinbox_folder_count = QSpinBox(minimum=1, maximum=Fp.MAXINT)
+        self.lineedit_folder_name = QLineEdit(placeholderText="Ex: Random_Files", clearButtonEnabled=True)
         self._getters = (
             (self.isChecked, "is_enabled"),
             (self.spinbox_folder_count.value, "count"),
@@ -227,14 +221,15 @@ class DirectoryCreateWidget(BaseGroupBox):
 class FilenamerWidget(BaseGroupBox):
     """Handles logic for filename template settings."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the filename template settings widget."""
-        super().__init__(title, name, parent, checkable=True)
-        self.lineedit_template = QLineEdit(self)
-        self.lineedit_template.setPlaceholderText(f"Ex: {Fp.FilenameTemplate.ORIGINAL}_{Fp.FilenameTemplate.INDEX}")
-        self.lineedit_template.setClearButtonEnabled(True)
-        self.menu = QMenu(self)
-        self.btn_insert = QPushButton("Insert tag", self)
+        super().__init__(title, name, checkable=True)
+        self.lineedit_template = QLineEdit(
+            placeholderText=f"Ex: {Fp.FilenameTemplate.ORIGINAL}_{Fp.FilenameTemplate.INDEX}",
+            clearButtonEnabled=True,
+        )
+        self.menu = QMenu()
+        self.btn_insert = QPushButton("Insert tag")
         self.btn_insert.setMenu(self.menu)
         for lbl in Fp.FilenameTemplate:
             action = self.menu.addAction(lbl)
@@ -267,14 +262,12 @@ class FilenamerWidget(BaseGroupBox):
 class TextFilterWidget(BaseGroupBox):
     """Handles the Include/Exclude text pattern."""
 
-    def __init__(self, title: str, name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str) -> None:
         """Initialize the dual list widget."""
-        super().__init__(title, name, parent, checkable=True)
-        self.lineedit_filter = QLineEdit(self)
-        self.lineedit_filter.setPlaceholderText("comma,separated,items")
-        self.lineedit_filter.setClearButtonEnabled(True)
-        self.radio_include = QRadioButton("Include", self)
-        self.radio_exclude = QRadioButton("Exclude", self)
+        super().__init__(title, name, checkable=True)
+        self.lineedit_filter = QLineEdit(placeholderText="comma,separated,items", clearButtonEnabled=True)
+        self.radio_include = QRadioButton("Include")
+        self.radio_exclude = QRadioButton("Exclude")
         self._getters = (
             (self.isChecked, "is_enabled"),
             (self.lineedit_filter.text, "text"),
@@ -300,14 +293,12 @@ class TextFilterWidget(BaseGroupBox):
 class RangeFilterWidget(BaseGroupBox):
     """Handles logic for ranges (min/max), e.g., Size or Duration."""
 
-    def __init__(self, title: str, name: str, items: Sequence[str], parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str, items: Sequence[str]) -> None:
         """Initialize the range filter widget."""
-        super().__init__(title, name, parent, checkable=True)
-        self.spin_min = QDoubleSpinBox(self)
-        self.spin_min.setRange(0.0, Fp.MAXFLOAT)
-        self.spin_max = QDoubleSpinBox(self)
-        self.spin_max.setRange(0.0, Fp.MAXFLOAT)
-        self.combo_unit = QComboBox(self)
+        super().__init__(title, name, checkable=True)
+        self.spin_min = QDoubleSpinBox(minimum=0.0, maximum=Fp.MAXFLOAT)
+        self.spin_max = QDoubleSpinBox(minimum=0.0, maximum=Fp.MAXFLOAT)
+        self.combo_unit = QComboBox()
         self.combo_unit.addItems(items)
         self._getters = (
             (self.isChecked, "is_enabled"),
@@ -340,17 +331,14 @@ class RangeFilterWidget(BaseGroupBox):
 class OptionsWidget(BaseGroupBox):
     """Handles logic for miscellaneous options."""
 
-    def __init__(self, title: str, name: str, transfermodes: Sequence[str], parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, name: str, transfermodes: Sequence[str]) -> None:
         """Initialize the options widget."""
-        super().__init__(title, name, parent)
-        self.combo_transfermode = QComboBox(self)
+        super().__init__(title, name)
+        self.combo_transfermode = QComboBox()
         self.combo_transfermode.addItems(transfermodes)
-        self.chk_follow_symlink = QCheckBox(self)
-        self.lineedit_rng_seed = QLineEdit(self)
-        self.lineedit_rng_seed.setPlaceholderText("RNG Seed (optional)")
-        self.lineedit_rng_seed.setClearButtonEnabled(True)
-        self.spin_max_per_dir = QSpinBox(self)
-        self.spin_max_per_dir.setRange(0, Fp.MAXINT)
+        self.chk_follow_symlink = QCheckBox()
+        self.lineedit_rng_seed = QLineEdit(placeholderText="RNG Seed (optional)", clearButtonEnabled=True)
+        self.spin_max_per_dir = QSpinBox(minimum=0, maximum=Fp.MAXINT)
         self.spin_max_per_dir.setSpecialValueText("Unlimited")
         self._getters = (
             (self.combo_transfermode.currentText, "transfer_mode"),
@@ -381,21 +369,21 @@ class OptionsWidget(BaseGroupBox):
 class MainConfigWidget(QWidget):
     """Main widget."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self) -> None:
         """Initialize the main widget."""
-        super().__init__(parent)
+        super().__init__()
         self._widgets: dict[str, BaseGroupBox] = {
-            "root": PathSelectorWidget("Root", "root", self),
-            "dest": PathSelectorWidget("Destination", "dest", self),
-            "filecount": FileCountWidget("File count", "filecount", self),
-            "directory": DirectoryCreateWidget("Create directories", "directory", self),
-            "filename": FilenamerWidget("Filenamer", "filename", self),
-            "dirname": TextFilterWidget("Directory names", "dirname", self),
-            "keyword": TextFilterWidget("Keywords", "keyword", self),
-            "extension": TextFilterWidget("Extensions", "extension", self),
-            "filesize": RangeFilterWidget("File size", "filesize", tuple(Fp.SIZE_MAP.keys()), self),
-            "duration": RangeFilterWidget("Duration", "duration", tuple(Fp.TIME_MAP.keys()), self),
-            "options": OptionsWidget("Options", "options", available_transfer_fns(), self),
+            "root": PathSelectorWidget("Root", "root"),
+            "dest": PathSelectorWidget("Destination", "dest"),
+            "filecount": FileCountWidget("File count", "filecount"),
+            "directory": DirectoryCreateWidget("Create directories", "directory"),
+            "filename": FilenamerWidget("Filenamer", "filename"),
+            "dirname": TextFilterWidget("Directory names", "dirname"),
+            "keyword": TextFilterWidget("Keywords", "keyword"),
+            "extension": TextFilterWidget("Extensions", "extension"),
+            "filesize": RangeFilterWidget("File size", "filesize", tuple(Fp.SIZE_MAP.keys())),
+            "duration": RangeFilterWidget("Duration", "duration", tuple(Fp.TIME_MAP.keys())),
+            "options": OptionsWidget("Options", "options", available_transfer_fns()),
         }
         layout = QGridLayout(self)
         layout.setContentsMargins(25, 5, 25, 5)
@@ -462,10 +450,8 @@ class ProgressWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the progress widget."""
         super().__init__(parent)
-        self.progbar_dirs = QProgressBar(self)
-        self.progbar_dirs.setTextVisible(True)
-        self.progbar_files = QProgressBar(self)
-        self.progbar_files.setTextVisible(True)
+        self.progbar_dirs = QProgressBar(textVisible=True)
+        self.progbar_files = QProgressBar(textVisible=True)
         set_tips(
             (self.progbar_dirs, "Total progress bar, max is set at number of output folders."),
             (self.progbar_files, "Current folder progress bar, max is set at number of files to copy."),

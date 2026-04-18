@@ -283,9 +283,7 @@ class ConfigModelBootstrapper:
     def apply(self, c: ConfigModel) -> None:
         """Translate the configuration into commands."""
         self.rng.seed(c.options.rng_seed)
-        duration_fn = duration_fn_factory()
-        if not c.duration.is_enabled:
-            duration_fn = get_duration_null
+        duration_fn = duration_fn_factory() if c.duration.is_enabled else get_duration_null
         self.pipeline.filefilter_fn = config_to_file_filter(c)
         self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
         self.pipeline.transfer_fn = self._build_transfer_fn(c)

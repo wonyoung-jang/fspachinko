@@ -4,6 +4,7 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from fspachinko.adapters.cache import AbstractMetadataCache, SQLiteMetadataCache
 from fspachinko.adapters.filenamer import AbstractFilenamer, TemplateFilenamer
 from fspachinko.adapters.filesystem import AbstractFilesystem, Filesystem
 from fspachinko.adapters.fswalker import AbstractFSWalker, FSWalker
@@ -11,7 +12,7 @@ from fspachinko.adapters.loggers import AbstractLogger, AppLogger
 from fspachinko.adapters.pipeline import AbstractPipeline, TransferPipeline
 from fspachinko.adapters.transfer import available_transfer_fn_factory
 from fspachinko.config import ConfigManager, ConfigModelBootstrapper
-from fspachinko.datapaths import ensure_data_paths
+from fspachinko.datapaths import ensure_data_paths, get_cache_path
 from fspachinko.domain.commands import Command, ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
 from fspachinko.domain.events import (
     DirectoryStarted,
@@ -23,6 +24,7 @@ from fspachinko.domain.events import (
     RunStarted,
 )
 from fspachinko.domain.model import TransferJob
+from fspachinko.fp import Fp
 from fspachinko.helpers import ReportWriter
 from fspachinko.service.handlers import (
     ConfigurePipelineHandler,
@@ -41,8 +43,6 @@ from fspachinko.service.messagebus import MessageBus
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fspachinko.fp import Fp
-
 
 @dataclass(slots=True)
 class Bootstrapper:
@@ -58,11 +58,14 @@ class Bootstrapper:
     walker_cls: type[AbstractFSWalker] = FSWalker
     reporter_cls: type[ReportWriter] = ReportWriter
     config_manager: ConfigManager = field(init=False)
+    cache: AbstractMetadataCache = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
         ensure_data_paths()
         self.config_manager = ConfigManager(fs=self.filesystem)
+        self.cache = SQLiteMetadataCache(get_cache_path(Fp.Path.CACHE))
+        self.pipeline.cache = self.cache
 
     def build_message_bus(self) -> MessageBus:
         """Bootstrap the application and return the message bus."""

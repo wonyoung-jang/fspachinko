@@ -53,10 +53,12 @@ class Fp:
         DEFAULT = "[%(asctime)s] %(levelname)s[%(module)s] %(message)s"
         DEST = "[%(asctime)s] %(message)s"
 
-    class Paths(StrEnum):
+    class Path(StrEnum):
         """Enumeration for default configuration filenames."""
 
         APP = fspachinko.__file__
+        CACHE = "fspachinko_cache.db"
+        CACHE_DIR = "cache"
         CONFIG = "fspachinko.json"
         CONFIG_DIR = "configs"
         DATA_DIR = "_data"

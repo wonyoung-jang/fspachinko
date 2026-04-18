@@ -4,10 +4,13 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os.path import basename, join
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fspachinko.datapaths import get_log_path
 from fspachinko.fp import Fp
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class AbstractLogger(ABC):
@@ -90,7 +93,7 @@ class AppLogger(AbstractLogger):
 
     def add_global_file_log_handler(self) -> None:
         """Add a file log handler."""
-        filename = get_log_path(Fp.Paths.LOG_FILE)
+        filename = get_log_path(Fp.Path.LOG_FILE)
         global_file_log_config = {
             "filename": filename,
             "mode": "w",
@@ -148,3 +151,18 @@ class AppLogger(AbstractLogger):
         handler.setLevel(kwargs["level"])
         handler.setFormatter(logging.Formatter(kwargs.get("fmt"), datefmt=kwargs.get("datefmt")))
         self.add_handler(kwargs["name"], handler)
+
+
+class AttachedLogHandler(logging.Handler):
+    """A logging handler that emits log messages to a provided callable, such as a GUI log widget."""
+
+    def __init__(self, call: Callable[[str], None]) -> None:
+        """Initialize the handler."""
+        super().__init__()
+        self.call = call
+        self.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+        self.setLevel(logging.INFO)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emit a log record by formatting it and calling the provided function."""
+        self.call(self.format(record))
