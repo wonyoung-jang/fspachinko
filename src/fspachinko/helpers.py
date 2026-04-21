@@ -1,6 +1,6 @@
 """Utility functions."""
 
-from dataclasses import InitVar, dataclass
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from fspachinko.fp import Fp
@@ -18,63 +18,61 @@ def filesize_str(nbytes: int) -> str:
     return result
 
 
-def get_report(path: str, size: int, count: int, target: int) -> str:
-    """Generate a summary report string."""
-    return (
-        "------------------------------------------------------------------------\n"
-        f"{count}/{target} ({count / target:.2%}) files transferred\n"
-        "------------------------------------------------------------------------\n"
-        f"Destination: {path}\n"
-        f"{filesize_str(size)}\n"
-        "========================================================================\n"
-    )
+@dataclass(slots=True, frozen=True)
+class ReportSummary:
+    """Helper class to represent the report summary."""
+
+    path: str
+    size: int
+    count: int
+    target: int
+
+    def __str__(self) -> str:
+        """Get the report summary as a string."""
+        return (
+            "------------------------------------------------------------------------\n"
+            f"{self.count}/{self.target} ({self.count / self.target:.2%}) files transferred\n"
+            "------------------------------------------------------------------------\n"
+            f"Destination: {self.path}\n"
+            f"{filesize_str(self.size)}\n"
+            "========================================================================\n"
+        )
 
 
-def get_status(
-    *,
-    success: bool,
-    stop_requested: bool,
-    empty_creation: bool,
-    root_locked: bool,
-) -> Fp.StateStatus:
-    """Get the state and message for reporting."""
-    if success:
-        return Fp.StateStatus.SUCCESS
-    if stop_requested:
-        return Fp.StateStatus.USER_STOPPED
-    match empty_creation, root_locked:
-        case True, True:
-            return Fp.StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
-        case True, False:
-            return Fp.StateStatus.NO_FILES_FOUND_FOLDER_DELETED
-        case False, True:
-            return Fp.StateStatus.ALL_FILES_SEARCHED
-    return Fp.StateStatus.UNDEFINED
+@dataclass(slots=True, frozen=True)
+class ReportStatus:
+    """Helper class to represent the report status."""
+
+    success: bool
+    stop_requested: bool
+    empty_creation: bool
+    root_locked: bool
+
+    def __str__(self) -> str:
+        """Get the status as a string."""
+        if self.success:
+            return Fp.StateStatus.SUCCESS
+        if self.stop_requested:
+            return Fp.StateStatus.USER_STOPPED
+        match self.empty_creation, self.root_locked:
+            case True, True:
+                return Fp.StateStatus.NO_FILES_FOUND_ALL_SEARCHED_FOLDER_DELETED
+            case True, False:
+                return Fp.StateStatus.NO_FILES_FOUND_FOLDER_DELETED
+            case False, True:
+                return Fp.StateStatus.ALL_FILES_SEARCHED
+        return Fp.StateStatus.UNDEFINED
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ReportWriter:
     """Helper class to write report."""
 
-    evt: InitVar[DirectoryTransferred]
-    _report_str: str = ""
-
-    def __post_init__(self, evt: DirectoryTransferred) -> None:
-        """Generate the report string after initialization."""
-        _status = get_status(
-            success=evt.is_success,
-            stop_requested=evt.is_stop_requested,
-            empty_creation=evt.is_empty_creation,
-            root_locked=evt.is_root_locked,
-        )
-        _report = get_report(
-            path=evt.path,
-            size=evt.size,
-            count=evt.count,
-            target=evt.target_qty,
-        )
-        self._report_str = f"\n\n{_status}\n{_report}\n"
+    evt: DirectoryTransferred
 
     def __str__(self) -> str:
         """Get the full report string."""
-        return self._report_str
+        e = self.evt
+        status = ReportStatus(e.is_success, e.is_stop_requested, e.is_empty_creation, e.is_root_locked)
+        report = ReportSummary(e.path, e.size, e.count, e.target_qty)
+        return f"\n\n{status}\n{report}\n"

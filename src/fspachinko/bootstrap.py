@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 class Bootstrapper:
     """Bootstrapper for the FSPachinko application."""
 
-    filesystem: AbstractFilesystem = field(default_factory=Filesystem)
+    fs: AbstractFilesystem = field(default_factory=Filesystem)
     pipeline: AbstractPipeline = field(default_factory=TransferPipeline)
     logger: AbstractLogger = field(default_factory=AppLogger)
     available_transfer_fns: dict[Fp.TransferMode, Callable] = field(default_factory=available_transfer_fn_factory)
@@ -63,7 +63,7 @@ class Bootstrapper:
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
         ensure_data_paths()
-        self.config_manager = ConfigManager(fs=self.filesystem)
+        self.config_manager = ConfigManager(fs=self.fs)
         self.cache = SQLiteMetadataCache(get_cache_path(Fp.Path.CACHE))
         self.pipeline.cache = self.cache
 
@@ -78,7 +78,7 @@ class Bootstrapper:
         """Get the command handlers."""
         configurator = ConfigModelBootstrapper(
             pipeline=self.pipeline,
-            fs=self.filesystem,
+            fs=self.fs,
             rng=self.rng,
             available_transfer_fns=self.available_transfer_fns,
             template_filenamer=self.filenamer_cls,
@@ -90,14 +90,14 @@ class Bootstrapper:
             ),
             RunTransferJob: RunTransferJobHandler(
                 job=self.job,
-                filesystem=self.filesystem,
+                fs=self.fs,
                 pipeline=self.pipeline,
             ),
             StopProcess: StopProcessHandler(
                 job=self.job,
             ),
             SaveConfiguration: SaveConfigurationHandler(
-                filesystem=self.filesystem,
+                fs=self.fs,
             ),
         }
 
@@ -126,7 +126,7 @@ class Bootstrapper:
             ],
             DirectoryTransferred: [
                 DirectoryTransferredHandler(
-                    filesystem=self.filesystem,
+                    fs=self.fs,
                     logger=self.logger,
                     reporter=self.reporter_cls,
                 ),

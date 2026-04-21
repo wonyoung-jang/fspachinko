@@ -1,6 +1,5 @@
 """Handlers module."""
 
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -12,7 +11,6 @@ from fspachinko.domain.events import (
     RunFinished,
     RunStarted,
 )
-from fspachinko.domain.model import DestinationDirectory, TransferJob
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -23,6 +21,7 @@ if TYPE_CHECKING:
     from fspachinko.config import ConfigModelBootstrapper
     from fspachinko.domain.commands import ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import Event
+    from fspachinko.domain.model import DestinationDirectory, TransferJob
     from fspachinko.helpers import ReportWriter
 
 
@@ -49,7 +48,7 @@ class RunTransferJobHandler:
     """Handle the RunTransferJob command."""
 
     job: TransferJob
-    filesystem: AbstractFilesystem
+    fs: AbstractFilesystem
     pipeline: AbstractPipeline
 
     def __call__(self, cmd: RunTransferJob) -> Iterator[Event]:
@@ -64,12 +63,26 @@ class RunTransferJobHandler:
         self.job.root = cmd.root
         self.job.max_per_dir = cmd.max_per_dir
         self.job.is_stop_requested = False
-        for dst in self._iterate_inputs():
+
+        def _dsts() -> Iterator[DestinationDirectory]:
+            """Iterate over the input destination directories."""
+            while inputs := self.pipeline.inputs:
+                dst = inputs.popleft()
+                if dst.should_create:
+                    self.fs.make_directory(dst.path)
+                else:
+                    # Working with an existing dir, need to populate file tracking
+                    # to not overwrite existing files and keep track of stats
+                    for _path, size in self.fs.get_existing_files_for_existing_dest(dst.path):
+                        dst.add(_path, size)
+                yield dst
+
+        for dst in _dsts():
+            self.job.reset()
             if self.job.is_stop_condition:
                 break
-            self.job.reset()
             yield DirectoryStarted(path=dst.path, target_qty=dst.target_qty)
-            yield from self._transfer_dir(dst)
+            yield from self.pipeline.transfer_dir(self.job, dst)
             yield DirectoryTransferred(
                 path=dst.path,
                 size=dst.size,
@@ -81,51 +94,6 @@ class RunTransferJobHandler:
                 is_root_locked=self.job.is_root_locked,
             )
         yield RunFinished()
-
-    def _iterate_inputs(self) -> Iterator[DestinationDirectory]:
-        """Iterate over the input destination directories."""
-        while inputs := self.pipeline.inputs:
-            path, target_qty, should_create = inputs.popleft()
-            dst = DestinationDirectory(path=path, target_qty=target_qty, should_create=should_create)
-            if should_create:
-                self.filesystem.make_directory(path)
-            else:
-                # Working with an existing dir, need to populate file tracking
-                # to not overwrite existing files and keep track of stats
-                for _path, size in self.filesystem.get_existing_files_for_existing_dest(path):
-                    dst.add(_path, size)
-            yield dst
-
-    def _transfer_dir(self, dst: DestinationDirectory) -> Iterator[Event]:
-        """Transfer files to a destination directory."""
-        with ThreadPoolExecutor() as executor:
-            src = self.pipeline.walk(executor)
-            futures: dict[Future[None], FileTransferred] = {}
-
-            def fill() -> None:
-                for entry in src:
-                    if dst.is_success or self.job.is_stop_condition:
-                        break
-                    if not self.job.can_accept(entry):
-                        continue
-                    if (newpath := self.pipeline.get_new_path(dst, entry)) is None:
-                        continue
-                    dst.add(newpath, entry.size)
-                    self.job.register_transfer(entry)
-                    future = executor.submit(self.pipeline.transfer_file, entry.path, newpath)
-                    futures[future] = FileTransferred(src=entry.path, dst=newpath)
-
-            fill()
-            while futures:
-                for f in as_completed(futures):
-                    f.result()
-                    yield futures.pop(f)
-                    break
-                if self.job.is_stop_condition:
-                    for f in futures:
-                        f.cancel()
-                    break
-                fill()
 
 
 @dataclass(slots=True)
@@ -143,11 +111,11 @@ class StopProcessHandler:
 class SaveConfigurationHandler:
     """Handle the SaveConfiguration command."""
 
-    filesystem: AbstractFilesystem
+    fs: AbstractFilesystem
 
     def __call__(self, cmd: SaveConfiguration) -> None:
         """Handle the SaveConfiguration command."""
-        self.filesystem.save_json(cmd.path, cmd.config)
+        self.fs.save_json(cmd.path, cmd.config)
 
 
 ################################################################################
@@ -202,7 +170,7 @@ class FileTransferredHandler:
 class DirectoryTransferredHandler:
     """Handle the DirectoryTransferred event."""
 
-    filesystem: AbstractFilesystem
+    fs: AbstractFilesystem
     logger: AbstractLogger
     reporter: type[ReportWriter]
 
@@ -211,7 +179,7 @@ class DirectoryTransferredHandler:
         self.logger.info("%s", self.reporter(evt))
         self.logger.remove_dest_log_filehandler(evt.path)
         if evt.is_empty_creation:
-            self.filesystem.remove_directory(evt.path)
+            self.fs.remove_directory(evt.path)
 
 
 @dataclass(slots=True)

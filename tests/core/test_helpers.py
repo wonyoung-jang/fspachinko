@@ -3,7 +3,7 @@
 import pytest
 
 from fspachinko.fp import Fp
-from fspachinko.helpers import filesize_str, get_report, get_status
+from fspachinko.helpers import ReportStatus, ReportSummary, filesize_str
 
 
 @pytest.mark.parametrize(
@@ -34,18 +34,18 @@ def test_convert_byte_to_human_readable_size(nbytes: int, expected: str) -> None
 def test_get_status(params: tuple[bool, ...], expected_status: Fp.StateStatus) -> None:
     """Test get_status."""
     success, empty_creation, stop_requested, root_locked = params
-    status = get_status(
+    status = ReportStatus(
         success=success,
         empty_creation=empty_creation,
         stop_requested=stop_requested,
         root_locked=root_locked,
     )
-    assert status == expected_status
+    assert str(status) == expected_status
 
 
 def test_get_report() -> None:
     """Test get_report."""
-    report = get_report("/path/to/destination", 5 * 1024**2, 3, 10)
+    report = ReportSummary("/path/to/destination", 5 * 1024**2, 3, 10)
     expected_report = (
         "------------------------------------------------------------------------\n"
         "3/10 (30.00%) files transferred\n"
@@ -54,4 +54,4 @@ def test_get_report() -> None:
         "Size: 5.00 MB\n"
         "========================================================================\n"
     )
-    assert report == expected_report
+    assert str(report) == expected_report

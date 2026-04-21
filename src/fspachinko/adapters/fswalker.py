@@ -5,7 +5,6 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import scandir
-from os.path import dirname, splitext
 from typing import TYPE_CHECKING
 
 from fspachinko.domain.model import FSEntry, FSPachinkoPin
@@ -21,10 +20,6 @@ logger = logging.getLogger(__name__)
 class AbstractFSWalker(ABC):
     """Abstract class for filesystem walker."""
 
-    root: str
-    should_follow_symlink: bool
-    rng: random.Random
-
     @abstractmethod
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
@@ -34,10 +29,14 @@ class AbstractFSWalker(ABC):
 class FSWalker(AbstractFSWalker):
     """Filesystem walker implementation."""
 
+    root: str
+    should_follow_symlink: bool
+    rng: random.Random
     _board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
+        _parent = ""
         _curr = self.root
         _pop = self._board.pop
         _randint = self.rng.randint
@@ -49,27 +48,25 @@ class FSWalker(AbstractFSWalker):
                 if _curr == self.root:
                     break
                 _pop(_curr)
-                parent = dirname(_curr)
-                if parent in self._board:
+                if _parent in self._board:
                     with contextlib.suppress(ValueError):
-                        self._board[parent].subdirs.remove(_curr)
-                _curr = self.root
+                        self._board[_parent].subdirs.remove(_curr)
+                _parent, _curr = ("", self.root)
                 continue
             if _random() < pin.subdir_total_ratio:  # Should descend
-                _curr = _choice(pin.subdirs)
+                _parent, _curr = (_curr, _choice(pin.subdirs))
                 continue
             if files := pin.files:
                 idx = _randint(0, len(files) - 1)
                 yield files.pop(idx)
-            _curr = self.root
+            _parent, _curr = ("", self.root)
 
     def pin_from_path(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""
         if path in self._board:
             return self._board[path]
-        pin = FSPachinkoPin(path=path)
+        self._board[path] = pin = FSPachinkoPin(path=path)
         self.scan_pin(pin)
-        self._board[path] = pin
         return pin
 
     def scan_pin(self, pin: FSPachinkoPin) -> None:
@@ -79,19 +76,24 @@ class FSWalker(AbstractFSWalker):
                 follow = self.should_follow_symlink
                 append_subdir = pin.subdirs.append
                 append_file = pin.files.append
+                parent = pin.path
                 for e in it:
                     try:
                         if e.is_dir(follow_symlinks=follow):
                             append_subdir(e.path)
                         elif e.is_file(follow_symlinks=follow):
                             stat = e.stat(follow_symlinks=follow)
-                            stem, ext = splitext(e.name)
+                            stem, sep, ext = e.name.rpartition(".")
+                            if not sep:
+                                stem, ext = ext, ""
+                            else:
+                                ext = f".{ext}"
                             append_file(
                                 FSEntry(
                                     path=e.path,
                                     stem=stem,
                                     ext=ext,
-                                    parent=dirname(e.path),
+                                    parent=parent,
                                     size=stat.st_size,
                                     mtime=stat.st_mtime,
                                 ),

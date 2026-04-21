@@ -32,20 +32,22 @@ class AbstractFilenamer(ABC):
     """Abstract filenamer."""
 
     template: str
-    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Validate the template."""
-        self.template = "".join(c for c in self.template if c not in Fp.INVALID_FILENAME_CHARS)
-        self._map = available_filename_map(self.template)
 
     @abstractmethod
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Generate a filename."""
 
 
+@dataclass(slots=True)
 class TemplateFilenamer(AbstractFilenamer):
     """Filenamer that generates filenames based on templates."""
+
+    _map: dict[str, Callable[[FSEntry, int], str | int]] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Validate the template."""
+        self.template = "".join(c for c in self.template if c not in Fp.INVALID_FILENAME_CHARS)
+        self._map = available_filename_map(self.template)
 
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Generate a filename based on the specified template."""

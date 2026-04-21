@@ -163,7 +163,7 @@ class Presenter(QObject):
         """Initialize the presenter with the bootstrapper."""
         super().__init__()
         self._bootstrapper = bootstrapper
-        self._fs = bootstrapper.filesystem
+        self._fs = bootstrapper.fs
         self._configs = bootstrapper.config_manager
         self._worker = BusWorker(bootstrapper.build_message_bus())
         self._thread = QThread(self)

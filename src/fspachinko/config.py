@@ -3,6 +3,7 @@
 import re
 from collections import deque
 from dataclasses import dataclass
+from functools import partial
 from os.path import isabs, realpath
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from fspachinko.adapters.duration import duration_fn_factory, get_duration_null
 from fspachinko.datapaths import configs_path, get_config_path
+from fspachinko.domain.model import DestinationDirectory
 from fspachinko.fp import Fp
 
 if TYPE_CHECKING:
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
     from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.fswalker import AbstractFSWalker
     from fspachinko.adapters.pipeline import AbstractPipeline
-    from fspachinko.domain.model import DestinationDirectory, FSEntry
+    from fspachinko.domain.model import FSEntry
 
 
 class PathSelectorModel(BaseModel):
@@ -251,8 +253,8 @@ FILTER_MAP: dict[Fp.FilterName, Callable[[FSEntry, Callable], bool]] = {
 def get_valid_filters(*filters: tuple[Fp.FilterName, Callable]) -> Iterator[Callable]:
     """Get valid filter functions from the configuration."""
     for name, fn in filters:
-        if _filter := FILTER_MAP.get(name):
-            yield lambda e, fn=fn, _filter=_filter: _filter(e, fn)
+        if name in FILTER_MAP:
+            yield partial(FILTER_MAP[name], fn=fn)
 
 
 def config_to_file_filter(c: ConfigModel) -> Callable:
@@ -294,8 +296,7 @@ class ConfigModelBootstrapper:
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
         filename_fn = self.template_filenamer(template=c.filename.template) if c.filename.is_enabled else None
-        newpath_fn = self._get_new_path_fn
-        return lambda dst, e, fn=filename_fn, newpath_fn=newpath_fn: newpath_fn(dst, e, fn)
+        return lambda dst, e, fn=filename_fn: self._get_new_path_fn(dst, e, fn)
 
     def _get_new_path_fn(
         self, dst: DestinationDirectory, e: FSEntry, filename_fn: Callable | None = None
@@ -317,14 +318,14 @@ class ConfigModelBootstrapper:
         # If the files are different, find a new name for it so there's no overwriting or errors
         return self.fs.get_unique_path(target, dst)
 
-    def _build_transfer_fn(self, c: ConfigModel) -> Callable:
+    def _build_transfer_fn(self, c: ConfigModel) -> Callable[[str, str], None]:
         """Build the transfer function based on the configuration."""
         mode = Fp.TransferMode(c.options.transfer_mode)
         if mode in self.available_transfer_fns:
             return self.available_transfer_fns[mode]
         return self.available_transfer_fns[Fp.TransferMode.DRY_RUN]
 
-    def _build_walker_fn(self, c: ConfigModel) -> Callable:
+    def _build_walker_fn(self, c: ConfigModel) -> Callable[[], Iterator[FSEntry]]:
         """Build the walker function based on the configuration."""
         return self.walker(
             root=c.root.path,
@@ -332,23 +333,31 @@ class ConfigModelBootstrapper:
             rng=self.rng,
         )
 
-    def _build_inputs(self, c: ConfigModel) -> Iterator[tuple[str, int, bool]]:
+    def _build_inputs(self, c: ConfigModel) -> Iterator[DestinationDirectory]:
         """Build the inputs for the pipeline based on the configuration."""
-        dstpath = c.dest.path
-        cf = c.filecount
-        cd = c.directory
-        filecount_fn = (
-            (lambda: self.rng.randint(cf.rand_min, cf.rand_max)) if cf.is_rand_enabled else (lambda: cf.count)
-        )
-        if not cd.is_enabled:
-            yield (dstpath, filecount_fn(), False)
-            return
-        existing = self.fs.get_existing_subdirs(dstpath)
-        candidate = self.fs.join_path(dstpath, cd.name)
-        for _ in range(cd.count):
-            next_name = self.fs.get_unique_path(candidate, existing)
-            yield (next_name, filecount_fn(), True)
-            existing.add(next_name)
+        if c.directory.is_enabled:
+            yield from self._build_multi_dst_run(c, self._build_filecount_fn(c.filecount))
+        else:
+            yield self._build_single_dst_run(c, self._build_filecount_fn(c.filecount))
+
+    def _build_filecount_fn(self, fc: FilecountModel) -> Callable[[], int]:
+        """Build the file count function based on the configuration."""
+        if fc.is_rand_enabled:
+            return lambda: self.rng.randint(fc.rand_min, fc.rand_max)
+        return lambda: fc.count
+
+    def _build_single_dst_run(self, c: ConfigModel, filecount_fn: Callable[[], int]) -> DestinationDirectory:
+        """Build a single destination run based on the configuration."""
+        return DestinationDirectory(path=c.dest.path, target_qty=filecount_fn(), should_create=False)
+
+    def _build_multi_dst_run(self, c: ConfigModel, filecount_fn: Callable[[], int]) -> Iterator[DestinationDirectory]:
+        """Build a multi-destination run based on the configuration."""
+        existing = self.fs.get_existing_subdirs(c.dest.path)
+        candidate = self.fs.join_path(c.dest.path, c.directory.name)
+        for _ in range(c.directory.count):
+            dstpath = self.fs.get_unique_path(candidate, existing)
+            existing.add(dstpath)
+            yield DestinationDirectory(path=dstpath, target_qty=filecount_fn(), should_create=True)
 
 
 @dataclass(slots=True)

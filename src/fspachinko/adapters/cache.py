@@ -1,7 +1,6 @@
 """SQLite-based incremental filesystem cache."""
 
 import sqlite3
-import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -28,51 +27,69 @@ class SQLiteMetadataCache(AbstractMetadataCache):
 
     path: str
     _conn: sqlite3.Connection = field(init=False)
-    _write_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
 
     def __post_init__(self) -> None:
         """Initialize the cache by connecting to the SQLite database."""
-        self._conn = sqlite3.connect(self.path, check_same_thread=False)
+        self._conn = sqlite3.connect(
+            database=self.path,
+            check_same_thread=False,
+            autocommit=False,
+        )
         self._init_db()
 
     def _init_db(self) -> None:
         """Initialize the database schema."""
-        with self._write_lock, self._conn as conn:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS files (
-                    path TEXT PRIMARY KEY,
-                    stem TEXT,
-                    ext TEXT,
-                    parent TEXT,
-                    size INTEGER,
-                    mtime REAL,
-                    duration REAL
-                )
-            """)
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS files (
+                path TEXT PRIMARY KEY,
+                stem TEXT,
+                ext TEXT,
+                parent TEXT,
+                size INTEGER,
+                mtime REAL,
+                duration REAL
+            )
+            """
+        )
+        self._conn.commit()
 
     def get_duration(self, e: FSEntry) -> float | None:
         """Return the cached duration for the given FSEntry."""
-        with self._conn as conn:
-            cursor = conn.execute(
-                "SELECT duration FROM files WHERE path=? AND mtime=? AND size=?",
-                (e.path, e.mtime, e.size),
-            )
-            row = cursor.fetchone()
+        cursor = self._conn.execute(
+            """
+            SELECT duration FROM files
+            WHERE path=:path AND mtime=:mtime AND size=:size
+            """,
+            {
+                "path": e.path,
+                "mtime": e.mtime,
+                "size": e.size,
+            },
+        )
+        row = cursor.fetchone()
         return row[0] if row else None
 
     def set_entry(self, e: FSEntry) -> None:
         """Upsert an entry into the cache."""
-        with self._write_lock, self._conn as conn:
-            conn.execute(
-                """
-                INSERT INTO files (path, stem, ext, parent, size, mtime, duration)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(path) DO UPDATE SET
-                    size=excluded.size,
-                    mtime=excluded.mtime,
-                    duration=excluded.duration
+        self._conn.execute(
+            """
+            INSERT INTO files (path, stem, ext, parent, size, mtime, duration)
+            VALUES (:path, :stem, :ext, :parent, :size, :mtime, :duration)
+            ON CONFLICT(path) DO UPDATE SET
+                size=excluded.size,
+                mtime=excluded.mtime,
+                duration=excluded.duration
             """,
-                (e.path, e.stem, e.ext, e.parent, e.size, e.mtime, e.duration),
-            )
+            {
+                "path": e.path,
+                "stem": e.stem,
+                "ext": e.ext,
+                "parent": e.parent,
+                "size": e.size,
+                "mtime": e.mtime,
+                "duration": e.duration,
+            },
+        )
+        self._conn.commit()
