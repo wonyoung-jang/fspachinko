@@ -33,7 +33,7 @@ class SQLiteMetadataCache(AbstractMetadataCache):
         self._conn = sqlite3.connect(
             database=self.path,
             check_same_thread=False,
-            autocommit=False,
+            autocommit=True,
         )
         self._init_db()
 
@@ -53,7 +53,6 @@ class SQLiteMetadataCache(AbstractMetadataCache):
             )
             """
         )
-        self._conn.commit()
 
     def get_duration(self, e: FSEntry) -> float | None:
         """Return the cached duration for the given FSEntry."""
@@ -92,4 +91,3 @@ class SQLiteMetadataCache(AbstractMetadataCache):
                 "duration": e.duration,
             },
         )
-        self._conn.commit()

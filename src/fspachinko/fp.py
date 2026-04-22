@@ -92,3 +92,18 @@ class Fp:
         HARDLINK = "Hardlink"
         MOVE = "Move"
         SYMLINK = "Symlink"
+
+    class ConfigName(StrEnum):
+        """Enumeration for configuration names."""
+
+        DEST = "dest"
+        DIRECTORY = "directory"
+        DIRNAME = "dirname"
+        DURATION = "duration"
+        EXTENSION = "extension"
+        FILECOUNT = "filecount"
+        FILENAME = "filename"
+        FILESIZE = "filesize"
+        KEYWORD = "keyword"
+        OPTIONS = "options"
+        ROOT = "root"

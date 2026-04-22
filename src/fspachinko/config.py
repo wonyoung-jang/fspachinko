@@ -302,9 +302,9 @@ class ConfigModelBootstrapper:
         self, dst: DestinationDirectory, e: FSEntry, filename_fn: Callable | None = None
     ) -> str | None:
         """Check if the original file name can be used without transfer."""
-        new_stem = filename_fn(e, len(dst)) if filename_fn else e.stem
+        newstem = filename_fn(e, len(dst)) if filename_fn else e.stem
         suffix = e.ext.casefold()
-        target = self.fs.join_path(dst.path, f"{new_stem}{suffix}")
+        target = self.fs.join_path(dst.path, f"{newstem}{suffix}")
         if target not in dst:
             return target
         # The target name is already in the destination.

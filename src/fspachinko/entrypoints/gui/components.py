@@ -373,17 +373,17 @@ class MainConfigWidget(QWidget):
         """Initialize the main widget."""
         super().__init__()
         self._widgets: dict[str, BaseGroupBox] = {
-            "root": PathSelectorWidget("Root", "root"),
-            "dest": PathSelectorWidget("Destination", "dest"),
-            "filecount": FileCountWidget("File count", "filecount"),
-            "directory": DirectoryCreateWidget("Create directories", "directory"),
-            "filename": FilenamerWidget("Filenamer", "filename"),
-            "dirname": TextFilterWidget("Directory names", "dirname"),
-            "keyword": TextFilterWidget("Keywords", "keyword"),
-            "extension": TextFilterWidget("Extensions", "extension"),
-            "filesize": RangeFilterWidget("File size", "filesize", tuple(Fp.SIZE_MAP.keys())),
-            "duration": RangeFilterWidget("Duration", "duration", tuple(Fp.TIME_MAP.keys())),
-            "options": OptionsWidget("Options", "options", available_transfer_fns()),
+            Fp.ConfigName.ROOT: PathSelectorWidget("Root", Fp.ConfigName.ROOT),
+            Fp.ConfigName.DEST: PathSelectorWidget("Destination", Fp.ConfigName.DEST),
+            Fp.ConfigName.FILECOUNT: FileCountWidget("File count", Fp.ConfigName.FILECOUNT),
+            Fp.ConfigName.DIRECTORY: DirectoryCreateWidget("Create directories", Fp.ConfigName.DIRECTORY),
+            Fp.ConfigName.FILENAME: FilenamerWidget("Filenamer", Fp.ConfigName.FILENAME),
+            Fp.ConfigName.DIRNAME: TextFilterWidget("Directory names", Fp.ConfigName.DIRNAME),
+            Fp.ConfigName.KEYWORD: TextFilterWidget("Keywords", Fp.ConfigName.KEYWORD),
+            Fp.ConfigName.EXTENSION: TextFilterWidget("Extensions", Fp.ConfigName.EXTENSION),
+            Fp.ConfigName.FILESIZE: RangeFilterWidget("File size", Fp.ConfigName.FILESIZE, tuple(Fp.SIZE_MAP.keys())),
+            Fp.ConfigName.DURATION: RangeFilterWidget("Duration", Fp.ConfigName.DURATION, tuple(Fp.TIME_MAP.keys())),
+            Fp.ConfigName.OPTIONS: OptionsWidget("Options", Fp.ConfigName.OPTIONS, available_transfer_fns()),
         }
         layout = QGridLayout(self)
         layout.setContentsMargins(25, 5, 25, 5)
@@ -395,17 +395,17 @@ class MainConfigWidget(QWidget):
         layout.setColumnStretch(2, 1)
         layout.setHorizontalSpacing(12)
         layout.setVerticalSpacing(12)
-        layout.addWidget(self._widgets["root"], 0, 0, 1, 3)
-        layout.addWidget(self._widgets["dest"], 1, 0, 1, 3)
-        layout.addWidget(self._widgets["filecount"], 2, 0)
-        layout.addWidget(self._widgets["directory"], 2, 1)
-        layout.addWidget(self._widgets["filename"], 2, 2)
-        layout.addWidget(self._widgets["dirname"], 3, 0)
-        layout.addWidget(self._widgets["keyword"], 3, 1)
-        layout.addWidget(self._widgets["extension"], 3, 2)
-        layout.addWidget(self._widgets["filesize"], 4, 0)
-        layout.addWidget(self._widgets["duration"], 4, 1)
-        layout.addWidget(self._widgets["options"], 4, 2)
+        layout.addWidget(self._widgets[Fp.ConfigName.ROOT], 0, 0, 1, 3)
+        layout.addWidget(self._widgets[Fp.ConfigName.DEST], 1, 0, 1, 3)
+        layout.addWidget(self._widgets[Fp.ConfigName.FILECOUNT], 2, 0)
+        layout.addWidget(self._widgets[Fp.ConfigName.DIRECTORY], 2, 1)
+        layout.addWidget(self._widgets[Fp.ConfigName.FILENAME], 2, 2)
+        layout.addWidget(self._widgets[Fp.ConfigName.DIRNAME], 3, 0)
+        layout.addWidget(self._widgets[Fp.ConfigName.KEYWORD], 3, 1)
+        layout.addWidget(self._widgets[Fp.ConfigName.EXTENSION], 3, 2)
+        layout.addWidget(self._widgets[Fp.ConfigName.FILESIZE], 4, 0)
+        layout.addWidget(self._widgets[Fp.ConfigName.DURATION], 4, 1)
+        layout.addWidget(self._widgets[Fp.ConfigName.OPTIONS], 4, 2)
 
     @property
     def config(self) -> dict:
@@ -450,8 +450,8 @@ class ProgressWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the progress widget."""
         super().__init__(parent)
-        self.progbar_dirs = QProgressBar(textVisible=True)
-        self.progbar_files = QProgressBar(textVisible=True)
+        self.progbar_dirs = QProgressBar(minimum=0, textVisible=True)
+        self.progbar_files = QProgressBar(minimum=0, textVisible=True)
         set_tips(
             (self.progbar_dirs, "Total progress bar, max is set at number of output folders."),
             (self.progbar_files, "Current folder progress bar, max is set at number of files to copy."),
@@ -472,17 +472,13 @@ class ProgressWidget(QWidget):
         """Set up the progress bars at the start of the process."""
         self.progbar_dirs.setMaximum(dir_count)
         self.progbar_dirs.setValue(0)
-        self.progbar_files.setMaximum(Fp.MAXINT)
-        self.progbar_files.setValue(0)
 
     def handle_directory_start(self, target: int) -> None:
         """Update the directory progress bar."""
-        curr = self.progbar_dirs.value()
-        self.progbar_dirs.setValue(curr + 1)
+        self.progbar_dirs.setValue(self.progbar_dirs.value() + 1)
         self.progbar_files.setMaximum(target)
         self.progbar_files.setValue(0)
 
     def handle_file_transfer(self) -> None:
         """Update the file progress bar."""
-        curr = self.progbar_files.value()
-        self.progbar_files.setValue(curr + 1)
+        self.progbar_files.setValue(self.progbar_files.value() + 1)

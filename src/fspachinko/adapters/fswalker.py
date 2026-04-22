@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 class AbstractFSWalker(ABC):
     """Abstract class for filesystem walker."""
 
+    root: str
+    should_follow_symlink: bool
+    rng: random.Random
+
     @abstractmethod
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
@@ -29,16 +33,14 @@ class AbstractFSWalker(ABC):
 class FSWalker(AbstractFSWalker):
     """Filesystem walker implementation."""
 
-    root: str
-    should_follow_symlink: bool
-    rng: random.Random
     _board: dict[str, FSPachinkoPin] = field(default_factory=dict)
 
     def __call__(self) -> Iterator[FSEntry]:
         """Walk the filesystem and return an iterator of FSEntry objects."""
-        _parent = ""
-        _curr = self.root
-        _pop = self._board.pop
+        _starting_parent_curr_pair = ("", self.root)
+        _parent, _curr = _starting_parent_curr_pair
+        _board = self._board
+        _pop = _board.pop
         _randint = self.rng.randint
         _random = self.rng.random
         _choice = self.rng.choice
@@ -46,12 +48,12 @@ class FSWalker(AbstractFSWalker):
             pin = self.pin_from_path(_curr)
             if len(pin) == 0:
                 if _curr == self.root:
-                    break
+                    return
                 _pop(_curr)
-                if _parent in self._board:
+                if _parent in _board:
                     with contextlib.suppress(ValueError):
-                        self._board[_parent].subdirs.remove(_curr)
-                _parent, _curr = ("", self.root)
+                        _board[_parent].subdirs.remove(_curr)
+                _parent, _curr = _starting_parent_curr_pair
                 continue
             if _random() < pin.subdir_total_ratio:  # Should descend
                 _parent, _curr = (_curr, _choice(pin.subdirs))
@@ -59,7 +61,7 @@ class FSWalker(AbstractFSWalker):
             if files := pin.files:
                 idx = _randint(0, len(files) - 1)
                 yield files.pop(idx)
-            _parent, _curr = ("", self.root)
+            _parent, _curr = _starting_parent_curr_pair
 
     def pin_from_path(self, path: str) -> FSPachinkoPin:
         """Add a new pin to the board, or return an existing one."""

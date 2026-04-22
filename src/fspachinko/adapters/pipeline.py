@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 from itertools import islice
 from typing import TYPE_CHECKING
@@ -19,17 +19,32 @@ if TYPE_CHECKING:
     from fspachinko.domain.model import DestinationDirectory, FSEntry, TransferJob
 
 
-def prefetch(src: Iterator[FSEntry], submit: Callable) -> Iterator[tuple[FSEntry, Future]]:
+def prefetch(
+    src: Iterator[FSEntry], submit: Callable[[FSEntry], Future | None], max_chunk: int = Fp.MAXCHUNK
+) -> Iterator[tuple[FSEntry, Future | None]]:
     """Prefetch entries."""
-    pending: deque[tuple[FSEntry, Future]] = deque()
+    _pending: deque[tuple[FSEntry, Future | None]] = deque()
+    _pending.extend((_e, submit(_e)) for _e in islice(src, max_chunk - len(_pending)))
+    while _pending:
+        yield _pending.popleft()
+        _pending.extend((_e, submit(_e)) for _e in islice(src, max_chunk - len(_pending)))
 
-    def fill(submit: Callable = submit) -> None:
-        pending.extend((e, submit(e)) for e in islice(src, Fp.MAXCHUNK - len(pending)))
 
+def run_transfer_dir(
+    job: TransferJob, futures: dict[Future[None], FileTransferred], fill: Callable[[], None]
+) -> Iterator[Event]:
+    """Run the transfer for a destination directory."""
     fill()
-    while pending:
-        yield pending.popleft()
-        fill()
+    while futures:
+        _done, _ = wait(futures, return_when=FIRST_COMPLETED)
+        for _fut in _done:
+            _fut.result()
+            yield futures.pop(_fut)
+            if job.is_stop_condition:
+                for _f in futures:
+                    _f.cancel()
+                return
+            fill()
 
 
 @dataclass(slots=True)
@@ -54,54 +69,39 @@ class TransferPipeline(AbstractPipeline):
 
     def transfer_dir(self, job: TransferJob, dst: DestinationDirectory) -> Iterator[Event]:
         """Transfer files to a destination directory."""
-        with ThreadPoolExecutor() as executor:
-            yield from self._transfer_dir(executor, job, dst)
+        with (
+            ThreadPoolExecutor(max_workers=Fp.MAXCHUNK) as probe_ex,
+            ThreadPoolExecutor(max_workers=Fp.MAXCHUNK) as xfer_ex,
+        ):
+            futures, fill = self._get_futures_and_fill(probe_ex, xfer_ex, job, dst)
+            yield from run_transfer_dir(job, futures, fill)
 
-    def _transfer_dir(
-        self, executor: ThreadPoolExecutor, job: TransferJob, dst: DestinationDirectory
-    ) -> Iterator[Event]:
+    def _get_futures_and_fill(
+        self, probe_ex: ThreadPoolExecutor, xfer_ex: ThreadPoolExecutor, job: TransferJob, dst: DestinationDirectory
+    ) -> tuple[dict[Future[None], FileTransferred], Callable[[], None]]:
         """Transfer files to a destination directory."""
-        src = self._walk_filter(executor)
+        no_dur_fn = self.duration_fn is get_duration_null
+        src = self.walker_fn() if no_dur_fn else self._walk_ffprobe(probe_ex)
         futures: dict[Future[None], FileTransferred] = {}
 
         def fill() -> None:
-            for entry in src:
+            while len(futures) < Fp.MAXCHUNK and (entry := next(src, None)) is not None:
                 if dst.is_success or job.is_stop_condition:
                     break
-                if not job.can_accept(entry):
-                    continue
-                if (newpath := self.get_new_path_fn(dst, entry)) is None:
+                if (
+                    not job.can_accept(entry)
+                    or not self.filefilter_fn(entry)
+                    or (newpath := self.get_new_path_fn(dst, entry)) is None
+                ):
                     continue
                 dst.add(newpath, entry.size)
                 job.register_transfer(entry)
-                future = executor.submit(self.transfer_fn, entry.path, newpath)
+                future = xfer_ex.submit(self.transfer_fn, entry.path, newpath)
                 futures[future] = FileTransferred(src=entry.path, dst=newpath)
 
-        fill()
-        while futures:
-            fut = next(as_completed(futures))
-            fut.result()
-            yield futures.pop(fut)
-            if job.is_stop_condition:
-                for f in futures:
-                    f.cancel()
-                break
-            fill()
+        return futures, fill
 
-    def _walk_filter(self, executor: ThreadPoolExecutor) -> Iterator[FSEntry]:
-        """Walk filtered entries."""
-
-        def submit(e: FSEntry) -> Future[bool]:
-            return executor.submit(self.filefilter_fn, e)
-
-        no_dur_fn = self.duration_fn is get_duration_null
-        src = self.walker_fn() if no_dur_fn else self._walk_ffprobe(executor)
-
-        for e, fut in prefetch(src=src, submit=submit):
-            if fut.result():
-                yield e
-
-    def _walk_ffprobe(self, executor: ThreadPoolExecutor) -> Iterator[FSEntry]:
+    def _walk_ffprobe(self, probe_ex: ThreadPoolExecutor) -> Iterator[FSEntry]:
         """Walk and probe durations."""
         cache = self.cache
 
@@ -109,7 +109,7 @@ class TransferPipeline(AbstractPipeline):
             if cache and (dur := cache.get_duration(e)) is not None:
                 e.duration = dur
                 return None
-            return executor.submit(self.duration_fn, e.path)
+            return probe_ex.submit(self.duration_fn, e.path)
 
         for e, fut in prefetch(src=self.walker_fn(), submit=submit):
             if fut is not None:
