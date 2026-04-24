@@ -25,7 +25,7 @@ fspachinko-cli = "fspachinko.entrypoints.cli.__main__:main"
 # fspachinko-web = "fspachinko.web.__main__:main"
 
 [build-system]
-requires = ["uv_build>=0.9.27"]
+requires = ["uv_build"]
 build-backend = "uv_build"
 
 [tool.vulture]
@@ -57,7 +57,10 @@ cli = [
     "cyclopts>=4.6.0",
 ]
 dev = [
+    "invoke>=3.0.3",
     "line-profiler>=5.0.0",
+    "ruff>=0.15.11",
+    "ty>=0.0.32",
 ]
 docs = [
     "mkdocstrings-python>=2.0.1",

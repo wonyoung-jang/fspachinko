@@ -43,6 +43,8 @@ from fspachinko.service.messagebus import MessageBus
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+ensure_data_paths()
+
 
 @dataclass(slots=True)
 class Bootstrapper:
@@ -62,7 +64,6 @@ class Bootstrapper:
 
     def __post_init__(self) -> None:
         """Post-initialization to set up the message bus."""
-        ensure_data_paths()
         self.config_manager = ConfigManager(fs=self.fs)
         self.cache = SQLiteMetadataCache(get_cache_path(Fp.Path.CACHE))
         self.pipeline.cache = self.cache
@@ -76,17 +77,16 @@ class Bootstrapper:
 
     def get_command_handlers(self) -> dict[type[Command], Callable]:
         """Get the command handlers."""
-        configurator = ConfigModelBootstrapper(
-            pipeline=self.pipeline,
-            fs=self.fs,
-            rng=self.rng,
-            available_transfer_fns=self.available_transfer_fns,
-            template_filenamer=self.filenamer_cls,
-            walker=self.walker_cls,
-        )
         return {
             ConfigurePipeline: ConfigurePipelineHandler(
-                configurator=configurator,
+                configurator=ConfigModelBootstrapper(
+                    pipeline=self.pipeline,
+                    fs=self.fs,
+                    rng=self.rng,
+                    available_transfer_fns=self.available_transfer_fns,
+                    template_filenamer=self.filenamer_cls,
+                    walker=self.walker_cls,
+                ),
             ),
             RunTransferJob: RunTransferJobHandler(
                 job=self.job,

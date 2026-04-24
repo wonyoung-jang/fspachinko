@@ -26,15 +26,15 @@ def test_filecount_model() -> None:
     assert m.rand_min == 1
     assert m.rand_max == 10
     with pytest.raises(ValidationError, check=lambda e: "count" in str(e)):
-        m = FilecountModel(count=0, is_rand_enabled=True, rand_min=1, rand_max=10)
+        FilecountModel(count=0, is_rand_enabled=True, rand_min=1, rand_max=10)
     with pytest.raises(ValidationError, check=lambda e: "rand_min" in str(e)):
-        m = FilecountModel(count=5, is_rand_enabled=True, rand_min=0, rand_max=10)
+        FilecountModel(count=5, is_rand_enabled=True, rand_min=0, rand_max=10)
     with pytest.raises(ValidationError, check=lambda e: "rand_max" in str(e)):
-        m = FilecountModel(count=5, is_rand_enabled=True, rand_min=1, rand_max=0)
+        FilecountModel(count=5, is_rand_enabled=True, rand_min=1, rand_max=0)
     with pytest.raises(ValidationError, check=lambda e: "rand_max" in str(e)):
-        m = FilecountModel(count=5, is_rand_enabled=True, rand_min=10, rand_max=1)
+        FilecountModel(count=5, is_rand_enabled=True, rand_min=10, rand_max=1)
     with pytest.raises(ValueError, check=lambda e: "Random minimum cannot be greater than random maximum" in str(e)):
-        m = FilecountModel(count=5, is_rand_enabled=True, rand_min=10, rand_max=2)
+        FilecountModel(count=5, is_rand_enabled=True, rand_min=10, rand_max=2)
 
 
 def test_directory_model() -> None:
@@ -79,7 +79,7 @@ def test_rangefilter_model() -> None:
     assert m.maximum == Fp.MAXFLOAT
     # Test minimum greater than maximum validation
     with pytest.raises(ValueError, check=lambda e: "Minimum cannot be greater than maximum." in str(e)):
-        m = RangeFilterModel(is_enabled=True, minimum=1000, maximum=100)
+        RangeFilterModel(is_enabled=True, minimum=1000, maximum=100)
 
 
 def test_options_model() -> None:

@@ -79,8 +79,11 @@ class Filesystem(AbstractFilesystem):
 
     def are_files_identical(self, f1: str, f2: str) -> bool:
         """Check if two files are identical by comparing their contents."""
-        if cmp(f1, f2, shallow=True):
-            return cmp(f1, f2, shallow=False)
+        try:
+            if cmp(f1, f2, shallow=True):
+                return cmp(f1, f2, shallow=False)
+        except OSError:
+            return True
         return False
 
     def get_existing_json_files(self, path: str) -> list[str]:

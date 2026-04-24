@@ -13,9 +13,8 @@ def filesize_str(nbytes: int) -> str:
     """Convert bytes to human readable string."""
     for unit, threshold in Fp.SIZE_MAP.items():
         if nbytes < threshold * 1024:
-            result = f"Size: {nbytes / threshold:.2f} {unit}"
-            break
-    return result
+            return f"Size: {nbytes / threshold:.2f} {unit}"
+    return ""
 
 
 @dataclass(slots=True, frozen=True)

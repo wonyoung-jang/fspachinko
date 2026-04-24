@@ -25,6 +25,14 @@ class Fp:
         "h": 3600,
     }
 
+    class AppSetting(StrEnum):
+        """Enumeration for different settings categories."""
+
+        APPLICATION_NAME = "fspachinko"
+        ORGANIZATION_DOMAIN = "https://github.com/wonyoung-jang/fspachinko"
+        ORGANIZATION_NAME = "Wonyoung Jang"
+        WINDOWS_TASKBAR_APP_ID = "wonyoungjang.fspachinko.random_file_transfer_utility.0.0.1"
+
     class FilenameTemplate(StrEnum):
         """Enumeration for filename templates."""
 
@@ -52,6 +60,11 @@ class Fp:
 
         DEFAULT = "[%(asctime)s] %(levelname)s[%(module)s] %(message)s"
         DEST = "[%(asctime)s] %(message)s"
+
+    class LogDateFmt(StrEnum):
+        """Enum for log date formats."""
+
+        HHMMSS = "%H:%M:%S"
 
     class Path(StrEnum):
         """Enumeration for default configuration filenames."""

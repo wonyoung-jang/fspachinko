@@ -39,7 +39,7 @@ def logs_path() -> str:
 
 def ensure_data_paths() -> None:
     """Ensure that all necessary data paths exist."""
-    for path in (_data_path(), icons_path(), configs_path(), logs_path()):
+    for path in (_data_path(), cache_path(), configs_path(), icons_path(), logs_path()):
         if not exists(path):
             mkdir(path)
 

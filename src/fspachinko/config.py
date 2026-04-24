@@ -196,49 +196,32 @@ class ConfigModel(BaseModel):
 def config_to_text_filter(c: ConfigModel) -> Iterator[tuple[Fp.FilterName, Callable]]:
     """Translate the configuration into a text filter function."""
     for m, name, re_fmt in c.text_filter_specs:
-        if fn := build_text_filter(m.text, re_fmt, is_enabled=m.is_enabled, should_include=m.should_include):
-            yield name, fn
+        if not m.is_enabled or not m.text:
+            continue
+        patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in set(m.text.split(",")))
+        yield name, build_text_filter(patterns, include=m.should_include)
 
 
-def build_text_filter(text: str, re_fmt: Fp.ReStrFmt, *, is_enabled: bool, should_include: bool) -> Callable | None:
+def build_text_filter(patterns: tuple[re.Pattern, ...], *, include: bool) -> Callable:
     """Create a text filter function."""
-    if not (is_enabled and text):
-        return None
-    patterns = tuple(re.compile(re_fmt.format(re.escape(t)), re.IGNORECASE) for t in set(text.split(",")))
-    match len(patterns), should_include:
-        case 1, True:
-            return lambda p: patterns[0].search(p) is not None
-        case 1, False:
-            return lambda p: patterns[0].search(p) is None
-        case _, True:
-            return lambda p: any(ptn.search(p) for ptn in patterns)
-        case _, False:
-            return lambda p: not any(ptn.search(p) for ptn in patterns)
+    if len(patterns) == 1:
+        if include:
+            return lambda t: patterns[0].search(t) is not None
+        return lambda t: patterns[0].search(t) is None
+    if include:
+        return lambda t: any(ptn.search(t) for ptn in patterns)
+    return lambda t: not any(ptn.search(t) for ptn in patterns)
 
 
 def config_to_range_filter(c: ConfigModel) -> Iterator[tuple[Fp.FilterName, Callable]]:
     """Translate the configuration into a range filter function."""
     for m, name, unit_map in c.range_filter_specs:
+        if not m.is_enabled:
+            continue
         mul = unit_map.get(m.unit, 1.0)
         minimum = m.minimum * mul
         maximum = m.maximum * mul
-        if fn := build_range_filter(minimum, maximum, is_enabled=m.is_enabled):
-            yield name, fn
-
-
-def build_range_filter(minimum: float, maximum: float, *, is_enabled: bool) -> Callable | None:
-    """Create a range filter function."""
-    if not is_enabled:
-        return None
-    match minimum >= 0, maximum < Fp.MAXFLOAT:
-        case True, True:
-            return lambda v: minimum <= v <= maximum
-        case True, False:
-            return lambda v: v >= minimum
-        case False, True:
-            return lambda v: v <= maximum
-        case False, False:
-            return None
+        yield name, lambda v, minimum=minimum, maximum=maximum: minimum <= v <= maximum
 
 
 FILTER_MAP: dict[Fp.FilterName, Callable[[FSEntry, Callable], bool]] = {
@@ -250,25 +233,20 @@ FILTER_MAP: dict[Fp.FilterName, Callable[[FSEntry, Callable], bool]] = {
 }
 
 
-def get_valid_filters(*filters: tuple[Fp.FilterName, Callable]) -> Iterator[Callable]:
+def get_valid_filters(*filters: tuple[Fp.FilterName, Callable]) -> Sequence[Callable]:
     """Get valid filter functions from the configuration."""
-    for name, fn in filters:
-        if name in FILTER_MAP:
-            yield partial(FILTER_MAP[name], fn=fn)
+    return tuple(partial(FILTER_MAP[name], fn=fn) for name, fn in filters if name in FILTER_MAP)
 
 
 def config_to_file_filter(c: ConfigModel) -> Callable:
     """Translate the configuration into a file filter function."""
-    text_filters = config_to_text_filter(c)
-    range_filters = config_to_range_filter(c)
-    file_filters = tuple(get_valid_filters(*text_filters, *range_filters))
-    match len(file_filters):
-        case 0:
-            return lambda _: True
-        case 1:
-            return file_filters[0]
-        case _:
-            return lambda e, file_filters=file_filters: all(f(e) for f in file_filters)
+    file_filters = get_valid_filters(*config_to_text_filter(c), *config_to_range_filter(c))
+    nfilters = len(file_filters)
+    if nfilters == 0:
+        return lambda _: True
+    if nfilters == 1:
+        return file_filters[0]
+    return lambda e, file_filters=file_filters: all(f(e) for f in file_filters)
 
 
 @dataclass(slots=True)
@@ -303,8 +281,7 @@ class ConfigModelBootstrapper:
     ) -> str | None:
         """Check if the original file name can be used without transfer."""
         newstem = filename_fn(e, len(dst)) if filename_fn else e.stem
-        suffix = e.ext.casefold()
-        target = self.fs.join_path(dst.path, f"{newstem}{suffix}")
+        target = self.fs.join_path(dst.path, f"{newstem}{e.ext}")
         if target not in dst:
             return target
         # The target name is already in the destination.

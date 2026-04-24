@@ -122,7 +122,7 @@ class AppLogger(AbstractLogger):
             "delay": True,
             "level": logging.INFO,
             "fmt": Fp.LogFmt.DEST,
-            "datefmt": "%H:%M:%S",
+            "datefmt": Fp.LogDateFmt.HHMMSS,
             "name": dest,
         }
         self.add_file_log_handler(dest_file_log_config)
@@ -160,7 +160,7 @@ class AttachedLogHandler(logging.Handler):
         """Initialize the handler."""
         super().__init__()
         self.call = call
-        self.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+        self.setFormatter(logging.Formatter(Fp.LogFmt.DEST, datefmt=Fp.LogDateFmt.HHMMSS))
         self.setLevel(logging.INFO)
 
     def emit(self, record: logging.LogRecord) -> None:
