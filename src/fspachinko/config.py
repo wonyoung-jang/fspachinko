@@ -253,23 +253,21 @@ def config_to_file_filter(c: ConfigModel) -> Callable:
 class ConfigModelBootstrapper:
     """Bootstrapper for translating configuration into commands."""
 
-    pipeline: AbstractPipeline
     fs: AbstractFilesystem
     available_transfer_fns: dict[Fp.TransferMode, Callable]
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
     rng: random.Random
 
-    def apply(self, c: ConfigModel) -> None:
+    def apply(self, c: ConfigModel, pipeline: AbstractPipeline) -> None:
         """Translate the configuration into commands."""
         self.rng.seed(c.options.rng_seed)
-        duration_fn = duration_fn_factory() if c.duration.is_enabled else get_duration_null
-        self.pipeline.filefilter_fn = config_to_file_filter(c)
-        self.pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
-        self.pipeline.transfer_fn = self._build_transfer_fn(c)
-        self.pipeline.walker_fn = self._build_walker_fn(c)
-        self.pipeline.duration_fn = duration_fn
-        self.pipeline.inputs = deque(self._build_inputs(c))
+        pipeline.filefilter_fn = config_to_file_filter(c)
+        pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
+        pipeline.transfer_fn = self._build_transfer_fn(c)
+        pipeline.walker_fn = self._build_walker_fn(c)
+        pipeline.duration_fn = duration_fn_factory() if c.duration.is_enabled else get_duration_null
+        pipeline.inputs = self._build_inputs(c)
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
@@ -310,12 +308,12 @@ class ConfigModelBootstrapper:
             rng=self.rng,
         )
 
-    def _build_inputs(self, c: ConfigModel) -> Iterator[DestinationDirectory]:
+    def _build_inputs(self, c: ConfigModel) -> deque[DestinationDirectory]:
         """Build the inputs for the pipeline based on the configuration."""
+        filecount_fn = self._build_filecount_fn(c.filecount)
         if c.directory.is_enabled:
-            yield from self._build_multi_dst_run(c, self._build_filecount_fn(c.filecount))
-        else:
-            yield self._build_single_dst_run(c, self._build_filecount_fn(c.filecount))
+            return deque(self._build_multi_dst_run(c, filecount_fn))
+        return deque([self._build_single_dst_run(c, filecount_fn)])
 
     def _build_filecount_fn(self, fc: FilecountModel) -> Callable[[], int]:
         """Build the file count function based on the configuration."""

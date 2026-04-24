@@ -48,10 +48,6 @@ class AbstractLogger(ABC):
     def remove_dest_log_filehandler(self, dest: str) -> None:
         """Remove the log handler for the job request."""
 
-    @abstractmethod
-    def add_file_log_handler(self, kwargs: dict) -> None:
-        """Add a file log handler with an absolute path."""
-
 
 @dataclass(slots=True)
 class AppLogger(AbstractLogger):
@@ -94,15 +90,15 @@ class AppLogger(AbstractLogger):
     def add_global_file_log_handler(self) -> None:
         """Add a file log handler."""
         filename = get_log_path(Fp.Path.LOG_FILE)
-        global_file_log_config = {
-            "filename": filename,
-            "mode": "w",
-            "delay": True,
-            "level": logging.DEBUG,
-            "fmt": Fp.LogFmt.DEFAULT,
-            "name": "file",
-        }
-        self.add_file_log_handler(global_file_log_config)
+        handler = logging.FileHandler(
+            filename=filename,
+            mode="w",
+            encoding="utf-8",
+            delay=True,
+        )
+        handler.setFormatter(logging.Formatter(Fp.LogFmt.DEFAULT))
+        handler.setLevel(logging.DEBUG)
+        self.add_handler("file", handler)
         self.debug("Added file log handler. Log file: %s", filename)
 
     def add_cli_log_handler(self) -> None:
@@ -116,16 +112,15 @@ class AppLogger(AbstractLogger):
     def add_dest_log_filehandler(self, dest: str) -> None:
         """Set up a logger for the job request."""
         filename = join(dest, f"!_{basename(dest)}_report.log")
-        dest_file_log_config = {
-            "filename": filename,
-            "mode": "a",
-            "delay": True,
-            "level": logging.INFO,
-            "fmt": Fp.LogFmt.DEST,
-            "datefmt": Fp.LogDateFmt.HHMMSS,
-            "name": dest,
-        }
-        self.add_file_log_handler(dest_file_log_config)
+        handler = logging.FileHandler(
+            filename=filename,
+            mode="a",
+            encoding="utf-8",
+            delay=True,
+        )
+        handler.setFormatter(logging.Formatter(Fp.LogFmt.DEST, datefmt=Fp.LogDateFmt.HHMMSS))
+        handler.setLevel(logging.INFO)
+        self.add_handler(dest, handler)
         self.debug("Created log handler for destination %s logging to file: %s", dest, filename)
 
     def remove_dest_log_filehandler(self, dest: str) -> None:
@@ -136,21 +131,6 @@ class AppLogger(AbstractLogger):
             handler.close()
         else:
             self.warning("No log handler found for destination: %s", dest)
-
-    def add_file_log_handler(self, kwargs: dict) -> None:
-        """Add a file log handler with an absolute path."""
-        if not all(k in kwargs for k in ("filename", "level", "name")):
-            self.warning("No required parameters provided for file log handler. Skipping addition.")
-            return
-        handler = logging.FileHandler(
-            filename=kwargs["filename"],
-            mode=kwargs.get("mode", "a"),
-            encoding=kwargs.get("encoding", "utf-8"),
-            delay=kwargs.get("delay", False),
-        )
-        handler.setLevel(kwargs["level"])
-        handler.setFormatter(logging.Formatter(kwargs.get("fmt"), datefmt=kwargs.get("datefmt")))
-        self.add_handler(kwargs["name"], handler)
 
 
 class AttachedLogHandler(logging.Handler):

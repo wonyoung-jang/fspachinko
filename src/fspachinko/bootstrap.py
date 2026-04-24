@@ -79,8 +79,8 @@ class Bootstrapper:
         """Get the command handlers."""
         return {
             ConfigurePipeline: ConfigurePipelineHandler(
+                pipeline=self.pipeline,
                 configurator=ConfigModelBootstrapper(
-                    pipeline=self.pipeline,
                     fs=self.fs,
                     rng=self.rng,
                     available_transfer_fns=self.available_transfer_fns,

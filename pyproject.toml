@@ -60,6 +60,7 @@ dev = [
     "invoke>=3.0.3",
     "line-profiler>=5.0.0",
     "ruff>=0.15.11",
+    "snakeviz>=2.2.2",
     "ty>=0.0.32",
 ]
 docs = [

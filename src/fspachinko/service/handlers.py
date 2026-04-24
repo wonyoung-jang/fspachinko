@@ -34,12 +34,13 @@ if TYPE_CHECKING:
 class ConfigurePipelineHandler:
     """Handle the ConfigurePipeline command."""
 
+    pipeline: AbstractPipeline
     configurator: ConfigModelBootstrapper
 
     def __call__(self, cmd: ConfigurePipeline) -> Iterator[Event]:
         """Handle the ConfigurePipeline command."""
         c = cmd.config
-        self.configurator.apply(c)
+        self.configurator.apply(c, self.pipeline)
         yield PipelineConfigured(dir_count=c.directory.count)
 
 
