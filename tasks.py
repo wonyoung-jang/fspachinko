@@ -41,7 +41,3 @@ def snakeviz(c: invoke.Context) -> None:
 @task
 def test(c: invoke.Context) -> None:
     c.run("uv run pytest")
-
-
-@task(pre=[lint, format, test])
-def all(c: invoke.Context) -> None: ...
