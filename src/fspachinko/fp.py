@@ -41,15 +41,6 @@ class Fp:
         PARENT = "{parent}"
         PARENTS_TO_ROOT = "{parentstoroot}"
 
-    class FilterName(StrEnum):
-        """Enumeration for filter names."""
-
-        DIRNAME = "Directory Name Filter"
-        DURATION = "Duration Filter"
-        EXTENSION = "Extension Filter"
-        FILESIZE = "File Size Filter"
-        KEYWORD = "Keyword Filter"
-
     class LogData(StrEnum):
         """Enum for log data."""
 
