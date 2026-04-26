@@ -97,7 +97,7 @@ class FSWalker(AbstractFSWalker):
                                     ext=ext,
                                     parent=parent,
                                     size=stat.st_size,
-                                    mtime=stat.st_mtime,
+                                    mtime=stat.st_mtime_ns,
                                 ),
                             )
                     except OSError:

@@ -110,7 +110,7 @@ class FSEntry:
     ext: str
     parent: str
     size: int
-    mtime: float
+    mtime: int
     duration: float = 0.0
 
 

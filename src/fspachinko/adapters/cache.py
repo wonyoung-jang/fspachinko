@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from fspachinko.domain.model import FSEntry
 
 
@@ -32,8 +34,8 @@ class SQLiteMetadataCache(AbstractMetadataCache):
         """Initialize the cache by connecting to the SQLite database."""
         self._conn = sqlite3.connect(
             database=self.path,
+            timeout=10.0,
             check_same_thread=False,
-            autocommit=True,
         )
         self._init_db()
 
@@ -47,9 +49,9 @@ class SQLiteMetadataCache(AbstractMetadataCache):
                 stem TEXT,
                 ext TEXT,
                 parent TEXT,
-                size INTEGER,
-                mtime REAL,
-                duration REAL
+                size INTEGER NOT NULL,
+                mtime INTEGER NOT NULL,
+                duration REAL NOT NULL
             )
             """
         )
@@ -72,7 +74,30 @@ class SQLiteMetadataCache(AbstractMetadataCache):
 
     def set_entry(self, e: FSEntry) -> None:
         """Upsert an entry into the cache."""
-        self._conn.execute(
+        # self._conn.execute(
+        #     """
+        #     INSERT INTO files (path, stem, ext, parent, size, mtime, duration)
+        #     VALUES (:path, :stem, :ext, :parent, :size, :mtime, :duration)
+        #     ON CONFLICT(path) DO UPDATE SET
+        #         size=excluded.size,
+        #         mtime=excluded.mtime,
+        #         duration=excluded.duration
+        #     """,
+        #     {
+        #         "path": e.path,
+        #         "stem": e.stem,
+        #         "ext": e.ext,
+        #         "parent": e.parent,
+        #         "size": e.size,
+        #         "mtime": e.mtime,
+        #         "duration": e.duration,
+        #     },
+        # )
+        self.set_entries((e,))
+
+    def set_entries(self, entries: Iterable[FSEntry]) -> None:
+        """Insert many entries into cache."""
+        self._conn.executemany(
             """
             INSERT INTO files (path, stem, ext, parent, size, mtime, duration)
             VALUES (:path, :stem, :ext, :parent, :size, :mtime, :duration)
@@ -81,13 +106,16 @@ class SQLiteMetadataCache(AbstractMetadataCache):
                 mtime=excluded.mtime,
                 duration=excluded.duration
             """,
-            {
-                "path": e.path,
-                "stem": e.stem,
-                "ext": e.ext,
-                "parent": e.parent,
-                "size": e.size,
-                "mtime": e.mtime,
-                "duration": e.duration,
-            },
+            (
+                {
+                    "path": e.path,
+                    "stem": e.stem,
+                    "ext": e.ext,
+                    "parent": e.parent,
+                    "size": e.size,
+                    "mtime": e.mtime,
+                    "duration": e.duration,
+                }
+                for e in entries
+            ),
         )
