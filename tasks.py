@@ -7,20 +7,41 @@ from invoke import task
 # ruff: noqa: D103
 
 
-@task
-def run(c: invoke.Context) -> None:
-    c.run("uv run fspachinko")
-
-
+# Linting and formatting
 @task
 def lint(c: invoke.Context) -> None:
-    c.run("uv run ruff check --fix")
+    c.run("uv run ruff check --fix --unsafe-fixes")
     c.run("uv run ty check")
 
 
 @task
 def format(c: invoke.Context) -> None:
     c.run("uv run ruff format")
+
+
+@task
+def vulture(c: invoke.Context) -> None:
+    c.run("uv run vulture")
+
+
+@task(pre=[lint, format, vulture])
+def clean(c: invoke.Context) -> None: ...
+
+
+# Running
+@task
+def run(c: invoke.Context) -> None:
+    c.run("uv run fspachinko")
+
+
+@task
+def cli(c: invoke.Context) -> None:
+    c.run("uv run fspachinko-cli")
+
+
+@task
+def gui(c: invoke.Context) -> None:
+    c.run("uv run fspachinko-gui")
 
 
 @task
@@ -41,3 +62,9 @@ def snakeviz(c: invoke.Context) -> None:
 @task
 def test(c: invoke.Context) -> None:
     c.run("uv run pytest")
+
+
+# Syncing
+@task
+def syncall(c: invoke.Context) -> None:
+    c.run("uv sync --all-groups")

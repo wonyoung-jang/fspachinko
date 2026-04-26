@@ -15,12 +15,10 @@ class AbstractMetadataCache(ABC):
     """Abstract cache manager."""
 
     @abstractmethod
-    def get_duration(self, e: FSEntry) -> float | None:
-        """Return the cached duration for the given FSEntry."""
+    def get_duration(self, e: FSEntry) -> float | None: ...
 
     @abstractmethod
-    def set_entry(self, e: FSEntry) -> None:
-        """Upsert an entry into the cache."""
+    def set_entries(self, entries: Iterable[FSEntry]) -> None: ...
 
 
 @dataclass(slots=True)
@@ -36,12 +34,13 @@ class SQLiteMetadataCache(AbstractMetadataCache):
             database=self.path,
             timeout=10.0,
             check_same_thread=False,
+            autocommit=False,
         )
         self._init_db()
 
     def _init_db(self) -> None:
         """Initialize the database schema."""
-        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.executescript("COMMIT; PRAGMA journal_mode=WAL")
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS files (
@@ -58,7 +57,7 @@ class SQLiteMetadataCache(AbstractMetadataCache):
 
     def get_duration(self, e: FSEntry) -> float | None:
         """Return the cached duration for the given FSEntry."""
-        cursor = self._conn.execute(
+        row = self._conn.execute(
             """
             SELECT duration FROM files
             WHERE path=:path AND mtime=:mtime AND size=:size
@@ -68,32 +67,8 @@ class SQLiteMetadataCache(AbstractMetadataCache):
                 "mtime": e.mtime,
                 "size": e.size,
             },
-        )
-        row = cursor.fetchone()
+        ).fetchone()
         return row[0] if row else None
-
-    def set_entry(self, e: FSEntry) -> None:
-        """Upsert an entry into the cache."""
-        # self._conn.execute(
-        #     """
-        #     INSERT INTO files (path, stem, ext, parent, size, mtime, duration)
-        #     VALUES (:path, :stem, :ext, :parent, :size, :mtime, :duration)
-        #     ON CONFLICT(path) DO UPDATE SET
-        #         size=excluded.size,
-        #         mtime=excluded.mtime,
-        #         duration=excluded.duration
-        #     """,
-        #     {
-        #         "path": e.path,
-        #         "stem": e.stem,
-        #         "ext": e.ext,
-        #         "parent": e.parent,
-        #         "size": e.size,
-        #         "mtime": e.mtime,
-        #         "duration": e.duration,
-        #     },
-        # )
-        self.set_entries((e,))
 
     def set_entries(self, entries: Iterable[FSEntry]) -> None:
         """Insert many entries into cache."""

@@ -60,8 +60,7 @@ class AbstractPipeline(ABC):
     cache: AbstractMetadataCache | None = None
 
     @abstractmethod
-    def transfer_dir(self, job: TransferJob, dst: DestinationDirectory) -> Iterator[Event]:
-        """Transfer files to a destination directory."""
+    def transfer_dir(self, job: TransferJob, dst: DestinationDirectory) -> Iterator[Event]: ...
 
 
 class TransferPipeline(AbstractPipeline):
@@ -69,10 +68,7 @@ class TransferPipeline(AbstractPipeline):
 
     def transfer_dir(self, job: TransferJob, dst: DestinationDirectory) -> Iterator[Event]:
         """Transfer files to a destination directory."""
-        with (
-            ThreadPoolExecutor(max_workers=Fp.MAXCHUNK) as probe_ex,
-            ThreadPoolExecutor(max_workers=Fp.MAXCHUNK) as xfer_ex,
-        ):
+        with ThreadPoolExecutor() as probe_ex, ThreadPoolExecutor() as xfer_ex:
             futures, fill = self._get_futures_and_fill(probe_ex, xfer_ex, job, dst)
             yield from run_transfer_dir(job, futures, fill)
 
@@ -104,6 +100,7 @@ class TransferPipeline(AbstractPipeline):
     def _walk_ffprobe(self, probe_ex: ThreadPoolExecutor) -> Iterator[FSEntry]:
         """Walk and probe durations."""
         cache = self.cache
+        pending: list[FSEntry] = []
 
         def submit(e: FSEntry) -> Future[float] | None:
             if cache and (dur := cache.get_duration(e)) is not None:
@@ -115,5 +112,11 @@ class TransferPipeline(AbstractPipeline):
             if fut is not None:
                 e.duration = fut.result()
                 if cache is not None:
-                    cache.set_entry(e)
+                    pending.append(e)
+                    if len(pending) >= Fp.MAXCHUNK // 2:
+                        cache.set_entries(pending)
+                        pending.clear()
             yield e
+
+        if pending and cache is not None:
+            cache.set_entries(pending)
