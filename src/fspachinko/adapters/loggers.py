@@ -90,12 +90,7 @@ class AppLogger(AbstractLogger):
     def add_global_file_log_handler(self) -> None:
         """Add a file log handler."""
         filename = get_log_path(Fp.Path.LOG_FILE)
-        handler = logging.FileHandler(
-            filename=filename,
-            mode="w",
-            encoding="utf-8",
-            delay=True,
-        )
+        handler = logging.FileHandler(filename=filename, mode="w", encoding="utf-8", delay=True)
         handler.setFormatter(logging.Formatter(Fp.LogFmt.DEFAULT))
         handler.setLevel(logging.DEBUG)
         self.add_handler("file", handler)
@@ -112,12 +107,7 @@ class AppLogger(AbstractLogger):
     def add_dest_log_filehandler(self, dest: str) -> None:
         """Set up a logger for the job request."""
         filename = join(dest, f"!_{basename(dest)}_report.log")
-        handler = logging.FileHandler(
-            filename=filename,
-            mode="a",
-            encoding="utf-8",
-            delay=True,
-        )
+        handler = logging.FileHandler(filename=filename, mode="a", encoding="utf-8", delay=True)
         handler.setFormatter(logging.Formatter(Fp.LogFmt.DEST, datefmt=Fp.LogDateFmt.HHMMSS))
         handler.setLevel(logging.INFO)
         self.add_handler(dest, handler)

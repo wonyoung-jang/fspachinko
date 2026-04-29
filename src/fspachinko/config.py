@@ -192,52 +192,6 @@ def _get_range_filter(minimum: float, maximum: float) -> Callable[[float], bool]
 
 
 @dataclass(slots=True)
-class ConfigAdapter:
-    """Adapter for translating configuration into commands."""
-
-    _c: ConfigModel
-
-    def config_to_file_filter(self) -> Callable[[FSEntry], bool]:
-        """Translate the configuration into a file filter function."""
-        filters = (*self._cfg_to_text_filters(), *self._cfg_to_range_filters())
-        n = len(filters)
-        if n == 0:
-            return lambda _: True
-        if n == 1:
-            return filters[0]
-        return lambda e, _filters=filters: all(f(e) for f in _filters)
-
-    def _cfg_to_text_filters(self) -> Iterator[Callable[[FSEntry], bool]]:
-        """Translate the configuration into a text filter function."""
-        _specs: Sequence[tuple[object, Fp.ReStrFmt, Callable[[FSEntry], str]]] = (
-            (self._c.dirname, Fp.ReStrFmt.DIRECTORY, lambda e: e.parent),
-            (self._c.keyword, Fp.ReStrFmt.KEYWORD, lambda e: e.stem),
-            (self._c.extension, Fp.ReStrFmt.EXTENSION, lambda e: e.ext),
-        )
-        for model, rgxfmt, func in _specs:
-            if not model.is_enabled or not model.text:
-                continue
-            patterns = tuple(re.compile(rgxfmt.format(re.escape(t)), re.IGNORECASE) for t in set(model.text.split(",")))
-            fn = _get_text_filter(patterns, include=model.should_include)
-            yield lambda e, fn=fn, func=func: fn(func(e))
-
-    def _cfg_to_range_filters(self) -> Iterator[Callable[[FSEntry], bool]]:
-        """Translate the configuration into a range filter function."""
-        _specs: Sequence[tuple[object, dict[str, int], Callable[[FSEntry], float]]] = (
-            (self._c.filesize, Fp.SIZE_MAP, lambda e: e.size),
-            (self._c.duration, Fp.TIME_MAP, lambda e: e.duration),
-        )
-        for model, unitmap, func in _specs:
-            if not model.is_enabled:
-                continue
-            mul = unitmap.get(model.unit, 1.0)
-            calcmin = model.minimum * mul
-            calcmax = model.maximum * mul
-            fn = _get_range_filter(calcmin, calcmax)
-            yield lambda e, fn=fn, func=func: fn(func(e))
-
-
-@dataclass(slots=True)
 class ConfigModelBootstrapper:
     """Bootstrapper for translating configuration into commands."""
 
@@ -250,18 +204,60 @@ class ConfigModelBootstrapper:
     def apply(self, c: ConfigModel, pipeline: AbstractPipeline) -> None:
         """Translate the configuration into commands."""
         self.rng.seed(c.options.rng_seed)
-        _config_adapter = ConfigAdapter(c)
-        pipeline.filefilter_fn = _config_adapter.config_to_file_filter()
+        pipeline.filefilter_fn = self._build_file_filter(c)
         pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
         pipeline.transfer_fn = self._build_transfer_fn(c)
         pipeline.walker_fn = self._build_walker_fn(c)
         pipeline.duration_fn = duration_fn_factory() if c.duration.is_enabled else get_duration_null
         pipeline.inputs = self._build_inputs(c)
 
+    def _build_file_filter(self, c: ConfigModel) -> Callable[[FSEntry], bool]:
+        """Translate the configuration into a file filter function."""
+        _text_specs: Sequence[tuple[TextFilterModel, Fp.ReStrFmt, Callable[[FSEntry], str]]] = (
+            (c.dirname, Fp.ReStrFmt.DIRECTORY, lambda e: e.parent),
+            (c.keyword, Fp.ReStrFmt.KEYWORD, lambda e: e.stem),
+            (c.extension, Fp.ReStrFmt.EXTENSION, lambda e: e.ext),
+        )
+        _range_specs: Sequence[tuple[RangeFilterModel, dict[str, int], Callable[[FSEntry], float]]] = (
+            (c.filesize, Fp.SIZE_MAP, lambda e: e.size),
+            (c.duration, Fp.TIME_MAP, lambda e: e.duration),
+        )
+        filters = (*self._cfg_to_text_filters(_text_specs), *self._cfg_to_range_filters(_range_specs))
+        n = len(filters)
+        if n == 0:
+            return lambda _: True
+        if n == 1:
+            return filters[0]
+        return lambda e, _filters=filters: all(f(e) for f in _filters)
+
+    def _cfg_to_text_filters(
+        self, specs: Sequence[tuple[TextFilterModel, Fp.ReStrFmt, Callable[[FSEntry], str]]]
+    ) -> Iterator[Callable[[FSEntry], bool]]:
+        """Translate the configuration into a text filter function."""
+        for model, rgxfmt, func in specs:
+            if not model.is_enabled or not model.text:
+                continue
+            patterns = tuple(re.compile(rgxfmt.format(re.escape(t)), re.IGNORECASE) for t in set(model.text.split(",")))
+            fn = _get_text_filter(patterns, include=model.should_include)
+            yield lambda e, fn=fn, func=func: fn(func(e))
+
+    def _cfg_to_range_filters(
+        self, specs: Sequence[tuple[RangeFilterModel, dict[str, int], Callable[[FSEntry], float]]]
+    ) -> Iterator[Callable[[FSEntry], bool]]:
+        """Translate the configuration into a range filter function."""
+        for model, unitmap, func in specs:
+            if not model.is_enabled:
+                continue
+            mul = unitmap.get(model.unit, 1.0)
+            calcmin = model.minimum * mul
+            calcmax = model.maximum * mul
+            fn = _get_range_filter(calcmin, calcmax)
+            yield lambda e, fn=fn, func=func: fn(func(e))
+
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
         filename_fn = self.template_filenamer(template=c.filename.template) if c.filename.is_enabled else None
-        return lambda dst, e, fn=filename_fn: self._get_new_path_fn(dst, e, fn)
+        return lambda dst, e: self._get_new_path_fn(dst, e, filename_fn)
 
     def _get_new_path_fn(
         self, dst: DestinationDirectory, e: FSEntry, filename_fn: Callable | None = None
