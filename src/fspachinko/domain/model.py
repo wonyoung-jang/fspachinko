@@ -113,6 +113,28 @@ class FSEntry:
     mtime: int
     duration: float = 0.0
 
+    @property
+    def as_dict(self) -> dict[str, str | int | float]:
+        """Return the FSEntry attributes as a dictionary."""
+        return {
+            "path": self.path,
+            "stem": self.stem,
+            "ext": self.ext,
+            "parent": self.parent,
+            "size": self.size,
+            "mtime": self.mtime,
+            "duration": self.duration,
+        }
+
+    @property
+    def id_key(self) -> dict[str, str | int]:
+        """Return the identifying attributes as a dictionary."""
+        return {
+            "path": self.path,
+            "size": self.size,
+            "mtime": self.mtime,
+        }
+
 
 @dataclass(slots=True)
 class FSPachinkoPin:

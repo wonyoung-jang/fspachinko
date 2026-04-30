@@ -64,7 +64,17 @@ def test(c: invoke.Context) -> None:
     c.run("uv run pytest")
 
 
+@task
+def testcov(c: invoke.Context) -> None:
+    c.run("uv run pytest --cov=src/fspachinko --cov-report=html")
+
+
 # Syncing
 @task
 def syncall(c: invoke.Context) -> None:
     c.run("uv sync --all-groups")
+
+
+@task
+def upgradelock(c: invoke.Context) -> None:
+    c.run("uv lock -U")

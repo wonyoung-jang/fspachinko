@@ -1,5 +1,6 @@
 """Main module."""
 
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -145,14 +146,7 @@ class Presenter(QObject):
     _sig_stop = Signal(StopProcess)
     _sig_logged = Signal(str)
 
-    class GUIStateKey(StrEnum):
-        """Enumeration for QSettings keys."""
-
-        CONFIG = "config"
-        GEOMETRY = "geometry"
-        STATE = "state"
-
-    class GUITitle(StrEnum):
+    class Title(StrEnum):
         """Enumeration for GUI window titles."""
 
         OPEN_CONFIG = "Open Configuration"
@@ -167,6 +161,8 @@ class Presenter(QObject):
         self._configs = bootstrapper.config_manager
         self._worker = BusWorker(bootstrapper.build_message_bus())
         self._thread = QThread(self)
+        self._settings = SettingsAdapter()
+        self._state = self._settings.get()
         self._actions = build_actions(self)
         self._view = MainWindow(self)
         self._original_title = self._view.windowTitle()
@@ -177,17 +173,9 @@ class Presenter(QObject):
 
     def _restore_state(self) -> None:
         """Restore the window state from settings."""
-        qsettings = QSettings()
-        if (geometry := qsettings.value(Presenter.GUIStateKey.GEOMETRY)) and isinstance(
-            geometry, QByteArray | bytes | bytearray | memoryview
-        ):
-            self._view.restoreGeometry(geometry)
-        if (state := qsettings.value(Presenter.GUIStateKey.STATE)) and isinstance(
-            state, QByteArray | bytes | bytearray | memoryview
-        ):
-            self._view.restoreState(state)
-        if (path := qsettings.value(Presenter.GUIStateKey.CONFIG)) and isinstance(path, str):
-            self._load_config(path)
+        self._view.restoreGeometry(self._state.geometry)
+        self._view.restoreState(self._state.state)
+        self._load_config(self._state.config)
 
     def _setup_worker(self) -> None:
         """Set up the worker and its signals."""
@@ -290,7 +278,7 @@ class Presenter(QObject):
         fn = QFileDialog.getSaveFileName if save else QFileDialog.getOpenFileName
         path, _ = fn(
             parent=self._view,
-            caption=Presenter.GUITitle.SAVE_CONFIG if save else Presenter.GUITitle.OPEN_CONFIG,
+            caption=Presenter.Title.SAVE_CONFIG if save else Presenter.Title.OPEN_CONFIG,
             dir=self._configs.directory,
             filter="JSON Files (*.json)",
         )
@@ -299,7 +287,7 @@ class Presenter(QObject):
     def _set_config_path(self, path: str) -> None:
         self._configs.current = path
         stem = self._fs.get_stem_and_ext(path)[0] if path else "None"
-        self._view.setWindowTitle(f"{stem} - {Presenter.GUITitle.WINDOW}")
+        self._view.setWindowTitle(f"{stem} - {Presenter.Title.WINDOW}")
 
     def _load_config(self, path: str) -> None:
         self._set_config_path(path)
@@ -320,7 +308,45 @@ class Presenter(QObject):
         self.stop()
         self._thread.quit()
         self._thread.wait()
-        settings = QSettings()
-        settings.setValue(Presenter.GUIStateKey.GEOMETRY, self._view.saveGeometry())
-        settings.setValue(Presenter.GUIStateKey.STATE, self._view.saveState())
-        settings.setValue(Presenter.GUIStateKey.CONFIG, self._configs.current)
+        self._state.geometry = self._view.saveGeometry()
+        self._state.state = self._view.saveState()
+        self._state.config = self._configs.current
+        self._settings.set(self._state)
+
+
+# Settings Adapter ---------------------------------------------------------------
+@dataclass(slots=True)
+class SettingsState:
+    """State for QSettings values."""
+
+    geometry: QByteArray | bytes | bytearray | memoryview
+    state: QByteArray | bytes | bytearray | memoryview
+    config: str
+
+
+@dataclass(slots=True)
+class SettingsAdapter:
+    """Adapter for QSettings to manage GUI state."""
+
+    _settings: QSettings = field(default_factory=QSettings, init=False)
+
+    class Key(StrEnum):
+        """Enumeration for QSettings keys."""
+
+        CONFIG = "config"
+        GEOMETRY = "geometry"
+        STATE = "state"
+
+    def get(self) -> SettingsState:
+        """Get multiple values from the settings."""
+        return SettingsState(
+            geometry=self._settings.value(SettingsAdapter.Key.GEOMETRY),
+            state=self._settings.value(SettingsAdapter.Key.STATE),
+            config=self._settings.value(SettingsAdapter.Key.CONFIG),
+        )
+
+    def set(self, state: SettingsState) -> None:
+        """Set a value in the settings."""
+        self._settings.setValue(SettingsAdapter.Key.GEOMETRY, state.geometry)
+        self._settings.setValue(SettingsAdapter.Key.STATE, state.state)
+        self._settings.setValue(SettingsAdapter.Key.CONFIG, state.config)

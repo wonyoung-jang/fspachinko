@@ -62,11 +62,7 @@ class SQLiteMetadataCache(AbstractMetadataCache):
             SELECT duration FROM files
             WHERE path=:path AND mtime=:mtime AND size=:size
             """,
-            {
-                "path": e.path,
-                "mtime": e.mtime,
-                "size": e.size,
-            },
+            e.id_key,
         ).fetchone()
         return row[0] if row else None
 
@@ -81,16 +77,5 @@ class SQLiteMetadataCache(AbstractMetadataCache):
                 mtime=excluded.mtime,
                 duration=excluded.duration
             """,
-            (
-                {
-                    "path": e.path,
-                    "stem": e.stem,
-                    "ext": e.ext,
-                    "parent": e.parent,
-                    "size": e.size,
-                    "mtime": e.mtime,
-                    "duration": e.duration,
-                }
-                for e in entries
-            ),
+            (e.as_dict for e in entries),
         )
