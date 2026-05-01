@@ -36,10 +36,9 @@ class Fp:
     class FilenameTemplate(StrEnum):
         """Enumeration for filename templates."""
 
-        INDEX = "{index}"
-        ORIGINAL = "{original}"
-        PARENT = "{parent}"
-        PARENTS_TO_ROOT = "{parentstoroot}"
+        INDEX = "index"
+        ORIGINAL = "original"
+        PARENT = "parent"
 
     class LogData(StrEnum):
         """Enum for log data."""

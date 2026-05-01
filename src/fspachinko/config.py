@@ -82,15 +82,14 @@ class FilenameModel(BaseModel):
     """Model for file renaming."""
 
     is_enabled: bool = False
-    template: str = Fp.FilenameTemplate.ORIGINAL
+    template: str = f"{{{Fp.FilenameTemplate.ORIGINAL}}}"
 
     @field_validator("template")
     @classmethod
     def validate_template(cls, val: str) -> str:
         """Validate that the template is not empty."""
-        if val.strip() == "":
-            return Fp.FilenameTemplate.ORIGINAL
-        return val
+        template = val if val.strip() != "" else f"{{{Fp.FilenameTemplate.ORIGINAL}}}"
+        return "".join(c for c in template if c not in Fp.INVALID_FILENAME_CHARS)
 
 
 class TextFilterModel(BaseModel):

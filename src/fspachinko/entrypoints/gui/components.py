@@ -225,22 +225,23 @@ class FilenamerWidget(BaseGroupBox):
         """Initialize the filename template settings widget."""
         super().__init__(title, name, checkable=True)
         self.lineedit_template = QLineEdit(
-            placeholderText=f"Ex: {Fp.FilenameTemplate.ORIGINAL}_{Fp.FilenameTemplate.INDEX}",
+            placeholderText=f"Ex: {{{Fp.FilenameTemplate.INDEX}}}_somePrefix_{{{Fp.FilenameTemplate.ORIGINAL}}}",
             clearButtonEnabled=True,
         )
         self.menu = QMenu()
         self.btn_insert = QPushButton("Insert tag")
         self.btn_insert.setMenu(self.menu)
         for lbl in Fp.FilenameTemplate:
-            action = self.menu.addAction(lbl)
-            action.triggered.connect(lambda _, tag=lbl: self.insert_tag(tag))
+            _tag = f"{{{lbl}}}"
+            action = self.menu.addAction(_tag)
+            action.triggered.connect(lambda _, tag=_tag: self.insert_tag(tag))
         self._getters = (
             (self.isChecked, "is_enabled"),
             (self.lineedit_template.text, "template"),
         )
         self._setters = (
             (self.setChecked, "is_enabled", False),
-            (self.lineedit_template.setText, "template", Fp.FilenameTemplate.ORIGINAL),
+            (self.lineedit_template.setText, "template", f"{{{Fp.FilenameTemplate.ORIGINAL}}}"),
         )
         set_tips(
             (self.lineedit_template, "File rename template, use 'Insert tag' button to add tags"),

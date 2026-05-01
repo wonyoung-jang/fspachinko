@@ -135,3 +135,4 @@ src/fspachinko/_data/configs/*
 src/*/web/
 src/fspachinko/adapters/scanner.py
 src/fspachinko/_data/cache/fspachinko_cache.db
+.tally-config.toml
