@@ -68,8 +68,5 @@ def available_transfer_fn_factory() -> dict[Fp.TransferMode, Callable]:
 @cache
 def get_transfer_fn(mode: str) -> Callable[[str, str], None]:
     """Get the transfer function for the specified mode."""
-    _mode = Fp.TransferMode(mode)
     _available = available_transfer_fn_factory()
-    if _mode in _available:
-        return _available[_mode]
-    return _available[Fp.TransferMode.DRY_RUN]
+    return _available.get(Fp.TransferMode(mode), _available[Fp.TransferMode.DRY_RUN])

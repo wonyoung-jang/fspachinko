@@ -14,10 +14,13 @@ class Fp:
     MAXFLOAT = float("inf")
     MAXINT = 2**31 - 1
     SIZE_MAP: ClassVar[dict[str, int]] = {
-        "B": 1,
-        "KB": 1 << 10,
-        "MB": 1 << 20,
+        "EB": 1 << 60,
+        "PB": 1 << 50,
+        "TB": 1 << 40,
         "GB": 1 << 30,
+        "MB": 1 << 20,
+        "KB": 1 << 10,
+        "B": 1,
     }
     TIME_MAP: ClassVar[dict[str, int]] = {
         "s": 1,

@@ -1,8 +1,8 @@
 """Data paths for the application."""
 
 from functools import cache
-from os import mkdir
-from os.path import dirname, exists, join
+from os import makedirs
+from os.path import dirname, join
 
 from fspachinko.fp import Fp
 
@@ -40,8 +40,7 @@ def logs_path() -> str:
 def ensure_data_paths() -> None:
     """Ensure that all necessary data paths exist."""
     for path in (_data_path(), cache_path(), configs_path(), icons_path(), logs_path()):
-        if not exists(path):
-            mkdir(path)
+        makedirs(path, exist_ok=True)
 
 
 @cache

@@ -23,11 +23,11 @@ def prefetch(
     src: Iterator[FSEntry], submit: Callable[[FSEntry], Future | None], max_chunk: int = Fp.MAXCHUNK
 ) -> Iterator[tuple[FSEntry, Future | None]]:
     """Prefetch entries."""
-    _pending: deque[tuple[FSEntry, Future | None]] = deque()
-    _pending.extend((_e, submit(_e)) for _e in islice(src, max_chunk - len(_pending)))
-    while _pending:
+    _pending: deque[tuple[FSEntry, Future | None]] = deque((e, submit(e)) for e in islice(src, max_chunk))
+    for e in src:
         yield _pending.popleft()
-        _pending.extend((_e, submit(_e)) for _e in islice(src, max_chunk - len(_pending)))
+        _pending.append((e, submit(e)))
+    yield from _pending
 
 
 def run_transfer_dir(
