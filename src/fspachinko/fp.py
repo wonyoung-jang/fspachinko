@@ -72,9 +72,9 @@ class Fp:
     class ReStrFmt(StrEnum):
         """Enumeration for regex string formats."""
 
-        DIRECTORY = r"(.*){}(.*)"
+        DIRECTORY = r"{}"
         EXTENSION = r"{}$"
-        KEYWORD = r"(.*){}(.*)"
+        KEYWORD = r"{}"
 
     class StateStatus(StrEnum):
         """Enumeration for engine state statuses."""

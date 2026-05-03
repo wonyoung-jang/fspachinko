@@ -161,33 +161,45 @@ class OptionsModel(BaseModel):
 class ConfigModel(BaseModel):
     """Model for configuration."""
 
-    root: PathSelectorModel = Field(default_factory=PathSelectorModel)
-    dest: PathSelectorModel = Field(default_factory=PathSelectorModel)
-    filecount: FilecountModel = Field(default_factory=FilecountModel)
-    directory: DirectoryModel = Field(default_factory=DirectoryModel)
-    filename: FilenameModel = Field(default_factory=FilenameModel)
-    dirname: TextFilterModel = Field(default_factory=TextFilterModel)
-    keyword: TextFilterModel = Field(default_factory=TextFilterModel)
-    extension: TextFilterModel = Field(default_factory=TextFilterModel)
-    filesize: RangeFilterModel = Field(default_factory=RangeFilterModel)
-    duration: RangeFilterModel = Field(default_factory=RangeFilterModel)
-    options: OptionsModel = Field(default_factory=OptionsModel)
+    root: PathSelectorModel = PathSelectorModel()
+    dest: PathSelectorModel = PathSelectorModel()
+    filecount: FilecountModel = FilecountModel()
+    directory: DirectoryModel = DirectoryModel()
+    filename: FilenameModel = FilenameModel()
+    dirname: TextFilterModel = TextFilterModel()
+    keyword: TextFilterModel = TextFilterModel()
+    extension: TextFilterModel = TextFilterModel()
+    filesize: RangeFilterModel = RangeFilterModel()
+    duration: RangeFilterModel = RangeFilterModel()
+    options: OptionsModel = OptionsModel()
 
 
-def _get_text_filter(patterns: tuple[re.Pattern, ...], *, include: bool) -> Callable[[str], bool]:
-    """Create a text filter function."""
-    if len(patterns) == 1:
-        if include:
-            return lambda t: patterns[0].search(t) is not None
-        return lambda t: patterns[0].search(t) is None
-    if include:
-        return lambda t: any(ptn.search(t) for ptn in patterns)
-    return lambda t: not any(ptn.search(t) for ptn in patterns)
+def _cfg_to_text_filters(
+    specs: Sequence[tuple[TextFilterModel, Fp.ReStrFmt, Callable[[FSEntry], str]]],
+) -> Iterator[Callable[[FSEntry], bool]]:
+    """Translate the configuration into a text filter function."""
+    for model, rgxfmt, func in specs:
+        if not model.is_enabled or not model.text:
+            continue
+        words = "|".join(re.escape(t) for t in set(model.text.split(",")))
+        pattern = re.compile(rgxfmt.format(f"(?:{words})"), re.IGNORECASE)
+        if model.should_include:
+            yield lambda e, p=pattern, f=func: p.search(f(e)) is not None
+        else:
+            yield lambda e, p=pattern, f=func: p.search(f(e)) is None
 
 
-def _get_range_filter(minimum: float, maximum: float) -> Callable[[float], bool]:
-    """Create a range filter function."""
-    return lambda v, _min=minimum, _max=maximum: _min <= v <= _max
+def _cfg_to_range_filters(
+    specs: Sequence[tuple[RangeFilterModel, dict[str, int], Callable[[FSEntry], float]]],
+) -> Iterator[Callable[[FSEntry], bool]]:
+    """Translate the configuration into a range filter function."""
+    for model, unitmap, func in specs:
+        if not model.is_enabled:
+            continue
+        mul = unitmap.get(model.unit, 1.0)
+        calcmin = model.minimum * mul
+        calcmax = model.maximum * mul
+        yield lambda e, _min=calcmin, _max=calcmax, f=func: _min <= f(e) <= _max
 
 
 @dataclass(slots=True)
@@ -195,7 +207,7 @@ class ConfigModelBootstrapper:
     """Bootstrapper for translating configuration into commands."""
 
     fs: AbstractFilesystem
-    available_transfer_fns: dict[Fp.TransferMode, Callable]
+    get_transfer_fn: Callable[[str], Callable[[str, str], None]]
     template_filenamer: type[AbstractFilenamer]
     walker: type[AbstractFSWalker]
     rng: random.Random
@@ -205,7 +217,7 @@ class ConfigModelBootstrapper:
         self.rng.seed(c.options.rng_seed)
         pipeline.filefilter_fn = self._build_file_filter(c)
         pipeline.get_new_path_fn = self._build_get_new_path_fn(c)
-        pipeline.transfer_fn = self._build_transfer_fn(c)
+        pipeline.transfer_fn = self.get_transfer_fn(c.options.transfer_mode)
         pipeline.walker_fn = self._build_walker_fn(c)
         pipeline.duration_fn = duration_fn_factory() if c.duration.is_enabled else get_duration_null
         pipeline.inputs = self._build_inputs(c)
@@ -221,37 +233,13 @@ class ConfigModelBootstrapper:
             (c.filesize, Fp.SIZE_MAP, lambda e: e.size),
             (c.duration, Fp.TIME_MAP, lambda e: e.duration),
         )
-        filters = (*self._cfg_to_text_filters(_text_specs), *self._cfg_to_range_filters(_range_specs))
+        filters = (*_cfg_to_text_filters(_text_specs), *_cfg_to_range_filters(_range_specs))
         n = len(filters)
         if n == 0:
             return lambda _: True
         if n == 1:
             return filters[0]
         return lambda e, _filters=filters: all(f(e) for f in _filters)
-
-    def _cfg_to_text_filters(
-        self, specs: Sequence[tuple[TextFilterModel, Fp.ReStrFmt, Callable[[FSEntry], str]]]
-    ) -> Iterator[Callable[[FSEntry], bool]]:
-        """Translate the configuration into a text filter function."""
-        for model, rgxfmt, func in specs:
-            if not model.is_enabled or not model.text:
-                continue
-            patterns = tuple(re.compile(rgxfmt.format(re.escape(t)), re.IGNORECASE) for t in set(model.text.split(",")))
-            fn = _get_text_filter(patterns, include=model.should_include)
-            yield lambda e, fn=fn, func=func: fn(func(e))
-
-    def _cfg_to_range_filters(
-        self, specs: Sequence[tuple[RangeFilterModel, dict[str, int], Callable[[FSEntry], float]]]
-    ) -> Iterator[Callable[[FSEntry], bool]]:
-        """Translate the configuration into a range filter function."""
-        for model, unitmap, func in specs:
-            if not model.is_enabled:
-                continue
-            mul = unitmap.get(model.unit, 1.0)
-            calcmin = model.minimum * mul
-            calcmax = model.maximum * mul
-            fn = _get_range_filter(calcmin, calcmax)
-            yield lambda e, fn=fn, func=func: fn(func(e))
 
     def _build_get_new_path_fn(self, c: ConfigModel) -> Callable[[DestinationDirectory, FSEntry], str | None]:
         """Build the get_new_path function based on the configuration."""
@@ -276,13 +264,6 @@ class ConfigModelBootstrapper:
             return None
         # If the files are different, find a new name for it so there's no overwriting or errors
         return self.fs.get_unique_path(target, dst)
-
-    def _build_transfer_fn(self, c: ConfigModel) -> Callable[[str, str], None]:
-        """Build the transfer function based on the configuration."""
-        mode = Fp.TransferMode(c.options.transfer_mode)
-        if mode in self.available_transfer_fns:
-            return self.available_transfer_fns[mode]
-        return self.available_transfer_fns[Fp.TransferMode.DRY_RUN]
 
     def _build_walker_fn(self, c: ConfigModel) -> Callable[[], Iterator[FSEntry]]:
         """Build the walker function based on the configuration."""

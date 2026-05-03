@@ -47,7 +47,6 @@ def get_duration_null(_: str) -> float:
     return Fp.MAXFLOAT
 
 
-@cache
 def duration_fn_factory() -> Callable[[str], float]:
     """Create a get_duration function based on ffprobe availability."""
     if not shutil.which("ffprobe"):

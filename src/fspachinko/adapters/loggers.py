@@ -129,10 +129,10 @@ class AttachedLogHandler(logging.Handler):
     def __init__(self, call: Callable[[str], None]) -> None:
         """Initialize the handler."""
         super().__init__()
-        self.call = call
+        self._call = call
         self.setFormatter(logging.Formatter(Fp.LogFmt.DEST, datefmt=Fp.LogDateFmt.HHMMSS))
         self.setLevel(logging.INFO)
 
     def emit(self, record: logging.LogRecord) -> None:
         """Emit a log record by formatting it and calling the provided function."""
-        self.call(self.format(record))
+        self._call(self.format(record))

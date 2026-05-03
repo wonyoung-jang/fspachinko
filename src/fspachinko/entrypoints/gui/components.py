@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fspachinko.adapters.transfer import available_transfer_fns
+from fspachinko.adapters.transfer import available_transfer_fn_factory
 from fspachinko.entrypoints.gui.helpers import get_qt_icon, set_qt_tips
 from fspachinko.fp import Fp
 
@@ -384,7 +384,9 @@ class MainConfigWidget(QWidget):
             Fp.ConfigName.EXTENSION: TextFilterWidget("Extensions", Fp.ConfigName.EXTENSION),
             Fp.ConfigName.FILESIZE: RangeFilterWidget("File size", Fp.ConfigName.FILESIZE, tuple(Fp.SIZE_MAP.keys())),
             Fp.ConfigName.DURATION: RangeFilterWidget("Duration", Fp.ConfigName.DURATION, tuple(Fp.TIME_MAP.keys())),
-            Fp.ConfigName.OPTIONS: OptionsWidget("Options", Fp.ConfigName.OPTIONS, available_transfer_fns()),
+            Fp.ConfigName.OPTIONS: OptionsWidget(
+                "Options", Fp.ConfigName.OPTIONS, tuple(available_transfer_fn_factory().keys())
+            ),
         }
         layout = QGridLayout(self)
         layout.setContentsMargins(25, 5, 25, 5)

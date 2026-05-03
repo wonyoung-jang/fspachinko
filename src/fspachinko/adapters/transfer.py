@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from fspachinko.fp import Fp
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
 
 
 def _link_fn_is_available(link_fn: Callable) -> bool:
@@ -29,11 +29,6 @@ def _link_fn_is_available(link_fn: Callable) -> bool:
     return True
 
 
-def dry_transfer(_src: str, _dst: str) -> None:
-    """Simulate a file transfer without doing anything."""
-    return
-
-
 def hardlink(src: str, dst: str) -> None:
     """Create a hardlink from source to destination."""
     try:
@@ -46,7 +41,7 @@ def hardlink(src: str, dst: str) -> None:
 
 
 _TRANSFER_FNS: dict[Fp.TransferMode, Callable] = {
-    Fp.TransferMode.DRY_RUN: dry_transfer,
+    Fp.TransferMode.DRY_RUN: lambda _, __: None,
     Fp.TransferMode.COPY: copy,
     Fp.TransferMode.COPY_PRESERVE: copy2,
     Fp.TransferMode.MOVE: move,
@@ -63,14 +58,18 @@ _LINK_FNS: dict[Fp.TransferMode, Callable] = {
 @cache
 def available_transfer_fn_factory() -> dict[Fp.TransferMode, Callable]:
     """Create a transfer function manager."""
-    available = _TRANSFER_FNS.copy()
+    _transfer_fns = _TRANSFER_FNS.copy()
     for mode, fn in _LINK_FNS.items():
         if not _link_fn_is_available(fn):
-            available.pop(mode, None)
-    return available
+            _transfer_fns.pop(mode, None)
+    return _transfer_fns
 
 
 @cache
-def available_transfer_fns() -> Sequence[Fp.TransferMode]:
-    """Get the available transfer function names."""
-    return tuple(available_transfer_fn_factory().keys())
+def get_transfer_fn(mode: str) -> Callable[[str, str], None]:
+    """Get the transfer function for the specified mode."""
+    _mode = Fp.TransferMode(mode)
+    _available = available_transfer_fn_factory()
+    if _mode in _available:
+        return _available[_mode]
+    return _available[Fp.TransferMode.DRY_RUN]
