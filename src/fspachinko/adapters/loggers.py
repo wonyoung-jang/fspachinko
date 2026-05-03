@@ -17,36 +17,21 @@ class AbstractLogger(ABC):
     """Abstract base class for loggers."""
 
     @abstractmethod
-    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log a debug message."""
-
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
     @abstractmethod
-    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log an info message."""
-
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
     @abstractmethod
-    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log a warning message."""
-
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
     @abstractmethod
-    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        """Log an exception message."""
-
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
     @abstractmethod
-    def add_handler(self, name: str, handler: logging.Handler) -> None:
-        """Add a logging handler."""
-
+    def add_handler(self, name: str, handler: logging.Handler) -> None: ...
     @abstractmethod
-    def add_cli_log_handler(self) -> None:
-        """Get a logging handler for CLI output."""
-
+    def add_cli_log_handler(self) -> None: ...
     @abstractmethod
-    def add_dest_log_filehandler(self, dest: str) -> None:
-        """Set up a logger for the job request."""
-
+    def add_dest_log_filehandler(self, dest: str) -> None: ...
     @abstractmethod
-    def remove_dest_log_filehandler(self, dest: str) -> None:
-        """Remove the log handler for the job request."""
+    def remove_dest_log_filehandler(self, dest: str) -> None: ...
 
 
 @dataclass(slots=True)

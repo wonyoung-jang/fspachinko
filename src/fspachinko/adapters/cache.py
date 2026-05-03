@@ -16,7 +16,6 @@ class AbstractMetadataCache(ABC):
 
     @abstractmethod
     def get_duration(self, e: FSEntry) -> float | None: ...
-
     @abstractmethod
     def set_entries(self, entries: Iterable[FSEntry]) -> None: ...
 

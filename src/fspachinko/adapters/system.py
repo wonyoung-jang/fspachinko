@@ -14,7 +14,7 @@ from os import link, mkdir, scandir, symlink, unlink
 from os.path import basename, join, splitext
 from shutil import copy, copy2, move
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from fspachinko.domain.model import FSEntry, FSPachinkoPin
 from fspachinko.fp import Fp
@@ -31,48 +31,27 @@ class AbstractFilesystem(ABC):
     """Abstract interface for filesystem operations."""
 
     @abstractmethod
-    def get_unique_path(self, path: str, existing: Iterable[str]) -> str:
-        """Get a new path, ensuring it doesn't already exist."""
-
+    def get_unique_path(self, path: str, existing: Iterable[str]) -> str: ...
     @abstractmethod
-    def are_files_identical(self, f1: str, f2: str) -> bool:
-        """Check if two files are identical by comparing their contents."""
-
+    def are_files_identical(self, f1: str, f2: str) -> bool: ...
     @abstractmethod
-    def get_existing_json_files(self, path: str) -> list[str]:
-        """Get a list of existing JSON file paths within the specified path."""
-
+    def get_existing_json_files(self, path: str) -> list[str]: ...
     @abstractmethod
-    def get_existing_files_for_existing_dest(self, path: str) -> Iterator[tuple[str, int]]:
-        """Get a dictionary of existing file paths and their sizes within the specified path."""
-
+    def get_existing_files_for_existing_dest(self, path: str) -> Iterator[tuple[str, int]]: ...
     @abstractmethod
-    def get_existing_subdirs(self, path: str) -> set[str]:
-        """Get a set of existing directory paths within the specified path."""
-
+    def get_existing_subdirs(self, path: str) -> set[str]: ...
     @abstractmethod
-    def join_path(self, *parts: str) -> str:
-        """Join path parts into a single path."""
-
+    def join_path(self, *parts: str) -> str: ...
     @abstractmethod
-    def json_to_dict(self, path: str) -> dict:
-        """Load JSON data from a file."""
-
+    def json_to_dict(self, path: str) -> dict: ...
     @abstractmethod
-    def get_stem_and_ext(self, path: str) -> tuple[str, str]:
-        """Get the stem and extension of a file path."""
-
+    def get_stem_and_ext(self, path: str) -> tuple[str, str]: ...
     @abstractmethod
-    def save_json(self, path: str, data: dict) -> None:
-        """Save JSON data to a file."""
-
+    def save_json(self, path: str, data: dict) -> None: ...
     @abstractmethod
-    def make_directory(self, path: str) -> None:
-        """Create a directory at the specified path."""
-
+    def make_directory(self, path: str) -> None: ...
     @abstractmethod
-    def remove_directory(self, path: str) -> None:
-        """Remove a directory and its contents, with error handling."""
+    def remove_directory(self, path: str) -> None: ...
 
 
 class Filesystem(AbstractFilesystem):
@@ -152,8 +131,7 @@ class AbstractFSWalker(ABC):
     rng: random.Random
 
     @abstractmethod
-    def __call__(self) -> Iterator[FSEntry]:
-        """Walk the filesystem and return an iterator of FSEntry objects."""
+    def __call__(self) -> Iterator[FSEntry]: ...
 
 
 @dataclass(slots=True)
@@ -275,19 +253,6 @@ def duration_fn_factory() -> Callable[[str], float]:
     return get_duration_ffprobe
 
 
-FILENAME_TEMPLATE_MAP: dict[Fp.FilenameTemplate, Callable[[FSEntry, int], str | int]] = {
-    Fp.FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
-    Fp.FilenameTemplate.INDEX: lambda _, c: c + 1,
-    Fp.FilenameTemplate.PARENT: lambda e, _: basename(e.parent),
-}
-
-
-@cache
-def _available_filename_map(template: str) -> dict[str, Callable[[FSEntry, int], str | int]]:
-    """Get the mapping of available filename template variables."""
-    return {templ: fn for templ, fn in FILENAME_TEMPLATE_MAP.items() if templ in template}
-
-
 @dataclass(slots=True)
 class AbstractFilenamer(ABC):
     """Abstract filenamer."""
@@ -295,19 +260,23 @@ class AbstractFilenamer(ABC):
     template: str
 
     @abstractmethod
-    def __call__(self, entry: FSEntry, count: int) -> str:
-        """Generate a filename."""
+    def __call__(self, entry: FSEntry, count: int) -> str: ...
 
 
 @dataclass(slots=True)
 class TemplateFilenamer(AbstractFilenamer):
     """Filenamer that generates filenames based on templates."""
 
+    _FILENAME_TEMPLATE_MAP: ClassVar[dict[Fp.FilenameTemplate, Callable[[FSEntry, int], str | int]]] = {
+        Fp.FilenameTemplate.ORIGINAL: lambda e, _: e.stem,
+        Fp.FilenameTemplate.INDEX: lambda _, c: c + 1,
+        Fp.FilenameTemplate.PARENT: lambda e, _: basename(e.parent),
+    }
     _map: dict[str, Callable[[FSEntry, int], str | int]] = field(init=False)
 
     def __post_init__(self) -> None:
         """Validate the template."""
-        self._map = _available_filename_map(self.template)
+        self._map = {tpl: fn for tpl, fn in self._FILENAME_TEMPLATE_MAP.items() if tpl in self.template}
 
     def __call__(self, entry: FSEntry, count: int) -> str:
         """Generate a filename based on the specified template."""
@@ -318,19 +287,39 @@ class TemplateFilenamer(AbstractFilenamer):
             return entry.stem
 
 
-def _link_fn_is_available(link_fn: Callable) -> bool:
-    """Test if a link function works in the current environment."""
-    try:
-        with TemporaryDirectory(delete=True) as tmpdir:
-            test_src = join(tmpdir, "test_src")
-            test_link = join(tmpdir, "test_link")
-            open(test_src, "w").close()
-            link_fn(test_src, test_link)
-            unlink(test_link)
-            unlink(test_src)
-    except OSError, UnsupportedOperation, NotImplementedError:
-        return False
-    return True
+@dataclass(slots=True)
+class LinkFunctionManager:
+    """Manager for link functions (symlinks and hardlinks)."""
+
+    _LINK_FNS: ClassVar[dict[Fp.TransferMode, Callable]] = {
+        Fp.TransferMode.SYMLINK: symlink,
+        Fp.TransferMode.HARDLINK: link,
+    }
+    _unavailable: set[Fp.TransferMode] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Check the availability of link functions."""
+        self._unavailable = {mode for mode, fn in self._LINK_FNS.items() if not self._is_available(fn)}
+
+    @property
+    def unavailable(self) -> set[Fp.TransferMode]:
+        """Get the set of unavailable link functions."""
+        return self._unavailable
+
+    @staticmethod
+    def _is_available(link_fn: Callable) -> bool:
+        """Test if a link function works in the current environment."""
+        try:
+            with TemporaryDirectory(delete=True) as tmpdir:
+                test_src = join(tmpdir, "test_src")
+                test_link = join(tmpdir, "test_link")
+                open(test_src, "w").close()
+                link_fn(test_src, test_link)
+                unlink(test_link)
+                unlink(test_src)
+        except OSError, UnsupportedOperation, NotImplementedError:
+            return False
+        return True
 
 
 def hardlink(src: str, dst: str) -> None:
@@ -344,33 +333,48 @@ def hardlink(src: str, dst: str) -> None:
             raise
 
 
-_TRANSFER_FNS: dict[Fp.TransferMode, Callable] = {
-    Fp.TransferMode.DRY_RUN: lambda _, __: None,
-    Fp.TransferMode.COPY: copy,
-    Fp.TransferMode.COPY_PRESERVE: copy2,
-    Fp.TransferMode.MOVE: move,
-    Fp.TransferMode.SYMLINK: symlink,
-    Fp.TransferMode.HARDLINK: hardlink,
-}
+@dataclass(slots=True)
+class TransferFunctionManager:
+    """Manager for transfer functions."""
 
-_LINK_FNS: dict[Fp.TransferMode, Callable] = {
-    Fp.TransferMode.SYMLINK: symlink,
-    Fp.TransferMode.HARDLINK: link,
-}
+    _TRANSFER_FNS: ClassVar[dict[Fp.TransferMode, Callable]] = {
+        Fp.TransferMode.DRY_RUN: lambda _, __: None,
+        Fp.TransferMode.COPY: copy,
+        Fp.TransferMode.COPY_PRESERVE: copy2,
+        Fp.TransferMode.MOVE: move,
+        Fp.TransferMode.SYMLINK: symlink,
+        Fp.TransferMode.HARDLINK: hardlink,
+    }
+    _available: dict[Fp.TransferMode, Callable] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize the available transfer functions."""
+        link_manager = LinkFunctionManager()
+        self._available = {mode: fn for mode, fn in self._TRANSFER_FNS.items() if mode not in link_manager.unavailable}
+
+    @property
+    def available_modes(self) -> Sequence[Fp.TransferMode]:
+        """Get the set of available transfer modes."""
+        return tuple(self._available.keys())
+
+    def get(self, mode: str) -> Callable[[str, str], None]:
+        """Get the transfer function for the specified mode."""
+        return self._available.get(Fp.TransferMode(mode), self._available[Fp.TransferMode.DRY_RUN])
 
 
 @cache
-def available_transfer_fn_factory() -> dict[Fp.TransferMode, Callable]:
+def _transfer_fn_manager() -> TransferFunctionManager:
     """Create a transfer function manager."""
-    _transfer_fns = _TRANSFER_FNS.copy()
-    for mode, fn in _LINK_FNS.items():
-        if not _link_fn_is_available(fn):
-            _transfer_fns.pop(mode, None)
-    return _transfer_fns
+    return TransferFunctionManager()
+
+
+@cache
+def available_transfer_modes() -> Sequence[Fp.TransferMode]:
+    """Get the available transfer modes based on the current environment."""
+    return _transfer_fn_manager().available_modes
 
 
 @cache
 def get_transfer_fn(mode: str) -> Callable[[str, str], None]:
     """Get the transfer function for the specified mode."""
-    _available = available_transfer_fn_factory()
-    return _available.get(Fp.TransferMode(mode), _available[Fp.TransferMode.DRY_RUN])
+    return _transfer_fn_manager().get(mode)
