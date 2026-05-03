@@ -1,4 +1,4 @@
-"""SQLite-based incremental filesystem cache."""
+"""Incremental filesystem cache."""
 
 import sqlite3
 from abc import ABC, abstractmethod

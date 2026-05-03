@@ -1,4 +1,4 @@
-"""Model classes for the domain."""
+"""Pipeline adapter for file transfer operations."""
 
 from abc import ABC, abstractmethod
 from collections import deque
