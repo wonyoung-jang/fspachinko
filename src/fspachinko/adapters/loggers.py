@@ -58,7 +58,7 @@ class AppLogger(AbstractLogger):
 
     def __post_init__(self) -> None:
         """Initialize the root logger."""
-        self._logger = logging.getLogger(Fp.LogData.NAME)
+        self._logger = logging.getLogger()
         self._logger.setLevel(logging.DEBUG)
         self.add_global_file_log_handler()
         self.debug("Initialized AppLogger with file log handler.")

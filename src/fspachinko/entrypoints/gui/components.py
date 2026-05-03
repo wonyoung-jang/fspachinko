@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fspachinko.adapters.transfer import available_transfer_fn_factory
+from fspachinko.adapters.system import available_transfer_fn_factory
 from fspachinko.entrypoints.gui.helpers import get_qt_icon, set_qt_tips
 from fspachinko.fp import Fp
 

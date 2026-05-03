@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from itertools import islice
 from typing import TYPE_CHECKING
 
-from fspachinko.adapters.duration import get_duration_null
+from fspachinko.adapters.system import get_duration_null
 from fspachinko.domain.events import Event, FileTransferred
 from fspachinko.fp import Fp
 

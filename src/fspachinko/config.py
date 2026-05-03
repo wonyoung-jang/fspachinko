@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from fspachinko.adapters.duration import duration_fn_factory, get_duration_null
+from fspachinko.adapters.system import duration_fn_factory, get_duration_null
 from fspachinko.datapaths import configs_path, get_config_path
 from fspachinko.domain.model import DestinationDirectory
 from fspachinko.fp import Fp
@@ -17,11 +17,67 @@ if TYPE_CHECKING:
     import random
     from collections.abc import Callable, Iterator, Sequence
 
-    from fspachinko.adapters.filenamer import AbstractFilenamer
-    from fspachinko.adapters.filesystem import AbstractFilesystem
-    from fspachinko.adapters.fswalker import AbstractFSWalker
     from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.adapters.system import AbstractFilenamer, AbstractFilesystem, AbstractFSWalker
     from fspachinko.domain.model import FSEntry
+
+DEFAULT_CONFIG: dict = {
+    "root": {
+        "path": "C:/",
+    },
+    "dest": {
+        "path": "/fspachinko_output",
+    },
+    "filecount": {
+        "count": 10,
+        "is_rand_enabled": False,
+        "rand_min": 1,
+        "rand_max": 10,
+    },
+    "directory": {
+        "is_enabled": False,
+        "name": "fsp_output",
+        "count": 1,
+    },
+    "filename": {
+        "is_enabled": False,
+        "template": "{original}",
+    },
+    "dirname": {
+        "is_enabled": False,
+        "should_include": True,
+        "text": "",
+    },
+    "keyword": {
+        "is_enabled": False,
+        "should_include": True,
+        "text": "",
+    },
+    "extension": {
+        "is_enabled": False,
+        "should_include": True,
+        "text": "",
+    },
+    "filesize": {
+        "is_enabled": False,
+        "minimum": 0.0,
+        "maximum": 10.0,
+        "unit": "MB",
+    },
+    "duration": {
+        "is_enabled": False,
+        "minimum": 0.0,
+        "maximum": 10.0,
+        "unit": "m",
+    },
+    "options": {
+        "transfer_mode": "Dry Run",
+        "max_per_dir": 0,
+        "is_create_unique_folders": True,
+        "should_follow_symlink": True,
+        "rng_seed": None,
+    },
+}
 
 
 class PathSelectorModel(BaseModel):

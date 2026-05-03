@@ -43,11 +43,6 @@ class Fp:
         ORIGINAL = "original"
         PARENT = "parent"
 
-    class LogData(StrEnum):
-        """Enum for log data."""
-
-        NAME = "fspachinko"
-
     class LogFmt(StrEnum):
         """Enum for log formats."""
 

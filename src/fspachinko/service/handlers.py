@@ -15,9 +15,9 @@ from fspachinko.domain.events import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from fspachinko.adapters.filesystem import AbstractFilesystem
     from fspachinko.adapters.loggers import AbstractLogger
     from fspachinko.adapters.pipeline import AbstractPipeline
+    from fspachinko.adapters.system import AbstractFilesystem
     from fspachinko.config import ConfigModelBootstrapper
     from fspachinko.domain.commands import ConfigurePipeline, RunTransferJob, SaveConfiguration, StopProcess
     from fspachinko.domain.events import Event
