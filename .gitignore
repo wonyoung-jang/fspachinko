@@ -123,6 +123,16 @@ venv.bak/
 *.lprof
 output/
 *.txt
-*_profiles/
 *_output/
-.github/*.md
+.github/**/*.md
+tach.toml
+prek.toml
+
+src/fspachinko/_data/configs/*
+!src/fspachinko/_data/configs/fspachinko.json
+
+# Temporary ignores
+src/*/web/
+src/fspachinko/adapters/scanner.py
+src/fspachinko/_data/cache/fspachinko_cache.db
+.tally-config.toml
